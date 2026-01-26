@@ -1,0 +1,29 @@
+[package]
+name = "debba-sql"
+version = "0.1.0"
+description = "debba.sql - A database manager for developers"
+authors = ["Debba"]
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "debba_sql_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.5.3", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.9.5", features = [] }
+tauri-plugin-log = "2"
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "mysql", "postgres", "tls-native-tls", "chrono"] }
+tokio = { version = "1.49.0", features = ["full"] }
+uuid = { version = "1.20.0", features = ["v4", "serde"] }
+chrono = { version = "0.4.43", features = ["serde"] }
+tauri-plugin-dialog = "2.6.0"
+tauri-plugin-fs = "2.4.5"
