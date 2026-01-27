@@ -120,3 +120,11 @@
             - Added "Save Query" context menu action.
             - Implemented "Save/Edit Query" Modal with Monaco Editor integration.
             - **Dropdown Polish:** Added "Save" button (floppy icon) next to each query in the "Run" dropdown list for quick saving.
+
+### Session 13: Release Automation & Version Bump
+- **Status:** Beta Release Ready.
+- **Actions:**
+    - **Versioning:** Bumped version to `0.2.0` in `package.json`, `tauri.conf.json`, `Cargo.toml`.
+    - **Docs:** Updated `README.md` with new features and roadmap.
+    - **CI/CD:** Created `.github/workflows/release.yml` to automatically build and release binaries on tag push.
+    - **Fixes:** Added `libfuse2` to CI dependencies to resolve AppImage build issues on Ubuntu 22.04+.
