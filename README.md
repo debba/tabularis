@@ -2,7 +2,7 @@
 
 ![](https://img.shields.io/github/release/debba/debba.sql.svg?style=flat)
 ![](https://img.shields.io/github/downloads/debba/debba.sql/total.svg?style=flat)
-![Build & Release](https://github.com/debba/debba.sql/workflows/Build%20&%20Release/badge.svg)
+![Build & Release](https://github.com/debba/debba.sql/workflows/Release/badge.svg)
 [![Known Vulnerabilities](https://snyk.io//test/github/debba/debba.sql/badge.svg?targetFile=package.json)](https://snyk.io//test/github/debba/debba.sql?targetFile=package.json)
 
 A lightweight, developer-focused database management tool, built with Tauri and React.
