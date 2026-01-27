@@ -116,7 +116,7 @@ export const Settings = () => {
                       </a>
                       <div className="flex items-center gap-2 bg-blue-900/30 text-blue-300 px-4 py-2 rounded-lg border border-blue-500/30">
                           <span className="text-xs font-bold uppercase tracking-wider">Version</span>
-                          <span className="font-mono font-bold">0.4.0 (Beta)</span>
+                          <span className="font-mono font-bold">0.5.0 (Beta)</span>
                       </div>
                   </div>
               </div>

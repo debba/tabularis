@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { DatabaseContext, type TableInfo, type SavedConnection } from './DatabaseContext';
 import type { ReactNode } from 'react';
 
@@ -11,6 +12,23 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
   const [activeDatabaseName, setActiveDatabaseName] = useState<string | null>(null);
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [isLoadingTables, setIsLoadingTables] = useState(false);
+
+  // Sync Window Title with active connection
+  useEffect(() => {
+    const updateTitle = async () => {
+      try {
+        const win = getCurrentWindow();
+        if (activeConnectionName && activeDatabaseName) {
+          await win.setTitle(`debba.sql - ${activeConnectionName} (${activeDatabaseName})`);
+        } else {
+          await win.setTitle('debba.sql');
+        }
+      } catch (e) {
+        console.error('Failed to update window title', e);
+      }
+    };
+    updateTitle();
+  }, [activeConnectionName, activeDatabaseName]);
 
   const refreshTables = async () => {
       if (!activeConnectionId) return;

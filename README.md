@@ -12,7 +12,7 @@ A lightweight, developer-focused database management tool, built with Tauri and 
 ## Release Download:
 
 <!-- DOWNLOAD_SECTION_START -->
-[![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/debba/debba.sql/releases/download/v0.4.0/debba.sql_0.4.0_x64-setup.exe) [![macOS](https://img.shields.io/badge/macOS-Download-black?logo=apple)](https://github.com/debba/debba.sql/releases/download/v0.4.0/debba.sql_0.4.0_x64.dmg) [![Linux](https://img.shields.io/badge/Linux-Download-green?logo=linux)](https://github.com/debba/debba.sql/releases/download/v0.4.0/debba.sql_0.4.0_amd64.AppImage)
+[![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/debba/debba.sql/releases/download/v0.5.0/debba.sql_0.5.0_x64-setup.exe) [![macOS](https://img.shields.io/badge/macOS-Download-black?logo=apple)](https://github.com/debba/debba.sql/releases/download/v0.5.0/debba.sql_0.5.0_x64.dmg) [![Linux](https://img.shields.io/badge/Linux-Download-green?logo=linux)](https://github.com/debba/debba.sql/releases/download/v0.5.0/debba.sql_0.5.0_amd64.AppImage)
 <!-- DOWNLOAD_SECTION_END -->
 
 <div align="center">
@@ -32,26 +32,22 @@ A lightweight, developer-focused database management tool, built with Tauri and 
 
 ## Features
 
-### 🚀 New in v0.4.0
+### 🚀 New in v0.5.0
 
-- **Visual Query Builder (Experimental):**
-  - **Drag-and-Drop Interface:** Build SQL queries visually using a ReactFlow canvas.
-  - **Visual JOINs:** Connect columns between tables to create relationships.
-  - **JOIN Type Selection:** Click edge labels to cycle through INNER, LEFT, RIGHT, FULL OUTER, and CROSS joins.
-  - **Column Configuration:** Click column names to configure aggregations, aliases, and position in SELECT.
-  - **Aggregate Functions:** Support for COUNT, SUM, AVG, MIN, MAX, COUNT DISTINCT with auto-generated GROUP BY.
-  - **Advanced Filters:** Build WHERE/HAVING conditions with AND/OR logic and inline delete.
-  - **Column Ordering:** Assign position numbers to control column order in the generated SQL.
-  - **Real-time SQL Preview:** See generated queries update live in the Run dropdown.
-  - **Auto GROUP BY:** Automatic GROUP BY clause generation when mixing aggregated and non-aggregated columns.
-- **Saved Queries:**
-  - Tab titles now display saved query names instead of generic "Console".
-- **UX Improvements:**
-  - Fixed Run button integration with Visual Query Builder.
-  - Delete table button now positioned in top-right corner of table nodes.
-  - Improved zoom controls (no excessive zoom on drag).
-  - Enhanced WHERE condition UI with inline delete button.
-- **Debug:** Added console logging for Visual Query Builder queries (browser console only).
+- **Advanced Schema Management:**
+  - **DataGrip-style Explorer:** Sidebar tables now expand to show columns, keys, foreign keys, and indexes.
+  - **Table Structure Modification:**
+    - **Manage Columns:** Add, modify, and delete columns with type, length, nullability, and default value support.
+    - **Manage Indexes:** Create and delete indexes (including Unique).
+    - **Manage Foreign Keys:** Create and delete foreign keys with support for ON DELETE/UPDATE actions.
+    - **Delete Table:** Context menu option to drop tables safely.
+- **Enhanced Data Editing:**
+  - **Smart Foreign Key Selection:** New/Edit Row modals now provide a rich dropdown for Foreign Keys, showing context from referenced tables (e.g. "ID - Name | Email") instead of just IDs.
+  - **Improved Inputs:** Auto-clearing of length for non-sized types (INT, BOOL) and better type handling.
+- **DataGrid Improvements:**
+  - **Row Selection:** Click row number to select, Shift+Click for range, Ctrl+Click for multiple.
+  - **Row Numbering:** Fixed column for row numbers similar to IDEs.
+- **Auto-Refresh:** Sidebar automatically refreshes structure after schema changes.
 
 ### 🔌 Connection Management
 

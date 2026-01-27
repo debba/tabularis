@@ -144,7 +144,12 @@ export const ModifyColumnModal = ({
             // For now, let's omit PK in CHANGE unless we are sure. 
             // But AUTO_INCREMENT requires Key.
             
-            return `ALTER TABLE ${q}${tableName}${q} CHANGE ${q}${column?.name}${q} ${q}${form.name}${q} ${finalType} ${nullableDef} ${defaultDef}${mysqlConstraints};`;
+            // If name is same, use MODIFY COLUMN to avoid repetition and potential confusion
+            if (column?.name === form.name) {
+                return `ALTER TABLE ${q}${tableName}${q} MODIFY COLUMN ${q}${form.name}${q} ${finalType} ${nullableDef} ${defaultDef}${mysqlConstraints};`;
+            } else {
+                return `ALTER TABLE ${q}${tableName}${q} CHANGE ${q}${column?.name}${q} ${q}${form.name}${q} ${finalType} ${nullableDef} ${defaultDef}${mysqlConstraints};`;
+            }
         } else if (driver === 'postgres') {
             // Postgres
             const statements = [];
@@ -267,7 +272,18 @@ export const ModifyColumnModal = ({
                     <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase">Type</label>
                     <select 
                         value={form.type}
-                        onChange={(e) => setForm({...form, type: e.target.value})}
+                        onChange={(e) => {
+                            const newType = e.target.value;
+                            const needsLength = ['VARCHAR', 'CHAR', 'DECIMAL', 'FLOAT', 'DOUBLE'].some(t => newType.includes(t));
+                            setForm({
+                                ...form, 
+                                type: newType,
+                                // Clear length if new type doesn't support it, unless it's VARCHAR which defaults to 255 if empty in some contexts, but here we can just clear it or set to default if needed.
+                                // User asked: "Su add column mette sempre length 255 anche dove non serve"
+                                // So if type changes to INTEGER, length should be cleared.
+                                length: needsLength ? (form.length || (newType.includes('VARCHAR') ? '255' : '')) : ''
+                            });
+                        }}
                         disabled={driver === 'sqlite' && isEdit}
                         className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white text-sm focus:border-blue-500 outline-none disabled:opacity-50 appearance-none cursor-pointer hover:bg-slate-900 transition-colors"
                         style={{

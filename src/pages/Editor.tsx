@@ -19,7 +19,6 @@ import {
   ChevronsRight,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { DataGrid } from "../components/ui/DataGrid";
 import { NewRowModal } from "../components/ui/NewRowModal";
 import { QuerySelectionModal } from "../components/ui/QuerySelectionModal";
@@ -53,7 +52,7 @@ interface TableColumn {
 }
 
 export const Editor = () => {
-  const { activeConnectionId, activeDatabaseName } = useDatabase();
+  const { activeConnectionId } = useDatabase();
   const { settings } = useSettings();
   const { saveQuery } = useSavedQueries();
   const {
@@ -94,20 +93,6 @@ export const Editor = () => {
     tabsRef.current = tabs;
     activeTabIdRef.current = activeTabId;
   }, [tabs, activeTabId]);
-
-  useEffect(() => {
-    const updateTitle = async () => {
-      try {
-        const win = getCurrentWindow();
-        if (activeDatabaseName)
-          await win.setTitle(`debba.sql - ${activeDatabaseName}`);
-        else await win.setTitle("debba.sql");
-      } catch (e) {
-        console.error("Failed to update window title", e);
-      }
-    };
-    updateTitle();
-  }, [activeDatabaseName]);
 
   const updateActiveTab = useCallback(
     (partial: Partial<Tab>) => {

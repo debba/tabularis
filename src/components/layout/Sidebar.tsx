@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Database, Terminal, Settings, Table as TableIcon, Loader2, Copy, Hash, PlaySquare, FileText, Plus, ChevronRight, ChevronDown, FileCode, Play, Edit, Trash2, PanelLeftClose, PanelLeft, Key, Columns, List, Link as LinkIcon, Folder } from 'lucide-react';
 import clsx from 'clsx';
@@ -12,6 +12,8 @@ import { SchemaModal } from '../ui/SchemaModal';
 import { CreateTableModal } from '../ui/CreateTableModal';
 import { QueryModal } from '../ui/QueryModal';
 import { ModifyColumnModal } from '../ui/ModifyColumnModal';
+import { CreateIndexModal } from '../ui/CreateIndexModal';
+import { CreateForeignKeyModal } from '../ui/CreateForeignKeyModal';
 
 interface TableColumn {
   name: string;
@@ -187,7 +189,12 @@ const SidebarTableItem = ({
     connectionId,
     driver,
     onAddColumn,
-    onEditColumn
+    onEditColumn,
+    onAddIndex,
+    onDropIndex,
+    onAddForeignKey,
+    onDropForeignKey,
+    schemaVersion
 }: { 
     table: { name: string }; 
     activeTable: string | null;
@@ -197,9 +204,18 @@ const SidebarTableItem = ({
     driver: string;
     onAddColumn: (tableName: string) => void;
     onEditColumn: (tableName: string, col: TableColumn) => void;
+    onAddIndex: (tableName: string) => void;
+    onDropIndex: (tableName: string, indexName: string) => void;
+    onAddForeignKey: (tableName: string) => void;
+    onDropForeignKey: (tableName: string, fkName: string) => void;
+    schemaVersion: number;
 }) => {
     // Prevent unused variable warning
     void onAddColumn;
+    void onAddIndex;
+    void onDropIndex;
+    void onAddForeignKey;
+    void onDropForeignKey;
 
     const [isExpanded, setIsExpanded] = useState(false);
     const [columns, setColumns] = useState<TableColumn[]>([]);
@@ -207,6 +223,12 @@ const SidebarTableItem = ({
     const [indexes, setIndexes] = useState<Index[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     
+    useEffect(() => {
+        if (isExpanded) {
+            refreshMetadata();
+        }
+    }, [schemaVersion]); // Re-fetch when schema version bumps
+
     // Sub-expansion states
     const [expandColumns, setExpandColumns] = useState(true);
     const [expandKeys, setExpandKeys] = useState(false);
@@ -244,10 +266,11 @@ const SidebarTableItem = ({
         }
     };
     
-    const handleContextMenu = (e: React.MouseEvent) => {
+    const showContextMenu = (e: React.MouseEvent, type: string, name: string) => {
         e.preventDefault();
         e.stopPropagation();
-        onContextMenu(e, 'table', table.name, table.name);
+        // @ts-ignore
+        onContextMenu(e, type, name, name, { tableName: table.name });
     };
 
     // Group indexes by name since API returns one row per column
@@ -268,7 +291,11 @@ const SidebarTableItem = ({
     // Currently `get_indexes` returns all indexes including PK/Unique backing indexes.
     
     const keys = groupedIndexes.filter(i => i.is_primary || i.is_unique);
-    const pureIndexes = groupedIndexes.filter(i => !i.is_primary && !i.is_unique);
+    // DataGrip typically shows ALL indexes in "Indexes" folder, including those backing PKs/Unique constraints.
+    // So "pureIndexes" should actually be ALL indexes.
+    // However, duplicates might be confusing. The user screenshot shows overlap.
+    // Let's use `groupedIndexes` for indexes list, but maybe we can differentiate icon.
+    const indexesList = groupedIndexes;
 
     return (
         <div className="flex flex-col">
@@ -279,7 +306,7 @@ const SidebarTableItem = ({
                     e.dataTransfer.effectAllowed = 'move';
                 }}
                 onClick={() => onTableClick(table.name)}
-                onContextMenu={handleContextMenu}
+                onContextMenu={(e) => showContextMenu(e, 'table', table.name)}
                 className={clsx(
                     "flex items-center gap-1 pl-1 pr-3 py-1.5 text-sm cursor-pointer group select-none transition-colors border-l-2",
                     activeTable === table.name 
@@ -310,6 +337,7 @@ const SidebarTableItem = ({
                                 <div 
                                     className="flex items-center gap-2 px-2 py-1 text-xs text-slate-500 hover:text-slate-300 cursor-pointer select-none"
                                     onClick={(e) => { e.stopPropagation(); setExpandColumns(!expandColumns); }}
+                                    onContextMenu={(e) => { e.stopPropagation(); e.preventDefault(); /* Columns folder context menu? Maybe Add Column */ }}
                                 >
                                     <Folder size={12} className="text-blue-400/70" />
                                     <span>columns</span>
@@ -346,7 +374,18 @@ const SidebarTableItem = ({
                                     {expandKeys && (
                                         <div className="ml-4 border-l border-slate-800/50">
                                             {keys.map(k => (
-                                                <div key={k.name} className="flex items-center gap-2 px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 cursor-pointer group font-mono" title={k.columns.join(', ')}>
+                                                <div 
+                                                    key={k.name} 
+                                                    className="flex items-center gap-2 px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 cursor-pointer group font-mono" 
+                                                    title={k.columns.join(', ')}
+                                                    onContextMenu={(e) => {
+                                                        // Keys are typically deleted as Indexes or Constraints
+                                                        // If it's a unique/primary index, deleting the index removes the constraint.
+                                                        // Or dropping PK constraint.
+                                                        // Let's treat them as indexes for now for deletion if name matches index name.
+                                                        showContextMenu(e, 'index', k.name)
+                                                    }}
+                                                >
                                                     <Key size={12} className={k.is_primary ? "text-yellow-500" : "text-slate-400"} />
                                                     <span className="truncate">{k.name}</span>
                                                 </div>
@@ -357,50 +396,67 @@ const SidebarTableItem = ({
                             )}
 
                             {/* Foreign Keys Folder */}
-                            {(foreignKeys.length > 0) && (
-                                <div className="flex flex-col">
-                                    <div 
-                                        className="flex items-center gap-2 px-2 py-1 text-xs text-slate-500 hover:text-slate-300 cursor-pointer select-none"
-                                        // Auto expand FKs? Maybe keep collapsed by default
-                                    >
-                                        <Folder size={12} className="text-purple-400/70" />
-                                        <span>foreign keys</span>
-                                        <span className="ml-auto text-[10px] opacity-50">{foreignKeys.length}</span>
-                                    </div>
-                                    <div className="ml-4 border-l border-slate-800/50">
-                                        {foreignKeys.map(fk => (
-                                            <div key={fk.name} className="flex items-center gap-2 px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 cursor-pointer group font-mono" title={`${fk.column_name} -> ${fk.ref_table}.${fk.ref_column}`}>
-                                                <LinkIcon size={12} className="text-purple-400" />
-                                                <span className="truncate">{fk.name}</span>
-                                            </div>
-                                        ))}
-                                    </div>
+                            <div className="flex flex-col">
+                                <div 
+                                    className="flex items-center gap-2 px-2 py-1 text-xs text-slate-500 hover:text-slate-300 cursor-pointer select-none"
+                                    onClick={(e) => { e.stopPropagation(); }} // Toggle logic if needed, currently always visible if empty or not? Let's just allow click to toggle? No state for FK folder?
+                                    // Actually we are missing state for FK/Index folders expansion if we want them collapsible.
+                                    // Let's assume they are always expanded OR reuse others.
+                                    // Let's add state if we want them collapsible.
+                                    // For now, let's just make them context menu targets.
+                                    onContextMenu={(e) => showContextMenu(e, 'folder_fks', 'foreign keys')}
+                                >
+                                    <Folder size={12} className="text-purple-400/70" />
+                                    <span>foreign keys</span>
+                                    <span className="ml-auto text-[10px] opacity-50">{foreignKeys.length}</span>
                                 </div>
-                            )}
+                                <div className="ml-4 border-l border-slate-800/50">
+                                    {foreignKeys.map(fk => (
+                                        <div 
+                                            key={fk.name} 
+                                            className="flex items-center gap-2 px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 cursor-pointer group font-mono" 
+                                            title={`${fk.column_name} -> ${fk.ref_table}.${fk.ref_column}`}
+                                            onContextMenu={(e) => showContextMenu(e, 'foreign_key', fk.name)}
+                                        >
+                                            <LinkIcon size={12} className="text-purple-400" />
+                                            <span className="truncate">{fk.name}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
 
                             {/* Indexes Folder */}
-                            {(pureIndexes.length > 0) && (
                                 <div className="flex flex-col">
                                     <div 
                                         className="flex items-center gap-2 px-2 py-1 text-xs text-slate-500 hover:text-slate-300 cursor-pointer select-none"
                                         onClick={(e) => { e.stopPropagation(); setExpandIndexes(!expandIndexes); }}
+                                        onContextMenu={(e) => showContextMenu(e, 'folder_indexes', 'indexes')}
                                     >
                                         <Folder size={12} className="text-green-400/70" />
                                         <span>indexes</span>
-                                        <span className="ml-auto text-[10px] opacity-50">{pureIndexes.length}</span>
+                                        <span className="ml-auto text-[10px] opacity-50">{indexesList.length}</span>
                                     </div>
                                     {expandIndexes && (
                                         <div className="ml-4 border-l border-slate-800/50">
-                                            {pureIndexes.map(idx => (
-                                                <div key={idx.name} className="flex items-center gap-2 px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 cursor-pointer group font-mono" title={idx.columns.join(', ')}>
-                                                    <List size={12} className="text-green-400" />
-                                                    <span className="truncate">{idx.name}</span>
+                                            {indexesList.map(idx => (
+                                                <div 
+                                                    key={idx.name} 
+                                                    className="flex items-center gap-2 px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 cursor-pointer group font-mono" 
+                                                    title={idx.columns.join(', ')}
+                                                    onContextMenu={(e) => showContextMenu(e, 'index', idx.name)}
+                                                >
+                                                    <List size={12} className={idx.is_unique ? "text-blue-400" : "text-green-400"} />
+                                                    <span className="truncate flex-1">
+                                                        {idx.name} <span className="text-slate-600">({idx.columns.join(', ')})</span>
+                                                    </span>
+                                                    {idx.is_unique && (
+                                                        <span className="text-[9px] text-slate-500 border border-slate-700 px-1 rounded bg-slate-900/50">UNIQUE</span>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
                                     )}
                                 </div>
-                            )}
                         </>
                     )}
                 </div>
@@ -414,11 +470,15 @@ export const Sidebar = () => {
   const { queries, deleteQuery, updateQuery } = useSavedQueries();
   const navigate = useNavigate();
   const location = useLocation();
+  const [schemaVersion, setSchemaVersion] = useState(0);
   
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; type: 'table' | 'query'; id: string; label: string; data?: SavedQuery } | null>(null);
   const [schemaModalTable, setSchemaModalTable] = useState<string | null>(null);
   const [isCreateTableModalOpen, setIsCreateTableModalOpen] = useState(false);
   const [modifyColumnModal, setModifyColumnModal] = useState<{ isOpen: boolean; tableName: string; column: TableColumn | null }>({ isOpen: false, tableName: '', column: null });
+  
+  const [createIndexModal, setCreateIndexModal] = useState<{ isOpen: boolean; tableName: string; }>({ isOpen: false, tableName: '' });
+  const [createForeignKeyModal, setCreateForeignKeyModal] = useState<{ isOpen: boolean; tableName: string; }>({ isOpen: false, tableName: '' });
   
   const [queriesOpen, setQueriesOpen] = useState(false);
   const [tablesOpen, setTablesOpen] = useState(true);
@@ -444,8 +504,9 @@ export const Sidebar = () => {
     });
   };
 
-  const handleContextMenu = (e: React.MouseEvent, type: 'table' | 'query', id: string, label: string, data?: SavedQuery) => {
+  const handleContextMenu = (e: React.MouseEvent, type: string, id: string, label: string, data?: SavedQuery) => {
     e.preventDefault();
+    // @ts-ignore
     setContextMenu({ x: e.clientX, y: e.clientY, type, id, label, data });
   };
 
@@ -552,6 +613,29 @@ export const Sidebar = () => {
                                     driver={activeDriver!}
                                     onAddColumn={(t) => setModifyColumnModal({ isOpen: true, tableName: t, column: null })}
                                     onEditColumn={(t, c) => setModifyColumnModal({ isOpen: true, tableName: t, column: c })}
+                                    onAddIndex={(t) => setCreateIndexModal({ isOpen: true, tableName: t })}
+                                    onDropIndex={async (t, name) => {
+                                        if (await ask(`Delete index "${name}"?`, { title: 'Delete Index', kind: 'warning' })) {
+                                            const q = (activeDriver === 'mysql' || activeDriver === 'mariadb') ? `DROP INDEX \`${name}\` ON \`${t}\`` : `DROP INDEX "${name}"`;
+                                            await invoke('execute_query', { connectionId: activeConnectionId, query: q }).catch(console.error);
+                                            setSchemaVersion(v => v + 1);
+                                        }
+                                    }}
+                                    onAddForeignKey={(t) => setCreateForeignKeyModal({ isOpen: true, tableName: t })}
+                                    onDropForeignKey={async (t, name) => {
+                                        if (await ask(`Delete foreign key "${name}"?`, { title: 'Delete FK', kind: 'warning' })) {
+                                            if (activeDriver === 'sqlite') {
+                                                await message('SQLite does not support dropping FKs via ALTER TABLE.', { kind: 'error' });
+                                                return;
+                                            }
+                                            const q = (activeDriver === 'mysql' || activeDriver === 'mariadb') ? 
+                                                `ALTER TABLE \`${t}\` DROP FOREIGN KEY \`${name}\`` : 
+                                                `ALTER TABLE "${t}" DROP CONSTRAINT "${name}"`;
+                                            await invoke('execute_query', { connectionId: activeConnectionId, query: q }).catch(console.error);
+                                            setSchemaVersion(v => v + 1);
+                                        }
+                                    }}
+                                    schemaVersion={schemaVersion}
                                 />
                             ))}
                         </div>
@@ -586,6 +670,7 @@ export const Sidebar = () => {
           y={contextMenu.y}
           onClose={() => setContextMenu(null)}
           items={
+            // @ts-ignore
             contextMenu.type === 'table' ? [
                 {
                     label: 'Select Top 100',
@@ -617,9 +702,113 @@ export const Sidebar = () => {
                     label: 'Add Column',
                     icon: Plus,
                     action: () => setModifyColumnModal({ isOpen: true, tableName: contextMenu.id, column: null })
+                },
+                {
+                    label: 'Delete Table',
+                    icon: Trash2,
+                    danger: true,
+                    action: async () => {
+                        const q = getQuote();
+                        if (await ask(`Are you sure you want to delete table "${contextMenu.id}"?`, { title: 'Delete Table', kind: 'warning' })) {
+                            try {
+                                await invoke('execute_query', { 
+                                    connectionId: activeConnectionId, 
+                                    query: `DROP TABLE ${q}${contextMenu.id}${q}`
+                                });
+                                if (refreshTables) refreshTables();
+                            } catch (e) {
+                                console.error(e);
+                                await message(`Failed to delete table: ${e}`, { kind: 'error' });
+                            }
+                        }
+                    }
                 }
-            ] : [
-                // Saved Query Actions
+            ] : 
+            // @ts-ignore
+            contextMenu.type === 'index' ? [
+                {
+                    label: 'Copy Name',
+                    icon: Copy,
+                    action: () => navigator.clipboard.writeText(contextMenu.id)
+                },
+                {
+                    label: 'Delete Index',
+                    icon: Trash2,
+                    danger: true,
+                    action: async () => {
+                        // We need table name here. But contextMenu only has id (index name).
+                        // Hack: Pass table name in label or data?
+                        // Let's pass table name in `data` as a custom object { tableName: string }
+                        // Or parse it if we encoded it.
+                        // Let's update `showContextMenu` to pass tableName in `data`.
+                        if (contextMenu.data && 'tableName' in contextMenu.data) {
+                            // @ts-ignore
+                            const t = contextMenu.data.tableName;
+                            if (await ask(`Delete index "${contextMenu.id}"?`, { title: 'Delete Index', kind: 'warning' })) {
+                                const q = (activeDriver === 'mysql' || activeDriver === 'mariadb') ? `DROP INDEX \`${contextMenu.id}\` ON \`${t}\`` : `DROP INDEX "${contextMenu.id}"`;
+                                await invoke('execute_query', { connectionId: activeConnectionId, query: q }).catch(console.error);
+                            }
+                        }
+                    }
+                }
+            ] :
+            // @ts-ignore
+            contextMenu.type === 'foreign_key' ? [
+                {
+                    label: 'Copy Name',
+                    icon: Copy,
+                    action: () => navigator.clipboard.writeText(contextMenu.id)
+                },
+                {
+                    label: 'Delete Foreign Key',
+                    icon: Trash2,
+                    danger: true,
+                    action: async () => {
+                        if (contextMenu.data && 'tableName' in contextMenu.data) {
+                            // @ts-ignore
+                            const t = contextMenu.data.tableName;
+                            if (await ask(`Delete foreign key "${contextMenu.id}"?`, { title: 'Delete FK', kind: 'warning' })) {
+                                if (activeDriver === 'sqlite') {
+                                    await message('SQLite does not support dropping FKs via ALTER TABLE.', { kind: 'error' });
+                                    return;
+                                }
+                                const q = (activeDriver === 'mysql' || activeDriver === 'mariadb') ? 
+                                    `ALTER TABLE \`${t}\` DROP FOREIGN KEY \`${contextMenu.id}\`` : 
+                                    `ALTER TABLE "${t}" DROP CONSTRAINT "${contextMenu.id}"`;
+                                await invoke('execute_query', { connectionId: activeConnectionId, query: q }).catch(console.error);
+                            }
+                        }
+                    }
+                }
+            ] :
+            // @ts-ignore
+            contextMenu.type === 'folder_indexes' ? [
+                {
+                    label: 'Add Index',
+                    icon: Plus,
+                    action: () => {
+                        if (contextMenu.data && 'tableName' in contextMenu.data) {
+                            // @ts-ignore
+                            setCreateIndexModal({ isOpen: true, tableName: contextMenu.data.tableName });
+                        }
+                    }
+                }
+            ] :
+            // @ts-ignore
+            contextMenu.type === 'folder_fks' ? [
+                {
+                    label: 'Add Foreign Key',
+                    icon: Plus,
+                    action: () => {
+                        if (contextMenu.data && 'tableName' in contextMenu.data) {
+                            // @ts-ignore
+                            setCreateForeignKeyModal({ isOpen: true, tableName: contextMenu.data.tableName });
+                        }
+                    }
+                }
+            ] :
+            [
+                // Saved Query Actions (Default fallback)
                 {
                     label: 'Execute',
                     icon: Play,
@@ -690,23 +879,37 @@ export const Sidebar = () => {
           isOpen={modifyColumnModal.isOpen}
           onClose={() => setModifyColumnModal({ ...modifyColumnModal, isOpen: false })}
           onSuccess={() => {
-              // We need to refresh the specific table columns. 
-              // Currently SidebarTableItem manages its own state and we don't have a direct trigger.
-              // However, collapsing and expanding will refresh it.
-              // For now, let's just refresh the whole tables list which is overkill but safe,
-              // or trust user to collapse/expand.
-              // Ideally we pass a callback, but we are too high up.
-              // Let's just rely on manual refresh for now, OR trigger a global refreshTables() which might not refresh columns if they are lazy loaded.
-              // Actually, refreshTables() only reloads table names.
-              // The columns are loaded in SidebarTableItem.
-              
-              // We could force a re-render by changing a key, but that resets expansion state.
-              // Let's accept that user might need to collapse/expand to see new column or changes.
+              setSchemaVersion(v => v + 1);
           }}
           connectionId={activeConnectionId}
           tableName={modifyColumnModal.tableName}
           driver={activeDriver || 'sqlite'}
           column={modifyColumnModal.column}
+        />
+      )}
+      {createIndexModal.isOpen && activeConnectionId && (
+        <CreateIndexModal
+          isOpen={createIndexModal.isOpen}
+          onClose={() => setCreateIndexModal({ ...createIndexModal, isOpen: false })}
+          onSuccess={() => {
+              setSchemaVersion(v => v + 1);
+          }}
+          connectionId={activeConnectionId}
+          tableName={createIndexModal.tableName}
+          driver={activeDriver || 'sqlite'}
+        />
+      )}
+
+      {createForeignKeyModal.isOpen && activeConnectionId && (
+        <CreateForeignKeyModal
+          isOpen={createForeignKeyModal.isOpen}
+          onClose={() => setCreateForeignKeyModal({ ...createForeignKeyModal, isOpen: false })}
+          onSuccess={() => {
+              setSchemaVersion(v => v + 1);
+          }}
+          connectionId={activeConnectionId}
+          tableName={createForeignKeyModal.tableName}
+          driver={activeDriver || 'sqlite'}
         />
       )}
     </div>

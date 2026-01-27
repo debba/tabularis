@@ -10,6 +10,13 @@ interface TableColumn {
   is_nullable: boolean;
 }
 
+interface ForeignKey {
+    name: string;
+    column_name: string;
+    ref_table: string;
+    ref_column: string;
+}
+
 interface EditRowModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,23 +28,76 @@ interface EditRowModalProps {
 }
 
 export const EditRowModal = ({ isOpen, onClose, tableName, pkColumn, rowData, columns, onSaveSuccess }: EditRowModalProps) => {
-  const { activeConnectionId } = useDatabase();
+  const { activeConnectionId, activeDriver } = useDatabase();
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [tableSchema, setTableSchema] = useState<TableColumn[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // FK Support
+  const [foreignKeys, setForeignKeys] = useState<ForeignKey[]>([]);
+  const [fkOptions, setFkOptions] = useState<Record<string, { value: any, label: string }[]>>({});
+  const [loadingFk, setLoadingFk] = useState<Record<string, boolean>>({});
+  const [fkErrors, setFkErrors] = useState<Record<string, string>>({});
 
-  // Fetch schema to know types
+  // Fetch schema and FKs
   useEffect(() => {
     if (isOpen && activeConnectionId && tableName) {
-        invoke<TableColumn[]>('get_columns', { 
-            connectionId: activeConnectionId, 
-            tableName 
+        Promise.all([
+            invoke<TableColumn[]>('get_columns', { connectionId: activeConnectionId, tableName }),
+            invoke<ForeignKey[]>('get_foreign_keys', { connectionId: activeConnectionId, tableName })
+        ])
+        .then(([cols, fks]) => {
+            setTableSchema(cols);
+            setForeignKeys(fks);
+            
+            // Fetch options
+            fks.forEach(fk => fetchFkOptions(fk));
         })
-        .then(cols => setTableSchema(cols))
         .catch(err => console.error('Failed to load schema for edit:', err));
     }
   }, [isOpen, activeConnectionId, tableName]);
+
+  const fetchFkOptions = async (fk: ForeignKey) => {
+      if (!activeConnectionId) return;
+      setLoadingFk(prev => ({ ...prev, [fk.column_name]: true }));
+      setFkErrors(prev => ({ ...prev, [fk.column_name]: '' }));
+      try {
+          const q = (activeDriver === 'mysql' || activeDriver === 'mariadb') ? '`' : '"';
+          const query = `SELECT * FROM ${q}${fk.ref_table}${q} LIMIT 100`;
+          
+          const result = await invoke<{ columns: string[], rows: any[][] }>('execute_query', { connectionId: activeConnectionId, query });
+          
+          const options = result.rows.map(rowArray => {
+              // Convert row array to object
+              const rowObj: Record<string, any> = {};
+              result.columns.forEach((col, idx) => {
+                  rowObj[col] = rowArray[idx];
+              });
+
+              let val = rowObj[fk.ref_column];
+              if (val === undefined) {
+                  const key = Object.keys(rowObj).find(k => k.toLowerCase() === fk.ref_column.toLowerCase());
+                  if (key) val = rowObj[key];
+              }
+              
+              const labelParts = Object.entries(rowObj)
+                  .filter(([k, _]) => k !== fk.ref_column && k.toLowerCase() !== fk.ref_column.toLowerCase())
+                  .slice(0, 2)
+                  .map(([_, v]) => String(v));
+              const labelText = labelParts.join(' | ');
+              
+              return { value: val, label: labelText ? `${val} - ${labelText}` : String(val) };
+          });
+          
+          setFkOptions(prev => ({ ...prev, [fk.column_name]: options }));
+      } catch (e) {
+          console.error(e);
+          setFkErrors(prev => ({ ...prev, [fk.column_name]: String(e) }));
+      } finally {
+          setLoadingFk(prev => ({ ...prev, [fk.column_name]: false }));
+      }
+  };
 
   // Initialize form data from rowData
   useEffect(() => {
@@ -164,16 +224,56 @@ export const EditRowModal = ({ isOpen, onClose, tableName, pkColumn, rowData, co
                 <label className="block text-xs font-medium text-slate-400 mb-1">
                   {col} <span className="text-slate-600">{typeHint}</span> {isPk && <span className="text-yellow-500">(PK)</span>}
                 </label>
-                <input
-                  disabled={isPk} 
-                  value={formData[col] === null ? '' : String(formData[col])}
-                  onChange={(e) => handleInputChange(col, e.target.value)}
-                  className={`
-                    w-full bg-slate-900 border rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500
-                    ${isPk ? 'border-slate-800 text-slate-500 cursor-not-allowed' : 'border-slate-700'}
-                  `}
-                  placeholder={formData[col] === null ? 'NULL' : ''}
-                />
+                
+                {foreignKeys.find(fk => fk.column_name === col) ? (
+                    <div className="relative">
+                        <select
+                            disabled={isPk}
+                            value={String(formData[col] ?? '')}
+                            onChange={(e) => handleInputChange(col, e.target.value)}
+                            className={`
+                                w-full bg-slate-900 border rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer
+                                ${isPk ? 'border-slate-800 text-slate-500 cursor-not-allowed' : 'border-slate-700'}
+                            `}
+                            style={{
+                              backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                              backgroundPosition: `right 0.75rem center`,
+                              backgroundRepeat: `no-repeat`,
+                              backgroundSize: `1.5em 1.5em`,
+                              paddingRight: `2.5rem`
+                            }}
+                        >
+                            <option value="">{formData[col] === null ? 'NULL' : (loadingFk[col] ? 'Loading...' : 'Select Value...')}</option>
+                            
+                            {/* Ensure current value is shown even if not in fetched options */}
+                            {formData[col] !== null && formData[col] !== undefined && !fkOptions[col]?.some(o => String(o.value) === String(formData[col])) && (
+                                <option value={String(formData[col])}>{String(formData[col])} (Current)</option>
+                            )}
+
+                            {fkOptions[col]?.length > 0 ? (
+                                fkOptions[col]?.map((opt, i) => (
+                                    <option key={i} value={String(opt.value)}>
+                                        {opt.label}
+                                    </option>
+                                ))
+                            ) : (
+                                !loadingFk[col] && <option value="" disabled>{fkErrors[col] ? `Error: ${fkErrors[col]}` : 'No options found'}</option>
+                            )}
+                        </select>
+                        {loadingFk[col] && <Loader2 size={12} className="absolute right-10 top-1/2 -translate-y-1/2 animate-spin text-slate-500" />}
+                    </div>
+                ) : (
+                    <input
+                      disabled={isPk} 
+                      value={formData[col] === null ? '' : String(formData[col])}
+                      onChange={(e) => handleInputChange(col, e.target.value)}
+                      className={`
+                        w-full bg-slate-900 border rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500
+                        ${isPk ? 'border-slate-800 text-slate-500 cursor-not-allowed' : 'border-slate-700'}
+                      `}
+                      placeholder={formData[col] === null ? 'NULL' : ''}
+                    />
+                )}
               </div>
             );
           })}
