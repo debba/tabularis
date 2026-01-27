@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Database, Terminal, Settings, Table as TableIcon, Loader2, Copy, Hash, PlaySquare, FileText, Plus, ChevronRight, ChevronDown, FileCode, Play, Edit, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
+import { ask } from '@tauri-apps/plugin-dialog';
 import { useDatabase } from '../../hooks/useDatabase';
 import { useSavedQueries } from '../../hooks/useSavedQueries';
 import type { SavedQuery } from '../../contexts/SavedQueriesContext';
@@ -259,7 +260,11 @@ export const Sidebar = () => {
                     label: 'Delete',
                     icon: Trash2,
                     action: async () => {
-                        if (await confirm(`Are you sure you want to delete "${contextMenu.label}"?`)) {
+                        const confirmed = await ask(`Are you sure you want to delete "${contextMenu.label}"?`, {
+                            title: 'Confirm Delete',
+                            kind: 'warning'
+                        });
+                        if (confirmed) {
                             deleteQuery(contextMenu.id);
                         }
                     }

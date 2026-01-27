@@ -169,6 +169,30 @@ pub async fn update_connection<R: Runtime>(
 }
 
 #[tauri::command]
+pub async fn duplicate_connection<R: Runtime>(
+    app: AppHandle<R>,
+    id: String,
+) -> Result<SavedConnection, String> {
+    let path = get_config_path(&app)?;
+    let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let mut connections: Vec<SavedConnection> = serde_json::from_str(&content).unwrap_or_default();
+    
+    let original = connections.iter().find(|c| c.id == id).ok_or("Connection not found")?.clone();
+    
+    let new_conn = SavedConnection {
+        id: Uuid::new_v4().to_string(),
+        name: format!("{} (Copy)", original.name),
+        params: original.params,
+    };
+    
+    connections.push(new_conn.clone());
+    
+    let json = serde_json::to_string_pretty(&connections).map_err(|e| e.to_string())?;
+    fs::write(path, json).map_err(|e| e.to_string())?;
+    Ok(new_conn)
+}
+
+#[tauri::command]
 pub async fn get_connections<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<Vec<SavedConnection>, String> {

@@ -8,6 +8,7 @@ import {
 import { ContextMenu } from './ContextMenu';
 import { Trash2, Edit } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { ask, message } from '@tauri-apps/plugin-dialog';
 import { EditRowModal } from './EditRowModal';
 
 interface DataGridProps {
@@ -70,7 +71,7 @@ export const DataGrid = ({ columns, data, tableName, pkColumn, connectionId, onR
         if (onRefresh) onRefresh();
     } catch (e) {
         console.error('Update failed:', e);
-        alert('Update failed: ' + e);
+        await message('Update failed: ' + e, { title: 'Error', kind: 'error' });
     }
     setEditingCell(null);
   };
@@ -121,7 +122,8 @@ export const DataGrid = ({ columns, data, tableName, pkColumn, connectionId, onR
     const pkIndex = columns.indexOf(pkColumn);
     const pkVal = contextMenu.row[pkIndex];
 
-    if (confirm('Are you sure you want to delete this row?')) {
+    const confirmed = await ask('Are you sure you want to delete this row?', { title: 'Delete Row', kind: 'warning' });
+    if (confirmed) {
         try {
           await invoke('delete_record', {
             connectionId,
@@ -132,7 +134,7 @@ export const DataGrid = ({ columns, data, tableName, pkColumn, connectionId, onR
           if (onRefresh) onRefresh();
         } catch (e) {
           console.error('Delete failed:', e);
-          alert('Failed to delete row: ' + e);
+          await message('Failed to delete row: ' + e, { title: 'Error', kind: 'error' });
         }
     }
   };

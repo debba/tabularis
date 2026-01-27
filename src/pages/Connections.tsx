@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NewConnectionModal } from '../components/ui/NewConnectionModal';
 import { invoke } from '@tauri-apps/api/core';
-import { Database, Plus, Power, Edit, Trash2, Shield, AlertCircle } from 'lucide-react';
+import { ask } from '@tauri-apps/plugin-dialog';
+import { Database, Plus, Power, Edit, Trash2, Shield, AlertCircle, Copy } from 'lucide-react';
 import { useDatabase } from '../hooks/useDatabase';
 
 interface SavedConnection {
@@ -66,7 +67,12 @@ export const Connections = () => {
   };
 
   const handleDelete = async (id: string) => {
-      if (confirm("Are you sure you want to delete this connection?")) {
+      const confirmed = await ask("Are you sure you want to delete this connection?", { 
+          title: 'Confirm Delete',
+          kind: 'warning'
+      });
+      
+      if (confirmed) {
           try {
               await invoke('delete_connection', { id });
               loadConnections();
@@ -79,6 +85,17 @@ export const Connections = () => {
   const openEdit = (conn: SavedConnection) => {
       setEditingConnection(conn);
       setIsModalOpen(true);
+  };
+
+  const handleDuplicate = async (id: string) => {
+    try {
+        const newConn = await invoke<SavedConnection>('duplicate_connection', { id });
+        await loadConnections();
+        openEdit(newConn);
+    } catch (e) {
+        console.error(e);
+        setError("Failed to duplicate connection");
+    }
   };
 
   return (
@@ -190,6 +207,13 @@ export const Connections = () => {
                        title="Edit"
                    >
                        <Edit size={14} />
+                   </button>
+                   <button 
+                       onClick={(e) => { e.stopPropagation(); handleDuplicate(conn.id); }}
+                       className="p-1.5 hover:bg-purple-900/50 text-slate-400 hover:text-purple-400 rounded"
+                       title="Clone"
+                   >
+                       <Copy size={14} />
                    </button>
                    <button 
                        onClick={(e) => { e.stopPropagation(); handleDelete(conn.id); }}

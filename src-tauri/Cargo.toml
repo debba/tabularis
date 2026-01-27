@@ -1,6 +1,6 @@
 [package]
 name = "debba-sql"
-version = "0.2.0"
+version = "0.3.0"
 description = "debba.sql - A database manager for developers"
 authors = ["Debba"]
 edition = "2021"

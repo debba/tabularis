@@ -24,6 +24,7 @@ pub fn run() {
             commands::save_connection,
             commands::delete_connection,
             commands::update_connection,
+            commands::duplicate_connection,
             commands::get_connections,
             commands::get_tables,
             commands::get_columns,

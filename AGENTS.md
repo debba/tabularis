@@ -161,3 +161,12 @@ Adhere to the rules defined in the [rules directory](./.rules/):
     - **Dependencies:**
         - Added `uuid` feature to sqlx in `Cargo.toml`
         - Ensured base64 encoding support for binary data
+
+### Session 17: Clone Connection & v0.3.0
+- **Status:** Release v0.3.0.
+- **Actions:**
+    - **Backend:** Implemented `duplicate_connection` command to clone connection profiles.
+    - **Frontend:**
+        - Added "Clone" button to connection cards which immediately opens the Edit modal for the new copy.
+        - **Dialog Fix:** Replaced all native `confirm()` and `alert()` calls with `@tauri-apps/plugin-dialog` counterparts (`ask`, `message`) to resolve issues with native dialogs not appearing.
+    - **Release:** Bumped version to **0.3.0**.
