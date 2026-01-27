@@ -145,7 +145,18 @@ export const Editor = () => {
   }, [activeConnectionId, updateTab, settings.queryLimit, fetchPkColumn]);
 
   const handleRunButton = useCallback(() => {
-    if (!editorRef.current || !activeTab) return;
+    if (!activeTab) return;
+
+    // Visual Query Builder: run the generated SQL directly
+    if (activeTab.type === 'query_builder') {
+      if (activeTab.query && activeTab.query.trim()) {
+        runQuery(activeTab.query, 1);
+      }
+      return;
+    }
+
+    // Monaco Editor: handle selection and multi-query
+    if (!editorRef.current) return;
     const editor = editorRef.current;
     const selection = editor.getSelection();
     const selectedText = selection ? editor.getModel()?.getValueInRange(selection) : undefined;
@@ -257,13 +268,21 @@ export const Editor = () => {
   };
 
   const handleRunDropdownToggle = useCallback(() => {
-    if (!isRunDropdownOpen && editorRef.current) {
-        const text = editorRef.current.getValue();
-        const queries = splitQueries(text);
-        setSelectableQueries(queries);
+    if (!isRunDropdownOpen) {
+        // Visual Query Builder: use the generated query
+        if (activeTab?.type === 'query_builder') {
+            const queries = activeTab.query ? [activeTab.query] : [];
+            setSelectableQueries(queries);
+        } 
+        // Monaco Editor: split queries from editor
+        else if (editorRef.current) {
+            const text = editorRef.current.getValue();
+            const queries = splitQueries(text);
+            setSelectableQueries(queries);
+        }
     }
     setIsRunDropdownOpen(prev => !prev);
-  }, [isRunDropdownOpen]);
+  }, [isRunDropdownOpen, activeTab]);
 
   if (!activeTab) {
     return (

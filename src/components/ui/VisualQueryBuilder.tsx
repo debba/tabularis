@@ -433,6 +433,15 @@ const VisualQueryBuilderContent = () => {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           fitView
+          minZoom={0.1}
+          maxZoom={2}
+          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+          zoomOnScroll={true}
+          zoomOnPinch={true}
+          panOnScroll={false}
+          panOnDrag={true}
+          zoomOnDoubleClick={false}
+          preventScrolling={true}
           defaultEdgeOptions={{
             animated: true,
             style: { stroke: '#3b82f6', strokeWidth: 2 },
@@ -592,25 +601,27 @@ const VisualQueryBuilderContent = () => {
                       <option value="!=">!=</option>
                       <option value=">">{'>'}</option>
                       <option value="<">{'<'}</option>
-                      <option value=">=">{'≥'}</option>
-                      <option value="<=">{'≤'}</option>
+                      <option value=">=">{'\u2265'}</option>
+                      <option value="<=">{'\u2264'}</option>
                       <option value="LIKE">LIKE</option>
                       <option value="IN">IN</option>
                     </select>
-                    <input
-                      type="text"
-                      value={condition.value}
-                      onChange={(e) => setWhereConditions(whereConditions.map(c => c.id === condition.id ? { ...c, value: e.target.value } : c))}
-                      placeholder="Value"
-                      className="flex-1 bg-slate-800 border border-slate-600 rounded-md px-3 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-                    />
-                    <button
-                      onClick={() => setWhereConditions(whereConditions.filter(c => c.id !== condition.id))}
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2.5 rounded transition-colors shrink-0"
-                      title="Remove condition"
-                    >
-                      <X size={16} />
-                    </button>
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        value={condition.value}
+                        onChange={(e) => setWhereConditions(whereConditions.map(c => c.id === condition.id ? { ...c, value: e.target.value } : c))}
+                        placeholder="Value"
+                        className="w-full bg-slate-800 border border-slate-600 rounded-md pl-3 pr-9 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                      />
+                      <button
+                        onClick={() => setWhereConditions(whereConditions.filter(c => c.id !== condition.id))}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-red-400 transition-colors"
+                        title="Remove condition"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
