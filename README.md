@@ -5,7 +5,7 @@ A lightweight, developer-focused database management tool, built with Tauri and 
 > 💡 **Origin Story:** This project was born from a **vibe coding** session — an experiment in fluid, agent-assisted development to build a functional tool from scratch in record time.
 
 <div align="center">
-  <img src="screenshots/screenshot-1.png" width="80%" alt="Main Window" />
+  <img src="screenshots/overview.png" width="80%" alt="Main Window" />
 </div>
 
 ## Gallery
