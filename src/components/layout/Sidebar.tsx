@@ -7,7 +7,7 @@ import { ContextMenu } from '../ui/ContextMenu';
 import { SchemaModal } from '../ui/SchemaModal';
 import { CreateTableModal } from '../ui/CreateTableModal';
 
-const NavItem = ({ to, icon: Icon, label }: { to: string; icon: React.ElementType; label: string }) => (
+const NavItem = ({ to, icon: Icon, label, isConnected }: { to: string; icon: React.ElementType; label: string; isConnected?: boolean }) => (
   <NavLink
     to={to}
     className={({ isActive }) =>
@@ -19,7 +19,12 @@ const NavItem = ({ to, icon: Icon, label }: { to: string; icon: React.ElementTyp
       )
     }
   >
-    <Icon size={24} />
+    <div className="relative">
+      <Icon size={24} />
+      {isConnected && (
+        <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-slate-900"></span>
+      )}
+    </div>
     <span className="absolute left-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
       {label}
     </span>
@@ -29,7 +34,7 @@ const NavItem = ({ to, icon: Icon, label }: { to: string; icon: React.ElementTyp
 export const Sidebar = () => {
   const { activeConnectionId, activeDriver, activeTable, setActiveTable, tables, isLoadingTables, refreshTables } = useDatabase();
   const navigate = useNavigate();
-  const location = useLocation(); // Add useLocation
+  const location = useLocation();
   
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tableName: string } | null>(null);
   const [schemaModalTable, setSchemaModalTable] = useState<string | null>(null);
@@ -70,8 +75,10 @@ export const Sidebar = () => {
         </div>
         
         <nav className="flex-1 w-full flex flex-col items-center">
-          <NavItem to="/" icon={Database} label="Connections" />
-          <NavItem to="/editor" icon={Terminal} label="SQL Editor" />
+          <NavItem to="/" icon={Database} label="Connections" isConnected={!!activeConnectionId} />
+          {activeConnectionId && (
+            <NavItem to="/editor" icon={Terminal} label="SQL Editor" />
+          )}
         </nav>
 
         <div className="mt-auto">

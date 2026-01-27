@@ -1,15 +1,30 @@
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime, State};
 use uuid::Uuid;
 use sqlx::any::AnyConnectOptions;
 use sqlx::{Connection, ConnectOptions, AnyConnection};
 use urlencoding::encode;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use tokio::task::AbortHandle;
 
 use crate::ssh_tunnel::{SshTunnel, get_tunnels};
 use crate::models::{ConnectionParams, SavedConnection, TableInfo, TableColumn, QueryResult};
 use crate::drivers::{mysql, postgres, sqlite};
+
+pub struct QueryCancellationState {
+    pub handles: Arc<Mutex<HashMap<String, AbortHandle>>>,
+}
+
+impl Default for QueryCancellationState {
+    fn default() -> Self {
+        Self {
+            handles: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
 
 // --- Persistence Helpers ---
 
@@ -276,19 +291,65 @@ pub async fn insert_record<R: Runtime>(
 }
 
 #[tauri::command]
+pub async fn cancel_query(
+    state: State<'_, QueryCancellationState>,
+    connection_id: String,
+) -> Result<(), String> {
+    let mut handles = state.handles.lock().unwrap();
+    if let Some(handle) = handles.remove(&connection_id) {
+        handle.abort();
+        Ok(())
+    } else {
+        Err("No running query found".into())
+    }
+}
+
+#[tauri::command]
 pub async fn execute_query<R: Runtime>(
     app: AppHandle<R>,
+    state: State<'_, QueryCancellationState>,
     connection_id: String,
     query: String,
     limit: Option<u32>,
     page: Option<u32>,
 ) -> Result<QueryResult, String> {
+    // 1. Sanitize Query (Ignore trailing semicolon)
+    let sanitized_query = query.trim().trim_end_matches(';').to_string();
+
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let params = resolve_connection_params(&saved_conn.params)?;
-    match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::execute_query(&params, &query, limit, page.unwrap_or(1)).await,
-        "postgres" => postgres::execute_query(&params, &query, limit, page.unwrap_or(1)).await,
-        "sqlite" => sqlite::execute_query(&params, &query, limit, page.unwrap_or(1)).await,
-        _ => Err("Unsupported driver".into())
+    
+    // 2. Spawn Cancellable Task
+    let task = tokio::spawn(async move {
+        match saved_conn.params.driver.as_str() {
+            "mysql" => mysql::execute_query(&params, &sanitized_query, limit, page.unwrap_or(1)).await,
+            "postgres" => postgres::execute_query(&params, &sanitized_query, limit, page.unwrap_or(1)).await,
+            "sqlite" => sqlite::execute_query(&params, &sanitized_query, limit, page.unwrap_or(1)).await,
+            _ => Err("Unsupported driver".into())
+        }
+    });
+
+    // 3. Register Abort Handle
+    let abort_handle = task.abort_handle();
+    {
+        let mut handles = state.handles.lock().unwrap();
+        // If a query is already running for this connection, we overwrite the handle.
+        // Ideally we should cancel the previous one, but the UI should prevent double run.
+        handles.insert(connection_id.clone(), abort_handle);
+    }
+
+    // 4. Await & Handle Cancellation
+    let result = task.await;
+
+    // 5. Cleanup
+    {
+        let mut handles = state.handles.lock().unwrap();
+        // Only remove if it matches (edge case: multiple queries, but connection_id is unique per tab usually)
+        handles.remove(&connection_id);
+    }
+
+    match result {
+        Ok(res) => res,
+        Err(_) => Err("Query cancelled".into()),
     }
 }

@@ -16,6 +16,7 @@ pub fn run() {
         .plugin(tauri_plugin_log::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .manage(commands::QueryCancellationState::default())
         .invoke_handler(tauri::generate_handler![
             commands::test_connection,
             commands::save_connection,
@@ -27,7 +28,8 @@ pub fn run() {
             commands::delete_record,
             commands::update_record,
             commands::insert_record,
-            commands::execute_query
+            commands::execute_query,
+            commands::cancel_query
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Play, Loader2, Plus, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Play, Loader2, Plus, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Square } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { DataGrid } from '../components/ui/DataGrid';
 import { NewRowModal } from '../components/ui/NewRowModal';
+import { QuerySelectionModal } from '../components/ui/QuerySelectionModal';
+import { splitQueries } from '../utils/sql';
 import MonacoEditor, { type OnMount } from '@monaco-editor/react';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
@@ -52,6 +54,12 @@ export const Editor = () => {
   // Split pane state
   const [editorHeight, setEditorHeight] = useState(300);
   const isDragging = useRef(false);
+  const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
+
+  // Query Selection State
+  const [selectableQueries, setSelectableQueries] = useState<string[]>([]);
+  const [isQuerySelectionModalOpen, setIsQuerySelectionModalOpen] = useState(false);
 
   // Handle auto-query from sidebar navigation
   useEffect(() => {
@@ -87,12 +95,22 @@ export const Editor = () => {
     }
   };
 
+  const stopQuery = async () => {
+    if (!activeConnectionId) return;
+    try {
+        await invoke('cancel_query', { connectionId: activeConnectionId });
+    } catch (e) {
+        console.error("Failed to stop:", e);
+    }
+  };
+
   const runQuery = async (sql: string = query, pageNum: number = 1) => {
     if (!activeConnectionId) {
       setError('No active connection selected.');
       return;
     }
-    if (!sql.trim()) return;
+    const textToRun = sql.trim() ? sql : query;
+    if (!textToRun.trim()) return;
     
     setIsLoading(true);
     setError('');
@@ -104,17 +122,17 @@ export const Editor = () => {
     // If user runs a custom query, we might lose context of "Active Table" unless we parse SQL.
     // For safety, if query changed from initial, clear active table context unless we are sure.
     // Ideally we parse, but for now let's assume if it matches initial it's safe.
-    if (sql !== location.state?.initialQuery) {
+    if (textToRun !== location.state?.initialQuery) {
         // Reset active table context on custom query run to avoid deleting wrong rows
         setActiveTable(null);
         setPkColumn(null);
     }
 
     try {
-      console.log('Executing:', sql, 'Page:', pageNum);
+      console.log('Executing:', textToRun, 'Page:', pageNum);
       const res = await invoke<QueryResult>('execute_query', {
         connectionId: activeConnectionId,
-        query: sql,
+        query: textToRun,
         limit: settings.queryLimit > 0 ? settings.queryLimit : null,
         page: pageNum
       });
@@ -127,6 +145,33 @@ export const Editor = () => {
       setIsLoading(false);
     }
   };
+
+  const handleRunButton = () => {
+      if (!editorRef.current) return;
+      const editor = editorRef.current;
+      
+      const selection = editor.getSelection();
+      const selectedText = editor.getModel()?.getValueInRange(selection);
+      
+      // If there is an active selection (not empty), run it directly
+      if (selectedText && !selection?.isEmpty()) {
+          runQuery(selectedText, 1);
+          return;
+      }
+      
+      const fullText = editor.getValue();
+      if (!fullText.trim()) return;
+
+      const queries = splitQueries(fullText);
+      if (queries.length <= 1) {
+          // If 0 or 1 query, just run it (runQuery handles trimming/empty check)
+          runQuery(queries[0] || fullText, 1); 
+      } else {
+          // Multiple queries: ask user
+          setSelectableQueries(queries);
+          setIsQuerySelectionModalOpen(true);
+      }
+  };
   
   const handleRefresh = () => {
       if (activeTable && activeConnectionId) {
@@ -137,8 +182,28 @@ export const Editor = () => {
   };
 
   const handleEditorMount: OnMount = (editor, monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+
+    // Add "Execute Selection" action to Context Menu
+    editor.addAction({
+      id: 'run-selection',
+      label: 'Execute Selection',
+      contextMenuGroupId: 'navigation',
+      contextMenuOrder: 1.5,
+      run: (ed) => {
+        const selection = ed.getSelection();
+        const selectedText = ed.getModel()?.getValueInRange(selection!);
+        const textToRun = selectedText && !selection?.isEmpty() ? selectedText : ed.getValue();
+        runQuery(textToRun, 1);
+      }
+    });
+
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-      runQuery(editor.getValue(), 1); // Reset to page 1 on manual run
+       const selection = editor.getSelection();
+       const selectedText = editor.getModel()?.getValueInRange(selection!);
+       const textToRun = selectedText && !selection?.isEmpty() ? selectedText : editor.getValue();
+       runQuery(textToRun, 1);
     });
   };
 
@@ -229,15 +294,26 @@ export const Editor = () => {
     <div className="flex flex-col h-full bg-slate-950">
       {/* Toolbar */}
       <div className="flex items-center p-2 border-b border-slate-800 bg-slate-900 gap-2 h-[50px]">
-        <button
-          onClick={() => runQuery(query, 1)}
-          disabled={isLoading || !activeConnectionId}
-          className="flex items-center gap-2 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          title="Run Query (Ctrl+Enter)"
-        >
-          {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
-          Run
-        </button>
+        {isLoading ? (
+          <button
+            onClick={stopQuery}
+            className="flex items-center gap-2 px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white rounded text-sm font-medium transition-colors"
+            title="Stop Execution"
+          >
+            <Square size={16} fill="currentColor" />
+            Stop
+          </button>
+        ) : (
+          <button
+            onClick={handleRunButton}
+            disabled={!activeConnectionId}
+            className="flex items-center gap-2 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title="Run Query (Ctrl+Enter). Select text to run partial query."
+          >
+            <Play size={16} fill="currentColor" />
+            Run
+          </button>
+        )}
 
         {/* Export Dropdown */}
         <div className="relative">
@@ -446,6 +522,16 @@ export const Editor = () => {
           }}
         />
       )}
+
+      <QuerySelectionModal
+        isOpen={isQuerySelectionModalOpen}
+        queries={selectableQueries}
+        onSelect={(selectedQuery) => {
+            runQuery(selectedQuery, 1);
+            setIsQuerySelectionModalOpen(false);
+        }}
+        onClose={() => setIsQuerySelectionModalOpen(false)}
+      />
     </div>
   );
 };

@@ -82,13 +82,23 @@
         - **Sidebar:** Hidden Explorer sidebar when in Settings view.
     - **Editor:** Updated to send `limit` parameter and display a "Truncated" warning badge when results are limited.
 
-### Session 10: Pagination
+### Session 10: Pagination & UI Polish
 - **Status:** Feature Complete.
 - **Actions:**
     - **Backend Pagination:** Implemented real SQL pagination (`LIMIT` + `OFFSET`) for `SELECT` queries across all drivers.
     - **Count Query:** Added logic to automatically count total rows for paginated queries using a wrapped `SELECT COUNT(*)`.
     - **Frontend:**
-        - Added pagination controls (First, Prev, Next, Last) to the query results footer.
-        - Display "Showing X - Y of Z" and total rows count.
-        - **Jump to Page:** Implemented clickable page number that turns into an input field for quick navigation to a specific page.
-        - Integrated pagination state with `execute_query` calls.
+        - **Pagination Controls:** Added First/Prev/Next/Last buttons and page indicator to results footer.
+        - **Jump to Page:** Implemented clickable page number for quick navigation.
+        - **Sidebar Polish:** Hidden "SQL Editor" link when disconnected; added green status dot to "Connections" icon when connected.
+
+### Session 11: Advanced Execution & Cancellation
+- **Status:** Advanced / Feature Complete.
+- **Actions:**
+    - **Backend:**
+        - **Query Sanitization:** Implemented logic to ignore trailing semicolons in queries to prevent driver errors.
+        - **Cancellation:** Implemented `cancel_query` command and wrapped query execution in cancellable async tasks using `AbortHandle`.
+    - **Frontend:**
+        - **Stop Button:** Added a "Stop" button in the Editor toolbar that replaces "Run" during execution and cancels the active query.
+        - **Execute Selection:** Added "Execute Selection" logic. Users can select a portion of SQL and run only that part via "Run" button or Context Menu.
+        - **Multi-Statement Handling:** Implemented `splitQueries` utility to detect multiple SQL statements. If "Run" is clicked without selection and multiple queries exist, a modal prompts the user to select which query to execute.
