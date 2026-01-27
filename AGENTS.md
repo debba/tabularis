@@ -103,4 +103,20 @@
         - **Execute Selection:** Added "Execute Selection" logic. Users can select a portion of SQL and run only that part via "Run" button or Context Menu.
         - **Multi-Statement Handling:** Implemented `splitQueries` utility to detect multiple SQL statements. If "Run" is clicked without selection and multiple queries exist, a modal prompts the user to select which query to execute.
         - **Run Dropdown:** Added a split-button dropdown next to "Run" to quickly view and execute any individual query present in the editor.
-        - **Window Title:** Implemented dynamic window title updating to show the currently active database name (e.g., "debba.sql - my_db").
+        - **Window Title:** Implemented dynamic window title updating to show the currently active database name.
+
+### Session 12: Saved Queries & UX Polish
+- **Status:** Feature Complete.
+- **Actions:**
+    - **Backend:**
+        - Implemented persistence module for queries (`saved_queries.json` + `.sql` files).
+        - Added CRUD commands (`save_query`, `get_saved_queries`, `update_saved_query`, `delete_saved_query`).
+    - **Frontend:**
+        - **Context:** Created `SavedQueriesContext` to manage query state linked to connections.
+        - **Sidebar:**
+            - Refactored sidebar to use Accordion layout (Saved Queries + Tables).
+            - Added Context Menu for saved queries (Execute, Edit, Delete).
+        - **Editor:**
+            - Added "Save Query" context menu action.
+            - Implemented "Save/Edit Query" Modal with Monaco Editor integration.
+            - **Dropdown Polish:** Added "Save" button (floppy icon) next to each query in the "Run" dropdown list for quick saving.

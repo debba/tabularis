@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Play, Loader2, Plus, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Square, ChevronDown } from 'lucide-react';
+import { Play, Loader2, Plus, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Square, ChevronDown, Save } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useSettings } from '../contexts/SettingsContext';
+import { useSavedQueries } from '../contexts/SavedQueriesContext';
 import { DataGrid } from '../components/ui/DataGrid';
 import { NewRowModal } from '../components/ui/NewRowModal';
 import { QuerySelectionModal } from '../components/ui/QuerySelectionModal';
+import { QueryModal } from '../components/ui/QueryModal';
 import { splitQueries } from '../utils/sql';
 import MonacoEditor, { type OnMount } from '@monaco-editor/react';
 import { save } from '@tauri-apps/plugin-dialog';
@@ -37,6 +39,7 @@ interface TableColumn {
 export const Editor = () => {
   const { activeConnectionId, activeDatabaseName } = useDatabase();
   const { settings } = useSettings();
+  const { saveQuery } = useSavedQueries();
   const location = useLocation();
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -45,6 +48,7 @@ export const Editor = () => {
   const [page, setPage] = useState(1);
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [tempPage, setTempPage] = useState("1");
+  const [saveQueryModal, setSaveQueryModal] = useState<{ isOpen: boolean; sql: string }>({ isOpen: false, sql: '' });
   
   // Context info for editing/deleting
   const [activeTable, setActiveTable] = useState<string | null>(null);
@@ -232,6 +236,21 @@ export const Editor = () => {
       }
     });
 
+    editor.addAction({
+      id: 'save-query',
+      label: 'Save Query',
+      contextMenuGroupId: 'navigation',
+      contextMenuOrder: 2,
+      run: (ed) => {
+        const selection = ed.getSelection();
+        const selectedText = ed.getModel()?.getValueInRange(selection!);
+        const textToSave = selectedText && !selection?.isEmpty() ? selectedText : ed.getValue();
+        if (textToSave.trim()) {
+            setSaveQueryModal({ isOpen: true, sql: textToSave });
+        }
+      }
+    });
+
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
        const selection = editor.getSelection();
        const selectedText = editor.getModel()?.getValueInRange(selection!);
@@ -367,18 +386,30 @@ export const Editor = () => {
                            <div className="px-4 py-2 text-xs text-slate-500 italic">No valid queries found</div>
                        ) : (
                            selectableQueries.map((q, i) => (
-                               <button
-                                   key={i}
-                                   onClick={() => {
-                                       runQuery(q, 1);
-                                       setIsRunDropdownOpen(false);
-                                   }}
-                                   className="text-left px-4 py-2 text-xs font-mono text-slate-300 hover:bg-slate-700 hover:text-white border-b border-slate-700/50 last:border-0 group flex items-start gap-2"
-                                   title={q}
-                               >
-                                   <div className="mt-0.5 min-w-[10px]"><Play size={10} className="opacity-0 group-hover:opacity-100" /></div>
-                                   <div className="break-all line-clamp-2">{q.substring(0, 100)}{q.length > 100 ? '...' : ''}</div>
-                               </button>
+                               <div key={i} className="flex items-center border-b border-slate-700/50 last:border-0 hover:bg-slate-700/50 transition-colors group">
+                                   <button
+                                       onClick={() => {
+                                           runQuery(q, 1);
+                                           setIsRunDropdownOpen(false);
+                                       }}
+                                       className="text-left px-4 py-2 text-xs font-mono text-slate-300 hover:text-white flex-1 flex items-start gap-2 overflow-hidden"
+                                       title={q}
+                                   >
+                                       <div className="mt-0.5 min-w-[10px] shrink-0"><Play size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" /></div>
+                                       <div className="break-all line-clamp-2">{q.substring(0, 150)}{q.length > 150 ? '...' : ''}</div>
+                                   </button>
+                                   <button
+                                       onClick={(e) => {
+                                           e.stopPropagation();
+                                           setIsRunDropdownOpen(false);
+                                           setSaveQueryModal({ isOpen: true, sql: q });
+                                       }}
+                                       className="p-2 text-slate-500 hover:text-white hover:bg-slate-600 transition-colors mr-1 rounded shrink-0 opacity-0 group-hover:opacity-100"
+                                       title="Save this query"
+                                   >
+                                       <Save size={14} />
+                                   </button>
+                               </div>
                            ))
                        )}
                     </div>
@@ -478,7 +509,7 @@ export const Editor = () => {
              <div className="p-2 bg-slate-900 text-xs text-slate-400 border-b border-slate-800 flex justify-between items-center shrink-0">
                <div className="flex items-center gap-4">
                  <span>{result.rows.length} rows retrieved</span>
-                 {result.truncated && !result.pagination && (
+                 {result.truncated && (
                    <span className="text-yellow-500 bg-yellow-900/20 px-1.5 py-0.5 rounded border border-yellow-900/50">
                      Truncated (Limit: {settings.queryLimit})
                    </span>
@@ -604,6 +635,18 @@ export const Editor = () => {
         }}
         onClose={() => setIsQuerySelectionModalOpen(false)}
       />
+
+      {saveQueryModal.isOpen && (
+        <QueryModal
+            isOpen={saveQueryModal.isOpen}
+            onClose={() => setSaveQueryModal({ ...saveQueryModal, isOpen: false })}
+            onSave={async (name, sql) => {
+                await saveQuery(name, sql);
+            }}
+            initialSql={saveQueryModal.sql}
+            title="Save Query"
+        />
+      )}
     </div>
   );
 };

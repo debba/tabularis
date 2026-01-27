@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod ssh_tunnel;
+pub mod saved_queries;
 pub mod models;
 pub mod drivers {
     pub mod mysql;
@@ -29,7 +30,11 @@ pub fn run() {
             commands::update_record,
             commands::insert_record,
             commands::execute_query,
-            commands::cancel_query
+            commands::cancel_query,
+            saved_queries::get_saved_queries,
+            saved_queries::save_query,
+            saved_queries::update_saved_query,
+            saved_queries::delete_saved_query
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

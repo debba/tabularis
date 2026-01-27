@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Database, Terminal, Settings, Table as TableIcon, Loader2, Copy, Hash, PlaySquare, FileText, Plus } from 'lucide-react';
+import { Database, Terminal, Settings, Table as TableIcon, Loader2, Copy, Hash, PlaySquare, FileText, Plus, ChevronRight, ChevronDown, FileCode, Play, Edit, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import { useDatabase } from '../../contexts/DatabaseContext';
+import { useSavedQueries, type SavedQuery } from '../../contexts/SavedQueriesContext';
 import { ContextMenu } from '../ui/ContextMenu';
 import { SchemaModal } from '../ui/SchemaModal';
 import { CreateTableModal } from '../ui/CreateTableModal';
+import { QueryModal } from '../ui/QueryModal';
 
 const NavItem = ({ to, icon: Icon, label, isConnected }: { to: string; icon: React.ElementType; label: string; isConnected?: boolean }) => (
   <NavLink
@@ -31,14 +33,35 @@ const NavItem = ({ to, icon: Icon, label, isConnected }: { to: string; icon: Rea
   </NavLink>
 );
 
+const Accordion = ({ title, isOpen, onToggle, children, actions }: any) => (
+  <div className="flex flex-col mb-2">
+    <div className="flex items-center justify-between px-2 py-1 group/acc">
+        <button 
+            onClick={onToggle}
+            className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-300 transition-colors select-none flex-1"
+        >
+            {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            <span>{title}</span>
+        </button>
+        {actions}
+    </div>
+    {isOpen && <div>{children}</div>}
+  </div>
+);
+
 export const Sidebar = () => {
   const { activeConnectionId, activeDriver, activeTable, setActiveTable, tables, isLoadingTables, refreshTables } = useDatabase();
+  const { queries, deleteQuery, updateQuery } = useSavedQueries();
   const navigate = useNavigate();
   const location = useLocation();
   
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tableName: string } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; type: 'table' | 'query'; id: string; label: string; data?: any } | null>(null);
   const [schemaModalTable, setSchemaModalTable] = useState<string | null>(null);
   const [isCreateTableModalOpen, setIsCreateTableModalOpen] = useState(false);
+  
+  const [queriesOpen, setQueriesOpen] = useState(false);
+  const [tablesOpen, setTablesOpen] = useState(true);
+  const [queryModal, setQueryModal] = useState<{ isOpen: boolean; query?: SavedQuery }>({ isOpen: false });
 
   const getQuote = () => (activeDriver === 'mysql' || activeDriver === 'mariadb') ? '`' : '"';
 
@@ -59,9 +82,9 @@ export const Sidebar = () => {
     });
   };
 
-  const handleContextMenu = (e: React.MouseEvent, tableName: string) => {
+  const handleContextMenu = (e: React.MouseEvent, type: 'table' | 'query', id: string, label: string, data?: any) => {
     e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, tableName });
+    setContextMenu({ x: e.clientX, y: e.clientY, type, id, label, data });
   };
 
   return (
@@ -94,7 +117,7 @@ export const Sidebar = () => {
             <span>Explorer</span>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-2">
+          <div className="flex-1 overflow-y-auto py-2">
             {isLoadingTables ? (
               <div className="flex items-center justify-center h-20 text-slate-500 gap-2">
                 <Loader2 size={16} className="animate-spin" />
@@ -102,43 +125,70 @@ export const Sidebar = () => {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between px-2 py-1 mb-1">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Tables ({tables.length})
-                  </span>
-                  <button 
-                    onClick={() => setIsCreateTableModalOpen(true)}
-                    className="p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-white transition-colors"
-                    title="Create New Table"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
+                {/* Saved Queries */}
+                <Accordion 
+                    title={`Saved Queries (${queries.length})`}
+                    isOpen={queriesOpen} 
+                    onToggle={() => setQueriesOpen(!queriesOpen)}
+                >
+                    {queries.length === 0 ? (
+                        <div className="text-center p-2 text-xs text-slate-600 italic">No saved queries</div>
+                    ) : (
+                        <div>
+                            {queries.map(q => (
+                                <div 
+                                    key={q.id}
+                                    onClick={() => runQuery(q.sql)}
+                                    onContextMenu={(e) => handleContextMenu(e, 'query', q.id, q.name, q)}
+                                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white cursor-pointer group transition-colors"
+                                    title={q.name}
+                                >
+                                    <FileCode size={14} className="text-green-500 shrink-0" />
+                                    <span className="truncate">{q.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Accordion>
 
-                {tables.length === 0 ? (
-                  <div className="text-center p-4 text-xs text-slate-500">
-                    No tables found.
-                  </div>
-                ) : (
-                  <div>
-                    {tables.map(table => (
-                      <div 
-                        key={table.name}
-                        onClick={() => handleTableClick(table.name)}
-                        onContextMenu={(e) => handleContextMenu(e, table.name)}
-                        className={clsx(
-                          "flex items-center gap-2 px-2 py-1.5 text-sm rounded cursor-pointer group select-none transition-colors",
-                          activeTable === table.name 
-                            ? "bg-blue-900/40 text-blue-200 border-l-2 border-blue-500 pl-1.5" 
-                            : "text-slate-300 hover:bg-slate-800 border-l-2 border-transparent"
-                        )}
-                      >
-                        <TableIcon size={14} className={activeTable === table.name ? "text-blue-400" : "text-slate-500 group-hover:text-blue-400"} />
-                        <span className="truncate">{table.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* Tables */}
+                <Accordion 
+                    title={`Tables (${tables.length})`}
+                    isOpen={tablesOpen}
+                    onToggle={() => setTablesOpen(!tablesOpen)}
+                    actions={
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setIsCreateTableModalOpen(true); }}
+                            className="p-1 rounded hover:bg-slate-700 text-slate-500 hover:text-white transition-colors"
+                            title="Create New Table"
+                        >
+                            <Plus size={14} />
+                        </button>
+                    }
+                >
+                    {tables.length === 0 ? (
+                        <div className="text-center p-2 text-xs text-slate-600 italic">No tables found</div>
+                    ) : (
+                        <div>
+                            {tables.map(table => (
+                                <div 
+                                    key={table.name}
+                                    onClick={() => handleTableClick(table.name)}
+                                    onContextMenu={(e) => handleContextMenu(e, 'table', table.name, table.name)}
+                                    className={clsx(
+                                        "flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer group select-none transition-colors border-l-2",
+                                        activeTable === table.name 
+                                        ? "bg-blue-900/40 text-blue-200 border-blue-500" 
+                                        : "text-slate-300 hover:bg-slate-800 border-transparent hover:text-white"
+                                    )}
+                                >
+                                    <TableIcon size={14} className={activeTable === table.name ? "text-blue-400" : "text-slate-500 group-hover:text-blue-400"} />
+                                    <span className="truncate">{table.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Accordion>
               </>
             )}
           </div>
@@ -151,38 +201,61 @@ export const Sidebar = () => {
           x={contextMenu.x}
           y={contextMenu.y}
           onClose={() => setContextMenu(null)}
-          items={[
-            {
-              label: 'Select Top 100',
-              icon: PlaySquare,
-              action: () => {
-                const q = getQuote();
-                runQuery(`SELECT * FROM ${q}${contextMenu.tableName}${q} LIMIT 100`);
-              }
-            },
-            {
-              label: 'Count Rows',
-              icon: Hash,
-              action: () => {
-                const q = getQuote();
-                runQuery(`SELECT COUNT(*) as count FROM ${q}${contextMenu.tableName}${q}`);
-              }
-            },
-            {
-              label: 'View Schema',
-              icon: FileText,
-              action: () => {
-                setSchemaModalTable(contextMenu.tableName);
-              }
-            },
-            {
-              label: 'Copy Name',
-              icon: Copy,
-              action: () => {
-                navigator.clipboard.writeText(contextMenu.tableName);
-              }
-            }
-          ]}
+          items={
+            contextMenu.type === 'table' ? [
+                {
+                    label: 'Select Top 100',
+                    icon: PlaySquare,
+                    action: () => {
+                        const q = getQuote();
+                        runQuery(`SELECT * FROM ${q}${contextMenu.id}${q} LIMIT 100`);
+                    }
+                },
+                {
+                    label: 'Count Rows',
+                    icon: Hash,
+                    action: () => {
+                        const q = getQuote();
+                        runQuery(`SELECT COUNT(*) as count FROM ${q}${contextMenu.id}${q}`);
+                    }
+                },
+                {
+                    label: 'View Schema',
+                    icon: FileText,
+                    action: () => setSchemaModalTable(contextMenu.id)
+                },
+                {
+                    label: 'Copy Name',
+                    icon: Copy,
+                    action: () => navigator.clipboard.writeText(contextMenu.id)
+                }
+            ] : [
+                // Saved Query Actions
+                {
+                    label: 'Execute',
+                    icon: Play,
+                    action: () => {
+                        if (contextMenu.data?.sql) runQuery(contextMenu.data.sql);
+                    }
+                },
+                {
+                    label: 'Edit',
+                    icon: Edit,
+                    action: () => {
+                        setQueryModal({ isOpen: true, query: contextMenu.data });
+                    }
+                },
+                {
+                    label: 'Delete',
+                    icon: Trash2,
+                    action: async () => {
+                        if (await confirm(`Are you sure you want to delete "${contextMenu.label}"?`)) {
+                            deleteQuery(contextMenu.id);
+                        }
+                    }
+                }
+            ]
+          }
         />
       )}
 
@@ -201,6 +274,21 @@ export const Sidebar = () => {
           onSuccess={() => {
               if (refreshTables) refreshTables();
           }}
+        />
+      )}
+
+      {queryModal.isOpen && (
+        <QueryModal
+            isOpen={queryModal.isOpen}
+            onClose={() => setQueryModal({ isOpen: false })}
+            title={queryModal.query ? "Edit Query" : "Save Query"}
+            initialName={queryModal.query?.name}
+            initialSql={queryModal.query?.sql}
+            onSave={async (name, sql) => {
+                if (queryModal.query) {
+                    await updateQuery(queryModal.query.id, name, sql);
+                }
+            }}
         />
       )}
     </div>
