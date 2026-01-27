@@ -102,3 +102,5 @@
         - **Stop Button:** Added a "Stop" button in the Editor toolbar that replaces "Run" during execution and cancels the active query.
         - **Execute Selection:** Added "Execute Selection" logic. Users can select a portion of SQL and run only that part via "Run" button or Context Menu.
         - **Multi-Statement Handling:** Implemented `splitQueries` utility to detect multiple SQL statements. If "Run" is clicked without selection and multiple queries exist, a modal prompts the user to select which query to execute.
+        - **Run Dropdown:** Added a split-button dropdown next to "Run" to quickly view and execute any individual query present in the editor.
+        - **Window Title:** Implemented dynamic window title updating to show the currently active database name (e.g., "debba.sql - my_db").

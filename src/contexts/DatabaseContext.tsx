@@ -19,6 +19,8 @@ interface DatabaseContextType {
   activeConnectionId: string | null;
   activeDriver: string | null;
   activeTable: string | null;
+  activeConnectionName: string | null;
+  activeDatabaseName: string | null;
   tables: TableInfo[];
   isLoadingTables: boolean;
   connect: (connectionId: string) => Promise<void>;
@@ -33,6 +35,8 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
   const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
   const [activeDriver, setActiveDriver] = useState<string | null>(null);
   const [activeTable, setActiveTable] = useState<string | null>(null);
+  const [activeConnectionName, setActiveConnectionName] = useState<string | null>(null);
+  const [activeDatabaseName, setActiveDatabaseName] = useState<string | null>(null);
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [isLoadingTables, setIsLoadingTables] = useState(false);
 
@@ -55,6 +59,8 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     setTables([]);
     setActiveDriver(null);
     setActiveTable(null);
+    setActiveConnectionName(null);
+    setActiveDatabaseName(null);
 
     try {
       // 1. Get driver info
@@ -62,6 +68,8 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       const conn = connections.find(c => c.id === connectionId);
       if (conn) {
         setActiveDriver(conn.params.driver);
+        setActiveConnectionName(conn.name);
+        setActiveDatabaseName(conn.params.database);
       }
 
       // 2. Get tables
@@ -71,6 +79,8 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       console.error('Failed to fetch tables:', error);
       setActiveConnectionId(null);
       setActiveDriver(null);
+      setActiveConnectionName(null);
+      setActiveDatabaseName(null);
       throw error;
     } finally {
       setIsLoadingTables(false);
@@ -81,6 +91,8 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     setActiveConnectionId(null);
     setActiveDriver(null);
     setActiveTable(null);
+    setActiveConnectionName(null);
+    setActiveDatabaseName(null);
     setTables([]);
   };
 
@@ -89,6 +101,8 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       activeConnectionId, 
       activeDriver, 
       activeTable, 
+      activeConnectionName,
+      activeDatabaseName,
       tables, 
       isLoadingTables, 
       connect, 

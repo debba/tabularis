@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Play, Loader2, Plus, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Square } from 'lucide-react';
+import { Play, Loader2, Plus, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Square, ChevronDown } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { DataGrid } from '../components/ui/DataGrid';
@@ -34,7 +35,7 @@ interface TableColumn {
 }
 
 export const Editor = () => {
-  const { activeConnectionId } = useDatabase();
+  const { activeConnectionId, activeDatabaseName } = useDatabase();
   const { settings } = useSettings();
   const location = useLocation();
   const [query, setQuery] = useState('');
@@ -60,6 +61,38 @@ export const Editor = () => {
   // Query Selection State
   const [selectableQueries, setSelectableQueries] = useState<string[]>([]);
   const [isQuerySelectionModalOpen, setIsQuerySelectionModalOpen] = useState(false);
+  const [isRunDropdownOpen, setIsRunDropdownOpen] = useState(false);
+
+  // Window Title Logic
+  useEffect(() => {
+    const updateTitle = async () => {
+        try {
+            const win = getCurrentWindow();
+            if (activeDatabaseName) {
+                await win.setTitle(`debba.sql - ${activeDatabaseName}`);
+            } else {
+                await win.setTitle('debba.sql');
+            }
+        } catch (e) {
+            console.error("Failed to update window title", e);
+        }
+    };
+    updateTitle();
+    return () => {
+        // getCurrentWindow().setTitle('debba.sql').catch(() => {});
+    }
+  }, [activeDatabaseName]);
+
+  const handleRunDropdownToggle = () => {
+      if (!isRunDropdownOpen) {
+          if (editorRef.current) {
+              const text = editorRef.current.getValue();
+              const queries = splitQueries(text);
+              setSelectableQueries(queries);
+          }
+      }
+      setIsRunDropdownOpen(!isRunDropdownOpen);
+  };
 
   // Handle auto-query from sidebar navigation
   useEffect(() => {
@@ -304,15 +337,54 @@ export const Editor = () => {
             Stop
           </button>
         ) : (
-          <button
-            onClick={handleRunButton}
-            disabled={!activeConnectionId}
-            className="flex items-center gap-2 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            title="Run Query (Ctrl+Enter). Select text to run partial query."
-          >
-            <Play size={16} fill="currentColor" />
-            Run
-          </button>
+          <div className="flex items-center rounded bg-green-700 transition-colors relative">
+            <button
+              onClick={handleRunButton}
+              disabled={!activeConnectionId}
+              className="flex items-center gap-2 px-3 py-1.5 text-white rounded-l text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-600 transition-colors"
+              title="Run Query (Ctrl+Enter). Select text to run partial query."
+            >
+              <Play size={16} fill="currentColor" />
+              Run
+            </button>
+            <div className="h-5 w-[1px] bg-green-800"></div>
+            <button
+                onClick={handleRunDropdownToggle}
+                disabled={!activeConnectionId}
+                className="px-1.5 py-1.5 text-white rounded-r hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+                <ChevronDown size={14} />
+            </button>
+            
+            {isRunDropdownOpen && (
+                <>
+                    <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setIsRunDropdownOpen(false)}
+                    />
+                    <div className="absolute top-full left-0 mt-1 w-80 bg-slate-800 border border-slate-700 rounded shadow-xl z-50 flex flex-col py-1 max-h-80 overflow-y-auto">
+                       {selectableQueries.length === 0 ? (
+                           <div className="px-4 py-2 text-xs text-slate-500 italic">No valid queries found</div>
+                       ) : (
+                           selectableQueries.map((q, i) => (
+                               <button
+                                   key={i}
+                                   onClick={() => {
+                                       runQuery(q, 1);
+                                       setIsRunDropdownOpen(false);
+                                   }}
+                                   className="text-left px-4 py-2 text-xs font-mono text-slate-300 hover:bg-slate-700 hover:text-white border-b border-slate-700/50 last:border-0 group flex items-start gap-2"
+                                   title={q}
+                               >
+                                   <div className="mt-0.5 min-w-[10px]"><Play size={10} className="opacity-0 group-hover:opacity-100" /></div>
+                                   <div className="break-all line-clamp-2">{q.substring(0, 100)}{q.length > 100 ? '...' : ''}</div>
+                               </button>
+                           ))
+                       )}
+                    </div>
+                </>
+            )}
+          </div>
         )}
 
         {/* Export Dropdown */}
