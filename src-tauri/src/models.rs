@@ -43,4 +43,6 @@ pub struct QueryResult {
     pub columns: Vec<String>,
     pub rows: Vec<Vec<serde_json::Value>>,
     pub affected_rows: u64,
+    #[serde(default)]
+    pub truncated: bool,
 }

@@ -280,13 +280,14 @@ pub async fn execute_query<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
     query: String,
+    limit: Option<u32>,
 ) -> Result<QueryResult, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let params = resolve_connection_params(&saved_conn.params)?;
     match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::execute_query(&params, &query).await,
-        "postgres" => postgres::execute_query(&params, &query).await,
-        "sqlite" => sqlite::execute_query(&params, &query).await,
+        "mysql" => mysql::execute_query(&params, &query, limit).await,
+        "postgres" => postgres::execute_query(&params, &query, limit).await,
+        "sqlite" => sqlite::execute_query(&params, &query, limit).await,
         _ => Err("Unsupported driver".into())
     }
 }

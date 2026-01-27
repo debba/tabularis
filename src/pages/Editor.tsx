@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Play, Loader2, Plus, Download } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useDatabase } from '../contexts/DatabaseContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { DataGrid } from '../components/ui/DataGrid';
 import { NewRowModal } from '../components/ui/NewRowModal';
 import MonacoEditor, { type OnMount } from '@monaco-editor/react';
@@ -13,6 +14,7 @@ interface QueryResult {
   columns: string[];
   rows: any[][];
   affected_rows: number;
+  truncated?: boolean;
 }
 
 interface TableColumn {
@@ -24,6 +26,7 @@ interface TableColumn {
 
 export const Editor = () => {
   const { activeConnectionId } = useDatabase();
+  const { settings } = useSettings();
   const location = useLocation();
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -98,7 +101,8 @@ export const Editor = () => {
       console.log('Executing:', sql);
       const res = await invoke<QueryResult>('execute_query', {
         connectionId: activeConnectionId,
-        query: sql
+        query: sql,
+        limit: settings.queryLimit > 0 ? settings.queryLimit : null
       });
       console.log('Result:', res);
       setResult(res);
@@ -310,7 +314,14 @@ export const Editor = () => {
         ) : result ? (
           <div className="flex-1 min-h-0 flex flex-col">
              <div className="p-2 bg-slate-900 text-xs text-slate-400 border-b border-slate-800 flex justify-between shrink-0">
-               <span>{result.rows.length} rows retrieved</span>
+               <div className="flex items-center gap-2">
+                 <span>{result.rows.length} rows retrieved</span>
+                 {result.truncated && (
+                   <span className="text-yellow-500 bg-yellow-900/20 px-1.5 py-0.5 rounded border border-yellow-900/50">
+                     Truncated (Limit: {settings.queryLimit})
+                   </span>
+                 )}
+               </div>
              </div>
              <div className="flex-1 min-h-0 overflow-hidden">
                <DataGrid 

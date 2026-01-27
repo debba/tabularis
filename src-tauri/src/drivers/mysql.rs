@@ -140,7 +140,7 @@ pub async fn insert_record(params: &ConnectionParams, table: &str, data: std::co
     Ok(result.rows_affected())
 }
 
-pub async fn execute_query(params: &ConnectionParams, query: &str) -> Result<QueryResult, String> {
+pub async fn execute_query(params: &ConnectionParams, query: &str, limit: Option<u32>) -> Result<QueryResult, String> {
     let user = encode(params.username.as_deref().unwrap_or_default());
     let pass = encode(params.password.as_deref().unwrap_or_default());
     let url = format!("mysql://{}:{}@{}:{}/{}", 
@@ -148,40 +148,59 @@ pub async fn execute_query(params: &ConnectionParams, query: &str) -> Result<Que
         params.host.as_deref().unwrap_or("localhost"), params.port.unwrap_or(3306), params.database);
     
     let mut conn = sqlx::mysql::MySqlConnection::connect(&url).await.map_err(|e| e.to_string())?;
-    let rows = sqlx::query(query).fetch_all(&mut conn).await.map_err(|e| e.to_string())?;
     
-    map_rows(rows)
-}
-
-fn map_rows(rows: Vec<MySqlRow>) -> Result<QueryResult, String> {
-    if rows.is_empty() { return Ok(QueryResult { columns: vec![], rows: vec![], affected_rows: 0 }); }
+    // Use fetch instead of fetch_all to support streaming/limit
+    let mut rows_stream = sqlx::query(query).fetch(&mut conn);
     
-    let columns: Vec<String> = rows[0].columns().iter().map(|c| c.name().to_string()).collect();
+    let mut columns: Vec<String> = Vec::new();
     let mut json_rows = Vec::new();
+    let mut truncated = false;
+    
+    use futures::stream::StreamExt; // Correct import
 
-    for row in rows {
-        let mut json_row = Vec::new();
-        for (i, _) in row.columns().iter().enumerate() {
-            let val = if let Ok(v) = row.try_get::<i64, _>(i) { serde_json::Value::Number(v.into()) }
-            else if let Ok(v) = row.try_get::<i32, _>(i) { serde_json::Value::Number(v.into()) }
-            else if let Ok(v) = row.try_get::<i16, _>(i) { serde_json::Value::Number(v.into()) }
-            else if let Ok(v) = row.try_get::<i8, _>(i) { serde_json::Value::Number(v.into()) }
-            else if let Ok(v) = row.try_get::<u64, _>(i) { serde_json::Value::Number(v.into()) }
-            else if let Ok(v) = row.try_get::<u32, _>(i) { serde_json::Value::Number(v.into()) }
-            else if let Ok(v) = row.try_get::<u16, _>(i) { serde_json::Value::Number(v.into()) }
-            else if let Ok(v) = row.try_get::<u8, _>(i) { serde_json::Value::Number(v.into()) }
-            else if let Ok(v) = row.try_get::<f64, _>(i) { serde_json::Number::from_f64(v).map(serde_json::Value::Number).unwrap_or(serde_json::Value::Null) }
-            else if let Ok(v) = row.try_get::<f32, _>(i) { serde_json::Number::from_f64(v as f64).map(serde_json::Value::Number).unwrap_or(serde_json::Value::Null) }
-            else if let Ok(v) = row.try_get::<String, _>(i) { serde_json::Value::String(v) }
-            else if let Ok(v) = row.try_get::<bool, _>(i) { serde_json::Value::Bool(v) }
-            // Specific MySQL Types
-            else if let Ok(v) = row.try_get::<NaiveDateTime, _>(i) { serde_json::Value::String(v.to_string()) }
-            else if let Ok(v) = row.try_get::<NaiveDate, _>(i) { serde_json::Value::String(v.to_string()) }
-            else if let Ok(v) = row.try_get::<NaiveTime, _>(i) { serde_json::Value::String(v.to_string()) }
-            else { serde_json::Value::Null };
-            json_row.push(val);
+    while let Some(result) = rows_stream.next().await {
+        match result {
+            Ok(row) => {
+                // Initialize columns from the first row
+                if columns.is_empty() {
+                    columns = row.columns().iter().map(|c| c.name().to_string()).collect();
+                }
+
+                // Check limit
+                if let Some(l) = limit {
+                    if json_rows.len() >= l as usize {
+                        truncated = true;
+                        break;
+                    }
+                }
+
+                // Map row
+                let mut json_row = Vec::new();
+                for (i, _) in row.columns().iter().enumerate() {
+                    let val = if let Ok(v) = row.try_get::<i64, _>(i) { serde_json::Value::from(v) }
+                    else if let Ok(v) = row.try_get::<i32, _>(i) { serde_json::Value::from(v) }
+                    else if let Ok(v) = row.try_get::<i16, _>(i) { serde_json::Value::from(v) }
+                    else if let Ok(v) = row.try_get::<i8, _>(i) { serde_json::Value::from(v) }
+                    else if let Ok(v) = row.try_get::<u64, _>(i) { serde_json::Value::from(v) }
+                    else if let Ok(v) = row.try_get::<u32, _>(i) { serde_json::Value::from(v) }
+                    else if let Ok(v) = row.try_get::<u16, _>(i) { serde_json::Value::from(v) }
+                    else if let Ok(v) = row.try_get::<u8, _>(i) { serde_json::Value::from(v) }
+                    else if let Ok(v) = row.try_get::<f64, _>(i) { serde_json::Number::from_f64(v).map(serde_json::Value::Number).unwrap_or(serde_json::Value::Null) }
+                    else if let Ok(v) = row.try_get::<f32, _>(i) { serde_json::Number::from_f64(v as f64).map(serde_json::Value::Number).unwrap_or(serde_json::Value::Null) }
+                    else if let Ok(v) = row.try_get::<String, _>(i) { serde_json::Value::from(v) }
+                    else if let Ok(v) = row.try_get::<bool, _>(i) { serde_json::Value::from(v) }
+                    // Specific MySQL Types
+                    else if let Ok(v) = row.try_get::<NaiveDateTime, _>(i) { serde_json::Value::String(v.to_string()) }
+                    else if let Ok(v) = row.try_get::<NaiveDate, _>(i) { serde_json::Value::String(v.to_string()) }
+                    else if let Ok(v) = row.try_get::<NaiveTime, _>(i) { serde_json::Value::String(v.to_string()) }
+                    else { serde_json::Value::Null };
+                    json_row.push(val);
+                }
+                json_rows.push(json_row);
+            }
+            Err(e) => return Err(e.to_string()),
         }
-        json_rows.push(json_row);
     }
-    Ok(QueryResult { columns, rows: json_rows, affected_rows: 0 })
+    
+    Ok(QueryResult { columns, rows: json_rows, affected_rows: 0, truncated })
 }

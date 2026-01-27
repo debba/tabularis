@@ -69,3 +69,15 @@
 - **Actions:**
     - **Data Type Handling:** Fixed incomplete pattern matching in `map_rows` for MySQL, PostgreSQL, and SQLite drivers.
     - **Backend:** Added support for `i8`, `i16`, `u8`, `u16`, `u32`, `u64`, and `f32` types to ensure correct value retrieval and prevent data loss or incorrect `Null` values.
+
+### Session 9: Result Limiting & Settings UI
+- **Status:** Feature Complete.
+- **Actions:**
+    - **Backend Streaming:** Refactored `execute_query` in all drivers (MySQL, Postgres, SQLite) to use streaming (`fetch`) with a configurable limit.
+    - **Settings Store:** Implemented `SettingsContext` with persistence to `localStorage`.
+    - **UI Updates:**
+        - Created a tabbed **Settings** page ("General", "Info").
+        - Added configuration for **Result Page Size**.
+        - Added **Info** tab with GitHub star button.
+        - **Sidebar:** Hidden Explorer sidebar when in Settings view.
+    - **Editor:** Updated to send `limit` parameter and display a "Truncated" warning badge when results are limited.
