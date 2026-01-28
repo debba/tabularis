@@ -30,6 +30,8 @@ A lightweight, developer-focused database management tool, built with Tauri and 
   <img src="screenshots/screenshot-4.png" width="45%" alt="New Connection" />
 </div>
 
+## [Changelog](./CHANGELOG.md)
+
 ## Features
 
 ### 🔌 Connection Management
