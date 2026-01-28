@@ -15,6 +15,16 @@ A lightweight, developer-focused database management tool, built with Tauri and 
 [![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/debba/tabularis/releases/download/v0.6.0/tabularis_0.6.0_x64-setup.exe) [![macOS](https://img.shields.io/badge/macOS-Download-black?logo=apple)](https://github.com/debba/tabularis/releases/download/v0.6.0/tabularis_0.6.0_x64.dmg) [![Linux](https://img.shields.io/badge/Linux-Download-green?logo=linux)](https://github.com/debba/tabularis/releases/download/v0.6.0/tabularis_0.6.0_amd64.AppImage)
 <!-- DOWNLOAD_SECTION_END -->
 
+## Installation
+
+### Arch Linux (AUR)
+
+You can install `tabularis` from the AUR using your favorite AUR helper:
+
+```bash
+yay -S tabularis-bin
+```
+
 <div align="center">
   <img src="screenshots/overview.png" width="80%" alt="Main Window" />
 </div>

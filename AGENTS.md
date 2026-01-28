@@ -320,3 +320,8 @@ Adhere to the rules defined in the [rules directory](./.rules/):
 - **Actions:**
     - **Dependencies:** Added `@tauri-apps/plugin-opener` to backend and frontend.
     - **Frontend:** Updated `Settings.tsx` to use `openUrl` for GitHub links instead of standard `<a>` tags.
+
+### Session 28: Update README
+- **Status:** Documentation.
+- **Actions:**
+    - **Installation:** Added Arch Linux (AUR) installation instructions for `tabularis-bin`.
