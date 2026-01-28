@@ -130,6 +130,78 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [createInitialTab, activeConnectionId, activeTabId]);
 
+  const closeAllTabs = useCallback(() => {
+    if (!activeConnectionId) return;
+    setTabs(prev => {
+      // Keep tabs from other connections
+      const otherConnTabs = prev.filter(t => t.connectionId !== activeConnectionId);
+      
+      // Create fresh console tab for current connection
+      const nextId = Math.random().toString(36).substring(2, 9);
+      const t = createInitialTab({ id: nextId, title: "Console", type: 'console', connectionId: activeConnectionId });
+      setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId]: nextId }));
+      
+      return [...otherConnTabs, t];
+    });
+  }, [activeConnectionId, createInitialTab]);
+
+  const closeOtherTabs = useCallback((id: string) => {
+    if (!activeConnectionId) return;
+    setTabs(prev => {
+      // Keep tabs from other connections AND the one with id
+      const toKeep = prev.filter(t => t.connectionId !== activeConnectionId || t.id === id);
+      
+      // Ensure the kept tab is active
+      setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId]: id }));
+      
+      return toKeep;
+    });
+  }, [activeConnectionId]);
+
+  const closeTabsToLeft = useCallback((id: string) => {
+    if (!activeConnectionId) return;
+    setTabs(prev => {
+      const connTabs = prev.filter(t => t.connectionId === activeConnectionId);
+      const targetIndex = connTabs.findIndex(t => t.id === id);
+      if (targetIndex === -1) return prev;
+
+      const tabsToClose = connTabs.slice(0, targetIndex).map(t => t.id);
+      const otherConnTabs = prev.filter(t => t.connectionId !== activeConnectionId);
+      const remainingConnTabs = connTabs.slice(targetIndex);
+
+      // If active tab was among closed ones, set active to the target tab
+      // (The target tab is the leftmost surviving tab)
+      const activeTabWasClosed = tabsToClose.includes(activeTabId || "");
+      if (activeTabWasClosed) {
+        setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId]: id }));
+      }
+
+      return [...otherConnTabs, ...remainingConnTabs];
+    });
+  }, [activeConnectionId, activeTabId]);
+
+  const closeTabsToRight = useCallback((id: string) => {
+    if (!activeConnectionId) return;
+    setTabs(prev => {
+      const connTabs = prev.filter(t => t.connectionId === activeConnectionId);
+      const targetIndex = connTabs.findIndex(t => t.id === id);
+      if (targetIndex === -1) return prev;
+
+      const tabsToClose = connTabs.slice(targetIndex + 1).map(t => t.id);
+      const otherConnTabs = prev.filter(t => t.connectionId !== activeConnectionId);
+      const remainingConnTabs = connTabs.slice(0, targetIndex + 1);
+
+      // If active tab was among closed ones, set active to the target tab
+      // (The target tab is the rightmost surviving tab)
+      const activeTabWasClosed = tabsToClose.includes(activeTabId || "");
+      if (activeTabWasClosed) {
+         setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId]: id }));
+      }
+
+      return [...otherConnTabs, ...remainingConnTabs];
+    });
+  }, [activeConnectionId, activeTabId]);
+
   const updateTab = useCallback((id: string, partial: Partial<Tab>) => {
     setTabs(prev => prev.map(t => t.id === id ? { ...t, ...partial } : t));
   }, []);
@@ -152,7 +224,11 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
       addTab, 
       closeTab, 
       updateTab, 
-      setActiveTabId 
+      setActiveTabId,
+      closeAllTabs,
+      closeOtherTabs,
+      closeTabsToLeft,
+      closeTabsToRight
     }}>
       {children}
     </EditorContext.Provider>

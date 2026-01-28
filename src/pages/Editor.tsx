@@ -17,6 +17,10 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  XCircle,
+  Trash2,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { DataGrid } from "../components/ui/DataGrid";
@@ -24,6 +28,7 @@ import { NewRowModal } from "../components/ui/NewRowModal";
 import { QuerySelectionModal } from "../components/ui/QuerySelectionModal";
 import { QueryModal } from "../components/ui/QueryModal";
 import { VisualQueryBuilder } from "../components/ui/VisualQueryBuilder";
+import { ContextMenu } from "../components/ui/ContextMenu";
 import { splitQueries } from "../utils/sql";
 import MonacoEditor, { type OnMount } from "@monaco-editor/react";
 import { save } from "@tauri-apps/plugin-dialog";
@@ -69,9 +74,25 @@ export const Editor = () => {
     addTab,
     setActiveTabId,
     closeTab,
+    closeAllTabs,
+    closeOtherTabs,
+    closeTabsToLeft,
+    closeTabsToRight,
   } = useEditor();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const [tabContextMenu, setTabContextMenu] = useState<{
+    x: number;
+    y: number;
+    tabId: string;
+  } | null>(null);
+
+  const handleTabContextMenu = (e: React.MouseEvent, tabId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setTabContextMenu({ x: e.clientX, y: e.clientY, tabId });
+  };
 
   const [saveQueryModal, setSaveQueryModal] = useState<{
     isOpen: boolean;
@@ -403,6 +424,7 @@ export const Editor = () => {
             <div
               key={tab.id}
               onClick={() => setActiveTabId(tab.id)}
+              onContextMenu={(e) => handleTabContextMenu(e, tab.id)}
               className={clsx(
                 "flex items-center gap-2 px-3 h-full border-r border-slate-800 cursor-pointer min-w-[140px] max-w-[220px] text-xs transition-all group relative select-none",
                 activeTabId === tab.id
@@ -612,20 +634,17 @@ export const Editor = () => {
         <>
           <div
             onMouseDown={startResize}
-            className="h-2 bg-slate-900 border-y border-slate-800 cursor-row-resize hover:bg-blue-600/50 transition-colors flex items-center justify-center group"
+            className="h-6 bg-slate-900 border-y border-slate-800 cursor-row-resize transition-colors flex items-center justify-end px-2 relative"
           >
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setIsResultsCollapsed(true);
               }}
-              className="px-3 py-0.5 bg-slate-800 rounded-full border border-slate-700 hover:border-slate-600 transition-colors flex items-center gap-1.5"
+              className="text-slate-500 hover:text-slate-300 transition-colors p-1 hover:bg-slate-800 rounded"
               title="Hide Results Panel"
             >
-              <ChevronDown size={14} />
-              <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">
-                Hide Results
-              </span>
+              <ChevronDown size={16} />
             </button>
           </div>
 
@@ -800,16 +819,13 @@ export const Editor = () => {
         </>
       ) : (
         // Show Results Button (when collapsed)
-        <div className="h-8 bg-slate-900 border-t border-slate-800 flex items-center justify-center">
+        <div className="h-10 bg-slate-900 border-t border-slate-800 flex items-center justify-end px-2">
           <button
             onClick={() => setIsResultsCollapsed(false)}
-            className="px-3 py-1 bg-slate-800 rounded-full border border-slate-700 hover:border-slate-600 transition-colors flex items-center gap-1.5"
+            className="text-slate-500 hover:text-slate-300 transition-colors p-1 hover:bg-slate-800 rounded"
             title="Show Results Panel"
           >
-            <ChevronUp size={14} />
-            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">
-              Show Results
-            </span>
+            <ChevronUp size={16} />
           </button>
         </div>
       )}
@@ -840,6 +856,41 @@ export const Editor = () => {
           onSave={async (name, sql) => await saveQuery(name, sql)}
           initialSql={saveQueryModal.sql}
           title="Save Query"
+        />
+      )}
+      {tabContextMenu && (
+        <ContextMenu
+          x={tabContextMenu.x}
+          y={tabContextMenu.y}
+          onClose={() => setTabContextMenu(null)}
+          items={[
+            {
+              label: "Close Tab",
+              icon: X,
+              action: () => closeTab(tabContextMenu.tabId),
+            },
+            {
+              label: "Close Other Tabs",
+              icon: XCircle,
+              action: () => closeOtherTabs(tabContextMenu.tabId),
+            },
+            {
+              label: "Close Tabs to Right",
+              icon: ArrowRightToLine,
+              action: () => closeTabsToRight(tabContextMenu.tabId),
+            },
+            {
+              label: "Close Tabs to Left",
+              icon: ArrowLeftToLine,
+              action: () => closeTabsToLeft(tabContextMenu.tabId),
+            },
+            {
+              label: "Close All Tabs",
+              icon: Trash2,
+              danger: true,
+              action: () => closeAllTabs(),
+            },
+          ]}
         />
       )}
     </div>

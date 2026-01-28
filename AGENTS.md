@@ -278,3 +278,9 @@ Adhere to the rules defined in the [rules directory](./.rules/):
         - **Window Title:** Dynamic update to `debba.sql - Connection (DB)` when connected.
     - **Release:** Bumped version to **0.5.0**.
 
+### Session 23: UX Improvements
+- **Status:** UX Polish.
+- **Actions:**
+    - **Editor UI:**
+        - **Hide/Show Results:** Increased size of the toggle bar and button for better accessibility and clickability.
+        - **Resize Handle:** Increased height of the resize handle (from 8px to 24px) to make it easier to grab.
