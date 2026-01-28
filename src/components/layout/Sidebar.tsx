@@ -522,7 +522,7 @@ export const Sidebar = () => {
           <img 
             src="/logo.png" 
             alt="tabularis" 
-            className="w-10 h-10 rounded-xl shadow-lg shadow-blue-900/20 border border-blue-500/30 transition-transform hover:scale-105" 
+            className="w-10 h-10 bg-white rounded-xl shadow-lg shadow-blue-900/20 border border-blue-500/30 transition-transform hover:scale-105" 
           />
         </div>
         

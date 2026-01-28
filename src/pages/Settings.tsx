@@ -165,7 +165,7 @@ export const Settings = () => {
                 <img
                   src="/logo.png"
                   alt="tabularis"
-                  className="w-16 h-16 rounded-2xl mx-auto mb-4 shadow-lg shadow-blue-500/30"
+                  className="w-16 h-16 bg-white rounded-2xl mx-auto mb-4 shadow-lg shadow-blue-500/30"
                 />
 
                 <h1 className="text-3xl font-bold text-white mb-2">

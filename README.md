@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/logo.png" width="128" height="128" />
+  <img src="public/logo-sm.png" width="120" height="120" />
 </div>
 
 # tabularis
