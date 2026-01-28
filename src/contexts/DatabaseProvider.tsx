@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { DatabaseContext, type TableInfo, type SavedConnection } from './DatabaseContext';
 import type { ReactNode } from 'react';
 
@@ -14,15 +13,15 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
   const [isLoadingTables, setIsLoadingTables] = useState(false);
 
   // Sync Window Title with active connection
+  // WORKAROUND: Using custom Tauri command instead of window.setTitle() for Wayland support
+  // See: https://github.com/tauri-apps/tauri/issues/13749
   useEffect(() => {
     const updateTitle = async () => {
       try {
-        const win = getCurrentWindow();
-        if (activeConnectionName && activeDatabaseName) {
-          await win.setTitle(`debba.sql - ${activeConnectionName} (${activeDatabaseName})`);
-        } else {
-          await win.setTitle('debba.sql');
-        }
+        const title = (activeConnectionName && activeDatabaseName)
+          ? `debba.sql - ${activeConnectionName} (${activeDatabaseName})`
+          : 'debba.sql';
+        await invoke('set_window_title', { title });
       } catch (e) {
         console.error('Failed to update window title', e);
       }

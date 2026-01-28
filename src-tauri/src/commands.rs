@@ -567,3 +567,55 @@ pub async fn execute_query<R: Runtime>(
         Err(_) => Err("Query cancelled".into()),
     }
 }
+
+// --- Window Title Management ---
+
+/// Sets the window title with Wayland workaround
+///
+/// WORKAROUND: This is a temporary fix for tauri-apps/tauri#13749
+/// On Wayland (Linux), the standard `window.setTitle()` API doesn't properly update
+/// the window title in the window manager's title bar due to an upstream dependency issue.
+/// This command directly manipulates the GTK HeaderBar to ensure the title is visible.
+///
+/// See: https://github.com/tauri-apps/tauri/issues/13749
+///
+/// This workaround should be removed once the upstream issue is resolved.
+#[tauri::command]
+pub async fn set_window_title(app: AppHandle, title: String) -> Result<(), String> {
+    // Get the main window
+    let window = app
+        .get_webview_window("main")
+        .ok_or("Failed to get main window")?;
+
+    // Set title using standard Tauri API (works on all platforms)
+    window
+        .set_title(&title)
+        .map_err(|e| format!("Failed to set window title: {}", e))?;
+
+    // Apply Wayland-specific workaround on Linux
+    #[cfg(target_os = "linux")]
+    {
+        use gtk::prelude::{BinExt, Cast, GtkWindowExt, HeaderBarExt};
+        use gtk::{EventBox, HeaderBar};
+
+        // Get the GTK window
+        let gtk_window = window
+            .gtk_window()
+            .map_err(|e| format!("Failed to get GTK window: {}", e))?;
+
+        // Check if we have a custom titlebar (Wayland uses EventBox with HeaderBar)
+        if let Some(titlebar) = gtk_window.titlebar() {
+            // Try to downcast to EventBox (Wayland)
+            if let Ok(event_box) = titlebar.downcast::<EventBox>() {
+                // Get the HeaderBar child and set its title
+                if let Some(child) = event_box.child() {
+                    if let Ok(header_bar) = child.downcast::<HeaderBar>() {
+                        header_bar.set_title(Some(&title));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}

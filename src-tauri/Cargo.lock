@@ -864,6 +864,7 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "futures",
+ "gtk",
  "keyring",
  "log",
  "serde",

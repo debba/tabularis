@@ -36,6 +36,7 @@ pub fn run() {
             commands::insert_record,
             commands::execute_query,
             commands::cancel_query,
+            commands::set_window_title,
             saved_queries::get_saved_queries,
             saved_queries::save_query,
             saved_queries::update_saved_query,
