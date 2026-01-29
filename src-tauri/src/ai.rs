@@ -22,6 +22,21 @@ pub struct AiExplainRequest {
     pub language: String,
 }
 
+use std::collections::HashMap;
+
+
+fn load_models() -> Result<HashMap<String, Vec<String>>, String> {
+    let yaml_content = include_str!("ai_models.yaml");
+    serde_yaml::from_str(yaml_content)
+        .map_err(|e| format!("Failed to parse models.yaml: {}", e))
+}
+
+#[tauri::command]
+pub async fn get_ai_models() -> Result<HashMap<String, Vec<String>>, String> {
+    load_models()
+}
+
+
 #[tauri::command]
 pub async fn generate_ai_query(app: AppHandle, req: AiGenerateRequest) -> Result<String, String> {
     generate_query(app, req).await
@@ -32,7 +47,15 @@ pub async fn explain_ai_query(app: AppHandle, req: AiExplainRequest) -> Result<S
     explain_query(app, req).await
 }
 
-pub async fn generate_query(app: AppHandle, req: AiGenerateRequest) -> Result<String, String> {
+pub async fn generate_query(app: AppHandle, mut req: AiGenerateRequest) -> Result<String, String> {
+    if req.model.is_empty() {
+        let models = load_models()?;
+        let default_model = models.get(&req.provider)
+            .and_then(|m| m.first())
+            .ok_or_else(|| format!("No models found for provider {}", req.provider))?;
+        req.model = default_model.clone();
+    }
+
     let api_key = get_api_key(&req.provider)?;
     let client = Client::new();
     
@@ -48,7 +71,15 @@ pub async fn generate_query(app: AppHandle, req: AiGenerateRequest) -> Result<St
     }
 }
 
-pub async fn explain_query(app: AppHandle, req: AiExplainRequest) -> Result<String, String> {
+pub async fn explain_query(app: AppHandle, mut req: AiExplainRequest) -> Result<String, String> {
+    if req.model.is_empty() {
+        let models = load_models()?;
+        let default_model = models.get(&req.provider)
+            .and_then(|m| m.first())
+            .ok_or_else(|| format!("No models found for provider {}", req.provider))?;
+        req.model = default_model.clone();
+    }
+
     let api_key = get_api_key(&req.provider)?;
     let client = Client::new();
     

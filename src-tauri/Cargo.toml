@@ -39,6 +39,7 @@ csv = "1.4.0"
 reqwest = { version = "0.13.1", features = ["json"] }
 clap = { version = "4.5.56", features = ["derive"] }
 directories = "6.0.0"
+serde_yaml = "0.9.34"
 
 # GTK dependencies for Wayland window title workaround (Linux only)
 [target.'cfg(target_os = "linux")'.dependencies]

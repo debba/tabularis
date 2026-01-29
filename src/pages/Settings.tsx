@@ -21,25 +21,6 @@ import type { AppLanguage, AiProvider } from "../contexts/SettingsContext";
 import { APP_VERSION } from "../version";
 import { message } from "@tauri-apps/plugin-dialog";
 
-const MODEL_OPTIONS: Record<AiProvider, string[]> = {
-  openai: [
-    "gpt-4o",
-    "gpt-4-turbo",
-    "gpt-4",
-    "gpt-3.5-turbo"
-  ],
-  anthropic: [
-    "claude-3-opus-20240229",
-    "claude-3-sonnet-20240229",
-    "claude-3-haiku-20240307"
-  ],
-  openrouter: [
-    "openai/gpt-4o",
-    "anthropic/claude-3-opus",
-    "google/gemini-pro-1.5",
-    "meta-llama/llama-3-70b-instruct"
-  ]
-};
 
 export const Settings = () => {
   const { t } = useTranslation();
@@ -48,9 +29,19 @@ export const Settings = () => {
     "general",
   );
   const [aiKeyStatus, setAiKeyStatus] = useState<Record<string, boolean>>({});
+  const [availableModels, setAvailableModels] = useState<Record<string, string[]>>({});
   const [keyInput, setKeyInput] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [explainPrompt, setExplainPrompt] = useState("");
+
+  const loadModels = async () => {
+    try {
+      const models = await invoke<Record<string, string[]>>("get_ai_models");
+      setAvailableModels(models);
+    } catch (e) {
+      console.error("Failed to load AI models", e);
+    }
+  };
 
   const loadSystemPrompt = async () => {
     try {
@@ -152,6 +143,7 @@ export const Settings = () => {
     }
   };
 
+
   useEffect(() => {
     // eslint-disable-next-line
     checkKeys();
@@ -159,6 +151,8 @@ export const Settings = () => {
     loadSystemPrompt();
     // eslint-disable-next-line
     loadExplainPrompt();
+    // eslint-disable-next-line
+    loadModels();
   }, []);
 
 
@@ -396,7 +390,7 @@ export const Settings = () => {
                             className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors appearance-none"
                         >
                             <option value="" disabled>Select a model</option>
-                            {(settings.aiCustomModels?.[settings.aiProvider] || MODEL_OPTIONS[settings.aiProvider] || []).map(model => (
+                            {(settings.aiCustomModels?.[settings.aiProvider] || availableModels[settings.aiProvider] || []).map(model => (
                                 <option key={model} value={model}>{model}</option>
                             ))}
                         </select>

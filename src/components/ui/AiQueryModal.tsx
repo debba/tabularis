@@ -77,7 +77,7 @@ export const AiQueryModal = ({ isOpen, onClose, onInsert }: AiQueryModalProps) =
       const sql = await invoke<string>("generate_ai_query", {
         req: {
           provider: settings.aiProvider,
-          model: settings.aiModel || "gpt-3.5-turbo", // Default fallback
+          model: settings.aiModel || "", // Default fallback handled by backend (first model in list)
           prompt,
           schema: schemaContext
         }

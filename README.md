@@ -108,7 +108,7 @@ yay -S tabularis-bin
 - **Loading States:** Visual feedback during query execution with animated spinner.
 
 
-### 🤖 AI Assistance
+### 🤖 AI Assistance (Experimental)
 
 - **Natural Language to SQL:** Generate complex SQL queries by describing them in plain English (or Italian).
 - **Explain Query:** Get natural language explanations for any SQL query to understand complex logic.

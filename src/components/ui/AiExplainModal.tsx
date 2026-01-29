@@ -37,7 +37,7 @@ export const AiExplainModal = ({ isOpen, onClose, query }: AiExplainModalProps) 
       const result = await invoke<string>("explain_ai_query", {
         req: {
           provider: settings.aiProvider,
-          model: settings.aiModel || "gpt-3.5-turbo",
+          model: settings.aiModel || "",
           query,
           language: settings.language === "it" ? "Italian" : "English"
         }
