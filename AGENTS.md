@@ -432,3 +432,11 @@ Adhere to the rules defined in the [rules directory](./.rules/):
     - **Localization:**
         - Added comprehensive English and Italian translations for all new AI features and settings.
 
+### Session 35: MCP Improvements
+- **Status:** Feature Complete.
+- **Actions:**
+    - **MCP:**
+        - Added support for resolving connections by **Name** (in addition to ID) in MCP resources (`tabularis://{name}/schema`) and tools (`run_query`).
+        - Updated MCP tool definitions to reflect name support.
+
+

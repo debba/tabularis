@@ -117,6 +117,15 @@ yay -S tabularis-bin
 - **Secure Key Storage:** API Keys are stored securely in the system Keychain, never in plain text files.
 - **Customizable Prompts:** Edit system prompts for generation and explanation in Settings to tailor the AI's behavior.
 
+### 🔌 Model Context Protocol (MCP) Server
+
+Tabularis includes a built-in **MCP Server** that exposes your database connections and schemas to AI agents (like Claude or other MCP clients).
+
+- **Standard I/O:** Run `tabularis --mcp` to start the server over stdio.
+- **Resources:** Exposes database schemas as resources (`tabularis://{connection_name}/schema`).
+- **Tools:** Provides tools to execute SQL queries (`run_query`).
+- **Connection Resolution:** Supports referencing connections by **ID** or **Name** (e.g. "MyProductionDB").
+
 ### 💾 Configuration Storage
 
 Configuration is stored in the application data directory:

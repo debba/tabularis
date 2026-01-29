@@ -184,9 +184,9 @@ async fn handle_read_resource(params: Option<serde_json::Value>) -> Result<serde
         let connections = persistence::load_connections(&config_path)
             .map_err(|e| JsonRpcError { code: -32000, message: e, data: None })?;
 
-        let conn = connections.iter().find(|c| c.id == conn_id).ok_or(JsonRpcError {
+        let conn = connections.iter().find(|c| c.id == conn_id || c.name == conn_id).ok_or(JsonRpcError {
             code: -32000,
-            message: "Connection not found".to_string(),
+            message: format!("Connection not found: {}", conn_id),
             data: None
         })?;
 
@@ -230,7 +230,7 @@ fn handle_list_tools() -> Result<serde_json::Value, JsonRpcError> {
             inputSchema: json!({
                 "type": "object",
                 "properties": {
-                    "connection_id": { "type": "string", "description": "The ID of the connection (from tabularis://connections)" },
+                    "connection_id": { "type": "string", "description": "The ID or Name of the connection (from tabularis://connections)" },
                     "query": { "type": "string", "description": "The SQL query to execute" }
                 },
                 "required": ["connection_id", "query"]
@@ -260,9 +260,9 @@ async fn handle_call_tool(params: Option<serde_json::Value>) -> Result<serde_jso
         let connections = persistence::load_connections(&config_path)
              .map_err(|e| JsonRpcError { code: -32000, message: e, data: None })?;
 
-        let conn = connections.iter().find(|c| c.id == conn_id).ok_or(JsonRpcError {
+        let conn = connections.iter().find(|c| c.id == conn_id || c.name == conn_id).ok_or(JsonRpcError {
             code: -32000,
-            message: "Connection not found".to_string(),
+            message: format!("Connection not found: {}", conn_id),
             data: None
         })?;
 
