@@ -153,10 +153,12 @@ export const Settings = () => {
   };
 
   useEffect(() => {
-    checkKeys();
-    loadSystemPrompt();
-    loadExplainPrompt();
     // eslint-disable-next-line
+    checkKeys();
+    // eslint-disable-next-line
+    loadSystemPrompt();
+    // eslint-disable-next-line
+    loadExplainPrompt();
   }, []);
 
 
@@ -325,11 +327,38 @@ export const Settings = () => {
                   keychain.
                 </p>
 
-                <div className="space-y-6">
+                {/* Enable/Disable Toggle */}
+                <div className="flex items-center justify-between bg-slate-950/50 p-4 rounded-lg border border-slate-800 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className={clsx("p-2 rounded-full", settings.aiEnabled ? "bg-green-900/20 text-green-400" : "bg-slate-800 text-slate-500")}>
+                        <Power size={18} />
+                    </div>
+                    <div>
+                        <div className="text-sm font-medium text-white">{t("settings.ai.enable")}</div>
+                        <div className="text-xs text-slate-500">{t("settings.ai.enableDesc")}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => updateSetting("aiEnabled", !settings.aiEnabled)}
+                    className={clsx(
+                        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900",
+                        settings.aiEnabled ? "bg-blue-600" : "bg-slate-700"
+                    )}
+                  >
+                    <span
+                        className={clsx(
+                            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                            settings.aiEnabled ? "translate-x-6" : "translate-x-1"
+                        )}
+                    />
+                  </button>
+                </div>
+
+                <div className={clsx("space-y-6 transition-opacity", !settings.aiEnabled && "opacity-50 pointer-events-none")}>
                   {/* Default Provider Selection */}
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Default Provider
+                      {t("settings.ai.defaultProvider")}
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {providers.map((p) => (
@@ -355,45 +384,57 @@ export const Settings = () => {
                     </div>
                   </div>
 
-                  {/* Model Input */}
+                  {/* Model Selection */}
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-1">
-                      Default Model
+                      {t("settings.ai.defaultModel")}
                     </label>
-                    <input
-                      type="text"
-                      value={settings.aiModel || ""}
-                      onChange={(e) => updateSetting("aiModel", e.target.value)}
-                      placeholder="e.g. gpt-4o, claude-3-opus"
-                      className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                    />
+                    {settings.aiProvider ? (
+                        <select
+                            value={settings.aiModel || ""}
+                            onChange={(e) => updateSetting("aiModel", e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors appearance-none"
+                        >
+                            <option value="" disabled>Select a model</option>
+                            {(settings.aiCustomModels?.[settings.aiProvider] || MODEL_OPTIONS[settings.aiProvider] || []).map(model => (
+                                <option key={model} value={model}>{model}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <div className="text-sm text-slate-500 italic px-3 py-2 border border-slate-800 rounded bg-slate-950">
+                            {t("settings.ai.selectProviderFirst")}
+                        </div>
+                    )}
+                    <p className="text-xs text-slate-500 mt-1">
+                        {t("settings.ai.modelDesc")}
+                    </p>
                   </div>
 
                   {/* API Keys Management */}
                   <div className="border-t border-slate-800 pt-6 mt-6">
                     <h4 className="text-md font-medium text-white mb-4 flex items-center gap-2">
-                      <Key size={16} /> Manage API Keys
+                      <Key size={16} /> {t("settings.ai.manageKeys")}
                     </h4>
 
                     <div className="grid gap-4">
                       {providers.map((p) => (
                         <div key={p.id} className="flex flex-col gap-2">
                           <div className="flex items-center justify-between text-sm text-slate-300">
-                            <span>{p.label} API Key</span>
+                            <span>{t("settings.ai.apiKey", { provider: p.label })}</span>
                             {aiKeyStatus[p.id] ? (
                               <span className="text-green-400 flex items-center gap-1 text-xs">
-                                <CheckCircle2 size={12} /> Configured
+                                <CheckCircle2 size={12} /> {t("settings.ai.configured")}
                               </span>
                             ) : (
                               <span className="text-slate-500 text-xs">
-                                Not configured
+                                {t("settings.ai.notConfigured")}
                               </span>
                             )}
                           </div>
                           <div className="flex gap-2">
                             <input
                               type="password"
-                              placeholder={`Enter ${p.label} Key`}
+                              placeholder={t("settings.ai.enterKey", { provider: p.label })}
                               className="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
                               onChange={(e) => setKeyInput(e.target.value)}
                               // Only keep value in state for the active input being typed
@@ -414,7 +455,7 @@ export const Settings = () => {
                               }}
                               className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium transition-colors"
                             >
-                              Save
+                              {t("common.save")}
                             </button>
                           </div>
                         </div>
@@ -424,12 +465,10 @@ export const Settings = () => {
                   {/* System Prompt Configuration */}
                   <div className="border-t border-slate-800 pt-6 mt-6">
                     <h4 className="text-md font-medium text-white mb-4 flex items-center gap-2">
-                      <Code2 size={16} /> System Prompt
+                      <Code2 size={16} /> {t("settings.ai.systemPrompt")}
                     </h4>
                     <p className="text-xs text-slate-400 mb-4">
-                      Customize the instructions given to the AI. Use{" "}
-                      <code>{"{{SCHEMA}}"}</code> as a placeholder for the
-                      database structure.
+                      {t("settings.ai.systemPromptDesc")}
                     </p>
 
                     <div className="space-y-4">
@@ -437,20 +476,20 @@ export const Settings = () => {
                         value={systemPrompt}
                         onChange={(e) => setSystemPrompt(e.target.value)}
                         className="w-full h-40 bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-mono focus:outline-none focus:border-blue-500 transition-colors resize-y"
-                        placeholder="Enter system prompt..."
+                        placeholder={t("settings.ai.enterSystemPrompt")}
                       />
                         <div className="flex justify-end gap-2">
                             <button
                                 onClick={handleResetPrompt}
                                 className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm font-medium transition-colors border border-slate-700"
                             >
-                                Reset to Default
+                                {t("settings.ai.resetDefault")}
                             </button>
                             <button
                                 onClick={handleSavePrompt}
                                 className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium transition-colors"
                             >
-                                Save Prompt
+                                {t("settings.ai.savePrompt")}
                             </button>
                         </div>
                      </div>
@@ -459,10 +498,10 @@ export const Settings = () => {
                   {/* Explain Prompt Configuration */}
                   <div className="border-t border-slate-800 pt-6 mt-6">
                      <h4 className="text-md font-medium text-white mb-4 flex items-center gap-2">
-                        <Code2 size={16} /> Explain Prompt
+                        <Code2 size={16} /> {t("settings.ai.explainPrompt")}
                      </h4>
                      <p className="text-xs text-slate-400 mb-4">
-                        Customize instructions for "Explain Query". Use <code>{"{{LANGUAGE}}"}</code> as a placeholder for the output language (English/Italian).
+                        {t("settings.ai.explainPromptDesc")}
                      </p>
                      
                      <div className="space-y-4">
@@ -470,26 +509,25 @@ export const Settings = () => {
                            value={explainPrompt}
                            onChange={(e) => setExplainPrompt(e.target.value)}
                            className="w-full h-40 bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-mono focus:outline-none focus:border-blue-500 transition-colors resize-y"
-                           placeholder="Enter explain prompt..."
+                           placeholder={t("settings.ai.enterExplainPrompt")}
                         />
                         <div className="flex justify-end gap-2">
                             <button
                                 onClick={handleResetExplainPrompt}
                                 className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm font-medium transition-colors border border-slate-700"
                             >
-                                Reset to Default
+                                {t("settings.ai.resetDefault")}
                             </button>
                             <button
                                 onClick={handleSaveExplainPrompt}
                                 className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium transition-colors"
                             >
-                                Save Prompt
+                                {t("settings.ai.savePrompt")}
                             </button>
                         </div>
                      </div>
                   </div>
                 </div>
-
               </div>
             </div>
           )}

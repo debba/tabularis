@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri::Manager;
 
+use std::collections::HashMap;
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {
@@ -14,6 +16,7 @@ pub struct AppConfig {
     pub ai_enabled: Option<bool>,
     pub ai_provider: Option<String>,
     pub ai_model: Option<String>,
+    pub ai_custom_models: Option<HashMap<String, Vec<String>>>,
 }
 
 pub fn get_config_dir(app: &AppHandle) -> Option<PathBuf> {

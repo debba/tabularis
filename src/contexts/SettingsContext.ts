@@ -9,6 +9,7 @@ export interface Settings {
   aiEnabled: boolean;
   aiProvider: AiProvider | null;
   aiModel: string | null;
+  aiCustomModels?: Record<string, string[]>;
 }
 
 export interface SettingsContextType {
@@ -27,4 +28,5 @@ export const DEFAULT_SETTINGS: Settings = {
   aiEnabled: true,
   aiProvider: null,
   aiModel: null,
+  aiCustomModels: undefined,
 };

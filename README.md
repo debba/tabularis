@@ -108,13 +108,56 @@ yay -S tabularis-bin
 - **Loading States:** Visual feedback during query execution with animated spinner.
 
 
+### 🤖 AI Assistance
+
+- **Natural Language to SQL:** Generate complex SQL queries by describing them in plain English (or Italian).
+- **Explain Query:** Get natural language explanations for any SQL query to understand complex logic.
+- **Provider Support:** Integration with **OpenAI**, **Anthropic**, and **OpenRouter**.
+- **Context-Aware:** The AI is aware of your database schema (table structure) to generate accurate queries.
+- **Secure Key Storage:** API Keys are stored securely in the system Keychain, never in plain text files.
+- **Customizable Prompts:** Edit system prompts for generation and explanation in Settings to tailor the AI's behavior.
+
 ### 💾 Configuration Storage
 
-Connection profiles are saved locally in `connections.json` at:
+Configuration is stored in the application data directory:
 
 - **Linux:** `~/.config/tabularis/`
 - **macOS:** `~/Library/Application Support/tabularis/`
 - **Windows:** `%APPDATA%\tabularis\`
+
+Files:
+- `connections.json`: Stores connection profiles (passwords can be optionally stored in system Keychain).
+- `saved_queries.json` & `.sql` files: Persisted queries.
+- `config.json`: General application settings.
+
+#### The `config.json` file
+
+The `config.json` file allows advanced configuration of the application. Here are the available options:
+
+- `theme`: (String, Optional) Application theme preference (e.g., "dark", "light"). *Currently follows system preference.*
+- `language`: (String, Optional) Application language. Options: `"auto"` (System), `"en"` (English), `"it"` (Italian).
+- `resultPageSize`: (Number, Optional) Default number of rows per page in query results (e.g., `500`).
+- `aiEnabled`: (Boolean, Optional) Enable or disable AI features globally.
+- `aiProvider`: (String, Optional) Default AI provider. Options: `"openai"`, `"anthropic"`, `"openrouter"`.
+- `aiModel`: (String, Optional) Default model identifier to use (e.g., `"gpt-4o"`).
+- `aiCustomModels`: (Object, Optional) Override or extend the list of available models for each provider.
+
+#### Custom AI Models override
+You can override or add custom models for AI providers by editing `config.json` and adding the `aiCustomModels` object:
+
+```json
+{
+  "resultPageSize": 1000,
+  "language": "en",
+  "aiEnabled": true,
+  "aiProvider": "openai",
+  "aiCustomModels": {
+    "openai": ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo", "gpt-5-preview"],
+    "anthropic": ["claude-3-opus-20240229", "claude-3-sonnet-20240229"],
+    "openrouter": ["google/gemini-pro-1.5", "meta-llama/llama-3-70b-instruct"]
+  }
+}
+```
 
 ## Tech Stack
 
@@ -166,6 +209,7 @@ npm run tauri build
 - [x] Aggregate query detection and smart read-only mode
 - [x] Internationalization (English, Italian)
 - [x] Keychain integration for secure password storage
+- [x] AI Integration (Text-to-SQL, Explain Query)
 - [ ] Database Export/Dump
 - [ ] Multi-statement execution
 - [ ] Query history and autocomplete
