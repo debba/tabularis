@@ -25,6 +25,8 @@ import {
   Trash2,
   Check,
   Undo2,
+  Filter,
+  ArrowUpDown,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { DataGrid } from "../components/ui/DataGrid";
@@ -119,6 +121,22 @@ export const Editor = () => {
 
   const activeTabType = activeTab?.type;
   const activeTabQuery = activeTab?.query;
+  const isTableTab = activeTab?.type === "table";
+  const isEditorOpen =
+    !isTableTab &&
+    (activeTab?.isEditorOpen ?? activeTab?.type !== "table");
+
+  // State for Table View Filter/Sort
+  const [tableFilter, setTableFilter] = useState("");
+  const [tableSort, setTableSort] = useState("");
+
+  // Sync state with active tab
+  useEffect(() => {
+    if (activeTab?.type === "table") {
+      setTableFilter(activeTab.filterClause || "");
+      setTableSort(activeTab.sortClause || "");
+    }
+  }, [activeTab?.id, activeTab?.filterClause, activeTab?.sortClause, activeTab?.type]);
 
   const dropdownQueries = useMemo(() => {
     if (activeTabType === "query_builder" && activeTabQuery) {
@@ -205,7 +223,21 @@ export const Editor = () => {
       if (!activeConnectionId || !targetTabId) return;
 
       const targetTab = tabsRef.current.find((t) => t.id === targetTabId);
-      const textToRun = sql?.trim() || targetTab?.query;
+      
+      let textToRun = sql?.trim() || targetTab?.query;
+      
+      // For Table Tabs, reconstruct query if filter/sort are present
+      if (targetTab?.type === "table" && targetTab.activeTable) {
+          const filter = targetTab.filterClause ? `WHERE ${targetTab.filterClause}` : "";
+          const sort = targetTab.sortClause ? `ORDER BY ${targetTab.sortClause}` : "";
+          // Reconstruct base query: SELECT * FROM table ...
+          // Note: LIMIT/OFFSET are handled by backend/pagination params, 
+          // but we need to ensure the base query respects the filters.
+          // The current query might already have them if it was saved? 
+          // No, let's assume for Table view we always construct from activeTable + state.
+          textToRun = `SELECT * FROM ${targetTab.activeTable} ${filter} ${sort}`;
+      }
+
       if (!textToRun || !textToRun.trim()) return;
 
       // Log query from Visual Query Builder
@@ -214,6 +246,9 @@ export const Editor = () => {
         console.log(textToRun);
         console.log("─".repeat(80));
       }
+
+      // Automatically open results panel when running a query
+      setIsResultsCollapsed(false);
 
       updateTab(targetTabId, {
         isLoading: true,
@@ -748,61 +783,68 @@ export const Editor = () => {
             <button
               onClick={handleRunButton}
               disabled={!activeConnectionId}
-              className="flex items-center gap-2 px-3 py-1.5 text-white rounded-l text-sm font-medium disabled:opacity-50 hover:bg-green-600"
+              className={clsx(
+                "flex items-center gap-2 px-3 py-1.5 text-white text-sm font-medium disabled:opacity-50 hover:bg-green-600",
+                isTableTab ? "rounded" : "rounded-l"
+              )}
             >
               <Play size={16} fill="currentColor" /> {t("editor.run")}
             </button>
-            <div className="h-5 w-[1px] bg-green-800"></div>
-            <button
-              onClick={handleRunDropdownToggle}
-              disabled={!activeConnectionId}
-              className="px-1.5 py-1.5 text-white rounded-r hover:bg-green-600 disabled:opacity-50"
-            >
-              <ChevronDown size={14} />
-            </button>
-
-            {isRunDropdownOpen && (
+            {!isTableTab && (
               <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsRunDropdownOpen(false)}
-                />
-                <div className="absolute top-full left-0 mt-1 w-80 bg-slate-800 border border-slate-700 rounded shadow-xl z-50 flex flex-col py-1 max-h-80 overflow-y-auto">
-                  {dropdownQueries.length === 0 ? (
-                    <div className="px-4 py-2 text-xs text-slate-500 italic">
-                      {t("editor.noValidQueries")}
+                <div className="h-5 w-[1px] bg-green-800"></div>
+                <button
+                  onClick={handleRunDropdownToggle}
+                  disabled={!activeConnectionId}
+                  className="px-1.5 py-1.5 text-white rounded-r hover:bg-green-600 disabled:opacity-50"
+                >
+                  <ChevronDown size={14} />
+                </button>
+
+                {isRunDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsRunDropdownOpen(false)}
+                    />
+                    <div className="absolute top-full left-0 mt-1 w-80 bg-slate-800 border border-slate-700 rounded shadow-xl z-50 flex flex-col py-1 max-h-80 overflow-y-auto">
+                      {dropdownQueries.length === 0 ? (
+                        <div className="px-4 py-2 text-xs text-slate-500 italic">
+                          {t("editor.noValidQueries")}
+                        </div>
+                      ) : (
+                        dropdownQueries.map((q, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center border-b border-slate-700/50 last:border-0 hover:bg-slate-700/50 transition-colors group"
+                          >
+                            <button
+                              onClick={() => {
+                                runQuery(q, 1);
+                                setIsRunDropdownOpen(false);
+                              }}
+                              className="text-left px-4 py-2 text-xs font-mono text-slate-300 hover:text-white flex-1 truncate"
+                              title={q}
+                            >
+                              {q}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsRunDropdownOpen(false);
+                                setSaveQueryModal({ isOpen: true, sql: q });
+                              }}
+                              className="p-2 text-slate-500 hover:text-white hover:bg-slate-600 transition-colors mr-1 rounded shrink-0 opacity-0 group-hover:opacity-100"
+                              title={t("editor.saveThisQuery")}
+                            >
+                              <Save size={14} />
+                            </button>
+                          </div>
+                        ))
+                      )}
                     </div>
-                  ) : (
-                    dropdownQueries.map((q, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center border-b border-slate-700/50 last:border-0 hover:bg-slate-700/50 transition-colors group"
-                      >
-                        <button
-                          onClick={() => {
-                            runQuery(q, 1);
-                            setIsRunDropdownOpen(false);
-                          }}
-                          className="text-left px-4 py-2 text-xs font-mono text-slate-300 hover:text-white flex-1 truncate"
-                          title={q}
-                        >
-                          {q}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsRunDropdownOpen(false);
-                            setSaveQueryModal({ isOpen: true, sql: q });
-                          }}
-                          className="p-2 text-slate-500 hover:text-white hover:bg-slate-600 transition-colors mr-1 rounded shrink-0 opacity-0 group-hover:opacity-100"
-                          title={t("editor.saveThisQuery")}
-                        >
-                          <Save size={14} />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -844,51 +886,124 @@ export const Editor = () => {
         </span>
       </div>
 
-      <div
-        style={{
-          height: isResultsCollapsed ? "calc(100vh - 109px)" : editorHeight,
-        }}
-        className="relative"
-      >
-        {activeTab.type === "query_builder" ? (
-          <VisualQueryBuilder />
-        ) : (
-          <MonacoEditor
-            height="100%"
-            defaultLanguage="sql"
-            theme="vs-dark"
-            value={activeTab.query}
-            onChange={(val) => updateActiveTab({ query: val || "" })}
-            onMount={handleEditorMount}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              padding: { top: 16 },
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-            }}
-          />
-        )}
-      </div>
+      {!isTableTab && (
+        <div
+          style={{
+            height: isResultsCollapsed ? "calc(100vh - 109px)" : editorHeight,
+            display: isEditorOpen ? "block" : "none",
+          }}
+          className="relative"
+        >
+          {activeTab.type === "query_builder" ? (
+            <VisualQueryBuilder />
+          ) : (
+            <MonacoEditor
+              height="100%"
+              defaultLanguage="sql"
+              theme="vs-dark"
+              value={activeTab.query}
+              onChange={(val) => updateActiveTab({ query: val || "" })}
+              onMount={handleEditorMount}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                padding: { top: 16 },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+              }}
+            />
+          )}
+        </div>
+      )}
 
       {/* Resize Bar & Results Panel */}
-      {!isResultsCollapsed ? (
+      {isTableTab || !isResultsCollapsed ? (
         <>
-          <div
-            onMouseDown={startResize}
-            className="h-6 bg-slate-900 border-y border-slate-800 cursor-row-resize transition-colors flex items-center justify-end px-2 relative"
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsResultsCollapsed(true);
-              }}
-              className="text-slate-500 hover:text-slate-300 transition-colors p-1 hover:bg-slate-800 rounded"
-              title="Hide Results Panel"
+          {isTableTab ? (
+             <div className="h-10 bg-slate-900 border-y border-slate-800 flex items-center px-2 gap-4">
+                <div className="flex items-center gap-2 flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 focus-within:border-blue-500/50 transition-colors">
+                    <Filter size={14} className="text-slate-500 shrink-0" />
+                    <span className="text-xs text-blue-400 font-mono shrink-0">WHERE</span>
+                    <input 
+                        type="text" 
+                        value={tableFilter}
+                        onChange={(e) => setTableFilter(e.target.value)}
+                        onBlur={() => updateActiveTab({ filterClause: tableFilter })}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                updateActiveTab({ filterClause: tableFilter });
+                                // Small delay to ensure state update propagates before runQuery reads it
+                                setTimeout(() => runQuery(undefined, 1), 0);
+                            }
+                        }}
+                        className="bg-transparent border-none outline-none text-xs text-slate-300 w-full placeholder:text-slate-600 font-mono"
+                        placeholder="id > 5 AND status = 'active'"
+                    />
+                </div>
+                <div className="flex items-center gap-2 flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 focus-within:border-blue-500/50 transition-colors">
+                    <ArrowUpDown size={14} className="text-slate-500 shrink-0" />
+                    <span className="text-xs text-blue-400 font-mono shrink-0">ORDER BY</span>
+                    <input 
+                        type="text" 
+                        value={tableSort}
+                        onChange={(e) => setTableSort(e.target.value)}
+                        onBlur={() => updateActiveTab({ sortClause: tableSort })}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                updateActiveTab({ sortClause: tableSort });
+                                setTimeout(() => runQuery(undefined, 1), 0);
+                            }
+                        }}
+                        className="bg-transparent border-none outline-none text-xs text-slate-300 w-full placeholder:text-slate-600 font-mono"
+                        placeholder="created_at DESC"
+                    />
+                </div>
+             </div>
+          ) : (
+            <div
+              onMouseDown={isEditorOpen ? startResize : undefined}
+              className={clsx(
+                "h-6 bg-slate-900 border-y border-slate-800 flex items-center px-2 relative",
+                isEditorOpen
+                  ? "cursor-row-resize justify-between"
+                  : "justify-between"
+              )}
             >
-              <ChevronDown size={16} />
-            </button>
-          </div>
+              <div className="flex items-center">
+                <button
+                  onClick={() =>
+                    updateActiveTab({ isEditorOpen: !isEditorOpen })
+                  }
+                  className="text-slate-500 hover:text-slate-300 transition-colors p-1 hover:bg-slate-800 rounded flex items-center gap-1 text-xs"
+                  title={
+                    isEditorOpen
+                      ? "Maximize Results (Hide Editor)"
+                      : "Show Editor"
+                  }
+                >
+                  {isEditorOpen ? (
+                    <ChevronUp size={16} />
+                  ) : (
+                    <ChevronDown size={16} />
+                  )}
+                  {!isEditorOpen && <span>Show Editor</span>}
+                </button>
+              </div>
+
+              {isEditorOpen && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsResultsCollapsed(true);
+                  }}
+                  className="text-slate-500 hover:text-slate-300 transition-colors p-1 hover:bg-slate-800 rounded"
+                  title="Hide Results Panel (Maximize Editor)"
+                >
+                  <ChevronDown size={16} />
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Results Panel */}
           <div className="flex-1 overflow-hidden bg-slate-900 flex flex-col min-h-0">

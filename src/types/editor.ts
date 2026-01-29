@@ -36,4 +36,7 @@ export interface Tab {
   pendingChanges?: Record<string, { pkOriginalValue: unknown; changes: Record<string, unknown> }>;
   pendingDeletions?: Record<string, unknown>; // Map of stringified PK -> original PK value
   selectedRows?: number[]; // Selected row indices
+  isEditorOpen?: boolean; // Whether the SQL editor is visible
+  filterClause?: string; // SQL WHERE clause (without "WHERE")
+  sortClause?: string; // SQL ORDER BY clause (without "ORDER BY")
 }

@@ -51,6 +51,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
       pkColumn: null,
       isLoading: false,
       connectionId: activeConnectionId || "",
+      isEditorOpen: partial?.isEditorOpen ?? (partial?.type !== 'table'),
       ...partial
     };
   }, [activeConnectionId]);

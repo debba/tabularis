@@ -376,3 +376,27 @@ Adhere to the rules defined in the [rules directory](./.rules/):
         - `src/components/layout/Sidebar.tsx`: Smart tableName passing for context menu actions
         - `src/i18n/locales/{en,it}.json`: Added "executingQuery" translation
 
+### Session 32: Bug Fixes & UX - Pending Changes Cleanup & Full Screen Tables
+- **Status:** Bug Fix / UX Improvement.
+- **Actions:**
+    - **Pending Changes Cleanup:**
+        - **Bug:** Pending changes from previous sessions were persisting, causing conflicts when running new queries.
+        - **Fix:** Updated `runQuery` to explicitly clear `pendingChanges`, `pendingDeletions`, and `selectedRows` before execution.
+    - **Full Screen Table View:**
+        - **Feature:** Opening a table now defaults to a full-screen results view, hiding the SQL query editor.
+        - **Implementation:**
+            - **Table Tabs:** Completely hide the Monaco Editor, Resize Bar, and Save Query dropdown.
+            - **Console Tabs:** Retain the previous split view with a new toggle to "Show/Hide Editor" in the resize bar.
+        - **UI:** 
+            - "Run" button remains available for refreshing table data.
+            - "Save" options are removed for Table tabs to prevent confusion.
+    - **Auto-Show Results:**
+        - **UX Polish:** When executing a query in the Console, the results panel now automatically expands if it was previously collapsed.
+    - **Table Filters:**
+        - **Feature:** Added "WHERE" and "ORDER BY" inputs to the Table View toolbar.
+        - **Implementation:** Added `filterClause` and `sortClause` to `Tab` state. These are applied dynamically when refreshing table data.
+        - **UI:** Inputs appear above the results grid in Table tabs, allowing quick filtering and sorting without writing full SQL.
+    - **Files Modified:**
+        - `src/types/editor.ts`: Added `isEditorOpen`, `filterClause`, `sortClause` to `Tab`.
+        - `src/contexts/EditorProvider.tsx`: Initialized `isEditorOpen`.
+        - `src/pages/Editor.tsx`: Implemented conditional rendering logic for `isTableTab` vs `Console`, added Filter/Sort UI.
