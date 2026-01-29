@@ -27,6 +27,7 @@ import {
   Undo2,
   Filter,
   ArrowUpDown,
+  ListFilter,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { DataGrid } from "../components/ui/DataGrid";
@@ -129,14 +130,20 @@ export const Editor = () => {
   // State for Table View Filter/Sort
   const [tableFilter, setTableFilter] = useState("");
   const [tableSort, setTableSort] = useState("");
+  const [tableLimit, setTableLimit] = useState(""); // String to handle empty input
 
   // Sync state with active tab
   useEffect(() => {
     if (activeTab?.type === "table") {
       setTableFilter(activeTab.filterClause || "");
       setTableSort(activeTab.sortClause || "");
+      setTableLimit(activeTab.limitClause ? String(activeTab.limitClause) : "");
     }
-  }, [activeTab?.id, activeTab?.filterClause, activeTab?.sortClause, activeTab?.type]);
+  }, [activeTab?.id, activeTab?.filterClause, activeTab?.sortClause, activeTab?.limitClause, activeTab?.type]);
+
+  // Placeholder Logic
+  const placeholderColumn = activeTab?.result?.columns?.[0] || 'id';
+  const placeholderSort = activeTab?.result?.columns?.[0] || 'created_at';
 
   const dropdownQueries = useMemo(() => {
     if (activeTabType === "query_builder" && activeTabQuery) {
@@ -230,12 +237,15 @@ export const Editor = () => {
       if (targetTab?.type === "table" && targetTab.activeTable) {
           const filter = targetTab.filterClause ? `WHERE ${targetTab.filterClause}` : "";
           const sort = targetTab.sortClause ? `ORDER BY ${targetTab.sortClause}` : "";
-          // Reconstruct base query: SELECT * FROM table ...
-          // Note: LIMIT/OFFSET are handled by backend/pagination params, 
-          // but we need to ensure the base query respects the filters.
-          // The current query might already have them if it was saved? 
-          // No, let's assume for Table view we always construct from activeTable + state.
-          textToRun = `SELECT * FROM ${targetTab.activeTable} ${filter} ${sort}`;
+          
+          const baseQuery = `SELECT * FROM ${targetTab.activeTable} ${filter} ${sort}`;
+          
+          if (targetTab.limitClause && targetTab.limitClause > 0) {
+              // Wrap in subquery to apply "Total Limit" while allowing pagination (Page Size) via backend
+              textToRun = `SELECT * FROM (${baseQuery} LIMIT ${targetTab.limitClause}) AS limited_subset`;
+          } else {
+              textToRun = baseQuery;
+          }
       }
 
       if (!textToRun || !textToRun.trim()) return;
@@ -264,10 +274,13 @@ export const Editor = () => {
 
       try {
         const start = performance.now();
+        // Use settings.queryLimit for Page Size (pagination), ignoring the "Total Limit" input which is handled in SQL
+        const pageSize = settings.queryLimit > 0 ? settings.queryLimit : null;
+
         const res = await invoke<QueryResult>("execute_query", {
           connectionId: activeConnectionId,
           query: textToRun,
-          limit: settings.queryLimit > 0 ? settings.queryLimit : null,
+          limit: pageSize,
           page: pageNum,
         });
         const end = performance.now();
@@ -937,7 +950,7 @@ export const Editor = () => {
                             }
                         }}
                         className="bg-transparent border-none outline-none text-xs text-slate-300 w-full placeholder:text-slate-600 font-mono"
-                        placeholder="id > 5 AND status = 'active'"
+                        placeholder={`${placeholderColumn} > 5 AND status = 'active'`}
                     />
                 </div>
                 <div className="flex items-center gap-2 flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 focus-within:border-blue-500/50 transition-colors">
@@ -955,7 +968,29 @@ export const Editor = () => {
                             }
                         }}
                         className="bg-transparent border-none outline-none text-xs text-slate-300 w-full placeholder:text-slate-600 font-mono"
-                        placeholder="created_at DESC"
+                        placeholder={`${placeholderSort} DESC`}
+                    />
+                </div>
+                <div className="flex items-center gap-2 w-32 bg-slate-950 border border-slate-800 rounded px-2 py-1 focus-within:border-blue-500/50 transition-colors">
+                    <ListFilter size={14} className="text-slate-500 shrink-0" />
+                    <span className="text-xs text-blue-400 font-mono shrink-0">LIMIT</span>
+                    <input 
+                        type="number"
+                        value={tableLimit}
+                        onChange={(e) => setTableLimit(e.target.value)}
+                        onBlur={() => {
+                            const val = parseInt(tableLimit);
+                            updateActiveTab({ limitClause: !isNaN(val) && val > 0 ? val : undefined });
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                const val = parseInt(tableLimit);
+                                updateActiveTab({ limitClause: !isNaN(val) && val > 0 ? val : undefined });
+                                setTimeout(() => runQuery(undefined, 1), 0);
+                            }
+                        }}
+                        className="bg-transparent border-none outline-none text-xs text-slate-300 w-full placeholder:text-slate-600 font-mono"
+                        placeholder={String(settings.queryLimit || 100)}
                     />
                 </div>
              </div>

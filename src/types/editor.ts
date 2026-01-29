@@ -39,4 +39,5 @@ export interface Tab {
   isEditorOpen?: boolean; // Whether the SQL editor is visible
   filterClause?: string; // SQL WHERE clause (without "WHERE")
   sortClause?: string; // SQL ORDER BY clause (without "ORDER BY")
+  limitClause?: number; // SQL LIMIT value
 }

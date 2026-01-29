@@ -393,10 +393,16 @@ Adhere to the rules defined in the [rules directory](./.rules/):
     - **Auto-Show Results:**
         - **UX Polish:** When executing a query in the Console, the results panel now automatically expands if it was previously collapsed.
     - **Table Filters:**
-        - **Feature:** Added "WHERE" and "ORDER BY" inputs to the Table View toolbar.
-        - **Implementation:** Added `filterClause` and `sortClause` to `Tab` state. These are applied dynamically when refreshing table data.
-        - **UI:** Inputs appear above the results grid in Table tabs, allowing quick filtering and sorting without writing full SQL.
+        - **Feature:** Added "WHERE", "ORDER BY", and "LIMIT" inputs to the Table View toolbar.
+        - **Implementation:** 
+            - Added `filterClause`, `sortClause`, and `limitClause` to `Tab` state.
+            - Inputs sync to state on blur/enter.
+            - `runQuery` logic updated to wrap queries in a subquery when a custom "Limit" is applied, ensuring pagination (Page Size) remains controlled by Settings while the result set is capped by the user's limit.
+        - **UI:** Inputs appear above the results grid in Table tabs, allowing quick filtering, sorting, and limiting without writing full SQL.
+    - **Smart Placeholders:**
+        - **Feature:** Placeholders in filter/sort inputs now reflect actual columns from the table result (e.g. `id > 5` instead of generic `id`).
+        - **Implementation:** Dynamically reading `activeTab.result.columns[0]` to generate context-aware examples.
     - **Files Modified:**
-        - `src/types/editor.ts`: Added `isEditorOpen`, `filterClause`, `sortClause` to `Tab`.
+        - `src/types/editor.ts`: Added `isEditorOpen`, `filterClause`, `sortClause`, `limitClause` to `Tab`.
         - `src/contexts/EditorProvider.tsx`: Initialized `isEditorOpen`.
-        - `src/pages/Editor.tsx`: Implemented conditional rendering logic for `isTableTab` vs `Console`, added Filter/Sort UI.
+        - `src/pages/Editor.tsx`: Implemented conditional rendering logic for `isTableTab` vs `Console`, added Filter/Sort/Limit UI with dynamic placeholders.
