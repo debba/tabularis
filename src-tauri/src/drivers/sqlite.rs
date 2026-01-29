@@ -8,7 +8,7 @@ use crate::pool_manager::get_sqlite_pool;
 pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, String> {
     let pool = get_sqlite_pool(params).await?;
     let rows = sqlx::query(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC",
     )
     .fetch_all(&pool)
     .await

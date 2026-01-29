@@ -8,7 +8,7 @@ use sqlx::{Column, Row};
 pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, String> {
     let pool = get_mysql_pool(params).await?;
     let rows = sqlx::query(
-        "SELECT table_name as name FROM information_schema.tables WHERE table_schema = DATABASE()",
+        "SELECT table_name as name FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name ASC",
     )
     .fetch_all(&pool)
     .await
