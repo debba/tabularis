@@ -25,12 +25,10 @@ import {
   Trash2,
   Check,
   Undo2,
-  Filter,
-  ArrowUpDown,
-  ListFilter,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { TableToolbar } from "../components/ui/TableToolbar";
 import { DataGrid } from "../components/ui/DataGrid";
 import { NewRowModal } from "../components/ui/NewRowModal";
 import { QuerySelectionModal } from "../components/ui/QuerySelectionModal";
@@ -148,15 +146,13 @@ export const Editor = () => {
   const [isRunDropdownOpen, setIsRunDropdownOpen] = useState(false);
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [tempPage, setTempPage] = useState("1");
-
+  
   const activeTabType = activeTab?.type;
   const activeTabQuery = activeTab?.query;
   const isTableTab = activeTab?.type === "table";
   const isEditorOpen =
     !isTableTab &&
     (activeTab?.isEditorOpen ?? activeTab?.type !== "table");
-
-  // Removed redundant state - using activeTab values directly with controlled inputs
 
   // Placeholder Logic - memoized to avoid recalculation on every render
   const placeholders = useMemo(() => ({
@@ -388,6 +384,21 @@ export const Editor = () => {
     if (activeTab?.activeTable && activeConnectionId)
       runQuery(activeTab.query, activeTab.page);
   }, [activeTab, activeConnectionId, runQuery]);
+
+  const handleToolbarUpdate = useCallback((filter: string, sort: string, limit: number | undefined) => {
+    if (!activeTabIdRef.current) return;
+    
+    updateTab(activeTabIdRef.current, {
+        filterClause: filter,
+        sortClause: sort,
+        limitClause: limit
+    });
+    
+    // Small delay to ensure state update propagates before runQuery reads it
+    // We pass the new values directly to runQuery could be cleaner, but current runQuery reads from tabsRef
+    // Since tabsRef is updated in useEffect, setTimeout 0 helps
+    setTimeout(() => runQuery(undefined, 1), 0);
+  }, [updateTab, runQuery]);
 
   const handlePendingChange = useCallback((pkVal: unknown, colName: string, value: unknown) => {
     if (!activeTabIdRef.current) return;
@@ -989,62 +1000,15 @@ export const Editor = () => {
       {isTableTab || !isResultsCollapsed ? (
         <>
           {isTableTab ? (
-             <div className="h-10 bg-slate-900 border-y border-slate-800 flex items-center px-2 gap-4">
-                <div className="flex items-center gap-2 flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 focus-within:border-blue-500/50 transition-colors">
-                    <Filter size={14} className="text-slate-500 shrink-0" />
-                    <span className="text-xs text-blue-400 font-mono shrink-0">WHERE</span>
-                    <input
-                        type="text"
-                        value={activeTab?.filterClause || ""}
-                        onChange={(e) => updateActiveTab({ filterClause: e.target.value })}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                // Small delay to ensure state update propagates before runQuery reads it
-                                setTimeout(() => runQuery(undefined, 1), 0);
-                            }
-                        }}
-                        className="bg-transparent border-none outline-none text-xs text-slate-300 w-full placeholder:text-slate-600 font-mono"
-                        placeholder={`${placeholders.column} > 5 AND status = 'active'`}
-                    />
-                </div>
-                <div className="flex items-center gap-2 flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 focus-within:border-blue-500/50 transition-colors">
-                    <ArrowUpDown size={14} className="text-slate-500 shrink-0" />
-                    <span className="text-xs text-blue-400 font-mono shrink-0">ORDER BY</span>
-                    <input
-                        type="text"
-                        value={activeTab?.sortClause || ""}
-                        onChange={(e) => updateActiveTab({ sortClause: e.target.value })}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                // Small delay to ensure state update propagates before runQuery reads it
-                                setTimeout(() => runQuery(undefined, 1), 0);
-                            }
-                        }}
-                        className="bg-transparent border-none outline-none text-xs text-slate-300 w-full placeholder:text-slate-600 font-mono"
-                        placeholder={`${placeholders.sort} DESC`}
-                    />
-                </div>
-                <div className="flex items-center gap-2 w-32 bg-slate-950 border border-slate-800 rounded px-2 py-1 focus-within:border-blue-500/50 transition-colors">
-                    <ListFilter size={14} className="text-slate-500 shrink-0" />
-                    <span className="text-xs text-blue-400 font-mono shrink-0">LIMIT</span>
-                    <input
-                        type="number"
-                        value={activeTab?.limitClause ? String(activeTab.limitClause) : ""}
-                        onChange={(e) => {
-                            const val = e.target.value ? parseInt(e.target.value) : undefined;
-                            updateActiveTab({ limitClause: val });
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                // Small delay to ensure state update propagates before runQuery reads it
-                                setTimeout(() => runQuery(undefined, 1), 0);
-                            }
-                        }}
-                        className="bg-transparent border-none outline-none text-xs text-slate-300 w-full placeholder:text-slate-600 font-mono"
-                        placeholder={String(settings.queryLimit || 100)}
-                    />
-                </div>
-             </div>
+             <TableToolbar
+                initialFilter={activeTab?.filterClause}
+                initialSort={activeTab?.sortClause}
+                initialLimit={activeTab?.limitClause}
+                placeholderColumn={placeholders.column}
+                placeholderSort={placeholders.sort}
+                defaultLimit={settings.queryLimit || 100}
+                onUpdate={handleToolbarUpdate}
+             />
           ) : (
             <div
               onMouseDown={isEditorOpen ? startResize : undefined}

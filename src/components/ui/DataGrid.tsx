@@ -29,7 +29,7 @@ interface DataGridProps {
   onSelectionChange?: (indices: Set<number>) => void;
 }
 
-export const DataGrid = ({
+export const DataGrid = React.memo(({
   columns,
   data,
   tableName,
@@ -444,4 +444,4 @@ export const DataGrid = ({
       )}
     </div>
   );
-};
+});
