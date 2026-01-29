@@ -37,6 +37,8 @@ tauri-plugin-opener = "2"
 once_cell = "1.20"
 csv = "1.4.0"
 reqwest = { version = "0.13.1", features = ["json"] }
+clap = { version = "4.5.56", features = ["derive"] }
+directories = "6.0.0"
 
 # GTK dependencies for Wayland window title workaround (Linux only)
 [target.'cfg(target_os = "linux")'.dependencies]

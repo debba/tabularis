@@ -47,16 +47,25 @@
     "deleteFk": "Delete FK",
     "deleteFkConfirm": "Delete foreign key \"{{name}}\"?",
     "sqliteFkError": "SQLite does not support dropping FKs via ALTER TABLE.",
-    "execute": "Execute",
-    "edit": "Edit",
-    "delete": "Delete",
-    "confirmDeleteQuery": "Are you sure you want to delete \"{{name}}\"?",
-    "confirmDeleteTitle": "Confirm Delete",
-    "collapseExplorer": "Collapse Explorer",
-    "expandExplorer": "Expand Explorer",
-    "createTable": "Create New Table"
+    "mcpServer": "MCP Server"
+  },
+  "mcp": {
+    "title": "MCP Server Integration",
+    "subtitle": "Connect Tabularis to Claude Desktop, Cursor, and more",
+    "description": "The Model Context Protocol (MCP) allows AI assistants (like Claude) to connect to your local tools. Tabularis exposes an MCP server that lets AI read your database schema and execute queries safely.",
+    "checking": "Checking configuration...",
+    "configPath": "Claude Desktop Config",
+    "notFound": "Config file not found (create manually)",
+    "installed": "Installed",
+    "install": "Install Config",
+    "manualConfig": "MANUAL CONFIGURATION",
+    "manualText": "Add this to your claude_desktop_config.json manually if the automatic install fails.",
+    "successTitle": "Success",
+    "successMsg": "Configuration installed successfully! Restart Claude Desktop to apply.",
+    "errorTitle": "Installation Failed"
   },
   "connections": {
+
     "title": "Connections",
     "addConnection": "Add Connection",
     "noConnections": "No active connections",

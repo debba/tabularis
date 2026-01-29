@@ -47,16 +47,25 @@
     "deleteFk": "Elimina FK",
     "deleteFkConfirm": "Eliminare la chiave esterna \"{{name}}\"?",
     "sqliteFkError": "SQLite non supporta l'eliminazione di FK tramite ALTER TABLE.",
-    "execute": "Esegui",
-    "edit": "Modifica",
-    "delete": "Elimina",
-    "confirmDeleteQuery": "Sei sicuro di voler eliminare \"{{name}}\"?",
-    "confirmDeleteTitle": "Conferma eliminazione",
-    "collapseExplorer": "Comprimi Esplora",
-    "expandExplorer": "Espandi Esplora",
-    "createTable": "Crea Nuova Tabella"
+    "mcpServer": "Server MCP"
+  },
+  "mcp": {
+    "title": "Integrazione Server MCP",
+    "subtitle": "Connetti Tabularis a Claude Desktop, Cursor e altri",
+    "description": "Il Model Context Protocol (MCP) permette agli assistenti AI (come Claude) di connettersi ai tuoi strumenti locali. Tabularis espone un server MCP che permette all'AI di leggere lo schema del database ed eseguire query in sicurezza.",
+    "checking": "Verifica configurazione...",
+    "configPath": "Configurazione Claude Desktop",
+    "notFound": "File config non trovato (crealo manualmente)",
+    "installed": "Installato",
+    "install": "Installa Config",
+    "manualConfig": "CONFIGURAZIONE MANUALE",
+    "manualText": "Aggiungi questo al tuo claude_desktop_config.json manualmente se l'installazione automatica fallisce.",
+    "successTitle": "Successo",
+    "successMsg": "Configurazione installata con successo! Riavvia Claude Desktop per applicare.",
+    "errorTitle": "Installazione Fallita"
   },
   "connections": {
+
     "title": "Connessioni",
     "addConnection": "Aggiungi Connessione",
     "noConnections": "Nessuna connessione attiva",
