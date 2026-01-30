@@ -252,6 +252,7 @@
     "exporting": "Exporting...",
     "rowsProcessed": "Rows Processed",
     "queryParameters": "Query Parameters",
+    "convertToConsole": "Convert to Console",
     "parameters": "Parameters",
     "paramValuePlaceholder": "Value (e.g. 'text' or 123)"
   },

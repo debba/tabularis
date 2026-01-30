@@ -137,6 +137,34 @@ export const Editor = () => {
     setTabContextMenu({ x: e.clientX, y: e.clientY, tabId });
   };
 
+  const handleConvertToConsole = useCallback((tabId: string) => {
+      const tab = tabsRef.current.find(t => t.id === tabId);
+      if (!tab) return;
+
+      let query = tab.query;
+      
+      // Reconstruct query for table tabs (respecting active filters)
+      if (tab.type === "table" && tab.activeTable) {
+          const filter = tab.filterClause ? `WHERE ${tab.filterClause}` : "";
+          const sort = tab.sortClause ? `ORDER BY ${tab.sortClause}` : "";
+          
+          let baseQuery = `SELECT * FROM ${tab.activeTable} ${filter} ${sort}`;
+          
+          if (tab.limitClause && tab.limitClause > 0) {
+              baseQuery = `${baseQuery} LIMIT ${tab.limitClause}`;
+          }
+          
+          query = baseQuery;
+      }
+      
+      addTab({
+          type: 'console',
+          title: `Console - ${tab.title}`,
+          query: query,
+          connectionId: tab.connectionId
+      });
+  }, [addTab]);
+
   const [saveQueryModal, setSaveQueryModal] = useState<{
     isOpen: boolean;
     sql: string;
@@ -1545,6 +1573,11 @@ export const Editor = () => {
           y={tabContextMenu.y}
           onClose={() => setTabContextMenu(null)}
           items={[
+            ...(tabs.find(t => t.id === tabContextMenu.tabId)?.type !== 'console' ? [{
+                label: t("editor.convertToConsole"),
+                icon: FileCode,
+                action: () => handleConvertToConsole(tabContextMenu.tabId),
+            }] : []),
             {
               label: t("editor.closeTab"),
               icon: X,
