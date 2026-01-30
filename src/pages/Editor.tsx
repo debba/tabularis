@@ -41,7 +41,8 @@ import { ContextMenu } from "../components/ui/ContextMenu";
 import { ExportProgressModal, type ExportStatus } from "../components/ui/ExportProgressModal";
 import { splitQueries, extractTableName } from "../utils/sql";
 import { extractQueryParams, interpolateQueryParams } from "../utils/queryParameters";
-import MonacoEditor, { type OnMount } from "@monaco-editor/react";
+import { SqlEditorWrapper } from "../components/ui/SqlEditorWrapper";
+import { type OnMount } from "@monaco-editor/react";
 import { save, message } from "@tauri-apps/plugin-dialog";
 import { useDatabase } from "../hooks/useDatabase";
 import { useSavedQueries } from "../hooks/useSavedQueries";
@@ -167,9 +168,16 @@ export const Editor = () => {
     !isTableTab &&
     (activeTab?.isEditorOpen ?? activeTab?.type !== "table");
 
-  // Removed redundant state - using activeTab values directly with controlled inputs
+  // Define updateActiveTab first to be used in handleQueryChange
+  const updateActiveTab = useCallback(
+    (partial: Partial<Tab>) => {
+      if (activeTabId) updateTab(activeTabId, partial);
+    },
+    [activeTabId, updateTab],
+  );
 
   // Placeholder Logic - memoized to avoid recalculation on every render
+
   const placeholders = useMemo(() => ({
     column: activeTab?.result?.columns?.[0] || 'id',
     sort: activeTab?.result?.columns?.[0] || 'created_at'
@@ -223,12 +231,7 @@ export const Editor = () => {
     activeTabIdRef.current = activeTabId;
   }, [tabs, activeTabId]);
 
-  const updateActiveTab = useCallback(
-    (partial: Partial<Tab>) => {
-      if (activeTabId) updateTab(activeTabId, partial);
-    },
-    [activeTabId, updateTab],
-  );
+  /* Removed redundant updateActiveTab definition */
 
   const fetchPkColumn = useCallback(
     async (table: string, tabId?: string) => {
@@ -419,9 +422,10 @@ export const Editor = () => {
   }, [activeTab, runQuery]);
 
   const handleRefresh = useCallback(() => {
-    if (activeTab?.activeTable && activeConnectionId)
-      runQuery(activeTab.query, activeTab.page);
-  }, [activeTab, activeConnectionId, runQuery]);
+    const currentTab = tabsRef.current.find(t => t.id === activeTabIdRef.current);
+    if (currentTab?.activeTable && activeConnectionId)
+      runQuery(currentTab.query, currentTab.page);
+  }, [activeConnectionId, runQuery]);
 
   const handlePendingChange = useCallback((pkVal: unknown, colName: string, value: unknown) => {
     if (!activeTabIdRef.current) return;
@@ -1042,20 +1046,12 @@ export const Editor = () => {
           {activeTab.type === "query_builder" ? (
             <VisualQueryBuilder />
           ) : (
-            <MonacoEditor
+            <SqlEditorWrapper
               height="100%"
-              defaultLanguage="sql"
-              theme="vs-dark"
-              value={activeTab.query}
-              onChange={(val) => updateActiveTab({ query: val || "" })}
+              initialValue={activeTab.query}
+              onChange={(val) => updateActiveTab({ query: val })}
+              onRun={handleRunButton}
               onMount={handleEditorMount}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                padding: { top: 16 },
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-              }}
             />
           )}
         </div>
