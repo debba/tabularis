@@ -31,9 +31,11 @@ pub struct JsonRpcError {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InitializeParams {
-    pub protocolVersion: String,
+    #[serde(rename = "protocolVersion")]
+    pub protocol_version: String,
     pub capabilities: Value,
-    pub clientInfo: ClientInfo,
+    #[serde(rename = "clientInfo")]
+    pub client_info: ClientInfo,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -44,9 +46,11 @@ pub struct ClientInfo {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InitializeResult {
-    pub protocolVersion: String,
+    #[serde(rename = "protocolVersion")]
+    pub protocol_version: String,
     pub capabilities: ServerCapabilities,
-    pub serverInfo: ServerInfo,
+    #[serde(rename = "serverInfo")]
+    pub server_info: ServerInfo,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -70,13 +74,15 @@ pub struct Resource {
     pub uri: String,
     pub name: String,
     pub description: Option<String>,
-    pub mimeType: Option<String>,
+    #[serde(rename = "mimeType")]
+    pub mime_type: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResourceContent {
     pub uri: String,
-    pub mimeType: Option<String>,
+    #[serde(rename = "mimeType")]
+    pub mime_type: Option<String>,
     pub text: Option<String>,
 }
 
@@ -84,7 +90,8 @@ pub struct ResourceContent {
 pub struct Tool {
     pub name: String,
     pub description: Option<String>,
-    pub inputSchema: Value, // JSON Schema
+    #[serde(rename = "inputSchema")]
+    pub input_schema: Value, // JSON Schema
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -96,7 +103,8 @@ pub struct CallToolParams {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CallToolResult {
     pub content: Vec<ToolContent>,
-    pub isError: Option<bool>,
+    #[serde(rename = "isError")]
+    pub is_error: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

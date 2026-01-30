@@ -89,13 +89,13 @@ async fn handle_request(req: JsonRpcRequest) -> Option<JsonRpcResponse> {
 
 fn handle_initialize(_params: Option<serde_json::Value>) -> Result<serde_json::Value, JsonRpcError> {
     let result = InitializeResult {
-        protocolVersion: "2024-11-05".to_string(), 
+        protocol_version: "2024-11-05".to_string(), 
         capabilities: ServerCapabilities {
             resources: Some(json!({ "listChanged": false })),
             tools: Some(json!({ "listChanged": false })),
             prompts: None,
         },
-        serverInfo: ServerInfo {
+        server_info: ServerInfo {
             name: "tabularis-mcp".to_string(),
             version: "0.1.0".to_string(),
         },
@@ -119,7 +119,7 @@ async fn handle_list_resources() -> Result<serde_json::Value, JsonRpcError> {
         uri: "tabularis://connections".to_string(),
         name: "Connections List".to_string(),
         description: Some("List of all configured database connections".to_string()),
-        mimeType: Some("application/json".to_string()),
+        mime_type: Some("application/json".to_string()),
     });
 
     // Add schema resources for each connection
@@ -128,7 +128,7 @@ async fn handle_list_resources() -> Result<serde_json::Value, JsonRpcError> {
             uri: format!("tabularis://{}/schema", conn.id),
             name: format!("Schema: {}", conn.name),
             description: Some(format!("Database schema for {}", conn.name)),
-            mimeType: Some("application/json".to_string()),
+            mime_type: Some("application/json".to_string()),
         });
     }
 
@@ -166,7 +166,7 @@ async fn handle_read_resource(params: Option<serde_json::Value>) -> Result<serde
         return Ok(json!({
             "contents": [{
                 "uri": uri,
-                "mimeType": "application/json",
+                "mime_type": "application/json",
                 "text": serde_json::to_string_pretty(&safe_list).unwrap()
             }]
         }));
@@ -209,7 +209,7 @@ async fn handle_read_resource(params: Option<serde_json::Value>) -> Result<serde
         return Ok(json!({
             "contents": [{
                 "uri": uri,
-                "mimeType": "application/json",
+                "mime_type": "application/json",
                 "text": schema_json
             }]
         }));
@@ -227,7 +227,7 @@ fn handle_list_tools() -> Result<serde_json::Value, JsonRpcError> {
         Tool {
             name: "run_query".to_string(),
             description: Some("Execute a SQL query on a specific connection".to_string()),
-            inputSchema: json!({
+            input_schema: json!({
                 "type": "object",
                 "properties": {
                     "connection_id": { "type": "string", "description": "The ID or Name of the connection (from tabularis://connections)" },

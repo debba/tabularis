@@ -1,7 +1,7 @@
 use tauri::{AppHandle, Runtime};
 use std::fs;
 use std::path::PathBuf;
-use directories::{ProjectDirs, BaseDirs};
+use directories::BaseDirs;
 use serde_json::json;
 
 #[derive(serde::Serialize)]
