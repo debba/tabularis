@@ -1,3 +1,19 @@
+## [0.8.1](https://github.com/debba/tabularis/compare/v0.8.0...v0.8.1) (2026-01-30)
+
+
+### Features
+
+* **connections:** add connection loading state ([36a72d2](https://github.com/debba/tabularis/commit/36a72d2cef2cc2596bd9cab9db327c07b1cf0697))
+* **editor:** add convert to console action and translations ([c3ad2b2](https://github.com/debba/tabularis/commit/c3ad2b2907cc0438b6df5c5e13545fe00e12bb6c))
+* **modal:** add run mode to query params modal ([a8af1c3](https://github.com/debba/tabularis/commit/a8af1c36645edb1a4f80da874dd3858e3de2bd9a))
+* **query:** add parameterized query support ([9fd2fbc](https://github.com/debba/tabularis/commit/9fd2fbccc847b7b85cd604880526718eaf97744d))
+* **sql:** preserve ORDER BY clause during pagination ([a963c28](https://github.com/debba/tabularis/commit/a963c28b89a3ae68b194e26bddedfb873eade2e1))
+* **ui:** add column sorting in DataGrid ([896658c](https://github.com/debba/tabularis/commit/896658c76f13a21769a5574ae990097aac17f9db))
+* **ui:** add virtualized data grid and SQL editor wrapper ([30a9099](https://github.com/debba/tabularis/commit/30a9099dbe48d608972c33b2c9c7ea7a4bbc2814))
+* **ui:** enhance table interaction with click and double-click actions ([eccc881](https://github.com/debba/tabularis/commit/eccc881cd5425b1acf22a38aaa4d483d40b325da))
+
+
+
 # [0.8.0](https://github.com/debba/tabularis/compare/v0.7.1...v0.8.0) (2026-01-29)
 
 
