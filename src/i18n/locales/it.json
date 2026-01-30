@@ -38,7 +38,7 @@
     "deleteTable": "Elimina tabella",
     "deleteTableConfirm": "Sei sicuro di voler eliminare la tabella \"{{table}}\"?",
     "failDeleteTable": "Eliminazione tabella fallita: ",
-    "selectTop100": "Seleziona prime 100",
+    "showData": "Mostra Dati",
     "countRows": "Conta righe",
     "viewSchema": "Vedi schema",
     "addColumn": "Aggiungi colonna",

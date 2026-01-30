@@ -61,8 +61,9 @@ yay -S tabularis-bin
 - **Sidebar Navigation:** Quickly browse tables and saved queries.
 - **DataGrip-Style Tree View:** Expandable folders for Columns, Keys, Foreign Keys, and Indexes.
 - **Context Actions:**
-  - Right-click tables to: `Select Top 100`, `Count Rows`, `View Schema`, `Copy Name`, `Add Column`, `Delete Table`.
+  - Right-click tables to: `Show Data`, `Count Rows`, `View Schema`, `Copy Name`, `Add Column`, `Delete Table`.
   - Intelligent context menus with viewport overflow prevention.
+  - Single-click on tables to select, Double-click to view data.
 - **Schema Metadata:** Parallel fetching for fast schema loading.
 
 ### 📝 SQL Editor

@@ -200,6 +200,7 @@ export const Editor = () => {
   const tabsRef = useRef<Tab[]>([]);
   const activeTabIdRef = useRef<string | null>(null);
   const processingRef = useRef<string | null>(null);
+  const pendingExecutionsRef = useRef<Record<string, { sql: string, page: number }>>({});
 
   const selectionHasPending = useMemo(() => {
     if (!activeTab) return false;
@@ -739,7 +740,17 @@ export const Editor = () => {
         activeTable: table,
       });
 
-      if (tabId) runQuery(sql, 1, tabId);
+      if (tabId) {
+        // Queue execution
+        pendingExecutionsRef.current[tabId] = { sql: sql || "", page: 1 };
+
+        // Try immediate execution if tab exists (reused)
+        const existingTab = tabsRef.current.find((t) => t.id === tabId);
+        if (existingTab) {
+          runQuery(sql, 1, tabId);
+          delete pendingExecutionsRef.current[tabId];
+        }
+      }
 
       navigate(location.pathname, { replace: true, state: {} });
       setTimeout(() => {
@@ -755,6 +766,18 @@ export const Editor = () => {
     runQuery,
     t,
   ]);
+
+  // Process pending executions when tabs are created/updated
+  useEffect(() => {
+    Object.keys(pendingExecutionsRef.current).forEach((tabId) => {
+      const tab = tabs.find((t) => t.id === tabId);
+      if (tab) {
+        const { sql, page } = pendingExecutionsRef.current[tabId];
+        runQuery(sql, page, tabId);
+        delete pendingExecutionsRef.current[tabId];
+      }
+    });
+  }, [tabs, runQuery]);
 
   const startResize = () => {
     isDragging.current = true;

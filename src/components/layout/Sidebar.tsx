@@ -242,6 +242,7 @@ const SidebarTableItem = ({
   table,
   activeTable,
   onTableClick,
+  onTableDoubleClick,
   onContextMenu,
   connectionId,
   driver,
@@ -256,6 +257,7 @@ const SidebarTableItem = ({
   table: { name: string };
   activeTable: string | null;
   onTableClick: (name: string) => void;
+  onTableDoubleClick: (name: string) => void;
   onContextMenu: (
     e: React.MouseEvent,
     type: string,
@@ -375,6 +377,7 @@ const SidebarTableItem = ({
           e.dataTransfer.effectAllowed = "move";
         }}
         onClick={() => onTableClick(table.name)}
+        onDoubleClick={() => onTableDoubleClick(table.name)}
         onContextMenu={(e) => showContextMenu(e, "table", table.name)}
         className={clsx(
           "flex items-center gap-1 pl-1 pr-3 py-1.5 text-sm cursor-pointer group select-none transition-colors border-l-2",
@@ -651,6 +654,9 @@ export const Sidebar = () => {
 
   const handleTableClick = (tableName: string) => {
     setActiveTable(tableName);
+  };
+
+  const handleOpenTable = (tableName: string) => {
     const q = getQuote();
     navigate("/editor", {
       state: {
@@ -811,6 +817,7 @@ export const Sidebar = () => {
                             table={table}
                             activeTable={activeTable}
                             onTableClick={handleTableClick}
+                            onTableDoubleClick={handleOpenTable}
                             onContextMenu={handleContextMenu}
                             connectionId={activeConnectionId!}
                             driver={activeDriver!}
@@ -931,12 +938,12 @@ export const Sidebar = () => {
             contextMenu.type === "table"
               ? [
                   {
-                    label: t("sidebar.selectTop100"),
+                    label: t("sidebar.showData"),
                     icon: PlaySquare,
                     action: () => {
                       const q = getQuote();
                       runQuery(
-                        `SELECT * FROM ${q}${contextMenu.id}${q} LIMIT 100`,
+                        `SELECT * FROM ${q}${contextMenu.id}${q}`,
                         undefined,
                         contextMenu.id,
                       );

@@ -38,7 +38,7 @@
     "deleteTable": "Delete Table",
     "deleteTableConfirm": "Are you sure you want to delete table \"{{table}}\"?",
     "failDeleteTable": "Failed to delete table: ",
-    "selectTop100": "Select Top 100",
+    "showData": "Show Data",
     "countRows": "Count Rows",
     "viewSchema": "View Schema",
     "addColumn": "Add Column",
