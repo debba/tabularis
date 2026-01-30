@@ -193,7 +193,9 @@
     "rollbackChanges": "Annulla Modifiche",
     "executingQuery": "Esecuzione query...",
     "exporting": "Esportazione in corso...",
-    "rowsProcessed": "Righe processate"
+    "rowsProcessed": "Righe processate",
+    "queryParameters": "Parametri Query",
+    "parameters": "Parametri"
   },
   "createTable": {
     "title": "Crea Nuova Tabella",

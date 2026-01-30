@@ -406,3 +406,20 @@ Adhere to the rules defined in the [rules directory](./.rules/):
         - `src/types/editor.ts`: Added `isEditorOpen`, `filterClause`, `sortClause`, `limitClause` to `Tab`.
         - `src/contexts/EditorProvider.tsx`: Initialized `isEditorOpen`.
         - `src/pages/Editor.tsx`: Implemented conditional rendering logic for `isTableTab` vs `Console`, added Filter/Sort/Limit UI with dynamic placeholders.
+
+### Session 33: Parameterized Queries
+- **Status:** Feature Complete.
+- **Actions:**
+    - **Core Logic:**
+        - Created `src/utils/queryParameters.ts` for extraction and client-side interpolation of SQL parameters (`:paramName`).
+        - Updated `Tab` interface to store `queryParams` (Record<string, string>).
+    - **Frontend:**
+        - **Modal:** Created `QueryParamsModal` to prompt users for parameter values.
+        - **Editor Integration:** Modified `runQuery` to automatically detect parameters in SQL. If parameters are present and values are missing, execution pauses and the modal opens.
+        - **Toolbar:** Added a "Params" button `{P}` that appears dynamically when the current query contains parameters, allowing users to edit values.
+    - **Localization:** Added translations for new UI elements.
+    - **Files Modified:**
+        - `src/utils/queryParameters.ts` (New)
+        - `src/components/modals/QueryParamsModal.tsx` (New)
+        - `src/types/editor.ts`
+        - `src/pages/Editor.tsx`

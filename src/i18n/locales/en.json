@@ -193,7 +193,9 @@
     "rollbackChanges": "Rollback Changes",
     "executingQuery": "Executing query...",
     "exporting": "Exporting...",
-    "rowsProcessed": "Rows Processed"
+    "rowsProcessed": "Rows Processed",
+    "queryParameters": "Query Parameters",
+    "parameters": "Parameters"
   },
   "createTable": {
     "title": "Create New Table",

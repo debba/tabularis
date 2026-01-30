@@ -40,4 +40,5 @@ export interface Tab {
   filterClause?: string; // SQL WHERE clause (without "WHERE")
   sortClause?: string; // SQL ORDER BY clause (without "ORDER BY")
   limitClause?: number; // SQL LIMIT value
+  queryParams?: Record<string, string>; // Saved values for query parameters
 }

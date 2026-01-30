@@ -35,10 +35,12 @@ import { DataGrid } from "../components/ui/DataGrid";
 import { NewRowModal } from "../components/ui/NewRowModal";
 import { QuerySelectionModal } from "../components/ui/QuerySelectionModal";
 import { QueryModal } from "../components/ui/QueryModal";
+import { QueryParamsModal } from "../components/modals/QueryParamsModal";
 import { VisualQueryBuilder } from "../components/ui/VisualQueryBuilder";
 import { ContextMenu } from "../components/ui/ContextMenu";
 import { ExportProgressModal, type ExportStatus } from "../components/ui/ExportProgressModal";
 import { splitQueries, extractTableName } from "../utils/sql";
+import { extractQueryParams, interpolateQueryParams } from "../utils/queryParameters";
 import MonacoEditor, { type OnMount } from "@monaco-editor/react";
 import { save, message } from "@tauri-apps/plugin-dialog";
 import { useDatabase } from "../hooks/useDatabase";
@@ -135,6 +137,15 @@ export const Editor = () => {
     isOpen: boolean;
     sql: string;
   }>({ isOpen: false, sql: "" });
+
+  const [queryParamsModal, setQueryParamsModal] = useState<{
+    isOpen: boolean;
+    sql: string;
+    parameters: string[];
+    pendingPageNum: number;
+    pendingTabId?: string;
+  }>({ isOpen: false, sql: "", parameters: [], pendingPageNum: 1 });
+
   const [showNewRowModal, setShowNewRowModal] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [editorHeight, setEditorHeight] = useState(300);
@@ -251,11 +262,12 @@ export const Editor = () => {
   }, [activeConnectionId, updateActiveTab]);
 
   const runQuery = useCallback(
-    async (sql?: string, pageNum: number = 1, tabId?: string) => {
+    async (sql?: string, pageNum: number = 1, tabId?: string, paramsOverride?: Record<string, string>) => {
       const targetTabId = tabId || activeTabIdRef.current;
       if (!activeConnectionId || !targetTabId) return;
 
       const targetTab = tabsRef.current.find((t) => t.id === targetTabId);
+      if (!targetTab) return;
       
       let textToRun = sql?.trim() || targetTab?.query;
       
@@ -275,6 +287,28 @@ export const Editor = () => {
       }
 
       if (!textToRun || !textToRun.trim()) return;
+
+      // Check for parameters
+      const params = extractQueryParams(textToRun);
+      if (params.length > 0) {
+          const storedParams = paramsOverride || targetTab.queryParams || {};
+          const missingParams = params.filter(p => storedParams[p] === undefined);
+          
+          // If we have missing params
+          if (missingParams.length > 0) {
+              setQueryParamsModal({
+                  isOpen: true,
+                  sql: textToRun,
+                  parameters: params,
+                  pendingPageNum: pageNum,
+                  pendingTabId: targetTabId
+              });
+              return;
+          }
+          
+          // Interpolate parameters before execution
+          textToRun = interpolateQueryParams(textToRun, storedParams);
+      }
 
       // Log query from Visual Query Builder
       if (targetTab?.type === "query_builder") {
@@ -555,6 +589,35 @@ export const Editor = () => {
         await message(t('dataGrid.updateFailed') + String(e), { title: t('common.error'), kind: 'error' });
     }
   }, [activeTab, activeConnectionId, updateActiveTab, runQuery, t]);
+
+  const handleParamsSubmit = useCallback((values: Record<string, string>) => {
+    const { pendingTabId } = queryParamsModal;
+    if (!pendingTabId) return;
+
+    // Update tab with new params (merge with existing)
+    const currentTab = tabsRef.current.find(t => t.id === pendingTabId);
+    const newParams = { ...(currentTab?.queryParams || {}), ...values };
+    
+    updateTab(pendingTabId, { queryParams: newParams });
+    
+    // Close modal
+    setQueryParamsModal(prev => ({ ...prev, isOpen: false }));
+  }, [queryParamsModal, updateTab]);
+
+  const handleEditParams = useCallback(() => {
+    if (!activeTab || !activeTab.query) return;
+    
+    const params = extractQueryParams(activeTab.query);
+    if (params.length === 0) return;
+
+    setQueryParamsModal({
+        isOpen: true,
+        sql: activeTab.query,
+        parameters: params,
+        pendingPageNum: 1,
+        pendingTabId: activeTab.id
+    });
+  }, [activeTab]);
 
   const handleRollbackChanges = useCallback(() => {
     if (!activeTab) return;
@@ -917,6 +980,19 @@ export const Editor = () => {
               </>
             )}
           </div>
+        )}
+
+        {/* Params Button */}
+        {!isTableTab && (
+          <button
+              onClick={handleEditParams}
+              disabled={!activeTab?.query || extractQueryParams(activeTab.query).length === 0}
+              className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-slate-700"
+              title={t("editor.queryParameters")}
+          >
+              <span className="font-mono text-xs font-bold border border-slate-500 text-slate-400 rounded px-1.5 py-0.5">P</span>
+              {t("editor.parameters")}
+          </button>
         )}
 
         <div className="relative">
@@ -1413,6 +1489,15 @@ export const Editor = () => {
         errorMessage={exportState.errorMessage}
         onCancel={cancelExport} 
         onClose={closeExportModal}
+      />
+      <QueryParamsModal 
+        isOpen={queryParamsModal.isOpen}
+        onClose={() => setQueryParamsModal(prev => ({ ...prev, isOpen: false }))}
+        onSubmit={handleParamsSubmit}
+        parameters={queryParamsModal.parameters}
+        initialValues={
+             tabsRef.current.find(t => t.id === queryParamsModal.pendingTabId)?.queryParams || {}
+        }
       />
     </div>
   );
