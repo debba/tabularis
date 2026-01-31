@@ -1204,6 +1204,7 @@ export const Editor = () => {
               onChange={(val) => updateActiveTab({ query: val })}
               onRun={handleRunButton}
               onMount={handleEditorMount}
+              editorKey={activeTab.id}
               options={{
                 minimap: { enabled: false },
                 fontSize: 14,

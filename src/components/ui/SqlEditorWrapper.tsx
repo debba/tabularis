@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useRef, useCallback, useEffect } from "react";
 import MonacoEditor, { type OnMount } from "@monaco-editor/react";
 
 interface SqlEditorWrapperProps {
@@ -8,6 +8,7 @@ interface SqlEditorWrapperProps {
   onMount?: OnMount;
   height?: string | number;
   options?: React.ComponentProps<typeof MonacoEditor>['options'];
+  editorKey?: string;
 }
 
 // Internal component that resets when key changes
@@ -19,14 +20,19 @@ const SqlEditorInternal: React.FC<SqlEditorWrapperProps & { editorKey: string }>
   height = "100%",
   options
 }) => {
-  const [localValue, setLocalValue] = useState(initialValue);
   const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+
+  // Sync editor value only when initialValue changes externally (e.g., tab switch)
+  useEffect(() => {
+    if (editorRef.current && initialValue !== editorRef.current.getValue()) {
+      editorRef.current.setValue(initialValue);
+    }
+  }, [initialValue]);
 
     const handleChange = useCallback(
       (val: string | undefined) => {
         const newValue = val || "";
-        setLocalValue(newValue);
 
         if (updateTimeoutRef.current) {
           clearTimeout(updateTimeoutRef.current);
@@ -41,7 +47,7 @@ const SqlEditorInternal: React.FC<SqlEditorWrapperProps & { editorKey: string }>
 
     const handleEditorMount: OnMount = (editor, monaco) => {
       editorRef.current = editor;
-      
+
       // Bind Ctrl+Enter to Run
       editor.addCommand(
         monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
@@ -58,7 +64,7 @@ const SqlEditorInternal: React.FC<SqlEditorWrapperProps & { editorKey: string }>
         height={height}
         defaultLanguage="sql"
         theme="vs-dark"
-        value={localValue}
+        defaultValue={initialValue}
         onChange={handleChange}
         onMount={handleEditorMount}
         options={{
@@ -74,6 +80,6 @@ const SqlEditorInternal: React.FC<SqlEditorWrapperProps & { editorKey: string }>
 };
 
 export const SqlEditorWrapper: React.FC<SqlEditorWrapperProps> = React.memo((props) => {
-  // Use initialValue as key to reset component state when it changes
-  return <SqlEditorInternal key={props.initialValue} editorKey={props.initialValue} {...props} />;
+  // Use editorKey to control when component remounts (only on tab switch)
+  return <SqlEditorInternal key={props.editorKey || "default"} editorKey={props.editorKey || "default"} {...props} />;
 });
