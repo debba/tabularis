@@ -7,6 +7,7 @@ export interface Settings {
   resultPageSize: number; // Changed from queryLimit to match backend config
   language: AppLanguage;
   fontFamily: string;
+  fontSize: number;
   aiEnabled: boolean;
   aiProvider: AiProvider | null;
   aiModel: string | null;
@@ -27,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   resultPageSize: 500,
   language: "auto",
   fontFamily: "System",
+  fontSize: 14,
   aiEnabled: true,
   aiProvider: null,
   aiModel: null,

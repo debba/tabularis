@@ -102,6 +102,11 @@
       "customPlaceholder": "es. Comic Sans MS",
       "enterFontName": "Inserisci il nome del font sopra"
     },
+    "fontSize": "Dimensione Font",
+    "fontSizeLabel": "Dimensione Font",
+    "fontSizeDesc": "Regola la dimensione base del font usata nell'applicazione (10-20px).",
+    "preview": "Anteprima",
+    "fontPreviewText": "La volpe marrone salta sopra il cane pigro",
     "language": "Lingua",
     "languageDesc": "Scegli la tua lingua preferita. 'Auto' userà la lingua di sistema.",
     "auto": "Auto (Sistema)",

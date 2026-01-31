@@ -2,6 +2,7 @@
 
 :root {
   font-family: var(--font-base, Inter, system-ui, Avenir, Helvetica, Arial, sans-serif);
+  font-size: var(--font-size-base, 14px);
   color-scheme: dark;
   
   /* CSS Variables - Default (Tabularis Dark) */

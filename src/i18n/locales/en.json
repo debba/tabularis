@@ -102,6 +102,11 @@
       "customPlaceholder": "e.g., Comic Sans MS",
       "enterFontName": "Enter font name above"
     },
+    "fontSize": "Font Size",
+    "fontSizeLabel": "Font Size",
+    "fontSizeDesc": "Adjust the base font size used throughout the application (10-20px).",
+    "preview": "Preview",
+    "fontPreviewText": "The quick brown fox jumps over the lazy dog",
     "language": "Language",
     "languageDesc": "Choose your preferred language. 'Auto' will use your system language.",
     "auto": "Auto (System)",

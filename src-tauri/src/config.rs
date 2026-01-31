@@ -13,6 +13,8 @@ pub struct AppConfig {
     pub theme: Option<String>,
     pub language: Option<String>,
     pub result_page_size: Option<u32>,
+    pub font_family: Option<String>,
+    pub font_size: Option<u32>,
     pub ai_enabled: Option<bool>,
     pub ai_provider: Option<String>,
     pub ai_model: Option<String>,

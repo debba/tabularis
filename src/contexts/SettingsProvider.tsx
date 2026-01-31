@@ -111,6 +111,12 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.style.setProperty('--font-base', fontFamily);
   }, [settings.fontFamily]);
 
+  // Apply font size
+  useEffect(() => {
+    const size = settings.fontSize || 14;
+    document.documentElement.style.setProperty('--font-size-base', `${size}px`);
+  }, [settings.fontSize]);
+
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     setSettings(prev => {
       const newSettings = { ...prev, [key]: value };

@@ -16,6 +16,7 @@ import {
   Power,
   Palette,
   Type,
+  ZoomIn,
 } from "lucide-react";
 import clsx from "clsx";
 import { useSettings } from "../hooks/useSettings";
@@ -484,6 +485,51 @@ export const Settings = () => {
                       </p>
                     </div>
                   </button>
+                </div>
+              </div>
+
+              {/* Font Size Selection */}
+              <div className="bg-elevated border border-default rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+                  <ZoomIn size={20} className="text-green-400" />
+                  {t("settings.fontSize")}
+                </h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-secondary mb-2">
+                      {t("settings.fontSizeLabel")}
+                    </label>
+                    <p className="text-xs text-muted mb-3">
+                      {t("settings.fontSizeDesc")}
+                    </p>
+                    
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="range"
+                        min="10"
+                        max="20"
+                        step="1"
+                        value={settings.fontSize || 14}
+                        onChange={(e) => updateSetting("fontSize", parseInt(e.target.value))}
+                        className="flex-1 h-2 bg-surface-tertiary rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      />
+                      <span className="text-sm font-mono text-primary w-16 text-right">
+                        {settings.fontSize || 14}px
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Preview */}
+                  <div className="bg-base border border-default rounded-lg p-4">
+                    <p className="text-xs text-muted mb-2">{t("settings.preview")}:</p>
+                    <p 
+                      className="text-primary"
+                      style={{ fontSize: `${settings.fontSize || 14}px` }}
+                    >
+                      Aa Bb Cc 123 - {t("settings.fontPreviewText")}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
