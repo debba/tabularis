@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
-import type { Tab } from '../types/editor';
+import type { Tab, SchemaCache, TableSchema } from '../types/editor';
 import { EditorContext } from './EditorContext';
 import { useDatabase } from '../hooks/useDatabase';
+import { invoke } from '@tauri-apps/api/core';
 
 export const EditorProvider = ({ children }: { children: ReactNode }) => {
   const { activeConnectionId } = useDatabase();
@@ -31,6 +32,8 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     }
     return {};
   });
+
+  const schemaCacheRef = useRef<Record<string, SchemaCache>>({});
   const tabsRef = useRef<Tab[]>([]);
 
   useEffect(() => {
@@ -207,6 +210,36 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     setTabs(prev => prev.map(t => t.id === id ? { ...t, ...partial } : t));
   }, []);
 
+  const getSchema = useCallback(async (connectionId: string, schemaVersion?: number): Promise<TableSchema[]> => {
+    const cached = schemaCacheRef.current[connectionId];
+
+    // Cache hit: same version, less than 5 minutes old
+    if (cached &&
+        (!schemaVersion || cached.version === schemaVersion) &&
+        Date.now() - cached.timestamp < 300000) {
+      console.log("Using cached schema for", connectionId);
+      return cached.data;
+    }
+
+    // Cache miss: fetch from backend
+    console.log("Fetching schema from backend for", connectionId);
+    const data = await invoke<TableSchema[]>('get_schema_snapshot', {
+      connectionId
+    });
+
+    // Update cache in ref (no state update = no re-render)
+    schemaCacheRef.current = {
+      ...schemaCacheRef.current,
+      [connectionId]: {
+        data,
+        version: schemaVersion || 0,
+        timestamp: Date.now()
+      }
+    };
+
+    return data;
+  }, []); // No dependencies - stable function
+
   const activeTab = useMemo(() => {
     if (!activeConnectionId || !activeTabId) return null;
     const tab = tabs.find(t => t.id === activeTabId);
@@ -228,7 +261,8 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     closeAllTabs,
     closeOtherTabs,
     closeTabsToLeft,
-    closeTabsToRight
+    closeTabsToRight,
+    getSchema
   }), [
     connectionTabs,
     activeTabId,
@@ -240,7 +274,8 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     closeAllTabs,
     closeOtherTabs,
     closeTabsToLeft,
-    closeTabsToRight
+    closeTabsToRight,
+    getSchema
   ]);
 
   return (

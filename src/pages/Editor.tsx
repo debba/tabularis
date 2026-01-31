@@ -39,6 +39,7 @@ import { QuerySelectionModal } from "../components/ui/QuerySelectionModal";
 import { QueryModal } from "../components/ui/QueryModal";
 import { QueryParamsModal } from "../components/modals/QueryParamsModal";
 import { VisualQueryBuilder } from "../components/ui/VisualQueryBuilder";
+import { SchemaDiagram } from "../components/ui/SchemaDiagram";
 import { ContextMenu } from "../components/ui/ContextMenu";
 import { ExportProgressModal, type ExportStatus } from "../components/ui/ExportProgressModal";
 import { splitQueries, extractTableName } from "../utils/sql";
@@ -74,6 +75,7 @@ interface EditorState {
     initialQuery?: string;
     tableName?: string;
     queryName?: string;
+    openTabType?: 'schema_diagram';
 }
 
 interface ExportProgress {
@@ -787,8 +789,20 @@ export const Editor = () => {
 
   useEffect(() => {
     const state = location.state as EditorState;
-    if (activeConnectionId && state?.initialQuery) {
-      const queryKey = `${state.initialQuery}-${state.tableName}-${state.queryName}`;
+    if (activeConnectionId) {
+      if (state?.openTabType === 'schema_diagram') {
+         addTab({
+             type: 'schema_diagram',
+             title: 'ER Diagram',
+             query: ''
+         });
+         navigate(location.pathname, { replace: true, state: {} });
+         return;
+      }
+
+      if (state?.initialQuery) {
+       const queryKey = `${state.initialQuery}-${state.tableName}-${state.queryName}`;
+
       if (processingRef.current === queryKey) return;
       processingRef.current = queryKey;
 
@@ -817,6 +831,7 @@ export const Editor = () => {
         processingRef.current = null;
       }, 500);
     }
+  }
   }, [
     location.state,
     location.pathname,
@@ -990,6 +1005,8 @@ export const Editor = () => {
                 <TableIcon size={12} className="text-blue-400 shrink-0" />
               ) : tab.type === "query_builder" ? (
                 <Network size={12} className="text-purple-400 shrink-0" />
+              ) : tab.type === "schema_diagram" ? (
+                <Network size={12} className="text-orange-400 shrink-0" />
               ) : (
                 <FileCode size={12} className="text-green-500 shrink-0" />
               )}
@@ -1027,6 +1044,13 @@ export const Editor = () => {
           title={t("editor.newVisualQuery")}
         >
           <Network size={16} />
+        </button>
+        <button
+          onClick={() => addTab({ type: "schema_diagram", title: "ER Diagram" })}
+          className="flex items-center justify-center w-9 h-full text-orange-500 hover:text-white hover:bg-slate-800 border-l border-slate-800 transition-colors shrink-0"
+          title="Schema Diagram"
+        >
+          <Network size={16} className="rotate-90" />
         </button>
       </div>
 
@@ -1194,6 +1218,8 @@ export const Editor = () => {
         >
           {activeTab.type === "query_builder" ? (
             <VisualQueryBuilder />
+          ) : activeTab.type === "schema_diagram" ? (
+            <SchemaDiagram />
           ) : (
             <SqlEditorWrapper
               height="100%"

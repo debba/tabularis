@@ -130,6 +130,75 @@ pub fn find_connection_by_id<R: Runtime>(
 // --- Commands ---
 
 #[tauri::command]
+pub async fn get_schema_snapshot<R: Runtime>(
+    app: AppHandle<R>,
+    connection_id: String,
+) -> Result<Vec<crate::models::TableSchema>, String> {
+    let saved_conn = find_connection_by_id(&app, &connection_id)?;
+    let params = resolve_connection_params(&saved_conn.params)?;
+    let driver = saved_conn.params.driver.clone();
+
+    // 1. Get Tables
+    let tables = match driver.as_str() {
+        "mysql" => mysql::get_tables(&params).await,
+        "postgres" => postgres::get_tables(&params).await,
+        "sqlite" => sqlite::get_tables(&params).await,
+        _ => Err("Unsupported driver".into()),
+    }?;
+
+    // 2. Parallel fetch columns and foreign keys for each table
+    let mut tasks = Vec::new();
+    let params_arc = Arc::new(params); // Share params across threads
+
+    for table in tables {
+        let p = params_arc.clone();
+        let d = driver.clone();
+        let t_name = table.name.clone();
+
+        tasks.push(tokio::spawn(async move {
+            let cols_res = match d.as_str() {
+                "mysql" => mysql::get_columns(&p, &t_name).await,
+                "postgres" => postgres::get_columns(&p, &t_name).await,
+                "sqlite" => sqlite::get_columns(&p, &t_name).await,
+                _ => Err("Unsupported driver".into()),
+            };
+
+            let fks_res = match d.as_str() {
+                "mysql" => mysql::get_foreign_keys(&p, &t_name).await,
+                "postgres" => postgres::get_foreign_keys(&p, &t_name).await,
+                "sqlite" => sqlite::get_foreign_keys(&p, &t_name).await,
+                _ => Err("Unsupported driver".into()),
+            };
+
+            match (cols_res, fks_res) {
+                (Ok(columns), Ok(foreign_keys)) => Ok(crate::models::TableSchema {
+                    name: t_name,
+                    columns,
+                    foreign_keys,
+                }),
+                (Err(e), _) => Err(e),
+                (_, Err(e)) => Err(e),
+            }
+        }));
+    }
+
+    let results = futures::future::join_all(tasks).await;
+    
+    // Collect results, filtering out failures but logging them (or just failing?)
+    // For a diagram, partial success is better than total failure, but let's be strict for now or log errors.
+    let mut schema = Vec::new();
+    for res in results {
+        match res {
+            Ok(Ok(table_schema)) => schema.push(table_schema),
+            Ok(Err(e)) => eprintln!("Failed to fetch schema for table: {}", e),
+            Err(e) => eprintln!("Task join error: {}", e),
+        }
+    }
+
+    Ok(schema)
+}
+
+#[tauri::command]
 pub async fn save_connection<R: Runtime>(
     app: AppHandle<R>,
     name: String,

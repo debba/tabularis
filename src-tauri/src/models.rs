@@ -74,3 +74,10 @@ pub struct QueryResult {
     pub truncated: bool,
     pub pagination: Option<Pagination>,
 }
+
+#[derive(Debug, Serialize)]
+pub struct TableSchema {
+    pub name: String,
+    pub columns: Vec<TableColumn>,
+    pub foreign_keys: Vec<ForeignKey>,
+}

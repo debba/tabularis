@@ -4,6 +4,32 @@ export interface Pagination {
   total_rows: number;
 }
 
+export interface TableColumn {
+  name: string;
+  data_type: string;
+  is_pk: boolean;
+  is_nullable: boolean;
+}
+
+export interface ForeignKey {
+  name: string;
+  column_name: string;
+  ref_table: string;
+  ref_column: string;
+}
+
+export interface TableSchema {
+  name: string;
+  columns: TableColumn[];
+  foreign_keys: ForeignKey[];
+}
+
+export interface SchemaCache {
+  data: TableSchema[];
+  version: number;
+  timestamp: number;
+}
+
 export interface QueryResult {
   columns: string[];
   rows: unknown[][];
@@ -22,7 +48,7 @@ export interface FlowState {
 export interface Tab {
   id: string;
   title: string;
-  type: 'console' | 'table' | 'query_builder';
+  type: 'console' | 'table' | 'query_builder' | 'schema_diagram';
   query: string;
   result: QueryResult | null;
   error: string;

@@ -27,6 +27,7 @@ import {
   Link as LinkIcon,
   Folder,
   Cpu,
+  Network,
 } from "lucide-react";
 import clsx from "clsx";
 import { ask, message } from "@tauri-apps/plugin-dialog";
@@ -737,13 +738,22 @@ export const Sidebar = () => {
                 <Database size={16} className="text-blue-400" />
                 <span>{t("sidebar.explorer")}</span>
               </div>
-              <button
-                onClick={() => setIsExplorerCollapsed(true)}
-                className="text-slate-500 hover:text-slate-300 transition-colors p-1 hover:bg-slate-800 rounded"
-                title="Collapse Explorer"
-              >
-                <PanelLeftClose size={16} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => navigate("/editor", { state: { openTabType: 'schema_diagram' } })}
+                  className="text-slate-500 hover:text-orange-400 transition-colors p-1 hover:bg-slate-800 rounded"
+                  title="View Schema Diagram"
+                >
+                  <Network size={16} className="rotate-90" />
+                </button>
+                <button
+                  onClick={() => setIsExplorerCollapsed(true)}
+                  className="text-slate-500 hover:text-slate-300 transition-colors p-1 hover:bg-slate-800 rounded"
+                  title="Collapse Explorer"
+                >
+                  <PanelLeftClose size={16} />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto py-2">
