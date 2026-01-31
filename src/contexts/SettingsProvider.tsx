@@ -29,30 +29,51 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
            // Save migrated data to backend
            await invoke('save_config', { config: finalSettings });
         } else {
-          // Use backend config
-          finalSettings = {
-            ...DEFAULT_SETTINGS,
-            ...config,
-          };
+         // Use backend config
+           finalSettings = {
+             ...DEFAULT_SETTINGS,
+             ...config,
+           };
+           
+           // If aiEnabled is null or undefined in config, treat it as disabled (false)
+           if (config.aiEnabled === null || config.aiEnabled === undefined) {
+             finalSettings.aiEnabled = false;
+           }
         }
 
-        // Smart detect AI Provider if not set
-        if (!finalSettings.aiProvider) {
-            const hasOpenAI = await invoke<boolean>('check_ai_key', { provider: 'openai' });
-            if (hasOpenAI) {
-                finalSettings.aiProvider = 'openai';
-            } else {
-                const hasAnthropic = await invoke<boolean>('check_ai_key', { provider: 'anthropic' });
-                if (hasAnthropic) {
-                    finalSettings.aiProvider = 'anthropic';
-                } else {
-                    const hasOpenRouter = await invoke<boolean>('check_ai_key', { provider: 'openrouter' });
-                    if (hasOpenRouter) finalSettings.aiProvider = 'openrouter';
-                }
-            }
-            // If we detected one, update state but maybe not save immediately to avoid overwriting user intent?
-            // Better to update state so UI reflects it.
-        }
+         // Smart detect AI Provider and Model if aiEnabled but provider/model not set
+         if (finalSettings.aiEnabled && (!finalSettings.aiProvider || !finalSettings.aiModel)) {
+             // First, detect which provider has an API key
+             let detectedProvider: string | null = null;
+             const hasOpenAI = await invoke<boolean>('check_ai_key', { provider: 'openai' });
+             if (hasOpenAI) {
+                 detectedProvider = 'openai';
+             } else {
+                 const hasAnthropic = await invoke<boolean>('check_ai_key', { provider: 'anthropic' });
+                 if (hasAnthropic) {
+                     detectedProvider = 'anthropic';
+                 } else {
+                     const hasOpenRouter = await invoke<boolean>('check_ai_key', { provider: 'openrouter' });
+                     if (hasOpenRouter) detectedProvider = 'openrouter';
+                 }
+             }
+             
+             if (detectedProvider) {
+                 // Get available models for the detected provider
+                 const models = await invoke<Record<string, string[]>>('get_ai_models');
+                 const providerModels = models[detectedProvider] || [];
+                 const firstModel = providerModels[0] || null;
+                 
+                 // Only set provider if not already set
+                 if (!finalSettings.aiProvider) {
+                     finalSettings.aiProvider = detectedProvider as any;
+                 }
+                 // Only set model if not already set AND we have a model available
+                 if (!finalSettings.aiModel && firstModel) {
+                     finalSettings.aiModel = firstModel;
+                 }
+             }
+         }
 
         setSettings(finalSettings);
       } catch (error) {
