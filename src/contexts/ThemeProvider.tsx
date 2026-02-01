@@ -23,9 +23,12 @@ interface AppConfig {
   theme?: string;
   language?: string;
   resultPageSize?: number;
+  fontFamily?: string;
+  fontSize?: number;
   aiEnabled?: boolean;
   aiProvider?: string;
   aiModel?: string;
+  aiCustomModels?: Record<string, string[]>;
 }
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {

@@ -13,7 +13,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     const loadSettings = async () => {
       try {
         const config = await invoke<Partial<Settings>>('get_config');
-        
+
         // Migration logic: Check localStorage if backend is empty/default
         const savedLocal = localStorage.getItem('tabularis_settings');
         let finalSettings = { ...DEFAULT_SETTINGS };
