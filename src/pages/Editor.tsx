@@ -195,7 +195,8 @@ export const Editor = () => {
   const [isAiExplainModalOpen, setIsAiExplainModalOpen] = useState(false);
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [tempPage, setTempPage] = useState("1");
-  
+  const [applyToAll, setApplyToAll] = useState(false);
+
   const activeTabType = activeTab?.type;
   const activeTabQuery = activeTab?.query;
   const isTableTab = activeTab?.type === "table";
@@ -299,7 +300,8 @@ export const Editor = () => {
       paramsOverride?: Record<string, string>,
       filterOverride?: string,
       sortOverride?: string,
-      limitOverride?: number
+      limitOverride?: number,
+      preservePendingChanges?: { pendingChanges?: Record<string, { pkOriginalValue: unknown; changes: Record<string, unknown> }>; pendingDeletions?: Record<string, unknown> }
     ) => {
       const targetTabId = tabId || activeTabIdRef.current;
       if (!activeConnectionId || !targetTabId) return;
@@ -372,9 +374,9 @@ export const Editor = () => {
         result: null,
         executionTime: null,
         page: pageNum,
-        // Clear pending changes and selection when running a new query
-        pendingChanges: undefined,
-        pendingDeletions: undefined,
+        // Clear pending changes and selection when running a new query (unless preserving)
+        pendingChanges: preservePendingChanges?.pendingChanges,
+        pendingDeletions: preservePendingChanges?.pendingDeletions,
         selectedRows: [],
       });
 
@@ -581,8 +583,8 @@ export const Editor = () => {
     const updates: { pkVal: unknown; colName: string; newVal: unknown }[] = [];
     const deletions: unknown[] = [];
 
-    // Filter pending changes by selected rows IF there is a selection
-    const hasSelection = selectedRows && selectedRows.length > 0;
+    // Filter pending changes by selected rows IF there is a selection AND applyToAll is false
+    const hasSelection = !applyToAll && selectedRows && selectedRows.length > 0;
     const selectedPkSet = new Set<string>();
     
     if (hasSelection && activeTab.result) {
@@ -597,7 +599,7 @@ export const Editor = () => {
 
     if (pendingChanges) {
         for (const [pkKey, rowData] of Object.entries(pendingChanges)) {
-            // Apply filter if selection exists
+            // Apply filter if selection exists (and applyToAll is false)
             if (hasSelection && !selectedPkSet.has(pkKey)) continue;
 
             const { pkOriginalValue, changes } = rowData;
@@ -609,7 +611,7 @@ export const Editor = () => {
 
     if (pendingDeletions) {
         for (const [pkKey, pkVal] of Object.entries(pendingDeletions)) {
-             // Apply filter if selection exists
+             // Apply filter if selection exists (and applyToAll is false)
              if (hasSelection && !selectedPkSet.has(pkKey)) continue;
              deletions.push(pkVal);
         }
@@ -650,34 +652,35 @@ export const Editor = () => {
         const newPendingChanges = { ...(pendingChanges || {}) };
         const newPendingDeletions = { ...(pendingDeletions || {}) };
 
-        // If we processed everything, clear all. If partial, clear only processed.
-        if (!hasSelection) {
-             updateActiveTab({ pendingChanges: undefined, pendingDeletions: undefined, isLoading: false });
-        } else {
-             // Partial cleanup
-             updates.forEach(u => delete newPendingChanges[String(u.pkVal)]);
-             deletions.forEach(d => delete newPendingDeletions[String(d)]);
-             
-             // Cleanup empty change objects
-             Object.keys(newPendingChanges).forEach(key => {
-                 //  Dynamic key access in cleanup logic
-                 if (Object.keys(newPendingChanges[key]?.changes || {}).length === 0) delete newPendingChanges[key];
-             });
+        // Partial cleanup - remove only processed changes
+        updates.forEach(u => delete newPendingChanges[String(u.pkVal)]);
+        deletions.forEach(d => delete newPendingDeletions[String(d)]);
 
-             updateActiveTab({ 
-                 pendingChanges: Object.keys(newPendingChanges).length > 0 ? newPendingChanges : undefined, 
-                 pendingDeletions: Object.keys(newPendingDeletions).length > 0 ? newPendingDeletions : undefined, 
-                 isLoading: false 
-             });
-        }
-        
-        runQuery(activeTab.query, activeTab.page);
+        // Cleanup empty change objects
+        Object.keys(newPendingChanges).forEach(key => {
+            if (Object.keys(newPendingChanges[key]?.changes || {}).length === 0) delete newPendingChanges[key];
+        });
+
+        const remainingChanges = Object.keys(newPendingChanges).length > 0 ? newPendingChanges : undefined;
+        const remainingDeletions = Object.keys(newPendingDeletions).length > 0 ? newPendingDeletions : undefined;
+
+        // Refresh query preserving remaining pending changes
+        runQuery(
+            activeTab.query,
+            activeTab.page,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            { pendingChanges: remainingChanges, pendingDeletions: remainingDeletions }
+        );
     } catch (e) {
         console.error("Batch update failed", e);
         updateActiveTab({ isLoading: false });
         await message(t('dataGrid.updateFailed') + String(e), { title: t('common.error'), kind: 'error' });
     }
-  }, [activeTab, activeConnectionId, updateActiveTab, runQuery, t]);
+  }, [activeTab, activeConnectionId, updateActiveTab, runQuery, t, applyToAll]);
 
   const handleParamsSubmit = useCallback((values: Record<string, string>) => {
     const { pendingTabId, mode, sql, pendingPageNum } = queryParamsModal;
@@ -717,9 +720,9 @@ export const Editor = () => {
   const handleRollbackChanges = useCallback(() => {
     if (!activeTab) return;
     const { selectedRows, result, pkColumn, pendingChanges, pendingDeletions } = activeTab;
-    
-    // If no selection, rollback everything
-    if (!selectedRows || selectedRows.length === 0) {
+
+    // If applyToAll is true OR no selection, rollback everything
+    if (applyToAll || !selectedRows || selectedRows.length === 0) {
         updateActiveTab({ pendingChanges: undefined, pendingDeletions: undefined });
         return;
     }
@@ -744,12 +747,12 @@ export const Editor = () => {
         delete newPendingDeletions[pk];
     });
 
-    updateActiveTab({ 
-        pendingChanges: Object.keys(newPendingChanges).length > 0 ? newPendingChanges : undefined, 
+    updateActiveTab({
+        pendingChanges: Object.keys(newPendingChanges).length > 0 ? newPendingChanges : undefined,
         pendingDeletions: Object.keys(newPendingDeletions).length > 0 ? newPendingDeletions : undefined
     });
 
-  }, [activeTab, updateActiveTab]);
+  }, [activeTab, updateActiveTab, applyToAll]);
 
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -1464,18 +1467,30 @@ export const Editor = () => {
                         
                         {hasPendingChanges && (
                             <div className="flex items-center gap-1 ml-2 border border-blue-900 bg-blue-900/20 rounded px-1 py-0.5">
-                                <button 
+                                <label className="flex items-center gap-1.5 px-2 py-1 cursor-pointer select-none group">
+                                    <input
+                                        type="checkbox"
+                                        checked={applyToAll}
+                                        onChange={(e) => setApplyToAll(e.target.checked)}
+                                        className="w-3.5 h-3.5 cursor-pointer accent-blue-500"
+                                    />
+                                    <span className="text-[10px] text-secondary group-hover:text-primary transition-colors">
+                                        {t("editor.applyToAll")}
+                                    </span>
+                                </label>
+                                <div className="w-[1px] h-4 bg-blue-900/50 mx-0.5"></div>
+                                <button
                                     onClick={handleSubmitChanges}
-                                    disabled={!selectionHasPending}
+                                    disabled={!applyToAll && !selectionHasPending}
                                     className="flex items-center gap-1.5 px-2 h-7 text-green-400 hover:bg-green-900/20 hover:text-green-300 rounded text-xs font-medium border border-transparent hover:border-green-900/50 transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-transparent disabled:cursor-not-allowed"
                                     title={t("editor.submitChanges")}
                                 >
                                     <Check size={14} />
                                     <span>Submit</span>
                                 </button>
-                                <button 
+                                <button
                                     onClick={handleRollbackChanges}
-                                    disabled={!selectionHasPending}
+                                    disabled={!applyToAll && !selectionHasPending}
                                     className="flex items-center gap-1.5 px-2 h-7 text-secondary hover:bg-surface-secondary hover:text-primary rounded text-xs font-medium border border-transparent hover:border-strong transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-transparent disabled:cursor-not-allowed"
                                     title={t("editor.rollbackChanges")}
                                 >
