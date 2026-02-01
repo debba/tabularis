@@ -1,3 +1,19 @@
+## [0.8.5](https://github.com/debba/tabularis/compare/v0.8.4...v0.8.5) (2026-02-01)
+
+
+### Bug Fixes
+
+* **backend:** prepend app name to ER diagram window title ([c3c652c](https://github.com/debba/tabularis/commit/c3c652cf164042b08fef95dc466be88826406304))
+* **sidebar:** add error handling for index deletion and i18n messages ([346adc8](https://github.com/debba/tabularis/commit/346adc8f43479e9767925910f72e220ca6893cd0))
+
+
+### Features
+
+* **editor:** add apply-to-all toggle for batch updates ([e5e5aa8](https://github.com/debba/tabularis/commit/e5e5aa8bd20ac30e42ef32ebe90b52933416eebb))
+* **sidebar:** add Generate SQL modal for tables ([0c077ca](https://github.com/debba/tabularis/commit/0c077caabefe2f0983f29eb829a9456227e65c53))
+
+
+
 ## [0.8.4](https://github.com/debba/tabularis/compare/v0.8.3...v0.8.4) (2026-02-01)
 
 
