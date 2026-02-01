@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Save, Loader2, AlertTriangle } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { SqlPreview } from './SqlPreview';
 
 interface CreateForeignKeyModalProps {
   isOpen: boolean;
@@ -127,15 +128,15 @@ export const CreateForeignKeyModal = ({
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]">
       <div className="bg-elevated rounded-xl shadow-2xl w-[600px] border border-strong flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-default bg-surface-secondary/50 rounded-t-xl">
-           <h2 className="text-lg font-bold text-white">{t('createFk.title')}</h2>
-           <button onClick={onClose} className="text-secondary hover:text-white transition-colors">
+           <h2 className="text-lg font-semibold text-primary">{t('createFk.title')}</h2>
+           <button onClick={onClose} className="text-secondary hover:text-primary transition-colors">
              <X size={20} />
            </button>
         </div>
 
         <div className="p-6 flex flex-col gap-4">
             {driver === 'sqlite' && (
-                <div className="bg-yellow-900/20 border border-yellow-700/50 text-yellow-200 text-xs p-3 rounded flex items-start gap-2">
+                <div className="bg-warning-bg border border-warning-border text-warning-text text-xs p-3 rounded flex items-start gap-2">
                     <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                     <span>{t('sidebar.sqliteFkError')}</span>
                 </div>
@@ -143,10 +144,10 @@ export const CreateForeignKeyModal = ({
 
             <div>
                 <label className="block text-xs font-semibold text-secondary mb-1 uppercase">{t('createFk.name')}</label>
-                <input 
+                <input
                     value={fkName}
                     onChange={(e) => setFkName(e.target.value)}
-                    className="w-full bg-base border border-strong rounded p-2 text-white text-sm focus:border-blue-500 outline-none font-mono"
+                    className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none font-mono"
                 />
             </div>
 
@@ -156,7 +157,7 @@ export const CreateForeignKeyModal = ({
                     <select 
                         value={localColumn}
                         onChange={(e) => setLocalColumn(e.target.value)}
-                        className="w-full bg-base border border-strong rounded p-2 text-white text-sm outline-none"
+                        className="w-full bg-base border border-strong rounded p-2 text-primary text-sm outline-none"
                     >
                         {localColumns.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                     </select>
@@ -167,7 +168,7 @@ export const CreateForeignKeyModal = ({
                     <select 
                         value={refTable}
                         onChange={(e) => setRefTable(e.target.value)}
-                        className="w-full bg-base border border-strong rounded p-2 text-white text-sm outline-none"
+                        className="w-full bg-base border border-strong rounded p-2 text-primary text-sm outline-none"
                     >
                         {tables.map(t_info => <option key={t_info.name} value={t_info.name}>{t_info.name}</option>)}
                     </select>
@@ -186,7 +187,7 @@ export const CreateForeignKeyModal = ({
                         <select 
                             value={refColumn}
                             onChange={(e) => setRefColumn(e.target.value)}
-                            className="w-full bg-base border border-strong rounded p-2 text-white text-sm outline-none"
+                            className="w-full bg-base border border-strong rounded p-2 text-primary text-sm outline-none"
                         >
                             {refColumns.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                         </select>
@@ -200,7 +201,7 @@ export const CreateForeignKeyModal = ({
                     <select 
                         value={onUpdate}
                         onChange={(e) => setOnUpdate(e.target.value)}
-                        className="w-full bg-base border border-strong rounded p-2 text-white text-sm outline-none"
+                        className="w-full bg-base border border-strong rounded p-2 text-primary text-sm outline-none"
                     >
                         {ON_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
                     </select>
@@ -210,33 +211,33 @@ export const CreateForeignKeyModal = ({
                     <select 
                         value={onDelete}
                         onChange={(e) => setOnDelete(e.target.value)}
-                        className="w-full bg-base border border-strong rounded p-2 text-white text-sm outline-none"
+                        className="w-full bg-base border border-strong rounded p-2 text-primary text-sm outline-none"
                     >
                         {ON_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
                     </select>
                 </div>
             </div>
 
-            <div className="bg-base border border-default rounded p-3 mt-2">
+            <div className="mt-2">
                 <div className="text-[10px] text-muted mb-1 uppercase tracking-wider">{t('createFk.sqlPreview')}</div>
-                <pre className="text-xs font-mono text-green-400 whitespace-pre-wrap break-all">{sqlPreview}</pre>
+                <SqlPreview sql={sqlPreview} height="80px" showLineNumbers={true} />
             </div>
 
             {error && (
-                <div className="text-red-400 text-xs bg-red-900/10 border border-red-900/30 p-2 rounded">
+                <div className="text-error-text text-xs bg-error-bg border border-error-border p-2 rounded">
                     {error}
                 </div>
             )}
         </div>
 
         <div className="p-4 bg-surface-secondary/50 border-t border-default rounded-b-xl flex justify-end gap-3">
-           <button onClick={onClose} className="px-4 py-2 text-secondary hover:text-white font-medium text-sm transition-colors">
+           <button onClick={onClose} className="px-4 py-2 text-secondary hover:text-primary hover:bg-surface-secondary font-medium text-sm rounded-lg transition-colors">
              {t('createFk.cancel')}
            </button>
            <button 
              onClick={handleCreate}
              disabled={loading || driver === 'sqlite'}
-             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-900/20 transition-all"
+             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-primary px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-900/20 transition-all"
            >
              {loading && <Loader2 size={16} className="animate-spin" />}
              <Save size={16} /> {t('createFk.create')}

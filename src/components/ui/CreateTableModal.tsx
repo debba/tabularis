@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { X, Plus, Trash2, Save, Code, Loader2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useDatabase } from '../../hooks/useDatabase';
+import { SqlPreview } from './SqlPreview';
 
 // Common types across DBs (simplified for MVP)
 const COMMON_TYPES = [
@@ -160,17 +161,17 @@ export const CreateTableModal = ({ isOpen, onClose, onSuccess }: CreateTableModa
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-elevated rounded-xl shadow-2xl w-[900px] border border-strong flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-default bg-surface-secondary/50 rounded-t-xl">
+        <div className="flex items-center justify-between p-4 border-b border-default bg-base rounded-t-xl">
           <div className="flex items-center gap-3">
-             <div className="bg-blue-600/20 p-2 rounded-lg border border-blue-600/30">
+             <div className="bg-blue-900/30 p-2 rounded-lg">
                 <Plus className="text-blue-400" size={20} />
              </div>
              <div>
-                <h2 className="text-lg font-bold text-white">{t('createTable.title')}</h2>
+                <h2 className="text-lg font-semibold text-primary">{t('createTable.title')}</h2>
                 <p className="text-xs text-secondary font-mono">{currentDriver.toUpperCase()}</p>
              </div>
           </div>
-          <button onClick={onClose} className="text-secondary hover:text-white transition-colors">
+          <button onClick={onClose} className="text-secondary hover:text-primary transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -181,10 +182,10 @@ export const CreateTableModal = ({ isOpen, onClose, onSuccess }: CreateTableModa
             {/* Table Name */}
             <div>
                 <label className="block text-xs font-semibold text-secondary mb-1 uppercase tracking-wider">{t('createTable.tableName')}</label>
-                <input 
+                <input
                     value={tableName}
                     onChange={(e) => setTableName(e.target.value)}
-                    className="w-full bg-base border border-strong rounded-lg px-4 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all font-mono"
+                    className="w-full bg-base border border-strong rounded-lg px-4 py-2 text-primary focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all font-mono"
                     placeholder={t('createTable.tableNamePlaceholder')}
                     autoFocus
                 />
@@ -216,15 +217,13 @@ export const CreateTableModal = ({ isOpen, onClose, onSuccess }: CreateTableModa
                         </thead>
                         <tbody>
                             {columns.map((col) => (
-                                <tr key={col.id} className="border-b border-default/50 hover:bg-surface-secondary/30 group">
-                                    <td className="p-2 text-center text-surface-tertiary text-xs">
-                                        ⋮
-                                    </td>
+                                <tr key={col.id} className="hover:bg-surface-secondary/30 group">
+                                    <td className="p-2 w-8"></td>
                                     <td className="p-2">
-                                        <input 
+                                        <input
                                             value={col.name}
                                             onChange={(e) => updateColumn(col.id, 'name', e.target.value)}
-                                            className="w-full bg-transparent text-sm text-white focus:outline-none border-b border-transparent focus:border-blue-500 font-mono placeholder:text-surface-tertiary"
+                                            className="w-full bg-transparent text-sm text-primary focus:outline-none border-b border-transparent focus:border-blue-500 font-mono placeholder:text-muted"
                                             placeholder="col_name"
                                         />
                                     </td>
@@ -312,9 +311,7 @@ export const CreateTableModal = ({ isOpen, onClose, onSuccess }: CreateTableModa
                 </button>
                 
                 {showSqlPreview && (
-                    <div className="h-32 bg-base rounded-lg border border-default p-3 overflow-auto">
-                        <pre className="text-xs font-mono text-green-400 whitespace-pre-wrap">{sqlPreview}</pre>
-                    </div>
+                    <SqlPreview sql={sqlPreview} height="128px" showLineNumbers={true} />
                 )}
             </div>
 
@@ -326,14 +323,14 @@ export const CreateTableModal = ({ isOpen, onClose, onSuccess }: CreateTableModa
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-surface-secondary/50 border-t border-default rounded-b-xl flex justify-end gap-3">
-          <button 
+        <div className="p-4 bg-base/50 border-t border-default rounded-b-xl flex justify-end gap-3">
+          <button
             onClick={onClose}
-            className="px-4 py-2 text-secondary hover:text-white font-medium text-sm transition-colors"
+            className="px-4 py-2 text-secondary hover:text-primary transition-colors text-sm"
           >
             {t('createTable.cancel')}
           </button>
-          <button 
+          <button
             onClick={handleCreate}
             disabled={loading || !tableName.trim()}
             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-900/20 transition-all"

@@ -99,11 +99,11 @@ export const AiQueryModal = ({ isOpen, onClose, onInsert }: AiQueryModalProps) =
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-default">
-          <div className="flex items-center gap-2 text-white font-medium">
+          <div className="flex items-center gap-2 text-primary font-medium">
             <Sparkles size={18} className="text-yellow-400" />
             <span>AI Query Assist</span>
           </div>
-          <button onClick={onClose} className="text-secondary hover:text-white transition-colors">
+          <button onClick={onClose} className="text-secondary hover:text-primary transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -111,7 +111,7 @@ export const AiQueryModal = ({ isOpen, onClose, onInsert }: AiQueryModalProps) =
         {/* Content */}
         <div className="p-6 space-y-4">
           {!settings.aiProvider && (
-             <div className="bg-yellow-900/20 border border-yellow-500/30 text-yellow-200 px-4 py-3 rounded text-sm">
+             <div className="bg-warning-bg border border-warning-border text-warning-text px-4 py-3 rounded text-sm">
                 ⚠️ AI Provider not configured. Please go to Settings {'>'} AI.
              </div>
           )}
@@ -124,7 +124,7 @@ export const AiQueryModal = ({ isOpen, onClose, onInsert }: AiQueryModalProps) =
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="e.g. Find all users who signed up last month and ordered a 'Premium' plan..."
-              className="w-full h-32 bg-base border border-strong rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition-colors resize-none"
+              className="w-full h-32 bg-base border border-strong rounded-lg p-3 text-primary focus:outline-none focus:border-focus transition-colors resize-none"
               autoFocus
               onKeyDown={(e) => {
                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -135,7 +135,7 @@ export const AiQueryModal = ({ isOpen, onClose, onInsert }: AiQueryModalProps) =
           </div>
 
           {error && (
-            <div className="text-red-400 text-sm bg-red-900/10 p-2 rounded border border-red-900/30">
+            <div className="text-error-text text-sm bg-error-bg p-2 rounded border border-error-border">
               {error}
             </div>
           )}
@@ -152,14 +152,14 @@ export const AiQueryModal = ({ isOpen, onClose, onInsert }: AiQueryModalProps) =
         <div className="flex items-center justify-end gap-2 p-4 border-t border-default bg-elevated/50 rounded-b-xl">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-secondary hover:text-white hover:bg-surface-secondary rounded-lg text-sm transition-colors"
+            className="px-4 py-2 text-secondary hover:text-primary hover:bg-surface-secondary rounded-lg text-sm transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleGenerate}
             disabled={isLoading || !prompt.trim() || !settings.aiProvider}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-primary rounded-lg text-sm font-medium transition-colors"
           >
             {isLoading ? (
               <>

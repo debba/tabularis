@@ -5,6 +5,7 @@ Adhere to the rules defined in the [rules directory](./.rules/):
 - [General Rules](./.rules/general.md) (Logging & Language)
 - [TypeScript Rules](./.rules/typescript.md)
 - [React Rules](./.rules/react.md)
+- [Modal Styling Rules](./.rules/modals.md) (Modal component structure and styling)
 
 ## Project Log
 

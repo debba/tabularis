@@ -42,8 +42,10 @@
     "countRows": "Count Rows",
     "viewSchema": "View Schema",
     "addColumn": "Add Column",
+    "addIndex": "Add Index",
     "deleteIndex": "Delete Index",
     "deleteIndexConfirm": "Delete index \"{{name}}\"?",
+    "addFk": "Add Foreign Key",
     "deleteFk": "Delete FK",
     "deleteFkConfirm": "Delete foreign key \"{{name}}\"?",
     "sqliteFkError": "SQLite does not support dropping FKs via ALTER TABLE.",
@@ -166,6 +168,7 @@
   "newConnection": {
     "titleNew": "New Connection",
     "titleEdit": "Edit Connection",
+    "subtitle": "Configure database connection settings",
     "name": "Connection Name",
     "namePlaceholder": "My Production DB",
     "nameRequired": "Connection name is required",

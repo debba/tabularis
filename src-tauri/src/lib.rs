@@ -103,6 +103,29 @@ pub fn run() {
             theme_commands::import_theme,
             theme_commands::export_theme,
         ])
+        .setup(|app| {
+            let handle = app.handle().clone();
+
+            if let (Some(splashscreen_window), Some(main_window)) = (
+                handle.get_webview_window("splashscreen"),
+                handle.get_webview_window("main")
+            ) {
+                // Show splash screen immediately
+                let _ = splashscreen_window.show();
+
+                // Wait for main window to finish loading, then close splash and show main
+                tauri::async_runtime::spawn(async move {
+                    // Wait a bit for the main window to load
+                    std::thread::sleep(std::time::Duration::from_millis(1500));
+
+                    // Close splash and show main
+                    let _ = splashscreen_window.close();
+                    let _ = main_window.show();
+                });
+            }
+
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

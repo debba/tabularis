@@ -52,7 +52,40 @@ pub fn save_config(app: AppHandle, config: AppConfig) -> Result<(), String> {
             fs::create_dir_all(&config_dir).map_err(|e| e.to_string())?;
         }
         let config_path = config_dir.join("config.json");
-        let content = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
+
+        // Load existing config and merge with new values
+        let mut existing_config = load_config_internal(&app);
+
+        // Merge: only update fields that are Some in the new config
+        if config.theme.is_some() {
+            existing_config.theme = config.theme;
+        }
+        if config.language.is_some() {
+            existing_config.language = config.language;
+        }
+        if config.result_page_size.is_some() {
+            existing_config.result_page_size = config.result_page_size;
+        }
+        if config.font_family.is_some() {
+            existing_config.font_family = config.font_family;
+        }
+        if config.font_size.is_some() {
+            existing_config.font_size = config.font_size;
+        }
+        if config.ai_enabled.is_some() {
+            existing_config.ai_enabled = config.ai_enabled;
+        }
+        if config.ai_provider.is_some() {
+            existing_config.ai_provider = config.ai_provider;
+        }
+        if config.ai_model.is_some() {
+            existing_config.ai_model = config.ai_model;
+        }
+        if config.ai_custom_models.is_some() {
+            existing_config.ai_custom_models = config.ai_custom_models;
+        }
+
+        let content = serde_json::to_string_pretty(&existing_config).map_err(|e| e.to_string())?;
         fs::write(config_path, content).map_err(|e| e.to_string())?;
         Ok(())
     } else {

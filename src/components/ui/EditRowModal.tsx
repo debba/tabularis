@@ -213,7 +213,7 @@ export const EditRowModal = ({ isOpen, onClose, tableName, pkColumn, rowData, co
 
         <div className="p-6 overflow-y-auto space-y-4">
           {error && (
-            <div className="p-3 bg-red-900/20 border border-red-900/50 text-red-200 rounded text-sm">
+            <div className="p-3 bg-error-bg border border-error-border text-error-text rounded text-sm">
               {error}
             </div>
           )}
@@ -227,7 +227,7 @@ export const EditRowModal = ({ isOpen, onClose, tableName, pkColumn, rowData, co
             return (
               <div key={col}>
                 <label className="block text-xs font-medium text-secondary mb-1">
-                  {col} <span className="text-surface-tertiary">{typeHint}</span> {isPk && <span className="text-yellow-500">(PK)</span>}
+                  {col} <span className="text-surface-tertiary">{typeHint}</span> {isPk && <span className="text-semantic-pk">(PK)</span>}
                 </label>
                 
                 {foreignKeys.find(fk => fk.column_name === col) ? (
@@ -237,7 +237,7 @@ export const EditRowModal = ({ isOpen, onClose, tableName, pkColumn, rowData, co
                             value={String(formData[col] ?? '')}
                             onChange={(e) => handleInputChange(col, e.target.value)}
                             className={`
-                                w-full bg-elevated border rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer
+                                w-full bg-elevated border rounded px-3 py-2 text-primary focus:outline-none focus:border-focus appearance-none cursor-pointer
                                 ${isPk ? 'border-default text-muted cursor-not-allowed' : 'border-strong'}
                             `}
                             style={{
@@ -273,7 +273,7 @@ export const EditRowModal = ({ isOpen, onClose, tableName, pkColumn, rowData, co
                       value={formData[col] === null ? '' : String(formData[col])}
                       onChange={(e) => handleInputChange(col, e.target.value)}
                       className={`
-                        w-full bg-elevated border rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500
+                        w-full bg-elevated border rounded px-3 py-2 text-primary focus:outline-none focus:border-focus
                         ${isPk ? 'border-default text-muted cursor-not-allowed' : 'border-strong'}
                       `}
                       placeholder={formData[col] === null ? 'NULL' : ''}
@@ -287,14 +287,14 @@ export const EditRowModal = ({ isOpen, onClose, tableName, pkColumn, rowData, co
         <div className="p-4 border-t border-strong bg-surface-secondary/50 flex justify-end gap-3 rounded-b-lg">
           <button 
             onClick={onClose}
-            className="px-4 py-2 text-secondary hover:text-white font-medium text-sm"
+            className="px-4 py-2 text-secondary hover:text-primary font-medium text-sm"
           >
             {t('editRow.cancel')}
           </button>
           <button 
             onClick={handleSave}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded font-medium text-sm flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-500 text-primary px-6 py-2 rounded font-medium text-sm flex items-center gap-2"
           >
             {loading && <Loader2 size={16} className="animate-spin" />}
             {t('editRow.save')}

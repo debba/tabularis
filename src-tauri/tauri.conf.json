@@ -12,11 +12,27 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "tabularis",
         "width": 1280,
         "height": 800,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "backgroundColor": "#020617",
+        "visible": false
+      },
+      {
+        "label": "splashscreen",
+        "url": "splash.html",
+        "width": 500,
+        "height": 400,
+        "resizable": false,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": false,
+        "alwaysOnTop": true,
+        "center": true,
+        "backgroundColor": "#020617"
       }
     ],
     "security": {

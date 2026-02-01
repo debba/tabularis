@@ -1,5 +1,52 @@
 @import "tailwindcss";
 
+@theme {
+  /* Expose CSS variables as Tailwind colors */
+  --color-base: var(--bg-base);
+  --color-elevated: var(--bg-elevated);
+  --color-overlay: var(--bg-overlay);
+  --color-input: var(--bg-input);
+  --color-tooltip: var(--bg-tooltip);
+
+  --color-surface-primary: var(--surface-primary);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-tertiary: var(--surface-tertiary);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
+  --color-surface-disabled: var(--surface-disabled);
+
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-disabled: var(--text-disabled);
+  --color-accent: var(--text-accent);
+  --color-inverse: var(--text-inverse);
+
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-secondary: var(--accent-secondary);
+  --color-accent-success: var(--accent-success);
+  --color-accent-warning: var(--accent-warning);
+  --color-accent-error: var(--accent-error);
+  --color-accent-info: var(--accent-info);
+
+  --color-subtle: var(--border-subtle);
+  --color-default: var(--border-default);
+  --color-strong: var(--border-strong);
+  --color-focus: var(--border-focus);
+
+  --color-semantic-pk: var(--semantic-pk);
+  --color-semantic-fk: var(--semantic-fk);
+  --color-semantic-string: var(--semantic-string);
+  --color-semantic-number: var(--semantic-number);
+  --color-semantic-boolean: var(--semantic-boolean);
+  --color-semantic-date: var(--semantic-date);
+  --color-semantic-null: var(--semantic-null);
+  --color-semantic-index: var(--semantic-index);
+  --color-semantic-modified: var(--semantic-modified);
+  --color-semantic-deleted: var(--semantic-deleted);
+  --color-semantic-new: var(--semantic-new);
+}
+
 :root {
   font-family: var(--font-base, Inter, system-ui, Avenir, Helvetica, Arial, sans-serif);
   font-size: var(--font-size-base, 14px);
@@ -32,7 +79,28 @@
   --accent-warning: #f59e0b;
   --accent-error: #ef4444;
   --accent-info: #06b6d4;
-  
+
+  /* Status colors - extended variants for UI states */
+  --color-error: #ef4444;
+  --color-error-text: #f87171;
+  --color-error-bg: rgba(127, 29, 29, 0.2);
+  --color-error-border: rgba(127, 29, 29, 0.5);
+
+  --color-success: #22c55e;
+  --color-success-text: #4ade80;
+  --color-success-bg: rgba(20, 83, 45, 0.2);
+  --color-success-border: rgba(20, 83, 45, 0.5);
+
+  --color-warning: #f59e0b;
+  --color-warning-text: #fbbf24;
+  --color-warning-bg: rgba(120, 53, 15, 0.2);
+  --color-warning-border: rgba(161, 98, 7, 0.5);
+
+  --color-info: #3b82f6;
+  --color-info-text: #60a5fa;
+  --color-info-bg: rgba(29, 78, 216, 0.2);
+  --color-info-border: rgba(29, 78, 216, 0.5);
+
   --border-subtle: #1e293b;
   --border-default: #334155;
   --border-strong: #475569;
@@ -65,6 +133,26 @@ body {
   min-height: 100vh;
   background-color: var(--bg-base);
   color: var(--text-primary);
+  /* Prevent text selection globally */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Re-enable text selection for inputs and editable content */
+input,
+textarea,
+select,
+.monaco-editor,
+.monaco-editor *,
+[contenteditable="true"],
+pre,
+code {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
 }
 
 @layer utilities {
@@ -135,6 +223,30 @@ body {
   .text-semantic-modified { color: var(--semantic-modified); }
   .text-semantic-deleted { color: var(--semantic-deleted); }
   .text-semantic-new { color: var(--semantic-new); }
+
+  /* Status state utilities */
+  .text-error { color: var(--color-error); }
+  .text-error-text { color: var(--color-error-text); }
+  .bg-error-bg { background-color: var(--color-error-bg); }
+  .border-error-border { border-color: var(--color-error-border); }
+
+  .text-success { color: var(--color-success); }
+  .text-success-text { color: var(--color-success-text); }
+  .bg-success-bg { background-color: var(--color-success-bg); }
+  .border-success-border { border-color: var(--color-success-border); }
+
+  .text-warning { color: var(--color-warning); }
+  .text-warning-text { color: var(--color-warning-text); }
+  .bg-warning-bg { background-color: var(--color-warning-bg); }
+  .border-warning-border { border-color: var(--color-warning-border); }
+
+  .text-info { color: var(--color-info); }
+  .text-info-text { color: var(--color-info-text); }
+  .bg-info-bg { background-color: var(--color-info-bg); }
+  .border-info-border { border-color: var(--color-info-border); }
+
+  /* Focus border utility */
+  .focus-border-focus:focus { border-color: var(--border-focus); }
 }
 
 /* Fix select dropdown options visibility - CRITICAL for dark theme */

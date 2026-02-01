@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Save, Loader2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { SqlPreview } from './SqlPreview';
 
 interface CreateIndexModalProps {
   isOpen: boolean;
@@ -94,8 +95,8 @@ export const CreateIndexModal = ({
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]">
       <div className="bg-elevated rounded-xl shadow-2xl w-[500px] border border-strong flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-default bg-surface-secondary/50 rounded-t-xl">
-           <h2 className="text-lg font-bold text-white">{t('createIndex.title')}</h2>
-           <button onClick={onClose} className="text-secondary hover:text-white transition-colors">
+           <h2 className="text-lg font-semibold text-primary">{t('createIndex.title')}</h2>
+           <button onClick={onClose} className="text-secondary hover:text-primary transition-colors">
              <X size={20} />
            </button>
         </div>
@@ -103,10 +104,10 @@ export const CreateIndexModal = ({
         <div className="p-6 flex flex-col gap-4">
             <div>
                 <label className="block text-xs font-semibold text-secondary mb-1 uppercase">{t('createIndex.name')}</label>
-                <input 
+                <input
                     value={indexName}
                     onChange={(e) => setIndexName(e.target.value)}
-                    className="w-full bg-base border border-strong rounded p-2 text-white text-sm focus:border-blue-500 outline-none font-mono"
+                    className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none font-mono"
                     placeholder="idx_table_column"
                     autoFocus
                 />
@@ -128,7 +129,7 @@ export const CreateIndexModal = ({
                                     onChange={() => toggleColumn(col.name)}
                                     className="accent-blue-500"
                                 />
-                                <span className={`text-sm font-mono ${selectedColumns.includes(col.name) ? 'text-blue-300' : 'text-secondary'}`}>
+                                <span className={`text-sm font-mono ${selectedColumns.includes(col.name) ? 'text-accent-primary' : 'text-secondary'}`}>
                                     {col.name}
                                 </span>
                             </label>
@@ -150,26 +151,26 @@ export const CreateIndexModal = ({
                 </label>
             </div>
 
-            <div className="bg-base border border-default rounded p-3 mt-2">
+            <div className="mt-2">
                 <div className="text-[10px] text-muted mb-1 uppercase tracking-wider">{t('createIndex.sqlPreview')}</div>
-                <pre className="text-xs font-mono text-green-400 whitespace-pre-wrap break-all">{sqlPreview}</pre>
+                <SqlPreview sql={sqlPreview} height="80px" showLineNumbers={true} />
             </div>
 
             {error && (
-                <div className="text-red-400 text-xs bg-red-900/10 border border-red-900/30 p-2 rounded">
+                <div className="text-error-text text-xs bg-error-bg border border-error-border p-2 rounded">
                     {error}
                 </div>
             )}
         </div>
 
         <div className="p-4 bg-surface-secondary/50 border-t border-default rounded-b-xl flex justify-end gap-3">
-           <button onClick={onClose} className="px-4 py-2 text-secondary hover:text-white font-medium text-sm transition-colors">
+           <button onClick={onClose} className="px-4 py-2 text-secondary hover:text-primary hover:bg-surface-secondary font-medium text-sm rounded-lg transition-colors">
              {t('createIndex.cancel')}
            </button>
-           <button 
+           <button
              onClick={handleCreate}
              disabled={loading || selectedColumns.length === 0}
-             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-900/20 transition-all"
+             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-primary px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-900/20 transition-all"
            >
              {loading && <Loader2 size={16} className="animate-spin" />}
              <Save size={16} /> {t('createIndex.create')}

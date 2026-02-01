@@ -42,8 +42,10 @@
     "countRows": "Conta righe",
     "viewSchema": "Vedi schema",
     "addColumn": "Aggiungi colonna",
+    "addIndex": "Aggiungi Indice",
     "deleteIndex": "Elimina indice",
     "deleteIndexConfirm": "Eliminare l'indice \"{{name}}\"?",
+    "addFk": "Aggiungi Chiave Esterna",
     "deleteFk": "Elimina FK",
     "deleteFkConfirm": "Eliminare la chiave esterna \"{{name}}\"?",
     "sqliteFkError": "SQLite non supporta l'eliminazione di FK tramite ALTER TABLE.",
@@ -166,6 +168,7 @@
   "newConnection": {
     "titleNew": "Nuova Connessione",
     "titleEdit": "Modifica Connessione",
+    "subtitle": "Configura le impostazioni di connessione al database",
     "name": "Nome Connessione",
     "namePlaceholder": "DB Produzione",
     "nameRequired": "Il nome della connessione è richiesto",

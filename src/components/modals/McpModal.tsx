@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import { X, Check, Copy, Cpu } from "lucide-react";
 import { message } from "@tauri-apps/plugin-dialog";
+import Editor from "@monaco-editor/react";
+import { useTheme } from "../../hooks/useTheme";
+import { loadMonacoTheme } from "../../themes/themeUtils";
 
 interface McpStatus {
   installed: boolean;
@@ -17,8 +20,19 @@ interface McpModalProps {
 
 export const McpModal = ({ isOpen, onClose }: McpModalProps) => {
   const { t } = useTranslation();
+  const { currentTheme } = useTheme();
   const [status, setStatus] = useState<McpStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const jsonValue = useMemo(() => JSON.stringify({
+    "mcpServers": {
+      "tabularis": {
+        "command": status?.executable_path || "tabularis",
+        "args": ["--mcp"]
+      }
+    }
+  }, null, 2), [status?.executable_path]);
 
   useEffect(() => {
     if (isOpen) {
@@ -69,7 +83,7 @@ export const McpModal = ({ isOpen, onClose }: McpModalProps) => {
           </div>
           <button
             onClick={onClose}
-            className="text-secondary hover:text-primary transition-colors"
+            className="p-2 text-secondary hover:text-primary hover:bg-surface-tertiary rounded-lg transition-colors"
           >
             <X size={20} />
           </button>
@@ -114,32 +128,39 @@ export const McpModal = ({ isOpen, onClose }: McpModalProps) => {
                         )}
                     </div>
 
-                    {!status?.installed && (
+                     {!status?.installed && (
                         <div className="space-y-2">
                              <label className="text-xs uppercase font-bold text-muted">{t("mcp.manualConfig")}</label>
                              <div className="relative group">
-                                <pre className="bg-black/80 text-secondary p-4 rounded-lg text-xs font-mono overflow-x-auto border border-default">
-{JSON.stringify({
-  "mcpServers": {
-    "tabularis": {
-      "command": status?.executable_path || "tabularis",
-      "args": ["--mcp"]
-    }
-  }
-}, null, 2)}
-                                </pre>
-                                <button 
-                                    onClick={() => navigator.clipboard.writeText(JSON.stringify({
-                                        "mcpServers": {
-                                            "tabularis": {
-                                                "command": status?.executable_path,
-                                                "args": ["--mcp"]
-                                            }
-                                        }
-                                    }, null, 2))}
-                                    className="absolute top-2 right-2 p-2 bg-surface-secondary text-secondary hover:text-primary rounded opacity-0 group-hover:opacity-100 transition-all"
+                                 <div className="rounded-lg overflow-hidden border border-default">
+                                  <Editor
+                                    height="180px"
+                                    defaultLanguage="json"
+                                    theme={currentTheme.id}
+                                    value={jsonValue}
+                                    beforeMount={(monaco) => loadMonacoTheme(currentTheme, monaco)}
+                                    options={{
+                                      readOnly: true,
+                                      minimap: { enabled: false },
+                                      lineNumbers: "off",
+                                      scrollBeyondLastLine: false,
+                                      folding: false,
+                                      domReadOnly: true,
+                                      contextmenu: false,
+                                      fontSize: 12,
+                                      padding: { top: 12, bottom: 12 },
+                                    }}
+                                  />
+                                </div>
+                                 <button 
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(jsonValue);
+                                      setCopied(true);
+                                      setTimeout(() => setCopied(false), 2000);
+                                    }}
+                                    className="absolute top-2 right-2 p-2 bg-surface-secondary text-secondary hover:text-primary rounded opacity-0 group-hover:opacity-100 transition-all z-10"
                                 >
-                                    <Copy size={14} />
+                                    {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
                                 </button>
                              </div>
                              <p className="text-xs text-muted">
@@ -152,10 +173,10 @@ export const McpModal = ({ isOpen, onClose }: McpModalProps) => {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-default bg-base/50 flex justify-end">
+        <div className="p-4 border-t border-default bg-base/50 flex justify-end gap-3">
             <button
                 onClick={onClose}
-                className="px-4 py-2 text-secondary hover:text-primary transition-colors text-sm"
+                className="px-4 py-2 text-secondary hover:text-primary hover:bg-surface-tertiary transition-colors text-sm rounded-lg"
             >
                 {t("common.close")}
             </button>

@@ -1140,7 +1140,7 @@ export const Sidebar = () => {
                   : contextMenu.type === "folder_indexes"
                     ? [
                         {
-                          label: t("sidebar.deleteIndex"), // Wait, folder?
+                          label: t("sidebar.addIndex"),
                           icon: Plus,
                           action: () => {
                             if (
@@ -1158,7 +1158,7 @@ export const Sidebar = () => {
                     : contextMenu.type === "folder_fks"
                       ? [
                           {
-                            label: t("sidebar.deleteFk"), // Wait, folder?
+                            label: t("sidebar.addFk"),
                             icon: Plus,
                             action: () => {
                               if (

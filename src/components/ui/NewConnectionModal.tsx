@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { X, Check, AlertCircle, Loader2 } from "lucide-react";
+import { X, Check, AlertCircle, Loader2, Database } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import clsx from "clsx";
 
@@ -181,25 +181,33 @@ export const NewConnectionModal = ({
   };
 
   const InputClass =
-    "w-full bg-elevated border border-strong rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 mt-1 text-sm";
-  const LabelClass = "block text-xs text-secondary font-medium mt-3";
+    "w-full px-3 pt-2 pb-1 bg-base border border-strong rounded-lg text-primary focus:border-blue-500 focus:outline-none leading-tight";
+  const LabelClass = "block text-xs uppercase font-bold text-muted";
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-surface-secondary rounded-lg shadow-xl w-[500px] border border-white/30 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] backdrop-blur-sm">
+      <div className="bg-elevated border border-strong rounded-xl shadow-2xl w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/20">
-          <h2 className="text-lg font-semibold text-white">
-            {initialConnection ? t("newConnection.titleEdit") : t("newConnection.titleNew")}
-          </h2>
-          <button onClick={onClose} className="text-secondary hover:text-white">
+        <div className="flex items-center justify-between p-4 border-b border-default bg-base">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-900/30 rounded-lg">
+              <Database size={20} className="text-blue-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-primary">
+                {initialConnection ? t("newConnection.titleEdit") : t("newConnection.titleNew")}
+              </h2>
+              <p className="text-xs text-secondary">{t("newConnection.subtitle")}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 text-secondary hover:text-primary hover:bg-surface-tertiary rounded-lg transition-colors">
             <X size={20} />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-6 overflow-y-auto">
-          <div>
+        {/* Content */}
+        <div className="p-6 space-y-4 overflow-y-auto">
+          <div className="space-y-1">
             <label className={LabelClass}>{t("newConnection.name")}</label>
             <input
               value={name}
@@ -210,7 +218,7 @@ export const NewConnectionModal = ({
             />
           </div>
 
-          <div>
+          <div className="space-y-1">
             <label className={LabelClass}>{t("newConnection.dbType")}</label>
             <div className="flex gap-2 mt-1">
               {(["postgres", "mysql", "sqlite"] as Driver[]).map((d) => (
@@ -286,7 +294,7 @@ export const NewConnectionModal = ({
             </div>
           )}
 
-          <div>
+          <div className="space-y-1">
             <label className={LabelClass}>
               {driver === "sqlite" ? t("newConnection.filePath") : t("newConnection.dbName")}
             </label>
@@ -304,7 +312,7 @@ export const NewConnectionModal = ({
 
           {/* SSH Tunnel Section */}
           {driver !== "sqlite" && (
-            <div className="mt-6 pt-4 border-t border-white/20">
+            <div className="pt-4 border-t border-default space-y-4">
               <div className="flex items-center gap-2 mb-3">
                 <input
                   type="checkbox"
@@ -430,10 +438,10 @@ export const NewConnectionModal = ({
           {message && (
             <div
               className={clsx(
-                "mt-6 p-3 rounded flex items-start gap-2 text-sm",
+                "p-3 rounded-lg flex items-start gap-2 text-sm border",
                 status === "success"
-                  ? "bg-green-500/10 text-green-400"
-                  : "bg-red-500/10 text-red-400",
+                  ? "bg-green-900/20 text-green-400 border-green-900/50"
+                  : "bg-red-900/20 text-red-400 border-red-900/50",
               )}
             >
               {status === "success" ? (
@@ -447,11 +455,11 @@ export const NewConnectionModal = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/20 bg-surface-secondary/50 flex justify-end gap-3 rounded-b-lg">
+        <div className="p-4 border-t border-default bg-base/50 flex justify-end gap-3">
           <button
             onClick={testConnection}
             disabled={status === "testing" || status === "saving"}
-            className="px-4 py-2 text-secondary hover:text-white font-medium text-sm flex items-center gap-2 disabled:opacity-50"
+            className="px-4 py-2 text-secondary hover:text-primary hover:bg-surface-tertiary transition-colors text-sm flex items-center gap-2 disabled:opacity-50 rounded-lg"
           >
             {status === "testing" && (
               <Loader2 size={16} className="animate-spin" />
@@ -461,7 +469,7 @@ export const NewConnectionModal = ({
           <button
             onClick={saveConnection}
             disabled={status === "saving"}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded font-medium text-sm flex items-center gap-2 disabled:opacity-50"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
           >
             {status === "saving" && (
               <Loader2 size={16} className="animate-spin" />

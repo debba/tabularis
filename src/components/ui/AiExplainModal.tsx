@@ -60,11 +60,11 @@ export const AiExplainModal = ({ isOpen, onClose, query }: AiExplainModalProps) 
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-default">
-          <div className="flex items-center gap-2 text-white font-medium">
+          <div className="flex items-center gap-2 text-primary font-medium">
             <BookOpen size={18} className="text-blue-400" />
             <span>AI Query Explanation</span>
           </div>
-          <button onClick={onClose} className="text-secondary hover:text-white transition-colors">
+          <button onClick={onClose} className="text-secondary hover:text-primary transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -72,7 +72,7 @@ export const AiExplainModal = ({ isOpen, onClose, query }: AiExplainModalProps) 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {!settings.aiProvider && (
-             <div className="bg-yellow-900/20 border border-yellow-500/30 text-yellow-200 px-4 py-3 rounded text-sm">
+             <div className="bg-warning-bg border border-warning-border text-warning-text px-4 py-3 rounded text-sm">
                 ⚠️ AI Provider not configured. Please go to Settings {'>'} AI.
              </div>
           )}
@@ -111,7 +111,7 @@ export const AiExplainModal = ({ isOpen, onClose, query }: AiExplainModalProps) 
                         Generating explanation...
                     </div>
                 ) : error ? (
-                    <div className="text-red-400">
+                    <div className="text-error-text">
                         {error}
                     </div>
                 ) : (
@@ -125,7 +125,7 @@ export const AiExplainModal = ({ isOpen, onClose, query }: AiExplainModalProps) 
         <div className="flex items-center justify-end p-4 border-t border-default bg-elevated/50 rounded-b-xl">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-surface-secondary hover:bg-surface-tertiary text-white rounded-lg text-sm transition-colors"
+            className="px-4 py-2 bg-surface-secondary hover:bg-surface-tertiary text-primary rounded-lg text-sm transition-colors"
           >
             Close
           </button>

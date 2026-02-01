@@ -233,7 +233,7 @@ export const NewRowModal = ({
 
         <div className="p-6 overflow-y-auto space-y-4">
           {error && (
-            <div className="p-3 bg-red-900/20 border border-red-900/50 text-red-200 rounded text-sm">
+            <div className="p-3 bg-error-bg border border-error-border text-error-text rounded text-sm">
               {error}
             </div>
           )}
@@ -252,12 +252,12 @@ export const NewRowModal = ({
                       <span className="text-surface-tertiary">({col.data_type})</span>
                     </span>
                     {col.is_pk && (
-                      <span className="text-yellow-500 text-[10px] uppercase">
+                      <span className="text-semantic-pk text-[10px] uppercase">
                         {t("newRow.primaryKey")}
                       </span>
                     )}
                     {col.is_auto_increment && (
-                      <span className="text-blue-400 text-[10px] uppercase">
+                      <span className="text-accent-info text-[10px] uppercase">
                         {t("newRow.auto")}
                       </span>
                     )}
@@ -270,7 +270,7 @@ export const NewRowModal = ({
                         onChange={(e) =>
                           handleInputChange(col.name, e.target.value)
                         }
-                        className="w-full bg-elevated border border-strong rounded px-3 py-2 text-primary focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                        className="w-full bg-elevated border border-strong rounded px-3 py-2 text-primary focus:outline-none focus:border-focus appearance-none cursor-pointer"
                         style={{
                           backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
                           backgroundPosition: `right 0.75rem center`,
@@ -321,7 +321,7 @@ export const NewRowModal = ({
                             : t("newRow.required")
                       }
                       className={`
-                            w-full bg-elevated border rounded px-3 py-2 text-primary focus:outline-none focus:border-blue-500
+                            w-full bg-elevated border rounded px-3 py-2 text-primary focus:outline-none focus:border-focus
                             ${col.is_auto_increment ? "border-default text-secondary placeholder:text-muted" : "border-strong"}
                           `}
                     />
@@ -335,14 +335,14 @@ export const NewRowModal = ({
         <div className="p-4 border-t border-strong bg-surface-secondary/50 flex justify-end gap-3 rounded-b-lg">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-secondary hover:text-primary font-medium text-sm"
+            className="px-4 py-2 text-secondary hover:text-primary hover:bg-surface-secondary font-medium text-sm rounded-lg transition-colors"
           >
             {t("newRow.cancel")}
           </button>
           <button
             onClick={handleSave}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded font-medium text-sm flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-500 text-primary px-6 py-2 rounded font-medium text-sm flex items-center gap-2"
           >
             {loading && <Loader2 size={16} className="animate-spin" />}
             <Plus size={16} /> {t("newRow.insert")}

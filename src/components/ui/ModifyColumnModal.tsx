@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Save, Loader2, AlertTriangle } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { SqlPreview } from './SqlPreview';
 
 const COMMON_TYPES = [
   'INTEGER', 'BIGINT', 'VARCHAR', 'TEXT', 'BOOLEAN', 'DATE', 'DATETIME', 'TIMESTAMP', 'FLOAT', 'DOUBLE', 'JSON', 'UUID'
@@ -241,10 +242,10 @@ export const ModifyColumnModal = ({
       <div className="bg-elevated rounded-xl shadow-2xl w-[500px] border border-strong flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-default bg-surface-secondary/50 rounded-t-xl">
-           <h2 className="text-lg font-bold text-white">
+           <h2 className="text-lg font-semibold text-primary">
              {isEdit ? t('modifyColumn.titleEdit') : t('modifyColumn.titleAdd')}
            </h2>
-           <button onClick={onClose} className="text-secondary hover:text-white transition-colors">
+           <button onClick={onClose} className="text-secondary hover:text-primary transition-colors">
              <X size={20} />
            </button>
         </div>
@@ -252,7 +253,7 @@ export const ModifyColumnModal = ({
         {/* Body */}
         <div className="p-6 flex flex-col gap-4">
             {driver === 'sqlite' && isEdit && (
-                <div className="bg-yellow-900/20 border border-yellow-700/50 text-yellow-200 text-xs p-3 rounded flex items-start gap-2">
+                <div className="bg-warning-bg border border-warning-border text-warning-text text-xs p-3 rounded flex items-start gap-2">
                     <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                     <span>{t('modifyColumn.sqliteWarn')}</span>
                 </div>
@@ -263,7 +264,7 @@ export const ModifyColumnModal = ({
                 <input 
                     value={form.name}
                     onChange={(e) => setForm({...form, name: e.target.value})}
-                    className="w-full bg-base border border-strong rounded p-2 text-white text-sm focus:border-blue-500 outline-none font-mono"
+                    className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none font-mono"
                     placeholder="column_name"
                     autoFocus
                 />
@@ -287,7 +288,7 @@ export const ModifyColumnModal = ({
                             });
                         }}
                         disabled={driver === 'sqlite' && isEdit}
-                        className="w-full bg-base border border-strong rounded p-2 text-white text-sm focus:border-blue-500 outline-none disabled:opacity-50 appearance-none cursor-pointer hover:bg-elevated transition-colors"
+                        className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none disabled:opacity-50 appearance-none cursor-pointer hover:bg-elevated transition-colors"
                         style={{
                           backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
                           backgroundPosition: `right 0.5rem center`,
@@ -305,7 +306,7 @@ export const ModifyColumnModal = ({
                         value={form.length}
                         onChange={(e) => setForm({...form, length: e.target.value})}
                         disabled={(driver === 'sqlite' && isEdit) || !['VARCHAR', 'CHAR', 'DECIMAL', 'FLOAT', 'DOUBLE'].some(t_type => form.type.includes(t_type))}
-                        className="w-full bg-base border border-strong rounded p-2 text-white text-sm focus:border-blue-500 outline-none font-mono disabled:opacity-50"
+                        className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none font-mono disabled:opacity-50"
                         placeholder={form.type.includes('VARCHAR') ? '255' : (['DECIMAL', 'FLOAT', 'DOUBLE'].some(t_type => form.type.includes(t_type)) ? '10,2' : '')}
                     />
                 </div>
@@ -318,7 +319,7 @@ export const ModifyColumnModal = ({
                         value={form.defaultValue}
                         onChange={(e) => setForm({...form, defaultValue: e.target.value})}
                         disabled={driver === 'sqlite' && isEdit}
-                        className="w-full bg-base border border-strong rounded p-2 text-white text-sm focus:border-blue-500 outline-none font-mono disabled:opacity-50"
+                        className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none font-mono disabled:opacity-50"
                         placeholder="NULL"
                     />
                 </div>
@@ -372,13 +373,13 @@ export const ModifyColumnModal = ({
             </div>
 
             {/* Preview */}
-            <div className="bg-base border border-default rounded p-3 mt-2">
+            <div className="mt-2">
                 <div className="text-[10px] text-muted mb-1 uppercase tracking-wider">{t('modifyColumn.sqlPreview')}</div>
-                <pre className="text-xs font-mono text-green-400 whitespace-pre-wrap break-all">{sqlPreview}</pre>
+                <SqlPreview sql={sqlPreview} height="100px" showLineNumbers={true} />
             </div>
 
             {error && (
-                <div className="text-red-400 text-xs bg-red-900/10 border border-red-900/30 p-2 rounded">
+                <div className="text-error-text text-xs bg-error-bg border border-error-border p-2 rounded">
                     {error}
                 </div>
             )}
@@ -386,16 +387,16 @@ export const ModifyColumnModal = ({
 
         {/* Footer */}
         <div className="p-4 bg-surface-secondary/50 border-t border-default rounded-b-xl flex justify-end gap-3">
-           <button 
-             onClick={onClose}
-             className="px-4 py-2 text-secondary hover:text-white font-medium text-sm transition-colors"
-           >
+<button 
+              onClick={onClose}
+              className="px-4 py-2 text-secondary hover:text-primary hover:bg-surface-secondary font-medium text-sm rounded-lg transition-colors"
+            >
              {t('modifyColumn.cancel')}
            </button>
            <button 
              onClick={handleSubmit}
              disabled={loading || (driver === 'sqlite' && isEdit && form.name === column?.name)}
-             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-900/20 transition-all"
+             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-primary px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-900/20 transition-all"
            >
              {loading && <Loader2 size={16} className="animate-spin" />}
              <Save size={16} /> {isEdit ? t('modifyColumn.save') : t('modifyColumn.add')}
