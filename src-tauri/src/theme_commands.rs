@@ -2,7 +2,6 @@ use crate::paths::get_app_config_dir;
 use crate::theme_models::Theme;
 use std::fs;
 use std::path::PathBuf;
-use tauri::{AppHandle, Runtime};
 
 const THEMES_DIR: &str = "themes";
 

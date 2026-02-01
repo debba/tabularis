@@ -226,6 +226,8 @@ npm run tauri build
 - [x] Keychain integration for secure password storage
 - [x] AI Integration (Text-to-SQL, Explain Query)
 - [x] ER Diagram / Schema Visualization
+- [x] Theme System (10+ presets, Custom Themes support)
+- [x] Typography Customization (Font Family, Font Size)
 - [ ] Database Export/Dump
 - [ ] Multi-statement execution
 - [x] Query history and autocomplete

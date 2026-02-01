@@ -523,6 +523,7 @@ Adhere to the rules defined in the [rules directory](./.rules/):
         - Syntax highlighting themes matching UI themes (Monaco integration).
         - Support for custom themes (backend infrastructure ready).
         - Theme persistence to `~/.config/tabularis/themes/`.
+        - **Typography Control:** Added settings to change Font Family (presets + custom) and Font Size (10px - 20px) with live preview.
     - **Files Modified/Created:**
         - **New:** `src/types/theme.ts`, `src/themes/themeRegistry.ts`, `src/themes/themeUtils.ts`
         - **New:** `src/themes/presets/*.ts` (10 preset theme files)

@@ -169,6 +169,48 @@
         color: #8b949e;
       } /* Gray for comments */
 
+      /* THEME PREVIEWS */
+      .theme-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+        margin-top: 1.5rem;
+      }
+
+      .theme-preview {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 0.8rem;
+        text-align: center;
+        transition: transform 0.2s;
+      }
+
+      .theme-preview:hover {
+        transform: translateY(-2px);
+        border-color: var(--text-muted);
+      }
+
+      .theme-name {
+        font-size: 0.8rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-muted);
+      }
+
+      .palette {
+        display: flex;
+        justify-content: center;
+        gap: 4px;
+      }
+
+      .color-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
       /* HERO SECTION */
       .hero {
         text-align: left;
@@ -547,6 +589,152 @@
             <p>
               Inline editing, row deletion, and easy data entry. Export results
               to JSON or CSV with a single click.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <!-- THEMES -->
+      <section class="section">
+        <h2>_themes</h2>
+        <p>
+          Why stare at a dull interface? Tabularis brings a first-class theming
+          experience. Switch instantly between <strong>10+ presets</strong>
+          without restarting.
+        </p>
+
+        <div class="theme-grid">
+          <!-- Tabularis Dark -->
+          <div class="theme-preview">
+            <div class="theme-name">Tabularis Dark</div>
+            <div class="palette">
+              <div class="color-dot" style="background: #020617"></div>
+              <div class="color-dot" style="background: #1e293b"></div>
+              <div class="color-dot" style="background: #3b82f6"></div>
+              <div class="color-dot" style="background: #f87171"></div>
+            </div>
+          </div>
+          <!-- Tabularis Light -->
+          <div class="theme-preview">
+            <div class="theme-name">Tabularis Light</div>
+            <div class="palette">
+              <div class="color-dot" style="background: #ffffff"></div>
+              <div class="color-dot" style="background: #f1f5f9"></div>
+              <div class="color-dot" style="background: #3b82f6"></div>
+              <div class="color-dot" style="background: #dc2626"></div>
+            </div>
+          </div>
+          <!-- Dracula -->
+          <div class="theme-preview">
+            <div class="theme-name">Dracula</div>
+            <div class="palette">
+              <div class="color-dot" style="background: #282a36"></div>
+              <div class="color-dot" style="background: #44475a"></div>
+              <div class="color-dot" style="background: #bd93f9"></div>
+              <div class="color-dot" style="background: #ff79c6"></div>
+            </div>
+          </div>
+          <!-- Nord -->
+          <div class="theme-preview">
+            <div class="theme-name">Nord</div>
+            <div class="palette">
+              <div class="color-dot" style="background: #2e3440"></div>
+              <div class="color-dot" style="background: #3b4252"></div>
+              <div class="color-dot" style="background: #88c0d0"></div>
+              <div class="color-dot" style="background: #bf616a"></div>
+            </div>
+          </div>
+          <!-- Monokai -->
+          <div class="theme-preview">
+            <div class="theme-name">Monokai</div>
+            <div class="palette">
+              <div class="color-dot" style="background: #272822"></div>
+              <div class="color-dot" style="background: #3e3d32"></div>
+              <div class="color-dot" style="background: #a6e22e"></div>
+              <div class="color-dot" style="background: #f92672"></div>
+            </div>
+          </div>
+          <!-- GitHub Dark -->
+          <div class="theme-preview">
+            <div class="theme-name">GitHub Dark</div>
+            <div class="palette">
+              <div class="color-dot" style="background: #24292e"></div>
+              <div class="color-dot" style="background: #1f2428"></div>
+              <div class="color-dot" style="background: #0366d6"></div>
+              <div class="color-dot" style="background: #ea4a5a"></div>
+            </div>
+          </div>
+          <!-- One Dark Pro -->
+          <div class="theme-preview">
+            <div class="theme-name">One Dark Pro</div>
+            <div class="palette">
+              <div class="color-dot" style="background: #282c34"></div>
+              <div class="color-dot" style="background: #21252b"></div>
+              <div class="color-dot" style="background: #61afef"></div>
+              <div class="color-dot" style="background: #e06c75"></div>
+            </div>
+          </div>
+          <!-- Solarized Dark -->
+          <div class="theme-preview">
+            <div class="theme-name">Solarized Dark</div>
+            <div class="palette">
+              <div class="color-dot" style="background: #002b36"></div>
+              <div class="color-dot" style="background: #073642"></div>
+              <div class="color-dot" style="background: #268bd2"></div>
+              <div class="color-dot" style="background: #b58900"></div>
+            </div>
+          </div>
+          <!-- Solarized Light -->
+          <div class="theme-preview">
+            <div class="theme-name">Solarized Light</div>
+            <div class="palette">
+              <div class="color-dot" style="background: #fdf6e3"></div>
+              <div class="color-dot" style="background: #eee8d5"></div>
+              <div class="color-dot" style="background: #268bd2"></div>
+              <div class="color-dot" style="background: #b58900"></div>
+            </div>
+          </div>
+          <!-- High Contrast -->
+          <div class="theme-preview">
+            <div class="theme-name">High Contrast</div>
+            <div class="palette">
+              <div class="color-dot" style="background: #000000"></div>
+              <div class="color-dot" style="background: #1a1a1a"></div>
+              <div class="color-dot" style="background: #ffffff"></div>
+              <div class="color-dot" style="background: #ffff00"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="features-grid">
+          <article class="feature-card">
+            <h3>⚡ Zero-Latency Switching</h3>
+            <p>
+              No restarts. No reloads. The entire application including the
+              Monaco Editor repaints instantly when you switch themes.
+            </p>
+          </article>
+          <article class="feature-card">
+            <h3>🎨 Full Consistency</h3>
+            <p>
+              Syntax highlighting is automatically generated from the UI theme,
+              ensuring perfect visual harmony between your chrome and your code.
+            </p>
+          </article>
+          <article class="feature-card">
+            <h3>🛠️ CSS Variable Engine</h3>
+            <p>
+              Built on a modern CSS variable system allowing for complete
+              customization and easy creation of new custom themes.
+            </p>
+          </article>
+          <article class="feature-card">
+            <h3>🔠 Typography Control</h3>
+            <p>
+              Your code, your font. Choose from built-in favorites like
+              <strong>JetBrains Mono</strong> and <strong>Fira Code</strong>, or
+              use any font installed on your system. Adjust text size for perfect
+              readability.
             </p>
           </article>
         </div>
