@@ -1060,11 +1060,6 @@ export const Sidebar = () => {
                       icon: Trash2,
                       danger: true,
                       action: async () => {
-                        // We need table name here. But contextMenu only has id (index name).
-                        // Hack: Pass table name in label or data?
-                        // Let's pass table name in `data` as a custom object { tableName: string }
-                        // Or parse it if we encoded it.
-                        // Let's update `showContextMenu` to pass tableName in `data`.
                         if (
                           contextMenu.data &&
                           "tableName" in contextMenu.data
@@ -1081,15 +1076,25 @@ export const Sidebar = () => {
                               },
                             )
                           ) {
-                            const q =
-                              activeDriver === "mysql" ||
-                              activeDriver === "mariadb"
-                                ? `DROP INDEX \`${contextMenu.id}\` ON \`${t_name}\``
-                                : `DROP INDEX "${contextMenu.id}"`;
-                            await invoke("execute_query", {
-                              connectionId: activeConnectionId,
-                              query: q,
-                            }).catch(console.error);
+                            try {
+                              const q =
+                                activeDriver === "mysql" ||
+                                activeDriver === "mariadb"
+                                  ? `DROP INDEX \`${contextMenu.id}\` ON \`${t_name}\``
+                                  : `DROP INDEX "${contextMenu.id}"`;
+
+                              await invoke("execute_query", {
+                                connectionId: activeConnectionId,
+                                query: q,
+                              });
+
+                              setSchemaVersion((v) => v + 1);
+                            } catch (e) {
+                              await message(t("sidebar.failDeleteIndex") + String(e), {
+                                title: t("common.error"),
+                                kind: "error",
+                              });
+                            }
                           }
                         }
                       },

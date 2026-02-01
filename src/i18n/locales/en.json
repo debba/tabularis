@@ -33,6 +33,7 @@
     "deleteColumn": "Delete Column",
     "deleteColumnConfirm": "Are you sure you want to delete column \"{{column}}\" from table \"{{table}}\"?\n\nWARNING: This will permanently delete all data in this column. This action cannot be undone.",
     "failDeleteColumn": "Failed to delete column: ",
+    "failDeleteIndex": "Failed to delete index: ",
     "modifyColumn": "Modify Column",
     "copyName": "Copy Name",
     "deleteTable": "Delete Table",

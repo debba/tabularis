@@ -33,6 +33,7 @@
     "deleteColumn": "Elimina colonna",
     "deleteColumnConfirm": "Sei sicuro di voler eliminare la colonna \"{{column}}\" dalla tabella \"{{table}}\"?\n\nATTENZIONE: Questo eliminerà permanentemente tutti i dati in questa colonna. L'azione non può essere annullata.",
     "failDeleteColumn": "Eliminazione colonna fallita: ",
+    "failDeleteIndex": "Eliminazione indice fallita: ",
     "modifyColumn": "Modifica colonna",
     "copyName": "Copia nome",
     "deleteTable": "Elimina tabella",
