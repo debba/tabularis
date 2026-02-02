@@ -4,33 +4,35 @@ import type { Tab, SchemaCache, TableSchema } from '../types/editor';
 import { EditorContext } from './EditorContext';
 import { useDatabase } from '../hooks/useDatabase';
 import { invoke } from '@tauri-apps/api/core';
+import {
+  generateTabId,
+  loadTabsFromStorage,
+  saveTabsToStorage,
+  createInitialTabState,
+  generateTabTitle,
+  findExistingTableTab,
+  getConnectionTabs,
+  getActiveTab,
+  closeTabWithState,
+  closeAllTabsForConnection,
+  closeOtherTabsForConnection,
+  closeTabsToLeft,
+  closeTabsToRight,
+  updateTabInList,
+  shouldUseCachedSchema,
+  createSchemaCacheEntry,
+} from '../utils/editor';
 
 export const EditorProvider = ({ children }: { children: ReactNode }) => {
   const { activeConnectionId } = useDatabase();
   const [tabs, setTabs] = useState<Tab[]>(() => {
-    const saved = localStorage.getItem('sql_editor_tabs_v2');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return parsed.tabs || [];
-      } catch (e) {
-        console.error("Failed to load tabs", e);
-      }
-    }
-    return [];
+    const loaded = loadTabsFromStorage();
+    return loaded?.tabs || [];
   });
 
   const [activeTabIds, setActiveTabIds] = useState<Record<string, string>>(() => {
-    const saved = localStorage.getItem('sql_editor_tabs_v2');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return parsed.activeTabIds || {};
-      } catch (e) {
-        console.error("Failed to load activeTabIds", e);
-      }
-    }
-    return {};
+    const loaded = loadTabsFromStorage();
+    return loaded?.activeTabIds || {};
   });
 
   const schemaCacheRef = useRef<Record<string, SchemaCache>>({});
@@ -41,29 +43,14 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
   }, [tabs]);
 
   const createInitialTab = useCallback((partial?: Partial<Tab>): Tab => {
-    return {
-      id: Math.random().toString(36).substring(2, 9),
-      title: "Console",
-      type: 'console',
-      query: "",
-      result: null,
-      error: "",
-      executionTime: null,
-      page: 1,
-      activeTable: null,
-      pkColumn: null,
-      isLoading: false,
-      connectionId: activeConnectionId || "",
-      isEditorOpen: partial?.isEditorOpen ?? (partial?.type !== 'table'),
-      ...partial
-    };
+    return createInitialTabState(activeConnectionId, partial);
   }, [activeConnectionId]);
 
   useEffect(() => {
-    localStorage.setItem('sql_editor_tabs_v2', JSON.stringify({ tabs, activeTabIds }));
+    saveTabsToStorage(tabs, activeTabIds);
   }, [tabs, activeTabIds]);
 
-  const activeTabId = activeConnectionId ? activeTabIds[activeConnectionId] : null;
+  const activeTabId = activeConnectionId ? (activeTabIds[activeConnectionId] || null) : null;
 
   const setActiveTabId = useCallback((id: string | null) => {
     if (activeConnectionId && id) {
@@ -74,33 +61,19 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
   const addTab = useCallback((partial?: Partial<Tab>) => {
     if (!activeConnectionId) return "";
 
-    const existing = tabsRef.current.find(t => 
-      t.connectionId === activeConnectionId && 
-      t.type === 'table' && 
-      t.activeTable === partial?.activeTable
+    const existing = findExistingTableTab(
+      tabsRef.current,
+      activeConnectionId,
+      partial?.activeTable || undefined
     );
     if (existing) {
         setActiveTabId(existing.id);
         return existing.id;
     }
 
-    const id = Math.random().toString(36).substring(2, 9);
+    const id = generateTabId();
     setTabs(prev => {
-      let title = partial?.title;
-      if (!title) {
-        if (partial?.type === 'table' && partial.activeTable) {
-          title = partial.activeTable;
-        } else {
-          const consoleCount = prev.filter(t => t.connectionId === activeConnectionId && t.type === 'console').length;
-          const queryBuilderCount = prev.filter(t => t.connectionId === activeConnectionId && t.type === 'query_builder').length;
-          
-          if (partial?.type === 'query_builder') {
-             title = queryBuilderCount === 0 ? "Visual Query" : `Visual Query ${queryBuilderCount + 1}`;
-          } else {
-             title = consoleCount === 0 ? "Console" : `Console ${consoleCount + 1}`;
-          }
-        }
-      }
+      const title = generateTabTitle(prev, activeConnectionId, partial);
       const newTab = createInitialTab({ id, title, connectionId: activeConnectionId, ...partial });
       return [...prev, newTab];
     });
@@ -110,115 +83,89 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
 
   const closeTab = useCallback((id: string) => {
     setTabs(prev => {
-      const tabToClose = prev.find(t => t.id === id);
-      const newTabs = prev.filter(t => t.id !== id);
-      const connTabs = newTabs.filter(t => t.connectionId === activeConnectionId);
-      
-      if (connTabs.length === 0 && tabToClose?.connectionId === activeConnectionId) {
-        const nextId = Math.random().toString(36).substring(2, 9);
-        const t = createInitialTab({ id: nextId, title: "Console", type: 'console', connectionId: activeConnectionId });
-        setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId]: nextId }));
-        return [...newTabs, t];
+      const { newTabs, newActiveTabId: nextActiveId, createdNewTab } = closeTabWithState(
+        prev,
+        activeConnectionId || '',
+        activeTabId,
+        id,
+        (connId) => createInitialTab({ id: generateTabId(), connectionId: connId })
+      );
+
+      if (createdNewTab && nextActiveId) {
+        setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId || '']: nextActiveId }));
+      } else if (nextActiveId !== activeTabId) {
+        setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId || '']: nextActiveId || '' }));
       }
-      
-      if (activeTabId === id) {
-        const closedIdx = prev.findIndex(t => t.id === id);
-        const nextActiveIdx = Math.min(closedIdx, connTabs.length > 0 ? connTabs.length - 1 : 0);
-        const nextActiveTab = connTabs[nextActiveIdx];
-        if (nextActiveTab && activeConnectionId) {
-          setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId]: nextActiveTab.id }));
-        }
-      }
-      
+
       return newTabs;
     });
-  }, [createInitialTab, activeConnectionId, activeTabId]);
+  }, [activeConnectionId, activeTabId, createInitialTab]);
 
   const closeAllTabs = useCallback(() => {
     if (!activeConnectionId) return;
     setTabs(prev => {
-      // Keep tabs from other connections
-      const otherConnTabs = prev.filter(t => t.connectionId !== activeConnectionId);
-      
-      // Create fresh console tab for current connection
-      const nextId = Math.random().toString(36).substring(2, 9);
-      const t = createInitialTab({ id: nextId, title: "Console", type: 'console', connectionId: activeConnectionId });
-      setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId]: nextId }));
-      
-      return [...otherConnTabs, t];
+      const { newTabs, newActiveTabId } = closeAllTabsForConnection(
+        prev,
+        activeConnectionId,
+        (connId) => createInitialTab({ id: generateTabId(), connectionId: connId })
+      );
+      setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId]: newActiveTabId }));
+      return newTabs;
     });
   }, [activeConnectionId, createInitialTab]);
 
   const closeOtherTabs = useCallback((id: string) => {
     if (!activeConnectionId) return;
     setTabs(prev => {
-      // Keep tabs from other connections AND the one with id
-      const toKeep = prev.filter(t => t.connectionId !== activeConnectionId || t.id === id);
-      
-      // Ensure the kept tab is active
+      const newTabs = closeOtherTabsForConnection(prev, activeConnectionId, id);
       setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId]: id }));
-      
-      return toKeep;
+      return newTabs;
     });
   }, [activeConnectionId]);
 
-  const closeTabsToLeft = useCallback((id: string) => {
+  const closeTabsToLeftInternal = useCallback((id: string) => {
     if (!activeConnectionId) return;
     setTabs(prev => {
-      const connTabs = prev.filter(t => t.connectionId === activeConnectionId);
-      const targetIndex = connTabs.findIndex(t => t.id === id);
-      if (targetIndex === -1) return prev;
-
-      const tabsToClose = connTabs.slice(0, targetIndex).map(t => t.id);
-      const otherConnTabs = prev.filter(t => t.connectionId !== activeConnectionId);
-      const remainingConnTabs = connTabs.slice(targetIndex);
-
-      // If active tab was among closed ones, set active to the target tab
-      // (The target tab is the leftmost surviving tab)
-      const activeTabWasClosed = tabsToClose.includes(activeTabId || "");
-      if (activeTabWasClosed) {
-        setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId]: id }));
+      const { newTabs, newActiveTabId } = closeTabsToLeft(
+        prev,
+        activeConnectionId,
+        id,
+        activeTabId
+      );
+      if (newActiveTabId && newActiveTabId !== activeTabId) {
+        setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId]: newActiveTabId }));
       }
-
-      return [...otherConnTabs, ...remainingConnTabs];
+      return newTabs;
     });
   }, [activeConnectionId, activeTabId]);
 
-  const closeTabsToRight = useCallback((id: string) => {
+  const closeTabsToRightInternal = useCallback((id: string) => {
     if (!activeConnectionId) return;
     setTabs(prev => {
-      const connTabs = prev.filter(t => t.connectionId === activeConnectionId);
-      const targetIndex = connTabs.findIndex(t => t.id === id);
-      if (targetIndex === -1) return prev;
-
-      const tabsToClose = connTabs.slice(targetIndex + 1).map(t => t.id);
-      const otherConnTabs = prev.filter(t => t.connectionId !== activeConnectionId);
-      const remainingConnTabs = connTabs.slice(0, targetIndex + 1);
-
-      // If active tab was among closed ones, set active to the target tab
-      // (The target tab is the rightmost surviving tab)
-      const activeTabWasClosed = tabsToClose.includes(activeTabId || "");
-      if (activeTabWasClosed) {
-         setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId]: id }));
+      const { newTabs, newActiveTabId } = closeTabsToRight(
+        prev,
+        activeConnectionId,
+        id,
+        activeTabId
+      );
+      if (newActiveTabId && newActiveTabId !== activeTabId) {
+        setActiveTabIds(prevIds => ({ ...prevIds, [activeConnectionId]: newActiveTabId }));
       }
-
-      return [...otherConnTabs, ...remainingConnTabs];
+      return newTabs;
     });
   }, [activeConnectionId, activeTabId]);
 
   const updateTab = useCallback((id: string, partial: Partial<Tab>) => {
-    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...partial } : t));
+    setTabs(prev => updateTabInList(prev, id, partial));
   }, []);
 
   const getSchema = useCallback(async (connectionId: string, schemaVersion?: number): Promise<TableSchema[]> => {
     const cached = schemaCacheRef.current[connectionId];
 
     // Cache hit: same version, less than 5 minutes old
-    if (cached &&
-        (!schemaVersion || cached.version === schemaVersion) &&
-        Date.now() - cached.timestamp < 300000) {
+    if (shouldUseCachedSchema(cached, schemaVersion)) {
       console.log("Using cached schema for", connectionId);
-      return cached.data;
+      return cached!.data;
     }
 
     // Cache miss: fetch from backend
@@ -230,24 +177,18 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     // Update cache in ref (no state update = no re-render)
     schemaCacheRef.current = {
       ...schemaCacheRef.current,
-      [connectionId]: {
-        data,
-        version: schemaVersion || 0,
-        timestamp: Date.now()
-      }
+      [connectionId]: createSchemaCacheEntry(data, schemaVersion || 0)
     };
 
     return data;
   }, []); // No dependencies - stable function
 
   const activeTab = useMemo(() => {
-    if (!activeConnectionId || !activeTabId) return null;
-    const tab = tabs.find(t => t.id === activeTabId);
-    return (tab && tab.connectionId === activeConnectionId) ? tab : null;
+    return getActiveTab(tabs, activeConnectionId, activeTabId);
   }, [tabs, activeTabId, activeConnectionId]);
 
   const connectionTabs = useMemo(() => {
-    return tabs.filter(t => t.connectionId === activeConnectionId);
+    return getConnectionTabs(tabs, activeConnectionId);
   }, [tabs, activeConnectionId]);
 
   const contextValue = useMemo(() => ({
@@ -260,8 +201,8 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     setActiveTabId,
     closeAllTabs,
     closeOtherTabs,
-    closeTabsToLeft,
-    closeTabsToRight,
+    closeTabsToLeft: closeTabsToLeftInternal,
+    closeTabsToRight: closeTabsToRightInternal,
     getSchema
   }), [
     connectionTabs,
@@ -273,8 +214,8 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     setActiveTabId,
     closeAllTabs,
     closeOtherTabs,
-    closeTabsToLeft,
-    closeTabsToRight,
+    closeTabsToLeftInternal,
+    closeTabsToRightInternal,
     getSchema
   ]);
 

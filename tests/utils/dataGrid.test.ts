@@ -3,8 +3,7 @@ import {
   formatCellValue,
   getColumnSortState,
   calculateSelectionRange,
-  toggleSetValue,
-  type SortDirection,
+  toggleSetValue
 } from '../../src/utils/dataGrid';
 
 describe('dataGrid utils', () => {
