@@ -5,29 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useDatabase } from '../../hooks/useDatabase';
 import { SqlPreview } from './SqlPreview';
 import { message } from '@tauri-apps/plugin-dialog';
-
-interface TableColumn {
-  name: string;
-  data_type: string;
-  is_pk: boolean;
-  is_nullable: boolean;
-  is_auto_increment: boolean;
-  default_value: string | null;
-}
-
-interface ForeignKey {
-  name: string;
-  column_name: string;
-  ref_table: string;
-  ref_column: string;
-}
-
-interface Index {
-  name: string;
-  column_name: string;
-  is_unique: boolean;
-  is_primary: boolean;
-}
+import { generateCreateTableSQL, type TableColumn, type ForeignKey, type Index, type DatabaseDriver } from './sqlGeneratorUtils';
 
 interface GenerateSQLModalProps {
   isOpen: boolean;
@@ -60,64 +38,14 @@ export const GenerateSQLModal = ({ isOpen, onClose, tableName }: GenerateSQLModa
           invoke<Index[]>('get_indexes', { connectionId: activeConnectionId, tableName }),
         ]);
 
-        const q = activeDriver === 'mysql' || activeDriver === 'mariadb' ? '`' : '"';
-        const lines: string[] = [];
-        lines.push(`CREATE TABLE ${q}${tableName}${q} (`);
-
-        const columnDefs = columns.map(col => {
-          let def = `  ${q}${col.name}${q} ${col.data_type}`;
-
-          if (!col.is_nullable) {
-            def += ' NOT NULL';
-          }
-
-          if (col.default_value !== null && col.default_value !== undefined) {
-            def += ` DEFAULT ${col.default_value}`;
-          }
-
-          if (col.is_auto_increment) {
-            if (activeDriver === 'mysql' || activeDriver === 'mariadb') {
-              def += ' AUTO_INCREMENT';
-            } else if (activeDriver === 'sqlite') {
-              def = def.replace(new RegExp(`^\\s*${q}${col.name}${q}\\s*`), `  ${q}${col.name}${q} INTEGER PRIMARY KEY AUTOINCREMENT `);
-            } else if (activeDriver === 'postgresql') {
-              def = def.replace(new RegExp(`^\\s*${q}${col.name}${q}\\s*`), `  ${q}${col.name}${q} SERIAL `);
-            }
-          }
-
-          return def;
-        });
-
-        const pkColumns = columns.filter(c => c.is_pk).map(c => `${q}${c.name}${q}`);
-        if (pkColumns.length > 0 && activeDriver !== 'sqlite') {
-          columnDefs.push(`  PRIMARY KEY (${pkColumns.join(', ')})`);
-        }
-
-        foreignKeys.forEach(fk => {
-          const fkDef = `  CONSTRAINT ${q}${fk.name}${q} FOREIGN KEY (${q}${fk.column_name}${q}) REFERENCES ${q}${fk.ref_table}${q} (${q}${fk.ref_column}${q})`;
-          columnDefs.push(fkDef);
-        });
-
-        lines.push(columnDefs.join(',\n'));
-        lines.push(');');
-
-        const uniqueIndexes = indexes.filter(idx => idx.is_unique && !idx.is_primary);
-        if (uniqueIndexes.length > 0) {
-          lines.push('');
-          uniqueIndexes.forEach(idx => {
-            lines.push(`CREATE UNIQUE INDEX ${q}${idx.name}${q} ON ${q}${tableName}${q} (${q}${idx.column_name}${q});`);
-          });
-        }
-
-        const nonUniqueIndexes = indexes.filter(idx => !idx.is_unique && !idx.is_primary);
-        if (nonUniqueIndexes.length > 0) {
-          lines.push('');
-          nonUniqueIndexes.forEach(idx => {
-            lines.push(`CREATE INDEX ${q}${idx.name}${q} ON ${q}${tableName}${q} (${q}${idx.column_name}${q});`);
-          });
-        }
-
-        setSql(lines.join('\n'));
+        const generatedSQL = generateCreateTableSQL(
+          tableName,
+          columns,
+          foreignKeys,
+          indexes,
+          activeDriver as DatabaseDriver
+        );
+        setSql(generatedSQL);
       } catch (err) {
         console.error(err);
         await message(String(err), { title: t('common.error'), kind: 'error' });

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { calculateContextMenuPosition, type ViewportConstraints } from './contextMenuUtils';
 
 interface ContextMenuItem {
   label: string;
@@ -30,33 +31,17 @@ export const ContextMenu = ({ x, y, items, onClose }: ContextMenuProps) => {
       return { top: y, left: x };
     }
 
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+    const constraints: ViewportConstraints = {
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      menuWidth: menuSize.width,
+      menuHeight: menuSize.height,
+      clickX: x,
+      clickY: y,
+      margin: 10,
+    };
 
-    let adjustedX = x;
-    let adjustedY = y;
-
-    // Adjust horizontal position if menu overflows right edge
-    if (x + menuSize.width > viewportWidth) {
-      adjustedX = viewportWidth - menuSize.width - 10; // 10px margin
-    }
-
-    // Adjust vertical position if menu overflows bottom edge
-    if (y + menuSize.height > viewportHeight) {
-      adjustedY = viewportHeight - menuSize.height - 10; // 10px margin
-    }
-
-    // Ensure menu doesn't go off the left edge
-    if (adjustedX < 10) {
-      adjustedX = 10;
-    }
-
-    // Ensure menu doesn't go off the top edge
-    if (adjustedY < 10) {
-      adjustedY = 10;
-    }
-
-    return { top: adjustedY, left: adjustedX };
+    return calculateContextMenuPosition(constraints);
   }, [x, y, menuSize]);
 
   useEffect(() => {
