@@ -533,3 +533,18 @@ Adhere to the rules defined in the [rules directory](./.rules/):
         - **Modified:** `src/index.css` (CSS variables system), `src/main.tsx` (ThemeProvider integration)
         - **Modified:** `src-tauri/src/lib.rs` (command registration)
         - **Modified:** `src/pages/Settings.tsx` (Appearance tab with theme selector)
+
+### Session 38: Testing Infrastructure
+- **Status:** Maintenance / Quality Assurance.
+- **Actions:**
+    - **Infrastructure:**
+        - Created `docker-compose.yml` for MySQL/Postgres integration testing.
+        - Migrated package manager from **npm** to **pnpm** (updated rules).
+        - Created `docs/TESTING_STRATEGY.md` outlining the testing pyramid.
+    - **Backend Tests (Rust):**
+        - Added Unit Tests in `src-tauri/src/drivers/mysql.rs` for SQL parsing helpers.
+        - Added Integration Tests in `src-tauri/tests/integration_tests.rs` (marked `#[ignore]` to require manual run with Docker).
+    - **Frontend Tests (Vitest):**
+        - Installed Vitest, JSDOM, and React Testing Library via pnpm.
+        - Configured `vitest.config.ts` and `src/test/setup.ts`.
+        - Added Unit Tests for `src/utils/sql.ts` (Query Splitting, Table Extraction).
