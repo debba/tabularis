@@ -1,3 +1,15 @@
+## [0.8.6](https://github.com/debba/tabularis/compare/v0.8.5...v0.8.6) (2026-02-02)
+
+
+### Features
+
+* **ui:** add context menu positioning utils and SQL generator utilities ([9d63a37](https://github.com/debba/tabularis/commit/9d63a371d4ad7c8707801efd620d607cf206a53d))
+* **utils:** add settings and theme management utilities ([952d651](https://github.com/debba/tabularis/commit/952d651e74bfb920550210f1f1cea690466387bf))
+* **utils:** add visual query SQL generator and table toolbar helpers ([ca44962](https://github.com/debba/tabularis/commit/ca4496219173dd028f54242d8e8d28a71c2b886d))
+* **utils:** extract and add testable utility modules with unit tests ([369a9af](https://github.com/debba/tabularis/commit/369a9afad461ae8d456213c2ea6de05c4ee73a47))
+
+
+
 ## [0.8.5](https://github.com/debba/tabularis/compare/v0.8.4...v0.8.5) (2026-02-01)
 
 
