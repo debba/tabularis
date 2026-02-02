@@ -31,6 +31,7 @@ project-root/
 │       ├── colorUtils.ts
 │       └── themeRegistry.ts
 ├── tests/
+│   ├── setup.ts              # Test setup file
 │   ├── utils/
 │   │   ├── dataGrid.test.ts
 │   │   ├── contextMenu.test.ts
@@ -157,6 +158,6 @@ pnpm test --coverage
 ## Configuration
 
 Tests are configured in `vitest.config.ts`:
-- Test files are discovered in both `src/` (legacy) and `tests/` (new convention)
-- Setup file: `./src/test/setup.ts`
+- Test files are discovered in `tests/` directory
+- Setup file: `./tests/setup.ts`
 - Environment: `jsdom` for DOM-related tests
