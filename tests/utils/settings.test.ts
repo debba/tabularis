@@ -5,6 +5,8 @@ import {
   DEFAULT_FONT_FAMILY,
   FONT_CACHE_KEY,
   OLD_SETTINGS_KEY,
+  AVAILABLE_FONTS,
+  ROADMAP,
   getFontCSS,
   createFontCSSVariables,
   loadFontCache,
@@ -456,6 +458,78 @@ describe('settings', () => {
       const result = getLanguageForI18n('auto', 'en-US');
       
       expect(result).toBe('en-US');
+    });
+  });
+
+  describe('AVAILABLE_FONTS', () => {
+    it('should contain System as first option', () => {
+      expect(AVAILABLE_FONTS[0]).toEqual({
+        name: 'System',
+        label: 'System Default (Automatic)',
+      });
+    });
+
+    it('should contain monospace fonts', () => {
+      const monospaceFonts = AVAILABLE_FONTS.filter(
+        f => f.name.includes('Mono') || f.name === 'Hack'
+      );
+      expect(monospaceFonts.length).toBeGreaterThanOrEqual(3);
+      expect(monospaceFonts.map(f => f.name)).toContain('JetBrains Mono');
+      expect(monospaceFonts.map(f => f.name)).toContain('DejaVu Sans Mono');
+      expect(monospaceFonts.map(f => f.name)).toContain('Hack');
+    });
+
+    it('should have name and label properties for all fonts', () => {
+      AVAILABLE_FONTS.forEach(font => {
+        expect(font).toHaveProperty('name');
+        expect(font).toHaveProperty('label');
+        expect(typeof font.name).toBe('string');
+        expect(typeof font.label).toBe('string');
+        expect(font.name.length).toBeGreaterThan(0);
+        expect(font.label.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('should have unique font names', () => {
+      const names = AVAILABLE_FONTS.map(f => f.name);
+      const uniqueNames = [...new Set(names)];
+      expect(uniqueNames.length).toBe(names.length);
+    });
+  });
+
+  describe('ROADMAP', () => {
+    it('should contain completed features', () => {
+      const completedFeatures = ROADMAP.filter(item => item.done);
+      expect(completedFeatures.length).toBeGreaterThan(10);
+      
+      const labels = completedFeatures.map(f => f.label);
+      expect(labels).toContain('Multi-database support (MySQL, Postgres, SQLite)');
+      expect(labels).toContain('SSH Tunneling');
+      expect(labels).toContain('AI Integration');
+    });
+
+    it('should contain pending features', () => {
+      const pendingFeatures = ROADMAP.filter(item => !item.done);
+      expect(pendingFeatures.length).toBeGreaterThan(0);
+      
+      const labels = pendingFeatures.map(f => f.label);
+      expect(labels).toContain('Database Export/Dump');
+    });
+
+    it('should have label and done properties for all items', () => {
+      ROADMAP.forEach(item => {
+        expect(item).toHaveProperty('label');
+        expect(item).toHaveProperty('done');
+        expect(typeof item.label).toBe('string');
+        expect(typeof item.done).toBe('boolean');
+        expect(item.label.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('should have unique feature labels', () => {
+      const labels = ROADMAP.map(r => r.label);
+      const uniqueLabels = [...new Set(labels)];
+      expect(uniqueLabels.length).toBe(labels.length);
     });
   });
 });

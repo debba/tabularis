@@ -165,3 +165,33 @@ export function getLanguageForI18n(
   }
   return language;
 }
+
+// Available fonts from public/fonts + System option
+export const AVAILABLE_FONTS = [
+  { name: "System", label: "System Default (Automatic)" },
+  { name: "DejaVu Sans Mono", label: "DejaVu Sans Mono" },
+  { name: "Hack", label: "Hack" },
+  { name: "JetBrains Mono", label: "JetBrains Mono" },
+  { name: "Open Sans", label: "Open Sans" },
+  { name: "Roboto", label: "Roboto" },
+] as const;
+
+// Project roadmap - feature status tracking
+export const ROADMAP = [
+  { label: "Multi-database support (MySQL, Postgres, SQLite)", done: true },
+  { label: "SSH Tunneling", done: true },
+  { label: "Schema Introspection", done: true },
+  { label: "SQL Execution & Results Grid", done: true },
+  { label: "Inline Editing & Deletion", done: true },
+  { label: "Create New Table Wizard", done: true },
+  { label: "Data Export (CSV/JSON)", done: true },
+  { label: "Result Limiting & Pagination", done: true },
+  { label: "Multiple Query Tabs", done: true },
+  { label: "Saved Queries & Persistence", done: true },
+  { label: "Visual Query Builder (Experimental)", done: true },
+  { label: "Secure Keychain Storage", done: true },
+  { label: "Internationalization (i18n)", done: true },
+  { label: "AI Integration", done: true },
+  { label: "Dark/Light Theme Toggle", done: false },
+  { label: "Database Export/Dump", done: false },
+] as const;

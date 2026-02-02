@@ -43,6 +43,7 @@ import { ContextMenu } from "../components/ui/ContextMenu";
 import { ExportProgressModal, type ExportStatus } from "../components/ui/ExportProgressModal";
 import { splitQueries, extractTableName } from "../utils/sql";
 import { extractQueryParams, interpolateQueryParams } from "../utils/queryParameters";
+import { formatDuration } from "../utils/formatTime";
 import { SqlEditorWrapper } from "../components/ui/SqlEditorWrapper";
 import { registerSqlAutocomplete } from "../utils/autocomplete";
 import { type OnMount, type Monaco } from "@monaco-editor/react";
@@ -53,15 +54,6 @@ import { useSettings } from "../hooks/useSettings";
 import { useEditor } from "../hooks/useEditor";
 import type { QueryResult, Tab } from "../types/editor";
 import clsx from "clsx";
-
-const formatDuration = (ms: number): string => {
-  if (ms < 1000) return `${Math.round(ms)} ms`;
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${(ms / 1000).toFixed(2)} s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes} min ${remainingSeconds} s`;
-};
 
 interface TableColumn {
   name: string;
