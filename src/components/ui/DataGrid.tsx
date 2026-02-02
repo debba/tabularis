@@ -12,6 +12,7 @@ import { Trash2, Edit, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { EditRowModal } from "./EditRowModal";
+import { formatCellValue, getColumnSortState, calculateSelectionRange, toggleSetValue } from "./dataGridUtils";
 
 interface DataGridProps {
   columns: string[];
@@ -90,28 +91,21 @@ export const DataGrid = React.memo(({
   }, [columns, pkColumn]);
 
   const handleRowClick = useCallback((index: number, event: React.MouseEvent) => {
-    const newSelected = new Set(selectedRowIndices);
+    let newSelected = new Set(selectedRowIndices);
 
     if (event.shiftKey && lastSelectedRowIndex !== null) {
       // Range selection
-      const start = Math.min(lastSelectedRowIndex, index);
-      const end = Math.max(lastSelectedRowIndex, index);
-
+      const range = calculateSelectionRange(lastSelectedRowIndex, index);
+      
       // If NOT Ctrl/Cmd, clear previous selection first (standard OS behavior)
       if (!event.ctrlKey && !event.metaKey) {
         newSelected.clear();
       }
 
-      for (let i = start; i <= end; i++) {
-        newSelected.add(i);
-      }
+      range.forEach(i => newSelected.add(i));
     } else if (event.ctrlKey || event.metaKey) {
       // Toggle selection
-      if (newSelected.has(index)) {
-        newSelected.delete(index);
-      } else {
-        newSelected.add(index);
-      }
+      newSelected = toggleSetValue(newSelected, index);
       setLastSelectedRowIndex(index);
     } else {
       // Single selection
@@ -221,15 +215,8 @@ export const DataGrid = React.memo(({
         columnHelper.accessor((row) => row[index], {
           id: colName,
           header: () => {
-            let sortState: "none" | "asc" | "desc" = "none";
-            if (sortClause) {
-              const parts = sortClause.trim().split(/\s+/);
-              if (parts[0] === colName) {
-                const dir = parts[1]?.toUpperCase();
-                if (dir === "DESC") sortState = "desc";
-                else sortState = "asc";
-              }
-            }
+            const sortState = getColumnSortState(colName, sortClause);
+            const displaySortState: "none" | "asc" | "desc" = sortState ?? "none";
 
             return (
               <div
@@ -237,9 +224,9 @@ export const DataGrid = React.memo(({
                 onClick={() => onSort && onSort(colName)}
                 title={
                   onSort ? (
-                    sortState === "none"
+                    displaySortState === "none"
                       ? t("dataGrid.sortByAsc", { col: colName })
-                      : sortState === "asc"
+                      : displaySortState === "asc"
                         ? t("dataGrid.sortByDesc", { col: colName })
                         : t("dataGrid.clearSort")
                   ) : undefined
@@ -248,9 +235,9 @@ export const DataGrid = React.memo(({
                 <span>{colName}</span>
                 {onSort && (
                   <span className="flex flex-col items-center justify-center">
-                    {sortState === "asc" && <ArrowUp size={14} className="text-blue-400" />}
-                    {sortState === "desc" && <ArrowDown size={14} className="text-blue-400" />}
-                    {sortState === "none" && (
+                    {displaySortState === "asc" && <ArrowUp size={14} className="text-blue-400" />}
+                    {displaySortState === "desc" && <ArrowDown size={14} className="text-blue-400" />}
+                    {displaySortState === "none" && (
                       <ArrowUpDown
                         size={14}
                         className="text-secondary/60 opacity-50 group-hover/header:opacity-100 transition-opacity"
@@ -263,16 +250,18 @@ export const DataGrid = React.memo(({
           },
           cell: (info) => {
             const val = info.getValue();
-
-            if (val === null || val === undefined)
+            const formatted = formatCellValue(val, t("dataGrid.null"));
+            
+            // Apply styling for null values
+            if (val === null || val === undefined) {
               return (
                 <span className="text-muted italic">
-                  {t("dataGrid.null")}
+                  {formatted}
                 </span>
               );
-            if (typeof val === "boolean") return val ? "true" : "false";
-            if (typeof val === "object") return JSON.stringify(val);
-            return String(val);
+            }
+            
+            return formatted;
           },
         }),
       ),
