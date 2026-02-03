@@ -139,7 +139,22 @@ You can override or add custom models for AI providers by editing `config.json` 
 
 ### AI Features (Optional)
 
-Optional Text-to-SQL and query explanation (OpenAI/Anthropic). Includes a built-in **MCP Server** (`tabularis --mcp`) to expose connections to external agents.
+Optional Text-to-SQL and query explanation powered by:
+- **OpenAI**
+- **Anthropic**
+- **OpenRouter** (access to Gemini, Llama, DeepSeek, etc.)
+- **Ollama** (Local LLM support for total privacy)
+
+#### Local AI (Ollama)
+Select "Ollama" as your provider in Settings. Tabularis will automatically detect your local models running on port `11434` (configurable). No API key required.
+
+#### Dynamic Model Fetching
+Tabularis automatically fetches the latest available models from your configured provider.
+- **Refresh:** Click the refresh icon in Settings to update the model list from the API.
+- **Cache:** Model lists are cached locally for 24h to ensure fast startup.
+- **Validation:** Visual feedback if the selected model is not available for the current provider.
+
+Includes a built-in **MCP Server** (`tabularis --mcp`) to expose connections to external agents (Claude Desktop, Cursor).
 
 ## Tech Stack
 

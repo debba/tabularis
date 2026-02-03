@@ -549,3 +549,33 @@ Adhere to the rules defined in the [rules directory](./.rules/):
         - Installed Vitest, JSDOM, and React Testing Library via pnpm.
         - Configured `vitest.config.ts` and `src/test/setup.ts`.
         - Added Unit Tests for `src/utils/sql.ts` (Query Splitting, Table Extraction).
+
+### Session 39: AI Overhaul & Ollama
+- **Status:** Major Feature Update / Refactoring.
+- **Actions:**
+    - **Backend Refactoring (`ai.rs`, `config.rs`):**
+        - Centralized API key management (Env/Keychain) in `config.rs`.
+        - Cleaned up duplicated code and reorganized structure.
+        - Implemented `load_default_models` using `ai_models.yaml` for flexible defaults.
+    - **Ollama Integration:**
+        - **Full Support:** Added Ollama as a first-class AI provider.
+        - **Local Models:** Dynamic fetching of installed models via `/api/tags`.
+        - **Configurable Port:** Added support for custom Ollama ports (default 11434).
+        - **Privacy:** No API keys required, completely local execution.
+    - **Dynamic Caching:**
+        - Implemented file-based caching (`ai_models_cache.json`) for remote models (OpenAI, OpenRouter) to speed up startup.
+        - Cache expires after 24h or on manual refresh.
+        - OpenRouter fetch now retrieves the full list of available models.
+    - **Frontend UX (`Settings.tsx`):**
+        - **Searchable Select:** Created `SearchableSelect` component to handle large model lists (OpenRouter has 100+).
+        - **Visual Validation:** Added real-time checks: if the selected model is not available for the current provider, an alert is shown.
+        - **Ollama Status:** Live connection check with visual feedback (Green/Red) and model count.
+        - **Refresh:** Added manual "Refresh Models" button to bypass cache.
+    - **Internationalization:**
+        - Added comprehensive translations (IT/EN) for all new UI elements and error messages.
+    - **Testing:**
+        - Added Backend Unit Tests for `ai.rs` (default models loading, response cleaning).
+        - Added Frontend Unit Tests for `SearchableSelect` component.
+    - **Documentation:**
+        - Updated `README.md` and website with Ollama details.
+
