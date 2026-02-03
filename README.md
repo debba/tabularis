@@ -120,6 +120,23 @@ Configuration is stored in `~/.config/tabularis/` (Linux), `~/Library/Applicatio
 - `resultPageSize`: Default rows per page.
 - `aiEnabled`: Enable/Disable AI features.
 
+#### Custom AI Models override
+You can override or add custom models for AI providers by editing `config.json` and adding the `aiCustomModels` object:
+
+```json
+{
+  "resultPageSize": 1000,
+  "language": "en",
+  "aiEnabled": true,
+  "aiProvider": "openai",
+  "aiCustomModels": {
+    "openai": ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo", "gpt-5-preview"],
+    "anthropic": ["claude-3-opus-20240229", "claude-3-sonnet-20240229"],
+    "openrouter": ["google/gemini-pro-1.5", "meta-llama/llama-3-70b-instruct"]
+  }
+}
+```
+
 ### AI Features (Optional)
 
 Optional Text-to-SQL and query explanation (OpenAI/Anthropic). Includes a built-in **MCP Server** (`tabularis --mcp`) to expose connections to external agents.
