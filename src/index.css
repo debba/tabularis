@@ -377,6 +377,15 @@ select option:active {
   background-color: var(--bg-base) !important;
 }
 
+/* Prevent black flash on tab switching */
+.monaco-editor,
+.monaco-editor-background,
+.monaco-editor .margin,
+.monaco-editor .view-lines {
+  background-color: var(--bg-base) !important;
+  transition: none !important;
+}
+
 /* Add padding between line numbers and code content */
 .monaco-editor .view-lines {
   padding-left: 12px;

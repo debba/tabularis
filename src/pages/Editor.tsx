@@ -1182,36 +1182,47 @@ export const Editor = () => {
         </span>
       </div>
 
-      {!isTableTab && (
-        <div
-          style={{
-            height: isResultsCollapsed ? "calc(100vh - 109px)" : editorHeight,
-            display: isEditorOpen ? "block" : "none",
-          }}
-          className="relative"
-        >
-          {activeTab.type === "query_builder" ? (
-            <VisualQueryBuilder />
-          ) : (
-            <SqlEditorWrapper
-              height="100%"
-              initialValue={activeTab.query}
-              onChange={(val) => updateActiveTab({ query: val })}
-              onRun={handleRunButton}
-              onMount={handleEditorMount}
-              editorKey={activeTab.id}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                padding: { top: 16 },
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                wordWrap: "on",
-              }}
-            />
-          )}
-        </div>
-      )}
+      {/* Render all non-table tabs to prevent Monaco remounting */}
+      {tabs.map((tab) => {
+        if (tab.type === "table") return null;
+        
+        const isActive = tab.id === activeTabId;
+        const isVisible = isActive && !isTableTab && isEditorOpen;
+        
+        return (
+          <div
+            key={tab.id}
+            style={{
+              height: isResultsCollapsed ? "calc(100vh - 109px)" : editorHeight,
+              display: isVisible ? "block" : "none",
+            }}
+            className="relative"
+          >
+            {tab.type === "query_builder" ? (
+              <VisualQueryBuilder />
+            ) : (
+              <SqlEditorWrapper
+                height="100%"
+                initialValue={tab.query}
+                onChange={(val) => {
+                  if (isActive) updateTab(tab.id, { query: val });
+                }}
+                onRun={handleRunButton}
+                onMount={isActive ? handleEditorMount : undefined}
+                editorKey={tab.id}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  padding: { top: 16 },
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  wordWrap: "on",
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
 
       {/* Resize Bar & Results Panel */}
       {isTableTab || !isResultsCollapsed ? (
