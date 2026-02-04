@@ -18,6 +18,7 @@ import {
   type MessageContentPart,
 } from "../../utils/image";
 import { ChatMessageContent } from "./ChatMessageContent";
+import { ModelSelect } from "./ModelSelect";
 import type { TableSchema } from "../../types/editor";
 
 interface AiChatPanelProps {
@@ -65,6 +66,8 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
   const [isSchemaLoading, setIsSchemaLoading] = useState(false);
   const [chatPrompt, setChatPrompt] = useState("");
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [availableModels, setAvailableModels] = useState<Record<string, string[]>>({});
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const loadSchema = useCallback(async () => {
@@ -98,14 +101,40 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
       }
     };
 
+    const loadModels = async () => {
+      try {
+        const models = await invoke<Record<string, string[]>>("get_ai_models", {
+          forceRefresh: false,
+        });
+        setAvailableModels(models);
+      } catch (err) {
+        console.error("Failed to load AI models:", err);
+      }
+    };
+
     if (isOpen) {
       loadChatPrompt();
+      loadModels();
     }
   }, [isOpen]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, isOpen]);
+
+  // Filter models to show only active providers (with at least one model)
+  const activeModels = useMemo(() => {
+    const filtered: Record<string, string[]> = {};
+
+    Object.entries(availableModels).forEach(([provider, models]) => {
+      // Only include providers with at least one model
+      if (models && models.length > 0) {
+        filtered[provider] = models;
+      }
+    });
+
+    return filtered;
+  }, [availableModels]);
 
   const providerLabel = useMemo(() => {
     return settings.aiProvider ? getProviderLabel(settings.aiProvider) : "";
@@ -179,11 +208,23 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
     setIsLoading(true);
     setError(null);
 
+    // Parse provider and model from selectedModel (format: "provider:model")
+    let provider = settings.aiProvider;
+    let model = settings.aiModel || "";
+
+    if (selectedModel) {
+      const parts = selectedModel.split(":");
+      if (parts.length === 2) {
+        provider = parts[0] as typeof provider;
+        model = parts[1];
+      }
+    }
+
     try {
       const response = await invoke<string>("chat_ai_assist", {
         req: {
-          provider: settings.aiProvider,
-          model: settings.aiModel || "",
+          provider,
+          model,
           system_prompt: systemPrompt,
           messages: nextMessages.map<ChatRequestMessage>((msg) => ({
             role: msg.role,
@@ -209,6 +250,7 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
   }, [
     input,
     selectedImages,
+    selectedModel,
     settings.aiProvider,
     settings.aiModel,
     activeConnectionId,
@@ -403,12 +445,24 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
         <div className="flex items-center gap-2 mt-2">
           <button
             onClick={handleImageSelect}
-            disabled={!canSend || isLoading}
+            disabled={isLoading || !settings.aiProvider || !activeConnectionId}
             className="p-2 text-muted hover:text-primary hover:bg-surface-secondary rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title={t("aiChat.attachImage")}
           >
             <ImagePlus size={16} />
           </button>
+          {Object.keys(activeModels).length > 0 && (
+            <ModelSelect
+              value={selectedModel}
+              models={activeModels}
+              onChange={setSelectedModel}
+              placeholder={t("aiChat.selectModel")}
+              searchPlaceholder={t("aiChat.searchModels")}
+              noResultsLabel={t("aiChat.noModels")}
+              filterVisionOnly={selectedImages.length > 0}
+              className="flex-1 max-w-[200px]"
+            />
+          )}
           <div className="flex-1" />
           <button
             onClick={handleSend}

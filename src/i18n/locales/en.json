@@ -457,9 +457,12 @@
     "errorPrefix": "Error: ",
     "attachImage": "Attach image",
     "selectModel": "Select model",
+    "searchModels": "Search models...",
+    "noModels": "No models available",
     "imageTooLarge": "Image exceeds {{max}} limit",
     "imageLoadError": "Failed to load image",
     "modelNoVision": "Model {{model}} does not support images. Select a vision-capable model.",
+    "modelNoVisionAttach": "Selected model does not support images. Choose a vision-capable model first.",
     "visionCapable": "Supports images",
     "maxImagesReached": "Maximum {{max}} images per message"
   }

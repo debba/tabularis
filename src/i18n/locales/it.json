@@ -457,9 +457,12 @@
     "errorPrefix": "Errore: ",
     "attachImage": "Allega immagine",
     "selectModel": "Seleziona modello",
+    "searchModels": "Cerca modelli...",
+    "noModels": "Nessun modello disponibile",
     "imageTooLarge": "L'immagine supera il limite di {{max}}",
     "imageLoadError": "Errore nel caricamento dell'immagine",
     "modelNoVision": "Il modello {{model}} non supporta immagini. Seleziona un modello con supporto vision.",
+    "modelNoVisionAttach": "Il modello selezionato non supporta immagini. Scegli prima un modello con supporto vision.",
     "visionCapable": "Supporta immagini",
     "maxImagesReached": "Massimo {{max}} immagini per messaggio"
   }

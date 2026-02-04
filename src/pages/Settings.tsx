@@ -166,7 +166,7 @@ export const Settings = () => {
     }
   };
 
-  const checkKeys = async () => {
+  const checkKeys = useCallback(async () => {
     try {
       const openai = await invoke<boolean>("check_ai_key", {
         provider: "openai",
@@ -177,12 +177,14 @@ export const Settings = () => {
       const openrouter = await invoke<boolean>("check_ai_key", {
         provider: "openrouter",
       });
-      const ollama = true; // Ollama is always "configured" as it's local
+      // Ollama is enabled only if there are models available
+      const ollamaModels = availableModels['ollama'] || [];
+      const ollama = ollamaModels.length > 0;
       setAiKeyStatus({ openai, anthropic, openrouter, ollama });
     } catch (e) {
       console.error("Failed to check keys", e);
     }
-  };
+  }, [availableModels]);
 
   const handleSaveKey = async (provider: string) => {
     if (!keyInput.trim()) return;
@@ -209,6 +211,13 @@ export const Settings = () => {
     loadChatPrompt();
     loadModels(false);
   }, [loadModels]);
+
+  // Update key status when available models change (especially for Ollama)
+  useEffect(() => {
+    if (Object.keys(availableModels).length > 0) {
+      checkKeys();
+    }
+  }, [availableModels, checkKeys]);
 
 
   const availableLanguages: Array<{
