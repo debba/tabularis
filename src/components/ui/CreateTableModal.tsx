@@ -204,14 +204,14 @@ export const CreateTableModal = ({ isOpen, onClose, onSuccess }: CreateTableModa
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-elevated/50 sticky top-0 z-10">
                             <tr>
-                                <th className="p-2 text-[10px] uppercase text-muted font-semibold w-8"></th>
-                                <th className="p-2 text-[10px] uppercase text-muted font-semibold">{t('createTable.colName')}</th>
-                                <th className="p-2 text-[10px] uppercase text-muted font-semibold w-32">{t('createTable.colType')}</th>
-                                <th className="p-2 text-[10px] uppercase text-muted font-semibold w-20">{t('createTable.colLen')}</th>
-                                <th className="p-2 text-[10px] uppercase text-muted font-semibold w-10 text-center" title="Primary Key">{t('createTable.colPk')}</th>
-                                <th className="p-2 text-[10px] uppercase text-muted font-semibold w-10 text-center" title="Not Null">{t('createTable.colNn')}</th>
-                                <th className="p-2 text-[10px] uppercase text-muted font-semibold w-10 text-center" title="Auto Increment">{t('createTable.colAi')}</th>
-                                <th className="p-2 text-[10px] uppercase text-muted font-semibold w-32">{t('createTable.colDefault')}</th>
+                                <th className="p-2 text-[10px] text-muted font-semibold w-8"></th>
+                                <th className="p-2 text-[10px] text-muted font-semibold">{t('createTable.colName')}</th>
+                                <th className="p-2 text-[10px] text-muted font-semibold w-32">{t('createTable.colType')}</th>
+                                <th className="p-2 text-[10px] text-muted font-semibold w-20">{t('createTable.colLen')}</th>
+                                <th className="p-2 text-[10px] text-muted font-semibold w-10 text-center" title="Primary Key">{t('createTable.colPk')}</th>
+                                <th className="p-2 text-[10px] text-muted font-semibold w-10 text-center" title="Not Null">{t('createTable.colNn')}</th>
+                                <th className="p-2 text-[10px] text-muted font-semibold w-10 text-center" title="Auto Increment">{t('createTable.colAi')}</th>
+                                <th className="p-2 text-[10px] text-muted font-semibold w-32">{t('createTable.colDefault')}</th>
                                 <th className="p-2 w-8"></th>
                             </tr>
                         </thead>

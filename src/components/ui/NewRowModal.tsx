@@ -252,12 +252,12 @@ export const NewRowModal = ({
                       <span className="text-surface-tertiary">({col.data_type})</span>
                     </span>
                     {col.is_pk && (
-                      <span className="text-semantic-pk text-[10px] uppercase">
+                      <span className="text-semantic-pk text-[10px]">
                         {t("newRow.primaryKey")}
                       </span>
                     )}
                     {col.is_auto_increment && (
-                      <span className="text-accent-info text-[10px] uppercase">
+                      <span className="text-accent-info text-[10px]">
                         {t("newRow.auto")}
                       </span>
                     )}

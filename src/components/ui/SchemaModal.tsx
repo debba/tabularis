@@ -66,10 +66,10 @@ export const SchemaModal = ({ isOpen, onClose, tableName }: SchemaModalProps) =>
             <table className="w-full text-left border-collapse">
               <thead className="bg-elevated sticky top-0">
                 <tr>
-                  <th className="px-4 py-2 text-xs font-semibold text-secondary uppercase border-b border-strong">{t('schema.colName')}</th>
-                  <th className="px-4 py-2 text-xs font-semibold text-secondary uppercase border-b border-strong">{t('schema.colType')}</th>
-                  <th className="px-4 py-2 text-xs font-semibold text-secondary uppercase border-b border-strong text-center">{t('schema.colNullable')}</th>
-                  <th className="px-4 py-2 text-xs font-semibold text-secondary uppercase border-b border-strong text-center">{t('schema.colKey')}</th>
+                  <th className="px-4 py-2 text-xs font-semibold text-secondary border-b border-strong">{t('schema.colName')}</th>
+                  <th className="px-4 py-2 text-xs font-semibold text-secondary border-b border-strong">{t('schema.colType')}</th>
+                  <th className="px-4 py-2 text-xs font-semibold text-secondary border-b border-strong text-center">{t('schema.colNullable')}</th>
+                  <th className="px-4 py-2 text-xs font-semibold text-secondary border-b border-strong text-center">{t('schema.colKey')}</th>
                 </tr>
               </thead>
               <tbody>

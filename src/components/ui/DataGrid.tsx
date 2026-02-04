@@ -400,7 +400,7 @@ export const DataGrid = React.memo(({
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-4 py-2 text-xs font-semibold text-secondary uppercase tracking-wider border-b border-r border-default last:border-r-0 whitespace-nowrap"
+                    className="px-4 py-2 text-xs font-semibold text-secondary tracking-wider border-b border-r border-default last:border-r-0 whitespace-nowrap"
                   >
                     {flexRender(
                       header.column.columnDef.header,

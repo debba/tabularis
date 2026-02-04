@@ -260,7 +260,7 @@ export const ModifyColumnModal = ({
             )}
 
             <div>
-                <label className="block text-xs font-semibold text-secondary mb-1 uppercase">{t('modifyColumn.name')}</label>
+                <label className="block text-xs font-semibold text-secondary mb-1">{t('modifyColumn.name')}</label>
                 <input 
                     value={form.name}
                     onChange={(e) => setForm({...form, name: e.target.value})}
@@ -268,6 +268,61 @@ export const ModifyColumnModal = ({
                     placeholder="column_name"
                     autoFocus
                 />
+            </div>
+
+            <div className="flex gap-4">
+                <div className="flex-1">
+                    <label className="block text-xs font-semibold text-secondary mb-1">{t('modifyColumn.type')}</label>
+                    <select 
+                        value={form.type}
+                        onChange={(e) => {
+                            const newType = e.target.value;
+                            const needsLength = ['VARCHAR', 'CHAR', 'DECIMAL', 'FLOAT', 'DOUBLE'].some(t_type => newType.includes(t_type));
+                            setForm({
+                                ...form, 
+                                type: newType,
+                                // Clear length if new type doesn't support it, unless it's VARCHAR which defaults to 255 if empty in some contexts, but here we can just clear it or set to default if needed.
+                                // User asked: "Su add column mette always length 255 anche o dove non serve"
+                                // So if type changes to INTEGER, length should be cleared.
+                                length: needsLength ? (form.length || (newType.includes('VARCHAR') ? '255' : '')) : ''
+                            });
+                        }}
+                        disabled={driver === 'sqlite' && isEdit}
+                        className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none disabled:opacity-50 appearance-none cursor-pointer hover:bg-elevated transition-colors"
+                        style={{
+                          backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                          backgroundPosition: `right 0.5rem center`,
+                          backgroundRepeat: `no-repeat`,
+                          backgroundSize: `1.5em 1.5em`,
+                          paddingRight: `2.5rem`
+                        }}
+                    >
+                        {COMMON_TYPES.map(t_type => <option key={t_type} value={t_type}>{t_type}</option>)}
+                    </select>
+                </div>
+                <div className="w-24">
+                    <label className="block text-xs font-semibold text-secondary mb-1">{t('modifyColumn.length')}</label>
+                    <input 
+                        value={form.length}
+                        onChange={(e) => setForm({...form, length: e.target.value})}
+                        disabled={(driver === 'sqlite' && isEdit) || !['VARCHAR', 'CHAR', 'DECIMAL', 'FLOAT', 'DOUBLE'].some(t_type => form.type.includes(t_type))}
+                        className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none font-mono disabled:opacity-50"
+                        placeholder={form.type.includes('VARCHAR') ? '255' : (['DECIMAL', 'FLOAT', 'DOUBLE'].some(t_type => form.type.includes(t_type)) ? '10,2' : '')}
+                    />
+                </div>
+            </div>
+
+            <div className="flex gap-4">
+                <div className="flex-1">
+                    <label className="block text-xs font-semibold text-secondary mb-1">{t('modifyColumn.default')}</label>
+                    <input 
+                        value={form.defaultValue}
+                        onChange={(e) => setForm({...form, defaultValue: e.target.value})}
+                        disabled={driver === 'sqlite' && isEdit}
+                        className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none font-mono disabled:opacity-50"
+                        placeholder="NULL"
+                    />
+                </div>
             </div>
 
             <div className="flex gap-4">
