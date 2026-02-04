@@ -11,6 +11,7 @@ export interface SshConnection {
   host: string;
   port: number;
   user: string;
+  auth_type?: "password" | "ssh_key";
   password?: string;
   key_file?: string;
   key_passphrase?: string;
@@ -123,10 +124,17 @@ export function validateSshConnection(
     return { isValid: false, error: "SSH port must be between 1 and 65535" };
   }
 
-  // Either password or key file must be provided
-  if (!ssh.password && !ssh.key_file) {
-    return { isValid: false, error: "SSH password or key file is required" };
+  if (!ssh.auth_type) {
+    return { isValid: false, error: "Authentication type is required" };
   }
+
+  // Validate based on auth type
+  if (ssh.auth_type === "password") {
+    if (!ssh.password || ssh.password.trim() === "") {
+      return { isValid: false, error: "Password is required for password authentication" };
+    }
+  }
+  // For ssh_key type, both key_file and key_passphrase are optional
 
   return { isValid: true };
 }

@@ -8,6 +8,23 @@ pub struct SshConnection {
     pub port: u16,
     pub user: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub auth_type: Option<String>, // "password" or "ssh_key"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key_file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key_passphrase: Option<String>,
+    pub save_in_keychain: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct SshConnectionInput {
+    pub host: String,
+    pub port: u16,
+    pub user: String,
+    pub auth_type: String, // "password" or "ssh_key"
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub key_file: Option<String>,

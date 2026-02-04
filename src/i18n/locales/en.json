@@ -223,6 +223,9 @@
     "noConnections": "No SSH connections configured yet",
     "name": "Connection Name",
     "namePlaceholder": "My SSH Server",
+    "authType": "Authentication Type",
+    "authTypePassword": "Password",
+    "authTypeSshKey": "SSH Key",
     "edit": "Edit",
     "delete": "Delete",
     "save": "Save",
@@ -232,7 +235,9 @@
     "failSave": "Failed to save SSH connection",
     "failDelete": "Failed to delete SSH connection",
     "fillRequired": "Please fill in all required fields",
-    "keyFile": "Key file"
+    "keyFile": "Key file",
+    "quickTest": "Quick connection test",
+    "testFailed": "Connection test failed"
   },
   "dataGrid": {
     "noData": "No data to display",

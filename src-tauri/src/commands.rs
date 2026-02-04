@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::drivers::{mysql, postgres, sqlite};
 use crate::keychain_utils;
 use crate::models::{
-    ConnectionParams, ForeignKey, Index, QueryResult, SavedConnection, SshConnection, SshTestParams,
+    ConnectionParams, ForeignKey, Index, QueryResult, SavedConnection, SshConnection, SshConnectionInput, SshTestParams,
     TableColumn, TableInfo,
 };
 use crate::ssh_tunnel::{get_tunnels, SshTunnel};
@@ -533,6 +533,13 @@ async fn migrate_ssh_connections<R: Runtime>(app: &AppHandle<R>) -> Result<(), S
                         host: host.clone(),
                         port,
                         user: user.clone(),
+                        auth_type: Some(
+                            if !key_file.is_empty() {
+                                "ssh_key".to_string()
+                            } else {
+                                "password".to_string()
+                            }
+                        ),
                         password: None,
                         key_file: if key_file.is_empty() {
                             None
@@ -590,8 +597,19 @@ pub async fn get_ssh_connections<R: Runtime>(
     let mut ssh_connections: Vec<SshConnection> =
         serde_json::from_str(&content).unwrap_or_default();
 
-    // Populate passwords from keychain if needed
+    // Populate passwords from keychain if needed and determine auth_type for backward compatibility
     for ssh in &mut ssh_connections {
+        // Backward compatibility: determine auth_type if missing
+        if ssh.auth_type.is_none() {
+            ssh.auth_type = Some(
+                if ssh.key_file.is_some() && ssh.key_file.as_ref().map_or(false, |k| !k.trim().is_empty()) {
+                    "ssh_key".to_string()
+                } else {
+                    "password".to_string()
+                }
+            );
+        }
+
         if ssh.save_in_keychain.unwrap_or(false) {
             if let Ok(pwd) = keychain_utils::get_ssh_password(&ssh.id) {
                 ssh.password = Some(pwd);
@@ -609,7 +627,7 @@ pub async fn get_ssh_connections<R: Runtime>(
 pub async fn save_ssh_connection<R: Runtime>(
     app: AppHandle<R>,
     name: String,
-    ssh: SshConnection,
+    ssh: SshConnectionInput,
 ) -> Result<SshConnection, String> {
     let path = get_ssh_config_path(&app)?;
     let mut ssh_connections: Vec<SshConnection> = if path.exists() {
@@ -620,22 +638,34 @@ pub async fn save_ssh_connection<R: Runtime>(
     };
 
     let id = Uuid::new_v4().to_string();
-    let mut ssh_to_save = ssh.clone();
-    ssh_to_save.id = id.clone();
-    ssh_to_save.name = name;
-
-    if ssh.save_in_keychain.unwrap_or(false) {
-        if let Some(pwd) = &ssh.password {
-            keychain_utils::set_ssh_password(&id, pwd)?;
-        }
-        if let Some(passphrase) = &ssh.key_passphrase {
-            if !passphrase.trim().is_empty() {
-                keychain_utils::set_ssh_key_passphrase(&id, passphrase)?;
+    let ssh_to_save = SshConnection {
+        id: id.clone(),
+        name: name.clone(),
+        host: ssh.host,
+        port: ssh.port,
+        user: ssh.user,
+        auth_type: Some(ssh.auth_type.clone()),
+        password: if ssh.save_in_keychain.unwrap_or(false) {
+            if let Some(pwd) = &ssh.password {
+                keychain_utils::set_ssh_password(&id, pwd)?;
             }
-        }
-        ssh_to_save.password = None;
-        ssh_to_save.key_passphrase = None;
-    }
+            None
+        } else {
+            ssh.password.clone()
+        },
+        key_file: ssh.key_file.clone(),
+        key_passphrase: if ssh.save_in_keychain.unwrap_or(false) {
+            if let Some(passphrase) = &ssh.key_passphrase {
+                if !passphrase.trim().is_empty() {
+                    keychain_utils::set_ssh_key_passphrase(&id, passphrase)?;
+                }
+            }
+            None
+        } else {
+            ssh.key_passphrase.clone()
+        },
+        save_in_keychain: ssh.save_in_keychain,
+    };
 
     ssh_connections.push(ssh_to_save.clone());
     let json = serde_json::to_string_pretty(&ssh_connections).map_err(|e| e.to_string())?;
@@ -652,7 +682,7 @@ pub async fn update_ssh_connection<R: Runtime>(
     app: AppHandle<R>,
     id: String,
     name: String,
-    ssh: SshConnection,
+    ssh: SshConnectionInput,
 ) -> Result<SshConnection, String> {
     let path = get_ssh_config_path(&app)?;
     let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
@@ -664,10 +694,6 @@ pub async fn update_ssh_connection<R: Runtime>(
         .position(|s| s.id == id)
         .ok_or("SSH connection not found")?;
 
-    let mut ssh_to_save = ssh.clone();
-    ssh_to_save.id = id.clone();
-    ssh_to_save.name = name;
-
     if ssh.save_in_keychain.unwrap_or(false) {
         if let Some(pwd) = &ssh.password {
             keychain_utils::set_ssh_password(&id, pwd)?;
@@ -677,12 +703,31 @@ pub async fn update_ssh_connection<R: Runtime>(
                 keychain_utils::set_ssh_key_passphrase(&id, passphrase)?;
             }
         }
-        ssh_to_save.password = None;
-        ssh_to_save.key_passphrase = None;
     } else {
         keychain_utils::delete_ssh_password(&id).ok();
         keychain_utils::delete_ssh_key_passphrase(&id).ok();
     }
+
+    let ssh_to_save = SshConnection {
+        id: id.clone(),
+        name: name.clone(),
+        host: ssh.host,
+        port: ssh.port,
+        user: ssh.user,
+        auth_type: Some(ssh.auth_type.clone()),
+        password: if ssh.save_in_keychain.unwrap_or(false) {
+            None
+        } else {
+            ssh.password.clone()
+        },
+        key_file: ssh.key_file.clone(),
+        key_passphrase: if ssh.save_in_keychain.unwrap_or(false) {
+            None
+        } else {
+            ssh.key_passphrase.clone()
+        },
+        save_in_keychain: ssh.save_in_keychain,
+    };
 
     ssh_connections[ssh_idx] = ssh_to_save.clone();
 

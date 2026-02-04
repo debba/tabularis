@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { X, Plus, Edit2, Trash2, Check, Loader2 } from "lucide-react";
+import { X, Plus, Edit2, Trash2, Check, Loader2, Zap, XCircle } from "lucide-react";
 import {
   loadSshConnections,
   saveSshConnection,
@@ -62,12 +62,15 @@ export function SshConnectionsModal({
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState<Partial<SshConnection>>({
     port: 22,
+    auth_type: "password",
     save_in_keychain: true,
   });
   const [testStatus, setTestStatus] = useState<
     "idle" | "testing" | "success" | "error"
   >("idle");
   const [testMessage, setTestMessage] = useState("");
+  const [testingConnectionId, setTestingConnectionId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, "success" | "error">>({});
 
   const loadConnections = useCallback(async () => {
     const result = await loadSshConnections();
@@ -103,6 +106,7 @@ export function SshConnectionsModal({
   const resetForm = () => {
     setFormData({
       port: 22,
+      auth_type: "password",
       save_in_keychain: true,
     });
     setEditingId(null);
@@ -146,6 +150,7 @@ export function SshConnectionsModal({
         host: formData.host,
         port: formData.port || 22,
         user: formData.user,
+        auth_type: formData.auth_type,
         password: formData.password,
         key_file: formData.key_file,
         key_passphrase: formData.key_passphrase,
@@ -168,7 +173,14 @@ export function SshConnectionsModal({
   };
 
   const handleEdit = (conn: SshConnection) => {
-    setFormData(conn);
+    // Determine auth_type for backward compatibility
+    const auth_type = conn.auth_type ||
+      (conn.key_file && conn.key_file.trim() !== "" ? "ssh_key" : "password");
+
+    setFormData({
+      ...conn,
+      auth_type,
+    });
     setEditingId(conn.id);
     setIsCreating(true);
   };
@@ -184,6 +196,49 @@ export function SshConnectionsModal({
     } catch (error) {
       console.error("Failed to delete SSH connection:", error);
       alert(t("sshConnections.failDelete"));
+    }
+  };
+
+  const handleQuickTest = async (conn: SshConnection) => {
+    setTestingConnectionId(conn.id);
+
+    try {
+      await testSshConnection(conn);
+      // Test successful - show success feedback
+      setTestResults((prev) => ({ ...prev, [conn.id]: "success" }));
+      console.log(`Connection test successful for ${conn.name}`);
+      
+      // Clear the success indicator after 3 seconds
+      setTimeout(() => {
+        setTestResults((prev) => {
+          const updated = { ...prev };
+          delete updated[conn.id];
+          return updated;
+        });
+      }, 3000);
+    } catch (error) {
+      console.error("SSH quick test failed:", error);
+      const msg =
+        typeof error === "string"
+          ? error
+          : error instanceof Error
+            ? error.message
+            : JSON.stringify(error);
+      
+      // Show error feedback
+      setTestResults((prev) => ({ ...prev, [conn.id]: "error" }));
+      alert(`${t("sshConnections.testFailed")}: ${msg}`);
+      
+      // Clear the error indicator after 3 seconds
+      setTimeout(() => {
+        setTestResults((prev) => {
+          const updated = { ...prev };
+          delete updated[conn.id];
+          return updated;
+        });
+      }, 3000);
+    } finally {
+      setTestingConnectionId(null);
     }
   };
 
@@ -245,6 +300,28 @@ export function SshConnectionsModal({
                       </div>
                       <div className="flex gap-2">
                         <button
+                          onClick={() => handleQuickTest(conn)}
+                          disabled={testingConnectionId === conn.id}
+                          className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
+                            testResults[conn.id] === "success"
+                              ? "text-green-500 bg-green-500/20"
+                              : testResults[conn.id] === "error"
+                                ? "text-red-500 bg-red-500/20"
+                                : "text-green-500 hover:bg-green-500/10"
+                          }`}
+                          title={t("sshConnections.quickTest")}
+                        >
+                          {testingConnectionId === conn.id ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : testResults[conn.id] === "success" ? (
+                            <Check size={16} />
+                          ) : testResults[conn.id] === "error" ? (
+                            <XCircle size={16} />
+                          ) : (
+                            <Zap size={16} />
+                          )}
+                        </button>
+                        <button
                           onClick={() => handleEdit(conn)}
                           className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"
                           title={t("sshConnections.edit")}
@@ -296,28 +373,46 @@ export function SshConnectionsModal({
                 placeholder="username"
               />
 
-              <SshInput
-                label={t("newConnection.sshPassword")}
-                value={formData.password}
-                onChange={(val) => updateField("password", val)}
-                type="password"
-                placeholder={t("newConnection.sshPasswordPlaceholder")}
-              />
+              <div className="flex flex-col">
+                <label className={LabelClass}>{t("sshConnections.authType")}</label>
+                <select
+                  value={formData.auth_type || "password"}
+                  onChange={(e) => updateField("auth_type", e.target.value as "password" | "ssh_key")}
+                  className={InputClass}
+                >
+                  <option value="password">{t("sshConnections.authTypePassword")}</option>
+                  <option value="ssh_key">{t("sshConnections.authTypeSshKey")}</option>
+                </select>
+              </div>
 
-              <SshInput
-                label={t("newConnection.sshKeyFile")}
-                value={formData.key_file}
-                onChange={(val) => updateField("key_file", val)}
-                placeholder={t("newConnection.sshKeyFilePlaceholder")}
-              />
+              {formData.auth_type === "password" && (
+                <SshInput
+                  label={t("newConnection.sshPassword")}
+                  value={formData.password}
+                  onChange={(val) => updateField("password", val)}
+                  type="password"
+                  placeholder={t("newConnection.sshPasswordPlaceholder")}
+                />
+              )}
 
-              <SshInput
-                label={t("newConnection.sshKeyPassphrase")}
-                value={formData.key_passphrase}
-                onChange={(val) => updateField("key_passphrase", val)}
-                type="password"
-                placeholder={t("newConnection.sshKeyPassphrasePlaceholder")}
-              />
+              {formData.auth_type === "ssh_key" && (
+                <>
+                  <SshInput
+                    label={t("newConnection.sshKeyFile")}
+                    value={formData.key_file}
+                    onChange={(val) => updateField("key_file", val)}
+                    placeholder={t("newConnection.sshKeyFilePlaceholder")}
+                  />
+
+                  <SshInput
+                    label={t("newConnection.sshKeyPassphrase")}
+                    value={formData.key_passphrase}
+                    onChange={(val) => updateField("key_passphrase", val)}
+                    type="password"
+                    placeholder={t("newConnection.sshKeyPassphrasePlaceholder")}
+                  />
+                </>
+              )}
 
               <div className="flex items-center gap-2">
                 <input

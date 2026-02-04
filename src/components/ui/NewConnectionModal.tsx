@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { X, Check, AlertCircle, Loader2, Database, Settings } from "lucide-react";
+import {
+  X,
+  Check,
+  AlertCircle,
+  Loader2,
+  Database,
+  Settings,
+} from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import clsx from "clsx";
 import { SshConnectionsModal } from "./SshConnectionsModal";
@@ -40,7 +47,6 @@ interface NewConnectionModalProps {
   onSave?: () => void;
   initialConnection?: SavedConnection | null;
 }
-
 
 const InputClass =
   "w-full px-3 pt-2 pb-1 bg-base border border-strong rounded-lg text-primary focus:border-blue-500 focus:outline-none leading-tight";
@@ -125,7 +131,7 @@ export const NewConnectionModal = ({
         setFormData({ ...initialConnection.params });
         // Set SSH mode based on whether using connection ID or inline config
         setSshMode(
-          initialConnection.params.ssh_connection_id ? "existing" : "inline"
+          initialConnection.params.ssh_connection_id ? "existing" : "inline",
         );
       } else {
         // Reset to defaults
@@ -404,7 +410,7 @@ export const NewConnectionModal = ({
                         "flex-1 px-3 py-2 rounded border text-sm font-medium transition-colors",
                         sshMode === "existing"
                           ? "bg-blue-600 border-blue-600 text-white"
-                          : "bg-elevated border-strong text-secondary hover:border-strong"
+                          : "bg-elevated border-strong text-secondary hover:border-strong",
                       )}
                     >
                       {t("newConnection.useSshConnection")}
@@ -420,7 +426,7 @@ export const NewConnectionModal = ({
                         "flex-1 px-3 py-2 rounded border text-sm font-medium transition-colors",
                         sshMode === "inline"
                           ? "bg-blue-600 border-blue-600 text-white"
-                          : "bg-elevated border-strong text-secondary hover:border-strong"
+                          : "bg-elevated border-strong text-secondary hover:border-strong",
                       )}
                     >
                       {t("newConnection.createInlineSsh")}
@@ -441,13 +447,15 @@ export const NewConnectionModal = ({
                           }
                           className={clsx(
                             InputClass,
-                            "cursor-pointer appearance-auto"
+                            "cursor-pointer appearance-auto",
                           )}
                         >
                           <option value="">
                             {sshConnections.length === 0
                               ? t("newConnection.noSshConnections")
-                              : "-- " + t("newConnection.selectSshConnection") + " --"}
+                              : "-- " +
+                                t("newConnection.selectSshConnection") +
+                                " --"}
                           </option>
                           {sshConnections.map((conn) => (
                             <option key={conn.id} value={conn.id}>
@@ -481,7 +489,9 @@ export const NewConnectionModal = ({
                         <ConnectionInput
                           label={t("newConnection.sshPort")}
                           value={formData.ssh_port}
-                          onChange={(val) => updateField("ssh_port", Number(val))}
+                          onChange={(val) =>
+                            updateField("ssh_port", Number(val))
+                          }
                           type="number"
                           placeholder="22"
                         />
@@ -499,9 +509,12 @@ export const NewConnectionModal = ({
                           value={formData.ssh_password}
                           onChange={(val) => updateField("ssh_password", val)}
                           type="password"
-                          placeholder={t("newConnection.sshPasswordPlaceholder")}
+                          placeholder={t(
+                            "newConnection.sshPasswordPlaceholder",
+                          )}
                           error={
-                            formData.save_in_keychain && !formData.ssh_password ? (
+                            formData.save_in_keychain &&
+                            !formData.ssh_password ? (
                               <p className="text-[10px] text-amber-500 mt-1 flex items-center gap-1">
                                 <AlertCircle size={10} />
                                 {t("newConnection.sshPasswordMissing")}
@@ -521,9 +534,13 @@ export const NewConnectionModal = ({
                       <ConnectionInput
                         label={t("newConnection.sshKeyPassphrase")}
                         value={formData.ssh_key_passphrase}
-                        onChange={(val) => updateField("ssh_key_passphrase", val)}
+                        onChange={(val) =>
+                          updateField("ssh_key_passphrase", val)
+                        }
                         type="password"
-                        placeholder={t("newConnection.sshKeyPassphrasePlaceholder")}
+                        placeholder={t(
+                          "newConnection.sshKeyPassphrasePlaceholder",
+                        )}
                       />
                     </div>
                   )}

@@ -223,6 +223,9 @@
     "noConnections": "Nessuna connessione SSH configurata",
     "name": "Nome Connessione",
     "namePlaceholder": "Il Mio Server SSH",
+    "authType": "Tipo di Autenticazione",
+    "authTypePassword": "Password",
+    "authTypeSshKey": "Chiave SSH",
     "edit": "Modifica",
     "delete": "Elimina",
     "save": "Salva",
@@ -232,7 +235,9 @@
     "failSave": "Salvataggio connessione SSH fallito",
     "failDelete": "Eliminazione connessione SSH fallita",
     "fillRequired": "Per favore compila tutti i campi obbligatori",
-    "keyFile": "File chiave"
+    "keyFile": "File chiave",
+    "quickTest": "Test connessione rapido",
+    "testFailed": "Test connessione fallito"
   },
   "dataGrid": {
     "noData": "Nessun dato da visualizzare",
