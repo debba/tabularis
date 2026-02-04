@@ -1,12 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { MessageCircle, Trash2, X, Loader2 } from "lucide-react";
+import { MessageCircle, Trash2, X, Loader2, ImagePlus } from "lucide-react";
+import { open } from "@tauri-apps/plugin-dialog";
+import { readFile } from "@tauri-apps/plugin-fs";
 import { useSettings } from "../../hooks/useSettings";
 import { useDatabase } from "../../hooks/useDatabase";
 import { useEditor } from "../../hooks/useEditor";
 import { buildAiChatContext } from "../../utils/aiChatContext";
 import { getProviderLabel } from "../../utils/settingsUI";
+import {
+  arrayBufferToBase64,
+  validateImageSize,
+  getMimeTypeFromExtension,
+  createImageContentPart,
+  createTextContentPart,
+  type MessageContentPart,
+} from "../../utils/image";
+import { ChatMessageContent } from "./ChatMessageContent";
 import type { TableSchema } from "../../types/editor";
 
 interface AiChatPanelProps {
@@ -18,12 +29,20 @@ interface AiChatPanelProps {
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
-  content: string;
+  content: string | MessageContentPart[];
 }
 
 interface ChatRequestMessage {
   role: "user" | "assistant";
-  content: string;
+  content: MessageContentPart[];
+}
+
+interface SelectedImage {
+  id: string;
+  dataUrl: string;
+  mimeType: string;
+  size: number;
+  name: string;
 }
 
 export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) => {
@@ -45,6 +64,7 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
   const [schema, setSchema] = useState<TableSchema[]>([]);
   const [isSchemaLoading, setIsSchemaLoading] = useState(false);
   const [chatPrompt, setChatPrompt] = useState("");
+  const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const loadSchema = useCallback(async () => {
@@ -120,14 +140,14 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
   ]);
 
   const canSend =
-    !!input.trim() &&
+    (!!input.trim() || selectedImages.length > 0) &&
     !!settings.aiProvider &&
     !!activeConnectionId &&
     !isLoading;
 
   const handleSend = useCallback(async () => {
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed && selectedImages.length === 0) return;
     if (!settings.aiProvider) {
       setError(t("aiChat.providerMissing"));
       return;
@@ -137,15 +157,25 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
       return;
     }
 
+    // Build content array with text and images
+    const contentParts: MessageContentPart[] = [];
+    if (trimmed) {
+      contentParts.push(createTextContentPart(trimmed));
+    }
+    selectedImages.forEach((img) => {
+      contentParts.push(createImageContentPart(img.dataUrl, img.mimeType));
+    });
+
     const userMessage: ChatMessage = {
       id: `${Date.now()}-${Math.round(Math.random() * 10000)}`,
       role: "user",
-      content: trimmed,
+      content: contentParts,
     };
 
     const nextMessages = [...messages, userMessage];
     setMessages(nextMessages);
     setInput("");
+    setSelectedImages([]);
     setIsLoading(true);
     setError(null);
 
@@ -157,7 +187,9 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
           system_prompt: systemPrompt,
           messages: nextMessages.map<ChatRequestMessage>((msg) => ({
             role: msg.role,
-            content: msg.content,
+            content: typeof msg.content === "string"
+              ? [createTextContentPart(msg.content)]
+              : msg.content,
           })),
         },
       });
@@ -176,6 +208,7 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
     }
   }, [
     input,
+    selectedImages,
     settings.aiProvider,
     settings.aiModel,
     activeConnectionId,
@@ -188,6 +221,68 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
     setMessages([]);
     setError(null);
   }, []);
+
+  const handleImageSelect = useCallback(async () => {
+    const MAX_IMAGES = 5;
+
+    if (selectedImages.length >= MAX_IMAGES) {
+      setError(t("aiChat.maxImagesReached", { max: MAX_IMAGES }));
+      return;
+    }
+
+    try {
+      const selected = await open({
+        filters: [
+          {
+            name: "Images",
+            extensions: ["png", "jpg", "jpeg", "gif", "webp"],
+          },
+        ],
+        multiple: true,
+      });
+
+      if (!selected) return;
+      const files = Array.isArray(selected) ? selected : [selected];
+
+      for (const filePath of files) {
+        if (selectedImages.length >= MAX_IMAGES) {
+          setError(t("aiChat.maxImagesReached", { max: MAX_IMAGES }));
+          break;
+        }
+
+        try {
+          const fileData = await readFile(filePath);
+          if (!validateImageSize(fileData.length)) {
+            setError(t("aiChat.imageTooLarge", { max: "5MB" }));
+            continue;
+          }
+
+          const mimeType = getMimeTypeFromExtension(filePath);
+          const base64 = arrayBufferToBase64(fileData.buffer);
+          const dataUrl = `data:${mimeType};base64,${base64}`;
+
+          setSelectedImages((prev) => {
+            if (prev.length >= MAX_IMAGES) return prev;
+            return [
+              ...prev,
+              {
+                id: `${Date.now()}-${Math.random()}`,
+                dataUrl,
+                mimeType,
+                size: fileData.length,
+                name: filePath.split("/").pop() || "image",
+              },
+            ];
+          });
+        } catch (err) {
+          setError(t("aiChat.imageLoadError"));
+          console.error("Failed to load image:", err);
+        }
+      }
+    } catch (err) {
+      console.error("File picker error:", err);
+    }
+  }, [t, selectedImages]);
 
   if (!isOpen) return null;
 
@@ -258,11 +353,11 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
               key={message.id}
               className={
                 message.role === "user"
-                  ? "self-end max-w-[90%] bg-purple-900/40 text-primary border border-purple-500/30 rounded-lg px-3 py-2 text-sm whitespace-pre-wrap"
-                  : "self-start max-w-[90%] bg-base border border-strong rounded-lg px-3 py-2 text-sm text-secondary whitespace-pre-wrap"
+                  ? "self-end max-w-[90%] bg-purple-900/40 text-primary border border-purple-500/30 rounded-lg px-3 py-2"
+                  : "self-start max-w-[90%] bg-base border border-strong rounded-lg px-3 py-2 text-secondary"
               }
             >
-              {message.content}
+              <ChatMessageContent content={message.content} />
             </div>
           ))}
         </div>
@@ -270,6 +365,29 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
       </div>
 
       <div className="border-t border-default p-3 bg-elevated/60">
+        {selectedImages.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {selectedImages.map((img) => (
+              <div key={img.id} className="relative group">
+                <img
+                  src={img.dataUrl}
+                  alt={img.name}
+                  className="h-16 w-16 object-cover rounded border border-default"
+                />
+                <button
+                  onClick={() =>
+                    setSelectedImages((prev) =>
+                      prev.filter((i) => i.id !== img.id)
+                    )
+                  }
+                  className="absolute -top-1 -right-1 bg-error p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X size={12} className="text-white" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -282,11 +400,19 @@ export const AiChatPanel = ({ isOpen, onClose, activeQuery }: AiChatPanelProps) 
             }
           }}
         />
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-[11px] text-muted">{t("aiChat.tips")}</span>
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            onClick={handleImageSelect}
+            disabled={!canSend || isLoading}
+            className="p-2 text-muted hover:text-primary hover:bg-surface-secondary rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={t("aiChat.attachImage")}
+          >
+            <ImagePlus size={16} />
+          </button>
+          <div className="flex-1" />
           <button
             onClick={handleSend}
-            disabled={!canSend}
+            disabled={!canSend && selectedImages.length === 0}
             className="flex items-center gap-2 px-3 py-1.5 bg-purple-700 hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded text-xs font-medium transition-colors"
           >
             {isLoading ? (

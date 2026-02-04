@@ -3,9 +3,9 @@ import {
   validateDumpOptions,
   toggleTableSelection,
   selectAllTables,
-} from "./dumpUtils";
+} from "../../src/utils/dump";
 
-describe("Dump Utils", () => {
+describe("dump", () => {
   describe("validateDumpOptions", () => {
     it("should return valid when options and tables are selected", () => {
       const result = validateDumpOptions(true, true, new Set(["table1"]));

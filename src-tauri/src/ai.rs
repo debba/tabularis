@@ -25,10 +25,21 @@ pub struct AiExplainRequest {
     pub language: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum MessageContentPart {
+    Text { text: String },
+    Image {
+        image_url: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        mime_type: Option<String>,
+    },
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AiChatMessage {
     pub role: String,
-    pub content: String,
+    pub content: Vec<MessageContentPart>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -76,6 +87,54 @@ struct AiModelsCache {
 }
 
 // --- Helper Functions ---
+
+const MAX_IMAGE_SIZE_BYTES: usize = 5 * 1024 * 1024; // 5MB
+
+fn validate_image_content(content: &MessageContentPart) -> Result<(), String> {
+    if let MessageContentPart::Image { image_url, .. } = content {
+        // Estimate base64 size from data URL
+        // Format: data:image/png;base64,<base64_data>
+        if let Some(base64_start) = image_url.find("base64,") {
+            let base64_data = &image_url[base64_start + 7..];
+            // Base64 encoding: 4 chars = 3 bytes, so estimate original size
+            let estimated_size = (base64_data.len() * 3) / 4;
+            if estimated_size > MAX_IMAGE_SIZE_BYTES {
+                return Err(format!(
+                    "Image exceeds 5MB limit (estimated {}MB)",
+                    estimated_size / (1024 * 1024)
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn model_supports_vision(provider: &str, model: &str) -> bool {
+    match provider {
+        "openai" => {
+            model.contains("gpt-4o") || model.contains("gpt-5") || model.starts_with("o1")
+        }
+        "anthropic" => {
+            model.contains("claude-3")
+                || model.contains("claude-opus")
+                || model.contains("claude-sonnet")
+                || model.contains("claude-haiku")
+        }
+        "ollama" => {
+            model.contains("llava")
+                || model.contains("bakllava")
+                || model.contains("vision")
+        }
+        "openrouter" => {
+            // For OpenRouter, assume vision support for common patterns
+            model.contains("vision")
+                || model.contains("gpt-4")
+                || model.contains("claude")
+                || model.contains("llava")
+        }
+        _ => false,
+    }
+}
 
 fn load_default_models() -> HashMap<String, Vec<String>> {
     let yaml_content = include_str!("ai_models.yaml");
@@ -389,6 +448,28 @@ pub async fn chat_assist(app: AppHandle, mut req: AiChatRequest) -> Result<Strin
         }
     }
 
+    // Validate images and check vision support
+    let has_images = req.messages.iter().any(|msg| {
+        msg.content.iter().any(|part| matches!(part, MessageContentPart::Image { .. }))
+    });
+
+    if has_images {
+        // Validate image sizes
+        for msg in &req.messages {
+            for part in &msg.content {
+                validate_image_content(part)?;
+            }
+        }
+
+        // Check if model supports vision
+        if !model_supports_vision(&req.provider, &req.model) {
+            return Err(format!(
+                "Model {} does not support images. Please select a vision-capable model.",
+                req.model
+            ));
+        }
+    }
+
     let api_key = if req.provider != "ollama" {
         config::get_ai_api_key(&req.provider)?
     } else {
@@ -557,19 +638,98 @@ fn clean_response(text: &str) -> String {
     text.to_string()
 }
 
-fn build_chat_messages(system_prompt: &str, messages: &[AiChatMessage]) -> Vec<serde_json::Value> {
+fn build_chat_messages_openai(system_prompt: &str, messages: &[AiChatMessage]) -> Vec<serde_json::Value> {
     let mut formatted = Vec::with_capacity(messages.len() + 1);
     formatted.push(json!({"role": "system", "content": system_prompt}));
+
     for msg in messages {
-        formatted.push(json!({"role": msg.role, "content": msg.content}));
+        let content: Vec<serde_json::Value> = msg.content.iter().map(|part| {
+            match part {
+                MessageContentPart::Text { text } => {
+                    json!({"type": "text", "text": text})
+                }
+                MessageContentPart::Image { image_url, .. } => {
+                    json!({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image_url,
+                            "detail": "auto"
+                        }
+                    })
+                }
+            }
+        }).collect();
+
+        // If single text part, use simple format for compatibility
+        if content.len() == 1 {
+            if let Some(obj) = content[0].as_object() {
+                if obj.get("type").and_then(|v| v.as_str()) == Some("text") {
+                    if let Some(text) = obj.get("text") {
+                        formatted.push(json!({"role": msg.role, "content": text}));
+                        continue;
+                    }
+                }
+            }
+        }
+
+        formatted.push(json!({"role": msg.role, "content": content}));
     }
     formatted
+}
+
+fn build_chat_messages_anthropic(messages: &[AiChatMessage]) -> Result<Vec<serde_json::Value>, String> {
+    let mut formatted = Vec::with_capacity(messages.len());
+
+    for msg in messages {
+        let content: Vec<serde_json::Value> = msg.content.iter().map(|part| {
+            match part {
+                MessageContentPart::Text { text } => {
+                    Ok(json!({"type": "text", "text": text}))
+                }
+                MessageContentPart::Image { image_url, mime_type } => {
+                    // Extract base64 data from data URL
+                    if let Some(base64_data) = image_url
+                        .strip_prefix("data:")
+                        .and_then(|s| s.split_once(";base64,"))
+                        .map(|(_, data)| data)
+                    {
+                        let media_type = mime_type.as_deref().unwrap_or("image/jpeg");
+                        Ok(json!({
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": base64_data
+                            }
+                        }))
+                    } else {
+                        Err("Invalid image data URL format")
+                    }
+                }
+            }
+        }).collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+
+        // If single text part, use simple format
+        if content.len() == 1 {
+            if let Some(obj) = content[0].as_object() {
+                if obj.get("type").and_then(|v| v.as_str()) == Some("text") {
+                    if let Some(text) = obj.get("text") {
+                        formatted.push(json!({"role": msg.role, "content": text}));
+                        continue;
+                    }
+                }
+            }
+        }
+
+        formatted.push(json!({"role": msg.role, "content": content}));
+    }
+    Ok(formatted)
 }
 
 async fn chat_openai(client: &Client, api_key: &str, req: &AiChatRequest) -> Result<String, String> {
     let body = json!({
         "model": req.model,
-        "messages": build_chat_messages(&req.system_prompt, &req.messages),
+        "messages": build_chat_messages_openai(&req.system_prompt, &req.messages),
         "temperature": 0.2
     });
 
@@ -597,7 +757,7 @@ async fn chat_openai(client: &Client, api_key: &str, req: &AiChatRequest) -> Res
 async fn chat_openrouter(client: &Client, api_key: &str, req: &AiChatRequest) -> Result<String, String> {
     let body = json!({
         "model": req.model,
-        "messages": build_chat_messages(&req.system_prompt, &req.messages),
+        "messages": build_chat_messages_openai(&req.system_prompt, &req.messages),
         "temperature": 0.2
     });
 
@@ -625,10 +785,12 @@ async fn chat_openrouter(client: &Client, api_key: &str, req: &AiChatRequest) ->
 }
 
 async fn chat_anthropic(client: &Client, api_key: &str, req: &AiChatRequest) -> Result<String, String> {
+    let messages = build_chat_messages_anthropic(&req.messages)?;
+
     let body = json!({
         "model": req.model,
         "system": req.system_prompt,
-        "messages": req.messages,
+        "messages": messages,
         "max_tokens": 1024,
         "temperature": 0.2
     });
@@ -659,7 +821,7 @@ async fn chat_anthropic(client: &Client, api_key: &str, req: &AiChatRequest) -> 
 async fn chat_ollama(client: &Client, req: &AiChatRequest, port: u16) -> Result<String, String> {
     let body = json!({
         "model": req.model,
-        "messages": build_chat_messages(&req.system_prompt, &req.messages),
+        "messages": build_chat_messages_openai(&req.system_prompt, &req.messages),
         "stream": false,
         "options": {
             "temperature": 0.2
@@ -715,9 +877,50 @@ mod tests {
         let input_no_code = "SELECT * FROM users;";
         let output_no_code = clean_response(input_no_code);
         assert_eq!(output_no_code, "SELECT * FROM users;");
-        
+
         let input_whitespace = "   ```sql\nSELECT 1;\n```   ";
         let output_whitespace = clean_response(input_whitespace);
         assert_eq!(output_whitespace, "SELECT 1;");
+    }
+
+    #[test]
+    fn test_model_supports_vision() {
+        // OpenAI
+        assert!(model_supports_vision("openai", "gpt-4o"));
+        assert!(model_supports_vision("openai", "gpt-5.2"));
+        assert!(model_supports_vision("openai", "o1-preview"));
+        assert!(!model_supports_vision("openai", "gpt-3.5-turbo"));
+
+        // Anthropic
+        assert!(model_supports_vision("anthropic", "claude-opus-4.5"));
+        assert!(model_supports_vision("anthropic", "claude-3-opus"));
+        assert!(model_supports_vision("anthropic", "claude-sonnet-3.5"));
+        assert!(!model_supports_vision("anthropic", "claude-2"));
+
+        // Ollama
+        assert!(model_supports_vision("ollama", "llava"));
+        assert!(model_supports_vision("ollama", "bakllava"));
+        assert!(model_supports_vision("ollama", "llama3-vision"));
+        assert!(!model_supports_vision("ollama", "llama3"));
+
+        // OpenRouter
+        assert!(model_supports_vision("openrouter", "anthropic/claude-opus-4.5"));
+        assert!(model_supports_vision("openrouter", "openai/gpt-4-vision"));
+    }
+
+    #[test]
+    fn test_validate_image_content() {
+        // Small valid image
+        let small_image = MessageContentPart::Image {
+            image_url: "data:image/png;base64,iVBORw0KGgo=".to_string(),
+            mime_type: Some("image/png".to_string()),
+        };
+        assert!(validate_image_content(&small_image).is_ok());
+
+        // Text content (should pass)
+        let text = MessageContentPart::Text {
+            text: "Hello".to_string(),
+        };
+        assert!(validate_image_content(&text).is_ok());
     }
 }

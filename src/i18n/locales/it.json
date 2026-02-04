@@ -454,6 +454,13 @@
     "noConnection": "Nessuna connessione attiva.",
     "schemaLoading": "Caricamento contesto schema...",
     "tips": "Invio per inviare, Maiusc+Invio per andare a capo.",
-    "errorPrefix": "Errore: "
+    "errorPrefix": "Errore: ",
+    "attachImage": "Allega immagine",
+    "selectModel": "Seleziona modello",
+    "imageTooLarge": "L'immagine supera il limite di {{max}}",
+    "imageLoadError": "Errore nel caricamento dell'immagine",
+    "modelNoVision": "Il modello {{model}} non supporta immagini. Seleziona un modello con supporto vision.",
+    "visionCapable": "Supporta immagini",
+    "maxImagesReached": "Massimo {{max}} immagini per messaggio"
   }
 }

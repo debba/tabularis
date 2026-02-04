@@ -454,6 +454,13 @@
     "noConnection": "No active connection.",
     "schemaLoading": "Loading schema context...",
     "tips": "Enter to send, Shift+Enter for a new line.",
-    "errorPrefix": "Error: "
+    "errorPrefix": "Error: ",
+    "attachImage": "Attach image",
+    "selectModel": "Select model",
+    "imageTooLarge": "Image exceeds {{max}} limit",
+    "imageLoadError": "Failed to load image",
+    "modelNoVision": "Model {{model}} does not support images. Select a vision-capable model.",
+    "visionCapable": "Supports images",
+    "maxImagesReached": "Maximum {{max}} images per message"
   }
 }
