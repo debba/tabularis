@@ -191,8 +191,8 @@ npm run tauri build
 - [x] ER Diagram
 - [x] Theme System & Customization
 - [x] SSH Tunneling & Keychain Support
+- [x] Database Export/Dump
 - [ ] Better support for PostgreSQL & SQLite
-- [ ] Database Export/Dump
 - [ ] Query history
 
 ## License
