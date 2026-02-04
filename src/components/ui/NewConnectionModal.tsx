@@ -7,6 +7,7 @@ import {
   Loader2,
   Database,
   Settings,
+  XCircle,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import clsx from "clsx";
@@ -110,6 +111,7 @@ export const NewConnectionModal = ({
     "idle" | "testing" | "saving" | "success" | "error"
   >("idle");
   const [message, setMessage] = useState("");
+  const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
   const [sshConnections, setSshConnections] = useState<SshConnection[]>([]);
   const [isSshModalOpen, setIsSshModalOpen] = useState(false);
   const [sshMode, setSshMode] = useState<"existing" | "inline">("existing");
@@ -185,6 +187,7 @@ export const NewConnectionModal = ({
   const testConnection = async () => {
     setStatus("testing");
     setMessage("");
+    setTestResult(null);
     try {
       const result = await invoke<string>("test_connection", {
         params: {
@@ -195,6 +198,15 @@ export const NewConnectionModal = ({
       });
       setStatus("success");
       setMessage(result);
+      setTestResult("success");
+      
+      // Clear the success indicator and message after 3 seconds
+      setTimeout(() => {
+        setTestResult(null);
+        setStatus("idle");
+        setMessage("");
+      }, 3000);
+      
       return true;
     } catch (err) {
       console.error("Connection test error:", err);
@@ -206,6 +218,14 @@ export const NewConnectionModal = ({
             ? err.message
             : JSON.stringify(err);
       setMessage(msg);
+      setTestResult("error");
+      
+      // Clear only the error icon after 3 seconds, keep the message
+      setTimeout(() => {
+        setTestResult(null);
+        setStatus("idle");
+      }, 3000);
+      
       return false;
     }
   };
@@ -214,11 +234,13 @@ export const NewConnectionModal = ({
     if (!name.trim()) {
       setStatus("error");
       setMessage(t("newConnection.nameRequired"));
+      setTestResult("error");
       return;
     }
 
     setStatus("saving");
     setMessage("");
+    setTestResult(null);
     try {
       const params = {
         driver,
@@ -245,7 +267,9 @@ export const NewConnectionModal = ({
       onClose();
     } catch (err) {
       setStatus("error");
-      setMessage(typeof err === "string" ? err : t("newConnection.failSave"));
+      const msg = typeof err === "string" ? err : t("newConnection.failSave");
+      setMessage(msg);
+      setTestResult("error");
     }
   };
 
@@ -566,49 +590,44 @@ export const NewConnectionModal = ({
               {t("newConnection.saveKeychain")}
             </label>
           </div>
-
-          {/* Status Message */}
-          {message && (
-            <div
-              className={clsx(
-                "p-3 rounded-lg flex items-start gap-2 text-sm border",
-                status === "success"
-                  ? "bg-green-900/20 text-green-400 border-green-900/50"
-                  : "bg-red-900/20 text-red-400 border-red-900/50",
-              )}
-            >
-              {status === "success" ? (
-                <Check size={16} className="mt-0.5" />
-              ) : (
-                <AlertCircle size={16} className="mt-0.5" />
-              )}
-              <span>{message}</span>
-            </div>
-          )}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-default bg-base/50 flex justify-end gap-3">
-          <button
-            onClick={testConnection}
-            disabled={status === "testing" || status === "saving"}
-            className="px-4 py-2 text-secondary hover:text-primary hover:bg-surface-tertiary transition-colors text-sm flex items-center gap-2 disabled:opacity-50 rounded-lg"
-          >
-            {status === "testing" && (
-              <Loader2 size={16} className="animate-spin" />
-            )}
-            {t("newConnection.testConnection")}
-          </button>
-          <button
-            onClick={saveConnection}
-            disabled={status === "saving"}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-          >
-            {status === "saving" && (
-              <Loader2 size={16} className="animate-spin" />
-            )}
-            {t("newConnection.save")}
-          </button>
+        <div className="p-4 border-t border-default bg-base/50 space-y-3">
+          {/* Error Message Only */}
+          {message && (status === "error" || (status === "idle" && testResult !== "success")) && (
+            <div className="text-sm text-red-500 flex items-start gap-2">
+              <XCircle size={16} className="mt-0.5 flex-shrink-0" />
+              <span>{message}</span>
+            </div>
+          )}
+          
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={testConnection}
+              disabled={status === "testing" || status === "saving"}
+              className="px-4 py-2 text-secondary hover:text-primary hover:bg-surface-tertiary transition-colors text-sm flex items-center gap-2 disabled:opacity-50 rounded-lg"
+            >
+              {status === "testing" ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : testResult === "success" ? (
+                <Check size={16} className="text-green-500" />
+              ) : testResult === "error" ? (
+                <XCircle size={16} className="text-red-500" />
+              ) : null}
+              {t("newConnection.testConnection")}
+            </button>
+            <button
+              onClick={saveConnection}
+              disabled={status === "saving"}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            >
+              {status === "saving" && (
+                <Loader2 size={16} className="animate-spin" />
+              )}
+              {t("newConnection.save")}
+            </button>
+          </div>
         </div>
       </div>
 
