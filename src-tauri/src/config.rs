@@ -136,6 +136,7 @@ pub fn check_ai_key(provider: String) -> bool {
 const DEFAULT_SYSTEM_PROMPT: &str = "You are an expert SQL assistant. Your task is to generate a SQL query based on the user's request and the provided database schema.\nReturn ONLY the SQL query, without any markdown formatting, explanations, or code blocks.\n\nSchema:\n{{SCHEMA}}";
 const DEFAULT_EXPLAIN_PROMPT: &str =
     "You are a helpful SQL assistant. Explain SQL queries in {{LANGUAGE}}.";
+const DEFAULT_CHAT_PROMPT: &str = "You are the Tabularis AI Assistant. Provide focused, accurate help with SQL, schema exploration, and query troubleshooting. Use the provided context to tailor your answers.\n\nContext:\n{{CONTEXT}}";
 
 #[tauri::command]
 pub fn get_system_prompt(app: AppHandle) -> String {
@@ -211,4 +212,42 @@ pub fn reset_explain_prompt(app: AppHandle) -> Result<String, String> {
         }
     }
     Ok(DEFAULT_EXPLAIN_PROMPT.to_string())
+}
+
+#[tauri::command]
+pub fn get_chat_prompt(app: AppHandle) -> String {
+    if let Some(config_dir) = get_config_dir(&app) {
+        let prompt_path = config_dir.join("prompt_chat.txt");
+        if prompt_path.exists() {
+            if let Ok(content) = fs::read_to_string(prompt_path) {
+                return content;
+            }
+        }
+    }
+    DEFAULT_CHAT_PROMPT.to_string()
+}
+
+#[tauri::command]
+pub fn save_chat_prompt(app: AppHandle, prompt: String) -> Result<(), String> {
+    if let Some(config_dir) = get_config_dir(&app) {
+        if !config_dir.exists() {
+            fs::create_dir_all(&config_dir).map_err(|e| e.to_string())?;
+        }
+        let prompt_path = config_dir.join("prompt_chat.txt");
+        fs::write(prompt_path, prompt).map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err("Could not resolve config directory".to_string())
+    }
+}
+
+#[tauri::command]
+pub fn reset_chat_prompt(app: AppHandle) -> Result<String, String> {
+    if let Some(config_dir) = get_config_dir(&app) {
+        let prompt_path = config_dir.join("prompt_chat.txt");
+        if prompt_path.exists() {
+            fs::remove_file(prompt_path).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(DEFAULT_CHAT_PROMPT.to_string())
 }

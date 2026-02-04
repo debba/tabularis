@@ -115,9 +115,13 @@ pub fn run() {
             config::get_explain_prompt,
             config::save_explain_prompt,
             config::reset_explain_prompt,
+            config::get_chat_prompt,
+            config::save_chat_prompt,
+            config::reset_chat_prompt,
             // AI
             ai::generate_ai_query,
             ai::explain_ai_query,
+            ai::chat_ai_assist,
             ai::get_ai_models,
             commands::get_schema_snapshot,
             // MCP

@@ -41,6 +41,7 @@ export const Settings = () => {
   const [keyInput, setKeyInput] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [explainPrompt, setExplainPrompt] = useState("");
+  const [chatPrompt, setChatPrompt] = useState("");
   
   const { currentTheme, allThemes, setTheme } = useTheme();
   
@@ -81,6 +82,15 @@ export const Settings = () => {
     }
   };
 
+  const loadChatPrompt = async () => {
+    try {
+      const prompt = await invoke<string>("get_chat_prompt");
+      setChatPrompt(prompt);
+    } catch (e) {
+      console.error("Failed to load chat prompt", e);
+    }
+  };
+
   const handleSavePrompt = async () => {
     try {
       await invoke("save_system_prompt", { prompt: systemPrompt });
@@ -102,6 +112,18 @@ export const Settings = () => {
       });
     } catch (e) {
       await message(String(e), { title: "Error", kind: "error" });
+    }
+  };
+
+  const handleSaveChatPrompt = async () => {
+    try {
+      await invoke("save_chat_prompt", { prompt: chatPrompt });
+      await message(t("settings.ai.chatPromptSaved"), {
+        title: t("common.success"),
+        kind: "info",
+      });
+    } catch (e) {
+      await message(String(e), { title: t("common.error"), kind: "error" });
     }
   };
 
@@ -128,6 +150,19 @@ export const Settings = () => {
       });
     } catch (e) {
       await message(String(e), { title: "Error", kind: "error" });
+    }
+  };
+
+  const handleResetChatPrompt = async () => {
+    try {
+      const defaultPrompt = await invoke<string>("reset_chat_prompt");
+      setChatPrompt(defaultPrompt);
+      await message(t("settings.ai.chatPromptReset"), {
+        title: t("common.success"),
+        kind: "info",
+      });
+    } catch (e) {
+      await message(String(e), { title: t("common.error"), kind: "error" });
     }
   };
 
@@ -171,6 +206,7 @@ export const Settings = () => {
     checkKeys();
     loadSystemPrompt();
     loadExplainPrompt();
+    loadChatPrompt();
     loadModels(false);
   }, [loadModels]);
 
@@ -807,6 +843,39 @@ export const Settings = () => {
                             </button>
                             <button
                                 onClick={handleSaveExplainPrompt}
+                                className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium transition-colors"
+                            >
+                                {t("settings.ai.savePrompt")}
+                            </button>
+                        </div>
+                     </div>
+                  </div>
+
+                  {/* Chat Prompt Configuration */}
+                  <div className="border-t border-default pt-6 mt-6">
+                     <h4 className="text-md font-medium text-primary mb-4 flex items-center gap-2">
+                        <Code2 size={16} /> {t("settings.ai.chatPrompt")}
+                     </h4>
+                     <p className="text-xs text-secondary mb-4">
+                        {t("settings.ai.chatPromptDesc")}
+                     </p>
+                     
+                     <div className="space-y-4">
+                        <textarea 
+                           value={chatPrompt}
+                           onChange={(e) => setChatPrompt(e.target.value)}
+                           className="w-full h-40 bg-base border border-strong rounded-lg p-3 text-primary text-sm font-mono focus:outline-none focus:border-blue-500 transition-colors resize-y"
+                           placeholder={t("settings.ai.enterChatPrompt")}
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={handleResetChatPrompt}
+                                className="px-3 py-2 bg-surface-secondary hover:bg-surface-tertiary text-secondary rounded text-sm font-medium transition-colors border border-strong"
+                            >
+                                {t("settings.ai.resetDefault")}
+                            </button>
+                            <button
+                                onClick={handleSaveChatPrompt}
                                 className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium transition-colors"
                             >
                                 {t("settings.ai.savePrompt")}

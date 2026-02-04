@@ -145,11 +145,16 @@
       "explainPrompt": "Prompt di Spiegazione",
       "explainPromptDesc": "Personalizza le istruzioni per \"Spiega Query\". Usa {{LANGUAGE}} come segnaposto per la lingua di output (Inglese/Italiano).",
       "enterExplainPrompt": "Inserisci prompt di spiegazione...",
+      "chatPrompt": "Prompt Chat",
+      "chatPromptDesc": "Personalizza le istruzioni per la chat laterale. Usa {{CONTEXT}} come segnaposto per il contesto corrente.",
+      "enterChatPrompt": "Inserisci prompt chat...",
       "keySaved": "Chiave API salvata in modo sicuro",
       "promptSaved": "Prompt di sistema salvato con successo",
       "explainPromptSaved": "Prompt di spiegazione salvato con successo",
+      "chatPromptSaved": "Prompt chat salvato con successo",
       "promptReset": "Prompt di sistema ripristinato al predefinito",
       "explainPromptReset": "Prompt di spiegazione ripristinato al predefinito",
+      "chatPromptReset": "Prompt chat ripristinato al predefinito",
       "modelPlaceholder": "Seleziona un modello",
       "searchPlaceholder": "Cerca modelli...",
       "noResults": "Nessun modello trovato",
@@ -435,5 +440,20 @@
     "statementsExecuted": "{{count}} / {{total}} istruzioni",
     "confirmImport": "Sei sicuro di voler importare \"{{file}}\"?\nQuesto potrebbe sovrascrivere i dati esistenti.",
     "elapsedTime": "Tempo trascorso"
+  },
+  "aiChat": {
+    "title": "Assistente AI",
+    "subtitle": "Supporto contestuale",
+    "open": "Chat",
+    "close": "Chiudi",
+    "clear": "Svuota",
+    "placeholder": "Chiedi informazioni su database, schema o SQL...",
+    "send": "Invia",
+    "sending": "Invio...",
+    "providerMissing": "Provider AI non configurato. Vai in Impostazioni > AI.",
+    "noConnection": "Nessuna connessione attiva.",
+    "schemaLoading": "Caricamento contesto schema...",
+    "tips": "Invio per inviare, Maiusc+Invio per andare a capo.",
+    "errorPrefix": "Errore: "
   }
 }

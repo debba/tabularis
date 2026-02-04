@@ -145,11 +145,16 @@
       "explainPrompt": "Explain Prompt",
       "explainPromptDesc": "Customize instructions for \"Explain Query\". Use {{LANGUAGE}} as a placeholder for the output language (English/Italian).",
       "enterExplainPrompt": "Enter explain prompt...",
+      "chatPrompt": "Chat Prompt",
+      "chatPromptDesc": "Customize instructions for the AI chat side panel. Use {{CONTEXT}} as a placeholder for the current context.",
+      "enterChatPrompt": "Enter chat prompt...",
       "keySaved": "API Key saved securely",
       "promptSaved": "System prompt saved successfully",
       "explainPromptSaved": "Explain prompt saved successfully",
+      "chatPromptSaved": "Chat prompt saved successfully",
       "promptReset": "System prompt reset to default",
       "explainPromptReset": "Explain prompt reset to default",
+      "chatPromptReset": "Chat prompt reset to default",
       "modelPlaceholder": "Select a model",
       "searchPlaceholder": "Search models...",
       "noResults": "No models found",
@@ -435,5 +440,20 @@
     "statementsExecuted": "{{count}} / {{total}} statements",
     "confirmImport": "Are you sure you want to import \"{{file}}\"?\nThis may overwrite existing data.",
     "elapsedTime": "Elapsed time"
+  },
+  "aiChat": {
+    "title": "AI Assistant",
+    "subtitle": "Context-aware help",
+    "open": "Chat",
+    "close": "Close",
+    "clear": "Clear",
+    "placeholder": "Ask about this database, schema, or SQL...",
+    "send": "Send",
+    "sending": "Sending...",
+    "providerMissing": "AI provider not configured. Please go to Settings > AI.",
+    "noConnection": "No active connection.",
+    "schemaLoading": "Loading schema context...",
+    "tips": "Enter to send, Shift+Enter for a new line.",
+    "errorPrefix": "Error: "
   }
 }

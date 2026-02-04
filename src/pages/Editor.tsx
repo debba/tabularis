@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AiQueryModal } from "../components/ui/AiQueryModal";
 import { AiExplainModal } from "../components/ui/AiExplainModal";
+import { AiChatPanel } from "../components/ui/AiChatPanel";
 import {
   Play,
   Plus,
@@ -29,6 +30,7 @@ import {
   Undo2,
   Sparkles,
   BookOpen,
+  MessageCircle,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -185,6 +187,7 @@ export const Editor = () => {
   const [isRunDropdownOpen, setIsRunDropdownOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isAiExplainModalOpen, setIsAiExplainModalOpen] = useState(false);
+  const [isAiChatOpen, setIsAiChatOpen] = useState(false);
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [tempPage, setTempPage] = useState("1");
   const [applyToAll, setApplyToAll] = useState(false);
@@ -1149,6 +1152,14 @@ export const Editor = () => {
                <BookOpen size={16} />
                <span className="hidden sm:inline">Explain</span>
              </button>
+             <button
+               onClick={() => setIsAiChatOpen((prev) => !prev)}
+               className="flex items-center gap-2 px-3 py-1.5 bg-surface-secondary hover:bg-surface text-primary border border-strong rounded text-sm font-medium transition-colors"
+               title={t("aiChat.open")}
+             >
+               <MessageCircle size={16} />
+               <span className="hidden sm:inline">{t("aiChat.open")}</span>
+             </button>
            </div>
         )}
 
@@ -1188,306 +1199,308 @@ export const Editor = () => {
         </span>
       </div>
 
-      {/* Render all non-table tabs to prevent Monaco remounting */}
-      {tabs.map((tab) => {
-        if (tab.type === "table") return null;
-        
-        const isActive = tab.id === activeTabId;
-        const isVisible = isActive && !isTableTab && isEditorOpen;
-        
-        return (
-          <div
-            key={tab.id}
-            style={{
-              height: isResultsCollapsed ? "calc(100vh - 109px)" : editorHeight,
-              display: isVisible ? "block" : "none",
-            }}
-            className="relative"
-          >
-            {tab.type === "query_builder" ? (
-              <VisualQueryBuilder />
-            ) : (
-              <SqlEditorWrapper
-                height="100%"
-                initialValue={tab.query}
-                onChange={(val) => {
-                  if (isActive) updateTab(tab.id, { query: val });
+      <div className="flex flex-1 min-h-0">
+        <div className="flex flex-col flex-1 min-w-0">
+          {/* Render all non-table tabs to prevent Monaco remounting */}
+          {tabs.map((tab) => {
+            if (tab.type === "table") return null;
+            
+            const isActive = tab.id === activeTabId;
+            const isVisible = isActive && !isTableTab && isEditorOpen;
+            
+            return (
+              <div
+                key={tab.id}
+                style={{
+                  height: isResultsCollapsed ? "calc(100vh - 109px)" : editorHeight,
+                  display: isVisible ? "block" : "none",
                 }}
-                onRun={handleRunButton}
-                onMount={isActive ? handleEditorMount : undefined}
-                editorKey={tab.id}
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  padding: { top: 16 },
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  wordWrap: "on",
-                }}
-              />
-            )}
-          </div>
-        );
-      })}
+                className="relative"
+              >
+                {tab.type === "query_builder" ? (
+                  <VisualQueryBuilder />
+                ) : (
+                  <SqlEditorWrapper
+                    height="100%"
+                    initialValue={tab.query}
+                    onChange={(val) => {
+                      if (isActive) updateTab(tab.id, { query: val });
+                    }}
+                    onRun={handleRunButton}
+                    onMount={isActive ? handleEditorMount : undefined}
+                    editorKey={tab.id}
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 14,
+                      padding: { top: 16 },
+                      scrollBeyondLastLine: false,
+                      automaticLayout: true,
+                      wordWrap: "on",
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })}
 
-      {/* Resize Bar & Results Panel */}
-      {isTableTab || !isResultsCollapsed ? (
-        <>
-          {isTableTab ? (
-             <TableToolbar
-                initialFilter={activeTab?.filterClause}
-                initialSort={activeTab?.sortClause}
-                initialLimit={activeTab?.limitClause}
-                placeholderColumn={placeholders.column}
-                placeholderSort={placeholders.sort}
-                defaultLimit={settings.resultPageSize || 100}
-                onUpdate={handleToolbarUpdate}
-             />
-          ) : (
-            <div
-              onMouseDown={isEditorOpen ? startResize : undefined}
-              className={clsx(
-                "h-6 bg-elevated border-y border-default flex items-center px-2 relative",
-                isEditorOpen
-                  ? "cursor-row-resize justify-between"
-                  : "justify-between"
-              )}
-            >
-              <div className="flex items-center">
-                <button
-                  onClick={() =>
-                    updateActiveTab({ isEditorOpen: !isEditorOpen })
-                  }
-                  className="text-muted hover:text-secondary transition-colors p-1 hover:bg-surface-secondary rounded flex items-center gap-1 text-xs"
-                  title={
+          {/* Resize Bar & Results Panel */}
+          {isTableTab || !isResultsCollapsed ? (
+            <>
+              {isTableTab ? (
+                 <TableToolbar
+                    initialFilter={activeTab?.filterClause}
+                    initialSort={activeTab?.sortClause}
+                    initialLimit={activeTab?.limitClause}
+                    placeholderColumn={placeholders.column}
+                    placeholderSort={placeholders.sort}
+                    defaultLimit={settings.resultPageSize || 100}
+                    onUpdate={handleToolbarUpdate}
+                 />
+              ) : (
+                <div
+                  onMouseDown={isEditorOpen ? startResize : undefined}
+                  className={clsx(
+                    "h-6 bg-elevated border-y border-default flex items-center px-2 relative",
                     isEditorOpen
-                      ? "Maximize Results (Hide Editor)"
-                      : "Show Editor"
-                  }
-                >
-                  {isEditorOpen ? (
-                    <ChevronUp size={16} />
-                  ) : (
-                    <ChevronDown size={16} />
+                      ? "cursor-row-resize justify-between"
+                      : "justify-between"
                   )}
-                  {!isEditorOpen && <span>Show Editor</span>}
-                </button>
-              </div>
-
-              {isEditorOpen && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsResultsCollapsed(true);
-                  }}
-                  className="text-muted hover:text-secondary transition-colors p-1 hover:bg-surface-secondary rounded"
-                  title="Hide Results Panel (Maximize Editor)"
                 >
-                  <ChevronDown size={16} />
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Results Panel */}
-          <div className="flex-1 overflow-hidden bg-elevated flex flex-col min-h-0">
-            {activeTab.isLoading ? (
-              <div className="flex flex-col items-center justify-center h-full text-muted">
-                <div className="w-12 h-12 border-4 border-surface-secondary border-t-blue-500 rounded-full animate-spin mb-4"></div>
-                <p className="text-sm">{t("editor.executingQuery")}</p>
-              </div>
-            ) : activeTab.error ? (
-              <div className="p-4 text-red-400 font-mono text-sm bg-red-900/10 h-full overflow-auto whitespace-pre-wrap">
-                Error: {activeTab.error}
-              </div>
-            ) : activeTab.result ? (
-              <div className="flex-1 min-h-0 flex flex-col">
-                <div className="p-2 bg-elevated text-xs text-secondary border-b border-default flex justify-between items-center shrink-0">
-                  <div className="flex items-center gap-4">
-                    <span>
-                      {t("editor.rowsRetrieved", { count: activeTab.result.rows.length })}{" "}
-                      {activeTab.executionTime !== null && (
-                        <span className="text-muted ml-2 font-mono">
-                          ({formatDuration(activeTab.executionTime)})
-                        </span>
+                  <div className="flex items-center">
+                    <button
+                      onClick={() =>
+                        updateActiveTab({ isEditorOpen: !isEditorOpen })
+                      }
+                      className="text-muted hover:text-secondary transition-colors p-1 hover:bg-surface-secondary rounded flex items-center gap-1 text-xs"
+                      title={
+                        isEditorOpen
+                          ? "Maximize Results (Hide Editor)"
+                          : "Show Editor"
+                      }
+                    >
+                      {isEditorOpen ? (
+                        <ChevronUp size={16} />
+                      ) : (
+                        <ChevronDown size={16} />
                       )}
-                    </span>
-
-                    {activeTab.result.truncated &&
-                      activeTab.result.pagination && (
-                        <span className="px-2 py-0.5 bg-yellow-900/30 text-yellow-400 rounded text-[10px] font-semibold uppercase tracking-wide border border-yellow-500/30">
-                          {t("editor.autoPaginated")}
-                        </span>
-                      )}
+                      {!isEditorOpen && <span>Show Editor</span>}
+                    </button>
                   </div>
 
-                  {/* Pagination Controls */}
-                  {activeTab.result.pagination && (
-                    <div className="flex items-center gap-1 bg-surface-secondary rounded border border-strong">
-                      <button
-                        disabled={
-                          activeTab.result.pagination.page === 1 ||
-                          activeTab.isLoading
-                        }
-                        onClick={() => runQuery(activeTab.query, 1)}
-                        className="p-1 hover:bg-surface-tertiary text-secondary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="First Page"
-                      >
-                        <ChevronsLeft size={14} />
-                      </button>
-                      <button
-                        disabled={
-                          activeTab.result.pagination.page === 1 ||
-                          activeTab.isLoading
-                        }
-                        onClick={() =>
-                          runQuery(
-                            activeTab.query,
-                            activeTab.result!.pagination!.page - 1,
-                          )
-                        }
-                        className="p-1 hover:bg-surface-tertiary text-secondary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed border-l border-strong"
-                        title="Previous Page"
-                      >
-                        <ChevronLeft size={14} />
-                      </button>
-
-                      <div
-                        className="px-3 text-secondary text-xs font-medium cursor-pointer hover:bg-surface-tertiary transition-colors min-w-[80px] text-center py-1"
-                        onClick={() => {
-                          setIsEditingPage(true);
-                          setTempPage(
-                            String(activeTab.result!.pagination!.page),
-                          );
-                        }}
-                        title={t("editor.jumpToPage")}
-                      >
-                        {isEditingPage ? (
-                          <input
-                            autoFocus
-                            type="text"
-                            className="w-full bg-transparent text-center focus:outline-none text-white p-0 m-0 border-none h-full"
-                            value={tempPage}
-                            onChange={(e) => setTempPage(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                const newPage = parseInt(tempPage);
-                                const maxPage = Math.ceil(
-                                  activeTab.result!.pagination!.total_rows /
-                                    activeTab.result!.pagination!.page_size,
-                                );
-                                if (
-                                  !isNaN(newPage) &&
-                                  newPage >= 1 &&
-                                  newPage <= maxPage
-                                ) {
-                                  runQuery(activeTab.query, newPage);
-                                }
-                                setIsEditingPage(false);
-                              } else if (e.key === "Escape") {
-                                setIsEditingPage(false);
-                              }
-                              e.stopPropagation();
-                            }}
-                            onBlur={() => setIsEditingPage(false)}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        ) : (
-                          <>
-                            {t("editor.pageOf", { 
-                                current: activeTab.result.pagination.page, 
-                                total: Math.ceil(
-                                    activeTab.result.pagination.total_rows /
-                                      activeTab.result.pagination.page_size,
-                                  )
-                            })}
-                          </>
-                        )}
-                      </div>
-
-                      <button
-                        disabled={
-                          activeTab.result.pagination.page *
-                            activeTab.result.pagination.page_size >=
-                            activeTab.result.pagination.total_rows ||
-                          activeTab.isLoading
-                        }
-                        onClick={() =>
-                          runQuery(
-                            activeTab.query,
-                            activeTab.result!.pagination!.page + 1,
-                          )
-                        }
-                        className="p-1 hover:bg-surface-tertiary text-secondary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed border-l border-strong"
-                        title="Next Page"
-                      >
-                        <ChevronRight size={14} />
-                      </button>
-                      <button
-                        disabled={
-                          activeTab.result.pagination.page *
-                            activeTab.result.pagination.page_size >=
-                            activeTab.result.pagination.total_rows ||
-                          activeTab.isLoading
-                        }
-                        onClick={() =>
-                          runQuery(
-                            activeTab.query,
-                            Math.ceil(
-                              activeTab.result!.pagination!.total_rows /
-                                activeTab.result!.pagination!.page_size,
-                            ),
-                          )
-                        }
-                        className="p-1 hover:bg-surface-tertiary text-secondary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed border-l border-strong"
-                        title="Last Page"
-                      >
-                        <ChevronsRight size={14} />
-                      </button>
-                    </div>
+                  {isEditorOpen && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsResultsCollapsed(true);
+                      }}
+                      className="text-muted hover:text-secondary transition-colors p-1 hover:bg-surface-secondary rounded"
+                      title="Hide Results Panel (Maximize Editor)"
+                    >
+                      <ChevronDown size={16} />
+                    </button>
                   )}
                 </div>
-                
-                {/* Data Manipulation Toolbar (Below Header) */}
-                {activeTab.activeTable && activeTab.pkColumn && (
-                    <div className="p-1 px-2 bg-elevated border-b border-default flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => setShowNewRowModal(true)}
-                                className="flex items-center justify-center w-7 h-7 text-secondary hover:text-green-400 hover:bg-surface-secondary rounded transition-colors"
-                                title={t("editor.newRow")}
-                            >
-                                <Plus size={16} />
-                            </button>
-                            <button
-                                onClick={handleDeleteRows}
-                                disabled={!activeTab.selectedRows || activeTab.selectedRows.length === 0}
-                                className="flex items-center justify-center w-7 h-7 text-secondary hover:text-red-400 hover:bg-surface-secondary rounded transition-colors disabled:opacity-30"
-                                title={t("dataGrid.deleteRow")}
-                            >
-                                <Minus size={16} />
-                            </button>
-                        </div>
+              )}
 
-                        {/* Separator */}
-                        {(hasPendingChanges) && (
-                            <div className="w-[1px] h-4 bg-surface-secondary mx-1"></div>
-                        )}
-                        
-                        {hasPendingChanges && (
-                            <div className="flex items-center gap-1 ml-2 border border-blue-900 bg-blue-900/20 rounded px-1 py-0.5">
-                                <label className="flex items-center gap-1.5 px-2 py-1 cursor-pointer select-none group">
-                                    <input
-                                        type="checkbox"
-                                        checked={applyToAll}
-                                        onChange={(e) => setApplyToAll(e.target.checked)}
-                                        className="w-3.5 h-3.5 cursor-pointer accent-blue-500"
-                                    />
-                                    <span className="text-[10px] text-secondary group-hover:text-primary transition-colors">
-                                        {t("editor.applyToAll")}
-                                    </span>
-                                </label>
-                                <div className="w-[1px] h-4 bg-blue-900/50 mx-0.5"></div>
+              {/* Results Panel */}
+              <div className="flex-1 overflow-hidden bg-elevated flex flex-col min-h-0">
+                {activeTab.isLoading ? (
+                  <div className="flex flex-col items-center justify-center h-full text-muted">
+                    <div className="w-12 h-12 border-4 border-surface-secondary border-t-blue-500 rounded-full animate-spin mb-4"></div>
+                    <p className="text-sm">{t("editor.executingQuery")}</p>
+                  </div>
+                ) : activeTab.error ? (
+                  <div className="p-4 text-red-400 font-mono text-sm bg-red-900/10 h-full overflow-auto whitespace-pre-wrap">
+                    Error: {activeTab.error}
+                  </div>
+                ) : activeTab.result ? (
+                  <div className="flex-1 min-h-0 flex flex-col">
+                    <div className="p-2 bg-elevated text-xs text-secondary border-b border-default flex justify-between items-center shrink-0">
+                      <div className="flex items-center gap-4">
+                        <span>
+                          {t("editor.rowsRetrieved", { count: activeTab.result.rows.length })}{" "}
+                          {activeTab.executionTime !== null && (
+                            <span className="text-muted ml-2 font-mono">
+                              ({formatDuration(activeTab.executionTime)})
+                            </span>
+                          )}
+                        </span>
+
+                        {activeTab.result.truncated &&
+                          activeTab.result.pagination && (
+                            <span className="px-2 py-0.5 bg-yellow-900/30 text-yellow-400 rounded text-[10px] font-semibold uppercase tracking-wide border border-yellow-500/30">
+                              {t("editor.autoPaginated")}
+                            </span>
+                          )}
+                      </div>
+
+                      {/* Pagination Controls */}
+                      {activeTab.result.pagination && (
+                        <div className="flex items-center gap-1 bg-surface-secondary rounded border border-strong">
+                          <button
+                            disabled={
+                              activeTab.result.pagination.page === 1 ||
+                              activeTab.isLoading
+                            }
+                            onClick={() => runQuery(activeTab.query, 1)}
+                            className="p-1 hover:bg-surface-tertiary text-secondary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="First Page"
+                          >
+                            <ChevronsLeft size={14} />
+                          </button>
+                          <button
+                            disabled={
+                              activeTab.result.pagination.page === 1 ||
+                              activeTab.isLoading
+                            }
+                            onClick={() =>
+                              runQuery(
+                                activeTab.query,
+                                activeTab.result!.pagination!.page - 1,
+                              )
+                            }
+                            className="p-1 hover:bg-surface-tertiary text-secondary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed border-l border-strong"
+                            title="Previous Page"
+                          >
+                            <ChevronLeft size={14} />
+                          </button>
+
+                          <div
+                            className="px-3 text-secondary text-xs font-medium cursor-pointer hover:bg-surface-tertiary transition-colors min-w-[80px] text-center py-1"
+                            onClick={() => {
+                              setIsEditingPage(true);
+                              setTempPage(
+                                String(activeTab.result!.pagination!.page),
+                              );
+                            }}
+                            title={t("editor.jumpToPage")}
+                          >
+                            {isEditingPage ? (
+                              <input
+                                autoFocus
+                                type="text"
+                                className="w-full bg-transparent text-center focus:outline-none text-white p-0 m-0 border-none h-full"
+                                value={tempPage}
+                                onChange={(e) => setTempPage(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    const newPage = parseInt(tempPage);
+                                    const maxPage = Math.ceil(
+                                      activeTab.result!.pagination!.total_rows /
+                                        activeTab.result!.pagination!.page_size,
+                                    );
+                                    if (
+                                      !isNaN(newPage) &&
+                                      newPage >= 1 &&
+                                      newPage <= maxPage
+                                    ) {
+                                      runQuery(activeTab.query, newPage);
+                                    }
+                                    setIsEditingPage(false);
+                                  } else if (e.key === "Escape") {
+                                    setIsEditingPage(false);
+                                  }
+                                  e.stopPropagation();
+                                }}
+                                onBlur={() => setIsEditingPage(false)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            ) : (
+                              <>
+                                {t("editor.pageOf", { 
+                                    current: activeTab.result.pagination.page, 
+                                    total: Math.ceil(
+                                        activeTab.result.pagination.total_rows /
+                                          activeTab.result.pagination.page_size,
+                                      )
+                                })}
+                              </>
+                            )}
+                          </div>
+
+                          <button
+                            disabled={
+                              activeTab.result.pagination.page *
+                                activeTab.result.pagination.page_size >=
+                                activeTab.result.pagination.total_rows ||
+                              activeTab.isLoading
+                            }
+                            onClick={() =>
+                              runQuery(
+                                activeTab.query,
+                                activeTab.result!.pagination!.page + 1,
+                              )
+                            }
+                            className="p-1 hover:bg-surface-tertiary text-secondary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed border-l border-strong"
+                            title="Next Page"
+                          >
+                            <ChevronRight size={14} />
+                          </button>
+                          <button
+                            disabled={
+                              activeTab.result.pagination.page *
+                                activeTab.result.pagination.page_size >=
+                                activeTab.result.pagination.total_rows ||
+                              activeTab.isLoading
+                            }
+                            onClick={() =>
+                              runQuery(
+                                activeTab.query,
+                                Math.ceil(
+                                  activeTab.result!.pagination!.total_rows /
+                                    activeTab.result!.pagination!.page_size,
+                                ),
+                              )
+                            }
+                            className="p-1 hover:bg-surface-tertiary text-secondary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed border-l border-strong"
+                            title="Last Page"
+                          >
+                            <ChevronsRight size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Data Manipulation Toolbar (Below Header) */}
+                    {activeTab.activeTable && activeTab.pkColumn && (
+                        <div className="p-1 px-2 bg-elevated border-b border-default flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setShowNewRowModal(true)}
+                                    className="flex items-center justify-center w-7 h-7 text-secondary hover:text-green-400 hover:bg-surface-secondary rounded transition-colors"
+                                    title={t("editor.newRow")}
+                                >
+                                    <Plus size={16} />
+                                </button>
+                                <button
+                                    onClick={handleDeleteRows}
+                                    disabled={!activeTab.selectedRows || activeTab.selectedRows.length === 0}
+                                    className="flex items-center justify-center w-7 h-7 text-secondary hover:text-red-400 hover:bg-surface-secondary rounded transition-colors disabled:opacity-30"
+                                    title={t("dataGrid.deleteRow")}
+                                >
+                                    <Minus size={16} />
+                                </button>
+                            </div>
+
+                            {/* Separator */}
+                            {(hasPendingChanges) && (
+                                <div className="w-[1px] h-4 bg-surface-secondary mx-1"></div>
+                            )}
+                            
+                            {hasPendingChanges && (
+                                <div className="flex items-center gap-1 ml-2 border border-blue-900 bg-blue-900/20 rounded px-1 py-0.5">
+                                    <label className="flex items-center gap-1.5 px-2 py-1 cursor-pointer select-none group">
+                                        <input
+                                            type="checkbox"
+                                            checked={applyToAll}
+                                            onChange={(e) => setApplyToAll(e.target.checked)}
+                                            className="w-3.5 h-3.5 cursor-pointer accent-blue-500"
+                                        />
+                                        <span className="text-[10px] text-secondary group-hover:text-primary transition-colors">
+                                            {t("editor.applyToAll")}
+                                        </span>
+                                    </label>
+                                    <div className="w-[1px] h-4 bg-blue-900/50 mx-0.5"></div>
                                 <button
                                     onClick={handleSubmitChanges}
                                     disabled={!applyToAll && !selectionHasPending}
@@ -1553,6 +1566,13 @@ export const Editor = () => {
           </button>
         </div>
       )}
+        </div>
+        <AiChatPanel
+          isOpen={settings.aiEnabled && isAiChatOpen}
+          onClose={() => setIsAiChatOpen(false)}
+          activeQuery={activeTab?.query || null}
+        />
+      </div>
 
       {activeTab.activeTable && (
         <NewRowModal
