@@ -1,3 +1,21 @@
+## [0.8.8](https://github.com/debba/tabularis/compare/v0.8.7...v0.8.8) (2026-02-04)
+
+
+### Features
+
+* **components:** refactor SSH connections modal logic ([732af14](https://github.com/debba/tabularis/commit/732af14edd7b473ce90452b8a85c6cefd34ab418))
+* **database:** add dump and import utilities ([5927e04](https://github.com/debba/tabularis/commit/5927e049248314e8cdd8c79618606c47fb0acca1))
+* **datagrid:** add copy row and selected cells functionality ([1159299](https://github.com/debba/tabularis/commit/1159299126a2fb506b55e45028046dfeb29119ed))
+* **editor:** add middle-click tab close functionality ([8a08abc](https://github.com/debba/tabularis/commit/8a08abc08881be6b37c9b28932b01e7fa4d89ac3))
+* **sidebar:** add accordion, nav item, table item, resize hook, types ([173aa12](https://github.com/debba/tabularis/commit/173aa12a6093eea615f03c67586d1ed6d2a78c65))
+* **sidebar:** add responsive actions dropdown for narrow sidebars ([65f166d](https://github.com/debba/tabularis/commit/65f166d8132e6d9025a4c0ed229856d9ac966715))
+* **ssh:** add SSH connections management support ([9f0f8be](https://github.com/debba/tabularis/commit/9f0f8be7d1d6c74f2a0bad9ae7092e63fa83a6c1))
+* **ssh:** enhance SSH connection credential handling ([6c4f277](https://github.com/debba/tabularis/commit/6c4f277c348c4ec4bb2c0c196f1cfbc6e41578fe))
+* **ssh:** improve SSH connection management and validation ([ec12241](https://github.com/debba/tabularis/commit/ec12241e7a97c83b2b150f80bc0f41c41f88921d))
+* **ui:** enhance connection modal status feedback ([fc02ce6](https://github.com/debba/tabularis/commit/fc02ce6a2e76f0bde6b97384b2d229085a1d380e))
+
+
+
 ## [0.8.7](https://github.com/debba/tabularis/compare/v0.8.6...v0.8.7) (2026-02-03)
 
 
