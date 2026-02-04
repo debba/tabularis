@@ -71,6 +71,7 @@ yay -S tabularis-bin
 
 - Support for **MySQL/MariaDB**, working on: **PostgreSQL** and **SQLite**.
 - Save, manage, and clone connection profiles with secure local persistence.
+- Manage **SSH Connections** from the connection manager.
 - Optional secure password storage in system **Keychain**.
 - **SSH Tunneling** with automatic readiness detection.
 
@@ -99,6 +100,7 @@ yay -S tabularis-bin
 
 - **Inline & Batch Editing:** Modify cells and commit multiple changes at once.
 - **Row Management:** Create, delete, and select multiple rows.
+- **Copy Selected Rows:** Export selections straight to the clipboard.
 - **Export:** Save results as CSV or JSON.
 - **Smart Context:** Read-only mode for aggregates, edit mode for tables.
 
