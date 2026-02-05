@@ -23,6 +23,7 @@ import {
   Download,
   Upload,
   ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import { ask, message, open } from "@tauri-apps/plugin-dialog";
 import { useDatabase } from "../../hooks/useDatabase";
@@ -399,16 +400,28 @@ export const Sidebar = () => {
                     isOpen={tablesOpen}
                     onToggle={() => setTablesOpen(!tablesOpen)}
                     actions={
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsCreateTableModalOpen(true);
-                        }}
-                        className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
-                        title="Create New Table"
-                      >
-                        <Plus size={14} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (refreshTables) refreshTables();
+                          }}
+                          className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
+                          title={t("sidebar.refreshTables") || "Refresh Tables"}
+                        >
+                          <RefreshCw size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsCreateTableModalOpen(true);
+                          }}
+                          className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
+                          title="Create New Table"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
                     }
                   >
                     {tables.length === 0 ? (

@@ -21,6 +21,7 @@
     "newConsole": "New Console",
     "newVisualQuery": "New Visual Query",
     "refresh": "Refresh",
+    "refreshTables": "Refresh Tables",
     "explorer": "Explorer",
     "sqlEditor": "SQL Editor",
     "loadingSchema": "Loading schema...",
