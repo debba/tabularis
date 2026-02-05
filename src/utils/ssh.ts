@@ -31,19 +31,23 @@ export async function loadSshConnections(): Promise<SshConnection[]> {
 }
 
 /**
- * Normalize SSH params: only normalize key_file, preserve password/passphrase intent
+ * Normalize SSH params: normalize empty strings to undefined
  */
 function normalizeSshParams(ssh: Partial<SshConnection>): Partial<SshConnection> {
   const result: Partial<SshConnection> = { ...ssh };
 
-  // Only normalize key_file (empty strings become undefined)
+  // Normalize empty strings to undefined for all optional fields
   if (ssh.key_file !== undefined && !ssh.key_file?.trim()) {
-    delete result.key_file;
+    result.key_file = undefined;
   }
 
-  // Don't normalize password/key_passphrase - preserve caller's intent
-  // If caller sends empty string explicitly, it means "use empty password"
-  // If caller omits the field, it means "use keychain"
+  if (ssh.password !== undefined && !ssh.password?.trim()) {
+    result.password = undefined;
+  }
+
+  if (ssh.key_passphrase !== undefined && !ssh.key_passphrase?.trim()) {
+    result.key_passphrase = undefined;
+  }
 
   return result;
 }
