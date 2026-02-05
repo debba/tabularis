@@ -1,20 +1,41 @@
-use ssh2::Session;
+use async_trait::async_trait;
+use russh::client;
+use russh_keys::key;
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
+use std::io::{BufRead, BufReader};
 use std::net::{TcpListener, TcpStream};
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::OnceLock;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
+    mpsc, Arc, Mutex,
 };
 use std::thread;
 use std::time::{Duration, Instant};
+use tokio::io::copy_bidirectional;
+use tokio::runtime::Runtime;
+use tokio::sync::Mutex as TokioMutex;
 
 #[derive(Clone)]
 enum TunnelBackend {
-    LibSsh2(Arc<AtomicBool>),
+    Russh(Arc<AtomicBool>),
     SystemSsh(Arc<Mutex<Child>>),
+}
+
+#[derive(Clone)]
+struct RusshClientHandler;
+
+#[async_trait]
+impl client::Handler for RusshClientHandler {
+    type Error = russh::Error;
+
+    async fn check_server_key(
+        &mut self,
+        _server_public_key: &key::PublicKey,
+    ) -> Result<bool, Self::Error> {
+        Ok(true)
+    }
 }
 
 #[derive(Clone)]
@@ -40,10 +61,10 @@ impl SshTunnel {
         remote_host: &str,
         remote_port: u16,
     ) -> Result<Self, String> {
-        // Treat empty password as no password
-        let use_system_ssh = ssh_password.map(|p| p.trim().is_empty()).unwrap_or(true);
+        let ssh_password = ssh_password.filter(|p| !p.trim().is_empty());
+        let use_system_ssh = system_ssh_available();
         println!(
-            "[SSH Tunnel] New Request: Host={}, Port={}, User={}, SystemMode={}",
+            "[SSH Tunnel] New Request: Host={}, Port={}, User={}, SystemAvailable={}",
             ssh_host, ssh_port, ssh_user, use_system_ssh
         );
 
@@ -72,7 +93,7 @@ impl SshTunnel {
                 e
             })
         } else {
-            Self::new_libssh2(
+            Self::new_russh(
                 ssh_host,
                 ssh_port,
                 ssh_user,
@@ -84,7 +105,7 @@ impl SshTunnel {
                 local_port,
             )
             .map_err(|e| {
-                eprintln!("[SSH Tunnel Error] LibSSH2 failed: {}", e);
+                eprintln!("[SSH Tunnel Error] Russh failed: {}", e);
                 e
             })
         }
@@ -132,6 +153,8 @@ impl SshTunnel {
 
         args.push("-o".to_string());
         args.push("StrictHostKeyChecking=no".to_string());
+        args.push("-o".to_string());
+        args.push("BatchMode=yes".to_string());
 
         args.push(destination);
 
@@ -245,7 +268,7 @@ impl SshTunnel {
         })
     }
 
-    fn new_libssh2(
+    fn new_russh(
         ssh_host: &str,
         ssh_port: u16,
         ssh_user: &str,
@@ -256,177 +279,156 @@ impl SshTunnel {
         remote_port: u16,
         local_port: u16,
     ) -> Result<Self, String> {
-        println!(
-            "[SSH Tunnel] LibSsh2 connecting to {}:{}",
-            ssh_host, ssh_port
-        );
+        println!("[SSH Tunnel] Russh connecting to {}:{}", ssh_host, ssh_port);
         let listener = TcpListener::bind(format!("127.0.0.1:{}", local_port)).map_err(|e| {
             let err = format!("Failed to bind local port {}: {}", local_port, e);
             eprintln!("[SSH Tunnel Error] {}", err);
             err
         })?;
 
-        let tcp = TcpStream::connect(format!("{}:{}", ssh_host, ssh_port)).map_err(|e| {
-            let err = format!("Failed to connect to SSH server: {}", e);
-            eprintln!("[SSH Tunnel Error] {}", err);
-            err
-        })?;
-
-        let mut sess = Session::new().unwrap();
-        sess.set_tcp_stream(tcp);
-        sess.handshake().map_err(|e| {
-            let err = format!("SSH handshake failed: {}", e);
-            eprintln!("[SSH Tunnel Error] {}", err);
-            err
-        })?;
-
-        if let Some(key_path) = ssh_key_file {
-            if !key_path.trim().is_empty() {
-                println!("[SSH Tunnel] Authenticating with key file: {}", key_path);
-                // When SSH key is present, use passphrase if provided (and not empty)
-                let passphrase = ssh_key_passphrase
-                    .filter(|p| !p.trim().is_empty());
-                sess.userauth_pubkey_file(
-                    ssh_user,
-                    None,
-                    std::path::Path::new(key_path),
-                    passphrase,
-                )
-                .map_err(|e| {
-                    let err = format!("SSH key auth failed: {}", e);
-                    eprintln!("[SSH Tunnel Error] {}", err);
-                    err
-                })?;
-            } else {
-                if let Some(pwd) = ssh_password {
-                    println!("[SSH Tunnel] Authenticating with password");
-                    sess.userauth_password(ssh_user, pwd).map_err(|e| {
-                        let err = format!("SSH password auth failed: {}", e);
-                        eprintln!("[SSH Tunnel Error] {}", err);
-                        err
-                    })?;
-                } else {
-                    let err = "No SSH credentials provided".to_string();
-                    eprintln!("[SSH Tunnel Error] {}", err);
-                    return Err(err);
-                }
-            }
-        } else if let Some(pwd) = ssh_password {
-            println!("[SSH Tunnel] Authenticating with password");
-            sess.userauth_password(ssh_user, pwd).map_err(|e| {
-                let err = format!("SSH password auth failed: {}", e);
-                eprintln!("[SSH Tunnel Error] {}", err);
-                err
-            })?;
-        } else {
-            println!("[SSH Tunnel] Authenticating with SSH agent");
-            sess.userauth_agent(ssh_user).map_err(|e| {
-                let err = format!("SSH agent auth failed: {}", e);
-                eprintln!("[SSH Tunnel Error] {}", err);
-                err
-            })?;
-        }
-
-        if !sess.authenticated() {
-            let err = "SSH authentication failed".to_string();
+        if let Err(e) = listener.set_nonblocking(true) {
+            let err = format!("Failed to set listener nonblocking: {}", e);
             eprintln!("[SSH Tunnel Error] {}", err);
             return Err(err);
         }
 
-        sess.set_timeout(10);
-
         let running = Arc::new(AtomicBool::new(true));
         let running_clone = running.clone();
-
-        let sess = Arc::new(Mutex::new(sess));
+        let ssh_host = ssh_host.to_string();
+        let ssh_user = ssh_user.to_string();
+        let ssh_password = ssh_password.map(|p| p.to_string());
+        let ssh_key_file = ssh_key_file.map(|p| p.to_string());
+        let ssh_key_passphrase = ssh_key_passphrase.map(|p| p.to_string());
         let remote_host = remote_host.to_string();
 
+        let (ready_tx, ready_rx) = mpsc::channel();
+
         thread::spawn(move || {
-            for stream in listener.incoming() {
-                if !running_clone.load(Ordering::Relaxed) {
-                    break;
+            let runtime = match Runtime::new() {
+                Ok(rt) => rt,
+                Err(e) => {
+                    let err = format!("Failed to start Tokio runtime: {}", e);
+                    eprintln!("[SSH Tunnel Error] {}", err);
+                    let _ = ready_tx.send(Err(err));
+                    return;
+                }
+            };
+
+            let ready_tx_inner = ready_tx.clone();
+            let result = runtime.block_on(async move {
+                let config = Arc::new(client::Config::default());
+                let addr = format!("{}:{}", ssh_host, ssh_port);
+
+                let mut handle = client::connect(config, addr, RusshClientHandler)
+                    .await
+                    .map_err(|e| format!("Failed to connect to SSH server: {}", e))?;
+
+                let authenticated = if let Some(key_path) =
+                    ssh_key_file.as_deref().filter(|p| !p.trim().is_empty())
+                {
+                    println!("[SSH Tunnel] Authenticating with key file: {}", key_path);
+                    let passphrase = ssh_key_passphrase
+                        .as_deref()
+                        .filter(|p| !p.trim().is_empty());
+                    let key = russh_keys::load_secret_key(Path::new(key_path), passphrase)
+                        .map_err(|e| format!("SSH key auth failed: {}", e))?;
+                    handle
+                        .authenticate_publickey(&ssh_user, Arc::new(key))
+                        .await
+                        .map_err(|e| format!("SSH key auth failed: {}", e))?
+                } else if let Some(pwd) = ssh_password.as_deref().filter(|p| !p.trim().is_empty()) {
+                    println!("[SSH Tunnel] Authenticating with password");
+                    handle
+                        .authenticate_password(&ssh_user, pwd)
+                        .await
+                        .map_err(|e| format!("SSH password auth failed: {}", e))?
+                } else {
+                    let err = "No SSH credentials provided for russh".to_string();
+                    eprintln!("[SSH Tunnel Error] {}", err);
+                    let _ = ready_tx_inner.send(Err(err.clone()));
+                    return Err(err);
+                };
+
+                if !authenticated {
+                    let err = "SSH authentication failed".to_string();
+                    eprintln!("[SSH Tunnel Error] {}", err);
+                    let _ = ready_tx_inner.send(Err(err.clone()));
+                    return Err(err);
                 }
 
-                match stream {
-                    Ok(local_stream) => {
-                        let sess = sess.clone();
-                        let r_host = remote_host.clone();
-                        let running_inner = running_clone.clone();
+                let listener = tokio::net::TcpListener::from_std(listener)
+                    .map_err(|e| format!("Failed to configure async listener: {}", e))?;
 
-                        thread::spawn(move || {
-                            let sess_lock = match sess.lock() {
-                                Ok(l) => l,
-                                Err(_) => return,
-                            };
+                let handle = Arc::new(TokioMutex::new(handle));
 
-                            let mut channel =
-                                match sess_lock.channel_direct_tcpip(&r_host, remote_port, None) {
-                                    Ok(c) => c,
-                                    Err(e) => {
-                                        eprintln!("Failed to open SSH channel: {}", e);
-                                        return;
-                                    }
-                                };
+                let _ = ready_tx_inner.send(Ok(()));
 
-                            let mut local_stream = local_stream;
-                            if let Err(_) = local_stream.set_nonblocking(true) {
+                while running_clone.load(Ordering::Relaxed) {
+                    let accept =
+                        tokio::time::timeout(Duration::from_millis(200), listener.accept()).await;
+
+                    let (stream, _) = match accept {
+                        Ok(Ok(result)) => result,
+                        Ok(Err(e)) => {
+                            eprintln!(
+                                "[SSH Tunnel Error] Failed to accept local connection: {}",
+                                e
+                            );
+                            continue;
+                        }
+                        Err(_) => continue,
+                    };
+
+                    let handle = handle.clone();
+                    let r_host = remote_host.clone();
+                    tokio::spawn(async move {
+                        let handle = handle.lock().await;
+                        let channel = match handle
+                            .channel_open_direct_tcpip(
+                                r_host,
+                                u32::from(remote_port),
+                                "127.0.0.1",
+                                0,
+                            )
+                            .await
+                        {
+                            Ok(c) => c,
+                            Err(e) => {
+                                eprintln!("[SSH Tunnel Error] Failed to open SSH channel: {}", e);
                                 return;
                             }
+                        };
+                        drop(handle);
 
-                            let mut buf = [0u8; 8192];
-
-                            while running_inner.load(Ordering::Relaxed) {
-                                let mut did_work = false;
-
-                                match local_stream.read(&mut buf) {
-                                    Ok(0) => {
-                                        break;
-                                    }
-                                    Ok(n) => {
-                                        if channel.write_all(&buf[..n]).is_err() {
-                                            break;
-                                        }
-                                        did_work = true;
-                                    }
-                                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
-                                    Err(_) => {
-                                        break;
-                                    }
-                                }
-
-                                match channel.read(&mut buf) {
-                                    Ok(0) => {
-                                        break;
-                                    }
-                                    Ok(n) => {
-                                        if local_stream.write_all(&buf[..n]).is_err() {
-                                            break;
-                                        }
-                                        did_work = true;
-                                    }
-                                    Err(_) => {}
-                                }
-
-                                if !did_work {
-                                    thread::sleep(Duration::from_millis(1));
-                                }
-                            }
-                        });
-                    }
-                    Err(_) => {}
+                        let mut stream = stream;
+                        let mut channel_stream = channel.into_stream();
+                        if let Err(e) = copy_bidirectional(&mut stream, &mut channel_stream).await {
+                            eprintln!("[SSH Tunnel Error] Forwarding failed: {}", e);
+                        }
+                    });
                 }
+
+                Ok(())
+            });
+
+            if let Err(err) = result {
+                let _ = ready_tx.send(Err(err));
             }
         });
 
-        Ok(Self {
-            local_port,
-            backend: TunnelBackend::LibSsh2(running),
-        })
+        match ready_rx.recv_timeout(Duration::from_secs(10)) {
+            Ok(Ok(())) => Ok(Self {
+                local_port,
+                backend: TunnelBackend::Russh(running),
+            }),
+            Ok(Err(err)) => Err(err),
+            Err(_) => Err("Timed out waiting for Russh tunnel to initialize".to_string()),
+        }
     }
 
     pub fn stop(&self) {
         match &self.backend {
-            TunnelBackend::LibSsh2(running) => {
+            TunnelBackend::Russh(running) => {
                 running.store(false, Ordering::Relaxed);
             }
             TunnelBackend::SystemSsh(child) => {
@@ -447,17 +449,17 @@ pub fn test_ssh_connection(
     ssh_key_file: Option<&str>,
     ssh_key_passphrase: Option<&str>,
 ) -> Result<String, String> {
-    // Treat empty password as no password
-    let use_system_ssh = ssh_password.map(|p| p.trim().is_empty()).unwrap_or(true);
+    let ssh_password = ssh_password.filter(|p| !p.trim().is_empty());
+    let use_system_ssh = system_ssh_available();
     println!(
-        "[SSH Test] Testing connection to {}:{} as {} (SystemMode={})",
+        "[SSH Test] Testing connection to {}:{} as {} (SystemAvailable={})",
         ssh_host, ssh_port, ssh_user, use_system_ssh
     );
 
     if use_system_ssh {
         test_ssh_connection_system(ssh_host, ssh_port, ssh_user, ssh_key_file)
     } else {
-        test_ssh_connection_libssh2(
+        test_ssh_connection_russh(
             ssh_host,
             ssh_port,
             ssh_user,
@@ -507,12 +509,12 @@ fn test_ssh_connection_system(
 
     println!("[SSH Test] Executing: ssh {:?}", args);
 
-    let output = Command::new("ssh")
-        .args(&args)
-        .output()
-        .map_err(|e| {
-            format!("Failed to execute ssh command: {}. Ensure 'ssh' is in PATH.", e)
-        })?;
+    let output = Command::new("ssh").args(&args).output().map_err(|e| {
+        format!(
+            "Failed to execute ssh command: {}. Ensure 'ssh' is in PATH.",
+            e
+        )
+    })?;
 
     if output.status.success() {
         println!("[SSH Test] Connection successful!");
@@ -528,8 +530,8 @@ fn test_ssh_connection_system(
     }
 }
 
-/// Test SSH connection using libssh2 (for password authentication)
-fn test_ssh_connection_libssh2(
+/// Test SSH connection using russh (for password authentication)
+fn test_ssh_connection_russh(
     ssh_host: &str,
     ssh_port: u16,
     ssh_user: &str,
@@ -537,82 +539,64 @@ fn test_ssh_connection_libssh2(
     ssh_key_file: Option<&str>,
     ssh_key_passphrase: Option<&str>,
 ) -> Result<String, String> {
-    println!("[SSH Test] Using libssh2 for password authentication");
+    println!("[SSH Test] Using russh for authentication");
 
-    // Try to connect to the SSH server
-    let tcp = TcpStream::connect(format!("{}:{}", ssh_host, ssh_port)).map_err(|e| {
-        let err = format!("Failed to connect to SSH server {}:{}: {}", ssh_host, ssh_port, e);
-        eprintln!("[SSH Test Error] {}", err);
-        err
-    })?;
+    let runtime = Runtime::new().map_err(|e| format!("Failed to start Tokio runtime: {}", e))?;
 
-    // Set a reasonable timeout for the test
-    tcp.set_read_timeout(Some(Duration::from_secs(10)))
-        .ok();
-    tcp.set_write_timeout(Some(Duration::from_secs(10)))
-        .ok();
+    let result = runtime.block_on(async {
+        let config = Arc::new(client::Config::default());
+        let addr = format!("{}:{}", ssh_host, ssh_port);
+        let mut handle = client::connect(config, addr, RusshClientHandler)
+            .await
+            .map_err(|e| {
+                format!(
+                    "Failed to connect to SSH server {}:{}: {}",
+                    ssh_host, ssh_port, e
+                )
+            })?;
 
-    // Create SSH session
-    let mut sess = Session::new().unwrap();
-    sess.set_tcp_stream(tcp);
-    sess.set_timeout(10000); // 10 second timeout
-    sess.handshake().map_err(|e| {
-        let err = format!("SSH handshake failed: {}", e);
-        eprintln!("[SSH Test Error] {}", err);
-        err
-    })?;
-
-    // Try authentication
-    if let Some(key_path) = ssh_key_file {
-        if !key_path.trim().is_empty() {
+        let authenticated = if let Some(key_path) = ssh_key_file.filter(|p| !p.trim().is_empty()) {
             println!("[SSH Test] Authenticating with key file: {}", key_path);
             let passphrase = ssh_key_passphrase.filter(|p| !p.trim().is_empty());
-            sess.userauth_pubkey_file(
-                ssh_user,
-                None,
-                std::path::Path::new(key_path),
-                passphrase,
-            )
-            .map_err(|e| {
-                let err = format!("SSH key authentication failed: {}", e);
-                eprintln!("[SSH Test Error] {}", err);
-                err
-            })?;
+            let key = russh_keys::load_secret_key(Path::new(key_path), passphrase)
+                .map_err(|e| format!("SSH key authentication failed: {}", e))?;
+            handle
+                .authenticate_publickey(ssh_user, Arc::new(key))
+                .await
+                .map_err(|e| format!("SSH key authentication failed: {}", e))?
         } else if let Some(pwd) = ssh_password {
             println!("[SSH Test] Authenticating with password");
-            sess.userauth_password(ssh_user, pwd).map_err(|e| {
-                let err = format!("SSH password authentication failed: {}", e);
-                eprintln!("[SSH Test Error] {}", err);
-                err
-            })?;
+            handle
+                .authenticate_password(ssh_user, pwd)
+                .await
+                .map_err(|e| format!("SSH password authentication failed: {}", e))?
         } else {
-            let err = "No SSH credentials provided".to_string();
+            let err = "No SSH credentials provided for russh".to_string();
+            eprintln!("[SSH Test Error] {}", err);
+            return Err(err);
+        };
+
+        if !authenticated {
+            let err = "SSH authentication failed".to_string();
             eprintln!("[SSH Test Error] {}", err);
             return Err(err);
         }
-    } else if let Some(pwd) = ssh_password {
-        println!("[SSH Test] Authenticating with password");
-        sess.userauth_password(ssh_user, pwd).map_err(|e| {
-            let err = format!("SSH password authentication failed: {}", e);
-            eprintln!("[SSH Test Error] {}", err);
-            err
-        })?;
-    } else {
-        let err = "No SSH credentials provided for libssh2".to_string();
-        eprintln!("[SSH Test Error] {}", err);
-        return Err(err);
-    }
 
-    // Check if authenticated
-    if !sess.authenticated() {
-        let err = "SSH authentication failed".to_string();
-        eprintln!("[SSH Test Error] {}", err);
-        return Err(err);
-    }
+        println!("[SSH Test] Connection successful!");
+        Ok(format!(
+            "SSH connection to {}@{}:{} established successfully!",
+            ssh_user, ssh_host, ssh_port
+        ))
+    });
 
-    println!("[SSH Test] Connection successful!");
-    Ok(format!(
-        "SSH connection to {}@{}:{} established successfully!",
-        ssh_user, ssh_host, ssh_port
-    ))
+    result
+}
+
+fn system_ssh_available() -> bool {
+    Command::new("ssh")
+        .arg("-V")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok()
 }
