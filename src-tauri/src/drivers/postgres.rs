@@ -6,6 +6,18 @@ use crate::pool_manager::get_postgres_pool;
 use sqlx::{Column, Row};
 
 
+pub async fn get_databases(params: &ConnectionParams) -> Result<Vec<String>, String> {
+    let pool = get_postgres_pool(params).await?;
+    let rows = sqlx::query("SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname")
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(rows
+        .iter()
+        .map(|r| r.try_get("datname").unwrap_or_default())
+        .collect())
+}
+
 pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, String> {
     let pool = get_postgres_pool(params).await?;
     let rows = sqlx::query(

@@ -5,6 +5,18 @@ use crate::models::{
 use crate::pool_manager::get_mysql_pool;
 use sqlx::{Column, Row};
 
+pub async fn get_databases(params: &ConnectionParams) -> Result<Vec<String>, String> {
+    let pool = get_mysql_pool(params).await?;
+    let rows = sqlx::query("SHOW DATABASES")
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(rows
+        .iter()
+        .map(|r| r.try_get(0).unwrap_or_default())
+        .collect())
+}
+
 pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, String> {
     let pool = get_mysql_pool(params).await?;
     let rows = sqlx::query(

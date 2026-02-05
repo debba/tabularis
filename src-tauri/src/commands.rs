@@ -864,6 +864,22 @@ pub async fn test_connection<R: Runtime>(
 }
 
 #[tauri::command]
+pub async fn list_databases<R: Runtime>(
+    app: AppHandle<R>,
+    params: ConnectionParams,
+) -> Result<Vec<String>, String> {
+    let expanded_params = expand_ssh_connection_params(&app, &params).await?;
+    let resolved_params = resolve_connection_params(&expanded_params)?;
+    
+    match resolved_params.driver.as_str() {
+        "mysql" => mysql::get_databases(&resolved_params).await,
+        "postgres" => postgres::get_databases(&resolved_params).await,
+        "sqlite" => sqlite::get_databases(&resolved_params).await,
+        _ => Err("Unsupported driver".into()),
+    }
+}
+
+#[tauri::command]
 pub async fn get_tables<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,

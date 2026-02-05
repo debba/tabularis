@@ -12,6 +12,7 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import clsx from "clsx";
 import { SshConnectionsModal } from "./SshConnectionsModal";
+import { SearchableSelect } from "./SearchableSelect";
 import { loadSshConnections, type SshConnection } from "../../utils/ssh";
 
 type Driver = "postgres" | "mysql" | "sqlite";
@@ -115,11 +116,47 @@ export const NewConnectionModal = ({
   const [sshConnections, setSshConnections] = useState<SshConnection[]>([]);
   const [isSshModalOpen, setIsSshModalOpen] = useState(false);
   const [sshMode, setSshMode] = useState<"existing" | "inline">("existing");
+  const [availableDatabases, setAvailableDatabases] = useState<string[]>([]);
+  const [loadingDatabases, setLoadingDatabases] = useState(false);
+  const [databaseLoadError, setDatabaseLoadError] = useState<string | null>(null);
 
   // Load SSH connections
   const loadSshConnectionsList = async () => {
     const result = await loadSshConnections();
     setSshConnections(result);
+  };
+
+  // Load available databases for the user
+  const loadDatabases = async () => {
+    if (driver === "sqlite") {
+      // SQLite doesn't support database listing
+      return;
+    }
+
+    setLoadingDatabases(true);
+    setDatabaseLoadError(null);
+    try {
+      const databases = await invoke<string[]>("list_databases", {
+        params: {
+          driver,
+          ...formData,
+          port: Number(formData.port),
+        },
+      });
+      setAvailableDatabases(databases);
+    } catch (err) {
+      console.error("Failed to load databases:", err);
+      const errorMsg =
+        typeof err === "string"
+          ? err
+          : err instanceof Error
+            ? err.message
+            : t("newConnection.failLoadDatabases");
+      setDatabaseLoadError(errorMsg);
+      setAvailableDatabases([]);
+    } finally {
+      setLoadingDatabases(false);
+    }
   };
 
   // Populate form on open if editing
@@ -234,6 +271,13 @@ export const NewConnectionModal = ({
     if (!name.trim()) {
       setStatus("error");
       setMessage(t("newConnection.nameRequired"));
+      setTestResult("error");
+      return;
+    }
+
+    if (!formData.database?.trim()) {
+      setStatus("error");
+      setMessage(t("newConnection.dbNameRequired"));
       setTestResult("error");
       return;
     }
@@ -376,20 +420,71 @@ export const NewConnectionModal = ({
             </div>
           )}
 
-          <ConnectionInput
-            label={
-              driver === "sqlite"
-                ? t("newConnection.filePath")
-                : t("newConnection.dbName")
-            }
-            value={formData.database}
-            onChange={(val) => updateField("database", val)}
-            placeholder={
-              driver === "sqlite"
-                ? t("newConnection.filePathPlaceholder")
-                : t("newConnection.dbNamePlaceholder")
-            }
-          />
+          {/* Database Name / File Path Field */}
+          {driver === "sqlite" ? (
+            <ConnectionInput
+              label={t("newConnection.filePath")}
+              value={formData.database}
+              onChange={(val) => updateField("database", val)}
+              placeholder={t("newConnection.filePathPlaceholder")}
+            />
+          ) : (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className={LabelClass}>
+                  {t("newConnection.dbName")}
+                </label>
+                <button
+                  type="button"
+                  onClick={loadDatabases}
+                  disabled={
+                    loadingDatabases ||
+                    !formData.host ||
+                    !formData.username ||
+                    !formData.password
+                  }
+                  className="text-xs text-blue-400 hover:text-blue-300 disabled:text-muted disabled:cursor-not-allowed flex items-center gap-1"
+                >
+                  {loadingDatabases ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      {t("newConnection.loadingDatabases")}
+                    </>
+                  ) : (
+                    <>
+                      <Database size={12} />
+                      {t("newConnection.loadDatabases")}
+                    </>
+                  )}
+                </button>
+              </div>
+              {availableDatabases.length > 0 ? (
+                <SearchableSelect
+                  value={formData.database || null}
+                  options={availableDatabases}
+                  onChange={(val) => updateField("database", val)}
+                  placeholder={t("newConnection.selectDatabase")}
+                  searchPlaceholder={t("common.search")}
+                  noResultsLabel={t("newConnection.noDatabasesFound")}
+                  hasError={!!databaseLoadError}
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={formData.database ?? ""}
+                  onChange={(e) => updateField("database", e.target.value)}
+                  className={InputClass}
+                  placeholder={t("newConnection.dbNamePlaceholder")}
+                />
+              )}
+              {databaseLoadError && (
+                <p className="text-xs text-red-400 flex items-center gap-1 mt-1">
+                  <AlertCircle size={12} />
+                  {databaseLoadError}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* SSH Tunnel Section */}
           {driver !== "sqlite" && (

@@ -76,6 +76,7 @@ pub fn run() {
         .manage(dump_commands::DumpCancellationState::default())
         .invoke_handler(tauri::generate_handler![
             commands::test_connection,
+            commands::list_databases,
             commands::save_connection,
             commands::delete_connection,
             commands::update_connection,

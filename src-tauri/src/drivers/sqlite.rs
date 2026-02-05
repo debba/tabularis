@@ -5,6 +5,11 @@ use crate::models::{
 use sqlx::{Column, Row};
 use crate::pool_manager::get_sqlite_pool;
 
+pub async fn get_databases(_params: &ConnectionParams) -> Result<Vec<String>, String> {
+    // SQLite doesn't support multiple databases in the same connection
+    Ok(vec![])
+}
+
 pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, String> {
     let pool = get_sqlite_pool(params).await?;
     let rows = sqlx::query(
