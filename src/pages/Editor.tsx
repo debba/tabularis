@@ -1131,36 +1131,18 @@ export const Editor = () => {
           </button>
         )}
 
-        {/* AI Assist Button */}
-        {!isTableTab && activeTab.type !== "query_builder" && settings.aiEnabled && (
-           <div className="flex items-center gap-1 ml-2">
-             <button
-               onClick={() => setIsAiModalOpen(true)}
-               disabled={!activeConnectionId}
-               className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/40 hover:bg-purple-900/60 text-purple-200 border border-purple-500/30 rounded text-sm font-medium transition-colors disabled:opacity-50"
-               title="Generate SQL with AI"
-             >
-               <Sparkles size={16} />
-               <span className="hidden sm:inline">AI Assist</span>
-             </button>
-             <button
-               onClick={() => setIsAiExplainModalOpen(true)}
-               disabled={!activeConnectionId || !activeTab.query?.trim()}
-               className="flex items-center gap-2 px-3 py-1.5 bg-blue-900/40 hover:bg-blue-900/60 text-blue-200 border border-blue-500/30 rounded text-sm font-medium transition-colors disabled:opacity-50"
-               title="Explain this Query"
-             >
-               <BookOpen size={16} />
-               <span className="hidden sm:inline">Explain</span>
-             </button>
-             <button
-               onClick={() => setIsAiChatOpen((prev) => !prev)}
-               className="flex items-center gap-2 px-3 py-1.5 bg-surface-secondary hover:bg-surface text-primary border border-strong rounded text-sm font-medium transition-colors"
-               title={t("aiChat.open")}
-             >
-               <MessageCircle size={16} />
-               <span className="hidden sm:inline">{t("aiChat.open")}</span>
-             </button>
-           </div>
+
+
+        {/* Chat Button */}
+        {!isTableTab && settings.aiEnabled && (
+          <button
+            onClick={() => setIsAiChatOpen((prev) => !prev)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-surface-secondary hover:bg-surface text-primary border border-strong rounded text-sm font-medium transition-colors ml-2"
+            title={t("aiChat.open")}
+          >
+            <MessageCircle size={16} />
+            <span className="hidden sm:inline">{t("aiChat.open")}</span>
+          </button>
         )}
 
         <div className="relative ml-auto">
@@ -1220,24 +1202,49 @@ export const Editor = () => {
                 {tab.type === "query_builder" ? (
                   <VisualQueryBuilder />
                 ) : (
-                  <SqlEditorWrapper
-                    height="100%"
-                    initialValue={tab.query}
-                    onChange={(val) => {
-                      if (isActive) updateTab(tab.id, { query: val });
-                    }}
-                    onRun={handleRunButton}
-                    onMount={isActive ? handleEditorMount : undefined}
-                    editorKey={tab.id}
-                    options={{
-                      minimap: { enabled: false },
-                      fontSize: 14,
-                      padding: { top: 16 },
-                      scrollBeyondLastLine: false,
-                      automaticLayout: true,
-                      wordWrap: "on",
-                    }}
-                  />
+                  <>
+                    <SqlEditorWrapper
+                      height="100%"
+                      initialValue={tab.query}
+                      onChange={(val) => {
+                        if (isActive) updateTab(tab.id, { query: val });
+                      }}
+                      onRun={handleRunButton}
+                      onMount={isActive ? handleEditorMount : undefined}
+                      editorKey={tab.id}
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 14,
+                        padding: { top: 16 },
+                        scrollBeyondLastLine: false,
+                        automaticLayout: true,
+                        wordWrap: "on",
+                      }}
+                    />
+                    {/* AI Action Buttons - Bottom Right */}
+                    {!isTableTab && activeTab?.type !== "query_builder" && settings.aiEnabled && isActive && (
+                      <div className="absolute bottom-3 right-3 flex items-center gap-1.5 z-10">
+                        <button
+                          onClick={() => setIsAiModalOpen(true)}
+                          disabled={!activeConnectionId}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-secondary/90 hover:bg-surface text-secondary hover:text-primary border border-strong rounded-md text-xs font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm backdrop-blur-sm"
+                          title="Generate SQL with AI"
+                        >
+                          <Sparkles size={14} />
+                          <span>AI Assist</span>
+                        </button>
+                        <button
+                          onClick={() => setIsAiExplainModalOpen(true)}
+                          disabled={!activeConnectionId || !activeTab.query?.trim()}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-secondary/90 hover:bg-surface text-secondary hover:text-primary border border-strong rounded-md text-xs font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm backdrop-blur-sm"
+                          title="Explain this Query"
+                        >
+                          <BookOpen size={14} />
+                          <span>Explain</span>
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             );
