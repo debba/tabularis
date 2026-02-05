@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { invoke } from '@tauri-apps/api/core';
 import { MainLayout } from './components/layout/MainLayout';
 import { Connections } from './pages/Connections';
 import { Editor } from './pages/Editor';
@@ -17,11 +18,16 @@ function App() {
     dismissUpdate,
     error: updateError
   } = useUpdate();
+  const [isDebugMode, setIsDebugMode] = useState(false);
+
+  useEffect(() => {
+    invoke<boolean>('is_debug_mode').then(setIsDebugMode);
+  }, []);
 
   useEffect(() => {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-    if (isLocalhost) return;
+    if (isLocalhost || isDebugMode) return;
 
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
@@ -32,7 +38,7 @@ function App() {
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, []);
+  }, [isDebugMode]);
 
   return (
     <>

@@ -24,6 +24,14 @@ pub mod drivers {
 }
 
 use clap::Parser;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static DEBUG_MODE: AtomicBool = AtomicBool::new(false);
+
+#[tauri::command]
+fn is_debug_mode() -> bool {
+    DEBUG_MODE.load(Ordering::Relaxed)
+}
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -60,6 +68,9 @@ pub fn run() {
         log::LevelFilter::Warn
     };
 
+    // Store debug flag in global state
+    DEBUG_MODE.store(args.debug, Ordering::Relaxed);
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(
@@ -77,6 +88,7 @@ pub fn run() {
         .manage(export::ExportCancellationState::default())
         .manage(dump_commands::DumpCancellationState::default())
         .invoke_handler(tauri::generate_handler![
+            is_debug_mode,
             commands::test_connection,
             commands::list_databases,
             commands::save_connection,
