@@ -202,6 +202,7 @@ export const NewConnectionModal = ({
     // Let's assume switching driver resets defaults for convenience.
     setFormData((prev) => ({
       ...prev,
+      driver: newDriver,
       port:
         newDriver === "postgres"
           ? 5432
