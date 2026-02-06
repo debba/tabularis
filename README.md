@@ -59,6 +59,14 @@ after copying the app to the Applications directory.
 yay -S tabularis-bin
 ```
 
+## Updates
+
+### Automatic Updates
+Tabularis checks for updates automatically on startup. When a new version is available, a notification will appear, allowing you to download and install the update seamlessly.
+
+### Manual Updates
+You can also manually check for updates or download the latest version directly from the [Releases page](https://github.com/debba/tabularis/releases).
+
 ## Gallery
 
 **View the full gallery at [tabularis.dev](https://tabularis.dev)**
