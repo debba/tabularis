@@ -133,6 +133,7 @@ pub fn set_ai_key(provider: &str, key: &str) -> Result<(), String> {
 }
 
 pub fn get_ai_key(provider: &str) -> Result<String, String> {
+    #[cfg(debug_assertions)]
     println!("[Keychain] Getting AI key for {}", provider);
     let entry =
         Entry::new(SERVICE_NAME, &format!("ai_key:{}", provider)).map_err(|e| e.to_string())?;
@@ -140,7 +141,7 @@ pub fn get_ai_key(provider: &str) -> Result<String, String> {
         Ok(pwd) => Ok(pwd),
         Err(keyring::Error::NoEntry) => Err("No key found".to_string()),
         Err(e) => {
-            println!("[Keychain] Error getting AI key for {}: {}", provider, e);
+            eprintln!("[Keychain] Error getting AI key for {}: {}", provider, e);
             Err(e.to_string())
         }
     }
