@@ -18,6 +18,7 @@ pub async fn get_databases(params: &ConnectionParams) -> Result<Vec<String>, Str
 }
 
 pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, String> {
+    log::debug!("MySQL: Fetching tables for database: {}", params.database);
     let pool = get_mysql_pool(params).await?;
     let rows = sqlx::query(
         "SELECT table_name as name FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name ASC",
@@ -25,12 +26,14 @@ pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, Str
     .fetch_all(&pool)
     .await
     .map_err(|e| e.to_string())?;
-    Ok(rows
+    let tables: Vec<TableInfo> = rows
         .iter()
         .map(|r| TableInfo {
             name: r.try_get("name").unwrap_or_default(),
         })
-        .collect())
+        .collect();
+    log::debug!("MySQL: Found {} tables in {}", tables.len(), params.database);
+    Ok(tables)
 }
 
 pub async fn get_columns(

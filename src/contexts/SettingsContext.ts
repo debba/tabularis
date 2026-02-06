@@ -21,6 +21,8 @@ export interface Settings {
   aiCustomOpenaiUrl?: string;
   aiCustomOpenaiModel?: string;
   autoCheckUpdatesOnStartup?: boolean;
+  loggingEnabled?: boolean;
+  maxLogEntries?: number;
 }
 
 export interface SettingsContextType {
@@ -45,4 +47,6 @@ export const DEFAULT_SETTINGS: Settings = {
   aiOllamaPort: 11434,
   aiCustomOpenaiUrl: "",
   aiCustomOpenaiModel: "",
+  loggingEnabled: true,
+  maxLogEntries: 1000,
 };

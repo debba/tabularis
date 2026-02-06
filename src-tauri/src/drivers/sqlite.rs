@@ -11,6 +11,7 @@ pub async fn get_databases(_params: &ConnectionParams) -> Result<Vec<String>, St
 }
 
 pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, String> {
+    log::debug!("SQLite: Fetching tables for database: {}", params.database);
     let pool = get_sqlite_pool(params).await?;
     let rows = sqlx::query(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC",
@@ -18,12 +19,14 @@ pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, Str
     .fetch_all(&pool)
     .await
     .map_err(|e| e.to_string())?;
-    Ok(rows
+    let tables: Vec<TableInfo> = rows
         .iter()
         .map(|r| TableInfo {
             name: r.try_get("name").unwrap_or_default(),
         })
-        .collect())
+        .collect();
+    log::debug!("SQLite: Found {} tables in {}", tables.len(), params.database);
+    Ok(tables)
 }
 
 pub async fn get_columns(

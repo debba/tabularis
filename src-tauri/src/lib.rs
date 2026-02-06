@@ -14,6 +14,8 @@ pub mod mcp;
 pub mod theme_commands;
 pub mod theme_models;
 pub mod updater;
+pub mod logger;
+pub mod log_commands;
 #[cfg(test)]
 pub mod dump_commands_tests;
 pub mod drivers {
@@ -25,8 +27,16 @@ pub mod drivers {
 
 use clap::Parser;
 use std::sync::atomic::{AtomicBool, Ordering};
+use logger::{create_log_buffer, format_timestamp, SharedLogBuffer, LogEntry, init_logger};
 
 static DEBUG_MODE: AtomicBool = AtomicBool::new(false);
+
+// Global log buffer for capturing logs
+static LOG_BUFFER: std::sync::OnceLock<SharedLogBuffer> = std::sync::OnceLock::new();
+
+pub fn get_log_buffer() -> SharedLogBuffer {
+    LOG_BUFFER.get().expect("Log buffer not initialized").clone()
+}
 
 #[tauri::command]
 fn is_debug_mode() -> bool {
@@ -58,35 +68,40 @@ pub fn run() {
         return;
     }
 
-    // Install default drivers for sqlx::Any
-    sqlx::any::install_default_drivers();
-
     // Configure log level based on debug flag
+    // Default to Info level so users can see application logs
     let log_level = if args.debug {
         log::LevelFilter::Debug
     } else {
-        log::LevelFilter::Warn
+        log::LevelFilter::Info
     };
 
     // Store debug flag in global state
     DEBUG_MODE.store(args.debug, Ordering::Relaxed);
 
+    // Create and initialize log buffer - MUST be before sqlx to capture all logs
+    let log_buffer = create_log_buffer(1000);
+    LOG_BUFFER.set(log_buffer.clone()).expect("Failed to initialize log buffer");
+    
+    // Initialize custom logger that captures logs to buffer and prints to stderr
+    init_logger(log_buffer.clone(), log_level);
+    
+    // Log startup message
+    log::info!("Tabularis application starting...");
+    log::debug!("Debug mode: {}", args.debug);
+
+    // Install default drivers for sqlx::Any
+    sqlx::any::install_default_drivers();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(
-            tauri_plugin_log::Builder::default()
-                .level(log_level)
-                .target(tauri_plugin_log::Target::new(
-                    tauri_plugin_log::TargetKind::Stdout,
-                ))
-                .build()
-        )
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(commands::QueryCancellationState::default())
         .manage(export::ExportCancellationState::default())
         .manage(dump_commands::DumpCancellationState::default())
+        .manage(log_buffer)
         .invoke_handler(tauri::generate_handler![
             is_debug_mode,
             commands::test_connection,
@@ -156,6 +171,14 @@ pub fn run() {
             // Updater
             updater::check_for_updates,
             updater::download_and_install_update,
+            // Logs
+            log_commands::get_logs,
+            log_commands::clear_logs,
+            log_commands::get_log_settings,
+            log_commands::set_log_enabled,
+            log_commands::set_log_max_size,
+            log_commands::export_logs,
+            log_commands::test_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

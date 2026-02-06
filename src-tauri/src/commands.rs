@@ -273,6 +273,8 @@ pub async fn save_connection<R: Runtime>(
     name: String,
     params: ConnectionParams,
 ) -> Result<SavedConnection, String> {
+    log::info!("Saving new connection: {}", name);
+    
     let path = get_config_path(&app)?;
     let mut connections: Vec<SavedConnection> = if path.exists() {
         let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
@@ -285,6 +287,7 @@ pub async fn save_connection<R: Runtime>(
     let mut params_to_save = params.clone();
 
     if params.save_in_keychain.unwrap_or(false) {
+        log::debug!("Storing passwords in keychain for connection: {}", name);
         if let Some(pwd) = &params.password {
             keychain_utils::set_db_password(&id, pwd)?;
         }
@@ -305,12 +308,14 @@ pub async fn save_connection<R: Runtime>(
 
     let new_conn = SavedConnection {
         id: id.clone(),
-        name,
+        name: name.clone(),
         params: params_to_save,
     };
     connections.push(new_conn.clone());
     let json = serde_json::to_string_pretty(&connections).map_err(|e| e.to_string())?;
     fs::write(path, json).map_err(|e| e.to_string())?;
+    
+    log::info!("Connection saved successfully: {} (ID: {})", name, id);
 
     let mut returned_conn = new_conn;
     returned_conn.params = params; // Return with password for frontend state
@@ -319,6 +324,8 @@ pub async fn save_connection<R: Runtime>(
 
 #[tauri::command]
 pub async fn delete_connection<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), String> {
+    log::info!("Deleting connection: {}", id);
+    
     let path = get_config_path(&app)?;
     if !path.exists() {
         return Ok(());
@@ -327,7 +334,9 @@ pub async fn delete_connection<R: Runtime>(app: AppHandle<R>, id: String) -> Res
     let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
     let mut connections: Vec<SavedConnection> = serde_json::from_str(&content).unwrap_or_default();
 
+    let initial_count = connections.len();
     connections.retain(|c| c.id != id);
+    let deleted = connections.len() < initial_count;
 
     // Attempt to remove passwords from keychain (ignore if not found)
     keychain_utils::delete_db_password(&id).ok();
@@ -336,6 +345,13 @@ pub async fn delete_connection<R: Runtime>(app: AppHandle<R>, id: String) -> Res
 
     let json = serde_json::to_string_pretty(&connections).map_err(|e| e.to_string())?;
     fs::write(path, json).map_err(|e| e.to_string())?;
+    
+    if deleted {
+        log::info!("Connection deleted successfully: {}", id);
+    } else {
+        log::warn!("Connection not found for deletion: {}", id);
+    }
+    
     Ok(())
 }
 
@@ -871,6 +887,8 @@ pub async fn test_connection<R: Runtime>(
     app: AppHandle<R>,
     request: TestConnectionRequest,
 ) -> Result<String, String> {
+    log::info!("Testing connection to database: {}", request.params.database);
+    
     let mut expanded_params = expand_ssh_connection_params(&app, &request.params).await?;
 
     if request.params.password.is_none() && expanded_params.password.is_none() {
@@ -885,19 +903,21 @@ pub async fn test_connection<R: Runtime>(
     }
 
     let resolved_params = resolve_connection_params(&expanded_params)?;
-    println!(
-        "[Test Connection] Resolved Params: Host={:?}, Port={:?}",
+    log::debug!(
+        "Test connection params: Host={:?}, Port={:?}",
         resolved_params.host, resolved_params.port
     );
 
     let url = build_connection_url(&resolved_params)?;
-    println!("[Test Connection] URL: {}", url);
+    log::debug!("Connection URL: {}", url);
 
     let options = AnyConnectOptions::from_str(&url).map_err(|e| e.to_string())?;
     let mut conn = AnyConnection::connect_with(&options)
         .await
         .map_err(|e: sqlx::Error| e.to_string())?;
     conn.ping().await.map_err(|e: sqlx::Error| e.to_string())?;
+    
+    log::info!("Connection test successful for database: {}", request.params.database);
     Ok("Connection successful!".to_string())
 }
 
@@ -1438,15 +1458,27 @@ pub async fn get_tables<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
 ) -> Result<Vec<TableInfo>, String> {
+    log::info!("Fetching tables for connection: {}", connection_id);
+    
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params(&expanded_params)?;
-    match saved_conn.params.driver.as_str() {
+    
+    log::debug!("Getting tables from {} database: {}", saved_conn.params.driver, params.database);
+    
+    let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_tables(&params).await,
         "postgres" => postgres::get_tables(&params).await,
         "sqlite" => sqlite::get_tables(&params).await,
         _ => Err("Unsupported driver".into()),
+    };
+    
+    match &result {
+        Ok(tables) => log::info!("Retrieved {} tables from {}", tables.len(), params.database),
+        Err(e) => log::error!("Failed to get tables from {}: {}", params.database, e),
     }
+    
+    result
 }
 
 #[tauri::command]
@@ -1585,6 +1617,8 @@ pub async fn execute_query<R: Runtime>(
     limit: Option<u32>,
     page: Option<u32>,
 ) -> Result<QueryResult, String> {
+    log::info!("Executing query on connection: {} | Query: {}", connection_id, query.chars().take(200).collect::<String>());
+    
     // 1. Sanitize Query (Ignore trailing semicolon)
     let sanitized_query = query.trim().trim_end_matches(';').to_string();
 
@@ -1628,8 +1662,18 @@ pub async fn execute_query<R: Runtime>(
     }
 
     match result {
-        Ok(res) => res,
-        Err(_) => Err("Query cancelled".into()),
+        Ok(Ok(query_result)) => {
+            log::info!("Query executed successfully, returned {} rows", query_result.rows.len());
+            Ok(query_result)
+        }
+        Ok(Err(e)) => {
+            log::error!("Query execution failed: {}", e);
+            Err(e)
+        }
+        Err(_) => {
+            log::warn!("Query was cancelled");
+            Err("Query cancelled".into())
+        }
     }
 }
 

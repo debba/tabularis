@@ -20,13 +20,19 @@ import {
   AlertTriangle,
   Download,
   Loader2,
+  ScrollText,
+  Trash2,
+  FileDown,
+  RotateCcw,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import clsx from "clsx";
 import { useSettings } from "../hooks/useSettings";
 import { useTheme } from "../hooks/useTheme";
 import type { AppLanguage, AiProvider } from "../contexts/SettingsContext";
 import { APP_VERSION } from "../version";
-import { message } from "@tauri-apps/plugin-dialog";
+import { message, ask } from "@tauri-apps/plugin-dialog";
 import { AVAILABLE_FONTS, ROADMAP } from "../utils/settings";
 import { getProviderLabel } from "../utils/settingsUI";
 import { SearchableSelect } from "../components/ui/SearchableSelect";
@@ -37,11 +43,316 @@ interface AiKeyStatus {
   fromEnv: boolean;
 }
 
+interface LogEntry {
+  timestamp: string;
+  level: string;
+  message: string;
+  target?: string;
+}
+
+const LogsTab = () => {
+  const { t } = useTranslation();
+  const { settings, updateSetting } = useSettings();
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [levelFilter, setLevelFilter] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [logSettings, setLogSettings] = useState({ enabled: true, max_size: 1000, current_count: 0 });
+  const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
+
+  const loadLogs = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const entries = await invoke<LogEntry[]>("get_logs", {
+        request: {
+          limit: settings.maxLogEntries || 1000,
+          level_filter: levelFilter || null,
+        },
+      });
+      // Reverse to show newest logs first
+      setLogs(entries.reverse());
+      
+      const settings_data = await invoke<{ enabled: boolean; max_size: number; current_count: number }>("get_log_settings");
+      setLogSettings(settings_data);
+    } catch (e) {
+      console.error("Failed to load logs", e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [levelFilter, settings.maxLogEntries]);
+
+  const handleClearLogs = async () => {
+    try {
+      const confirmed = await ask(t("settings.clearLogsConfirm"), { title: t("common.delete"), kind: "warning" });
+      if (!confirmed) return;
+      
+      await invoke("clear_logs");
+      await loadLogs();
+    } catch (e) {
+      console.error("Failed to clear logs", e);
+    }
+  };
+
+  const handleExportLogs = async () => {
+    try {
+      const content = await invoke<string>("export_logs");
+      await navigator.clipboard.writeText(content);
+      await message(t("settings.exportLogsSuccess"), { title: t("common.success"), kind: "info" });
+    } catch (e) {
+      console.error("Failed to export logs", e);
+    }
+  };
+
+  const handleToggleLogging = async (enabled: boolean) => {
+    try {
+      await invoke("set_log_enabled", { enabled });
+      updateSetting("loggingEnabled", enabled);
+      await loadLogs();
+    } catch (e) {
+      console.error("Failed to toggle logging", e);
+    }
+  };
+
+  const handleSetMaxSize = async (size: number) => {
+    try {
+      await invoke("set_log_max_size", { maxSize: size });
+      updateSetting("maxLogEntries", size);
+      await loadLogs();
+    } catch (e) {
+      console.error("Failed to set max size", e);
+    }
+  };
+
+  useEffect(() => {
+    loadLogs();
+    const interval = setInterval(loadLogs, 5000);
+    return () => clearInterval(interval);
+  }, [loadLogs]);
+
+  const getLevelColor = (level: string) => {
+    switch (level.toUpperCase()) {
+      case "ERROR": return "text-red-400";
+      case "WARN": return "text-yellow-400";
+      case "INFO": return "text-blue-400";
+      case "DEBUG": return "text-green-400";
+      default: return "text-muted";
+    }
+  };
+
+  const toggleLogExpansion = (index: number) => {
+    setExpandedLogs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  const hasQuery = (message: string) => {
+    return message.includes("| Query:");
+  };
+
+  const extractQuery = (message: string) => {
+    const queryMatch = message.match(/\| Query:\s*([\s\S]*)$/);
+    return queryMatch ? queryMatch[1].trim() : message;
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Log Settings */}
+      <div className="bg-elevated border border-default rounded-xl p-6">
+        <h3 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+          <SettingsIcon size={20} className="text-blue-400" />
+          {t("settings.logSettings")}
+        </h3>
+
+        <div className="space-y-4">
+          {/* Enable Toggle */}
+          <div className="flex items-center justify-between bg-base p-4 rounded-lg border border-default">
+            <div>
+              <div className="text-sm text-primary font-medium">
+                {t("settings.enableLogging")}
+              </div>
+              <div className="text-xs text-muted mt-1">
+                {t("settings.enableLoggingDesc")}
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={settings.loggingEnabled !== false}
+              onChange={(e) => handleToggleLogging(e.target.checked)}
+              className="w-10 h-6 bg-base border border-strong rounded-full appearance-none cursor-pointer relative transition-colors checked:bg-blue-600 checked:border-blue-600 after:content-[''] after:absolute after:top-1 after:left-1 after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-transform checked:after:translate-x-4"
+            />
+          </div>
+
+          {/* Max Entries */}
+          <div className="bg-base p-4 rounded-lg border border-default">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <div className="text-sm text-primary font-medium">
+                  {t("settings.maxLogEntries")}
+                </div>
+                <div className="text-xs text-muted mt-1">
+                  {t("settings.maxLogEntriesDesc")}
+                </div>
+              </div>
+              <input
+                type="number"
+                min={100}
+                max={10000}
+                step={100}
+                value={settings.maxLogEntries || 1000}
+                onChange={(e) => handleSetMaxSize(parseInt(e.target.value) || 1000)}
+                className="bg-surface-secondary border border-strong rounded px-3 py-2 text-primary w-24 focus:outline-none focus:border-blue-500 transition-colors"
+              />
+            </div>
+            <div className="text-xs text-muted">
+              {t("settings.currentLogCount")}: <span className="text-primary font-medium">{logSettings.current_count}</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            <button
+              onClick={handleClearLogs}
+              className="flex items-center gap-2 px-4 py-2 bg-surface-secondary hover:bg-red-900/20 text-secondary hover:text-red-400 border border-strong hover:border-red-900/30 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Trash2 size={16} />
+              {t("settings.clearLogs")}
+            </button>
+            <button
+              onClick={handleExportLogs}
+              className="flex items-center gap-2 px-4 py-2 bg-surface-secondary hover:bg-surface-tertiary text-secondary hover:text-primary border border-strong rounded-lg text-sm font-medium transition-colors"
+            >
+              <FileDown size={16} />
+              {t("settings.exportLogs")}
+            </button>
+            <button
+              onClick={loadLogs}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              <RotateCcw size={16} className={isLoading ? "animate-spin" : ""} />
+              {t("settings.refreshLogs")}
+            </button>
+            <button
+              onClick={async () => {
+                await invoke("test_log");
+                await loadLogs();
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              <span>Test</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Logs Display */}
+      <div className="bg-elevated border border-default rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+            <ScrollText size={20} className="text-green-400" />
+            {t("settings.logs")}
+          </h3>
+          
+          {/* Level Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-secondary">{t("settings.filterByLevel")}:</span>
+            <select
+              value={levelFilter}
+              onChange={(e) => setLevelFilter(e.target.value)}
+              className="bg-base border border-strong rounded px-3 py-1.5 text-sm text-primary focus:outline-none focus:border-blue-500"
+            >
+              <option value="">{t("settings.allLevels")}</option>
+              <option value="DEBUG">{t("settings.debug")}</option>
+              <option value="INFO">{t("settings.info")}</option>
+              <option value="WARN">{t("settings.warn")}</option>
+              <option value="ERROR">{t("settings.error")}</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Log Table */}
+        <div className="bg-base border border-default rounded-lg overflow-hidden">
+          {logs.length === 0 ? (
+            <div className="p-8 text-center text-muted">
+              {t("settings.noLogs")}
+            </div>
+          ) : (
+            <div className="max-h-96 overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-secondary sticky top-0">
+                  <tr>
+                    <th className="text-left px-4 py-2 text-secondary font-medium">{t("settings.logTimestamp")}</th>
+                    <th className="text-left px-4 py-2 text-secondary font-medium w-20">{t("settings.logLevel")}</th>
+                    <th className="text-left px-4 py-2 text-secondary font-medium">{t("settings.logMessage")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-default">
+                  {logs.map((log, i) => {
+                    const isExpanded = expandedLogs.has(i);
+                    const logHasQuery = hasQuery(log.message);
+                    const queryContent = logHasQuery ? extractQuery(log.message) : log.message;
+                    const previewMessage = logHasQuery 
+                      ? log.message.substring(0, log.message.indexOf("| Query:")).trim() || "Executing query"
+                      : log.message;
+                    
+                    return (
+                      <tr key={i} className="hover:bg-surface-secondary/50">
+                        <td className="px-4 py-2 text-muted font-mono text-xs whitespace-nowrap">
+                          {log.timestamp}
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className={clsx("text-xs font-medium", getLevelColor(log.level))}>
+                            {log.level.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-primary font-mono text-xs">
+                          {logHasQuery ? (
+                            <div>
+                              <button
+                                onClick={() => toggleLogExpansion(i)}
+                                className="flex items-center gap-1 hover:text-blue-400 transition-colors text-left"
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown size={14} className="shrink-0" />
+                                ) : (
+                                  <ChevronRight size={14} className="shrink-0" />
+                                )}
+                                <span className="break-all">{previewMessage}</span>
+                              </button>
+                              {isExpanded && (
+                                <div className="mt-2 ml-5 p-2 bg-surface-secondary rounded border border-strong">
+                                  <div className="text-xs text-muted mb-1">Query:</div>
+                                  <pre className="text-xs text-primary whitespace-pre-wrap break-all">{queryContent}</pre>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="break-all">{log.message}</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const Settings = () => {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const { checkForUpdates, isChecking, updateInfo, error: updateError, isUpToDate } = useUpdate();
-  const [activeTab, setActiveTab] = useState<"general" | "appearance" | "localization" | "ai" | "updates" | "info">(
+  const [activeTab, setActiveTab] = useState<"general" | "appearance" | "localization" | "ai" | "updates" | "logs" | "info">(
     "general",
   );
   const [aiKeyStatus, setAiKeyStatus] = useState<Record<string, AiKeyStatus>>({});
@@ -266,6 +577,18 @@ export const Settings = () => {
         >
           <Download size={16} />
           {t("settings.updates")}
+        </button>
+        <button
+          onClick={() => setActiveTab("logs")}
+          className={clsx(
+            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
+            activeTab === "logs"
+              ? "bg-surface-secondary text-primary"
+              : "text-muted hover:text-primary hover:bg-surface-secondary/50",
+          )}
+        >
+          <ScrollText size={16} />
+          {t("settings.logs")}
         </button>
         <button
           onClick={() => setActiveTab("info")}
@@ -984,6 +1307,9 @@ export const Settings = () => {
               </div>
             </div>
           )}
+
+          {/* Logs Tab */}
+          {activeTab === "logs" && <LogsTab />}
 
           {/* Info Tab */}
           {activeTab === "info" && (

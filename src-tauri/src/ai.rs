@@ -321,6 +321,9 @@ pub async fn explain_ai_query(app: AppHandle, req: AiExplainRequest) -> Result<S
 // --- Logic Implementation ---
 
 pub async fn generate_query(app: AppHandle, mut req: AiGenerateRequest) -> Result<String, String> {
+    log::info!("Generating AI query using provider: {}", req.provider);
+    log::debug!("Prompt length: {} chars, Schema length: {} chars", req.prompt.len(), req.schema.len());
+    
     // Load config to get Ollama port and custom OpenAI settings
     let app_config = config::load_config_internal(&app);
     let ollama_port = app_config.ai_ollama_port.unwrap_or(11434);
@@ -362,7 +365,7 @@ pub async fn generate_query(app: AppHandle, mut req: AiGenerateRequest) -> Resul
         String::new()
     };
 
-    match req.provider.as_str() {
+    let result = match req.provider.as_str() {
         "openai" => generate_openai(&client, &api_key, &req, &system_prompt).await,
         "anthropic" => generate_anthropic(&client, &api_key, &req, &system_prompt).await,
         "openrouter" => generate_openrouter(&client, &api_key, &req, &system_prompt).await,
@@ -376,10 +379,19 @@ pub async fn generate_query(app: AppHandle, mut req: AiGenerateRequest) -> Resul
             generate_custom_openai(&client, &api_key, &req, &system_prompt, &base_url).await
         }
         _ => Err(format!("Unsupported provider: {}", req.provider)),
+    };
+    
+    match &result {
+        Ok(_) => log::info!("AI query generated successfully using {}", req.model),
+        Err(e) => log::error!("AI query generation failed: {}", e),
     }
+    
+    result
 }
 
 pub async fn explain_query(app: AppHandle, mut req: AiExplainRequest) -> Result<String, String> {
+    log::info!("Explaining query using AI provider: {}", req.provider);
+    
     // Load config to get Ollama port and custom OpenAI settings
     let app_config = config::load_config_internal(&app);
     let ollama_port = app_config.ai_ollama_port.unwrap_or(11434);
@@ -433,7 +445,7 @@ pub async fn explain_query(app: AppHandle, mut req: AiExplainRequest) -> Result<
         schema: String::new(),
     };
 
-    match req.provider.as_str() {
+    let result = match req.provider.as_str() {
         "openai" => generate_openai(&client, &api_key, &gen_req, &system_prompt).await,
         "anthropic" => generate_anthropic(&client, &api_key, &gen_req, &system_prompt).await,
         "openrouter" => generate_openrouter(&client, &api_key, &gen_req, &system_prompt).await,
@@ -447,7 +459,14 @@ pub async fn explain_query(app: AppHandle, mut req: AiExplainRequest) -> Result<
             generate_custom_openai(&client, &api_key, &gen_req, &system_prompt, &base_url).await
         }
         _ => Err(format!("Unsupported provider: {}", req.provider)),
+    };
+
+    match &result {
+        Ok(_) => log::info!("Query explanation generated successfully using {}", req.model),
+        Err(e) => log::error!("Query explanation generation failed: {}", e),
     }
+
+    result
 }
 
 // --- Provider Implementations ---

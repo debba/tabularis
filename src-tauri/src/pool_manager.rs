@@ -60,18 +60,28 @@ pub async fn get_mysql_pool(params: &ConnectionParams) -> Result<Pool<MySql>, St
     {
         let pools = MYSQL_POOLS.read().await;
         if let Some(pool) = pools.get(&key) {
+            log::debug!("Using existing MySQL connection pool for: {}", params.database);
             return Ok(pool.clone());
         }
     }
 
     // Create new pool
+    log::info!("Creating new MySQL connection pool for: {}@{:?}", 
+        params.username.as_deref().unwrap_or("unknown"),
+        params.host
+    );
     let url = build_mysql_url(params);
     let pool = sqlx::mysql::MySqlPoolOptions::new()
         .max_connections(10)
         .connect(&url)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            log::error!("Failed to create MySQL connection pool: {}", e);
+            e.to_string()
+        })?;
 
+    log::info!("MySQL connection pool created successfully for: {}", params.database);
+    
     // Store pool
     {
         let mut pools = MYSQL_POOLS.write().await;
@@ -88,17 +98,27 @@ pub async fn get_postgres_pool(params: &ConnectionParams) -> Result<Pool<Postgre
     {
         let pools = POSTGRES_POOLS.read().await;
         if let Some(pool) = pools.get(&key) {
+            log::debug!("Using existing PostgreSQL connection pool for: {}", params.database);
             return Ok(pool.clone());
         }
     }
 
     // Create new pool
+    log::info!("Creating new PostgreSQL connection pool for: {}@{:?}", 
+        params.username.as_deref().unwrap_or("unknown"),
+        params.host
+    );
     let url = build_postgres_url(params);
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(10)
         .connect(&url)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            log::error!("Failed to create PostgreSQL connection pool: {}", e);
+            e.to_string()
+        })?;
+
+    log::info!("PostgreSQL connection pool created successfully for: {}", params.database);
 
     // Store pool
     {
@@ -116,17 +136,24 @@ pub async fn get_sqlite_pool(params: &ConnectionParams) -> Result<Pool<Sqlite>, 
     {
         let pools = SQLITE_POOLS.read().await;
         if let Some(pool) = pools.get(&key) {
+            log::debug!("Using existing SQLite connection pool for: {}", params.database);
             return Ok(pool.clone());
         }
     }
 
     // Create new pool
+    log::info!("Creating new SQLite connection pool for database: {}", params.database);
     let url = build_sqlite_url(params);
     let pool = sqlx::sqlite::SqlitePoolOptions::new()
         .max_connections(5) // SQLite has lower concurrency needs
         .connect(&url)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            log::error!("Failed to create SQLite connection pool: {}", e);
+            e.to_string()
+        })?;
+
+    log::info!("SQLite connection pool created successfully for: {}", params.database);
 
     // Store pool
     {
@@ -145,19 +172,25 @@ pub async fn close_pool(params: &ConnectionParams) {
         "mysql" => {
             let mut pools = MYSQL_POOLS.write().await;
             if let Some(pool) = pools.remove(&key) {
+                log::info!("Closing MySQL connection pool for: {}", params.database);
                 pool.close().await;
+                log::info!("MySQL connection pool closed for: {}", params.database);
             }
         }
         "postgres" => {
             let mut pools = POSTGRES_POOLS.write().await;
             if let Some(pool) = pools.remove(&key) {
+                log::info!("Closing PostgreSQL connection pool for: {}", params.database);
                 pool.close().await;
+                log::info!("PostgreSQL connection pool closed for: {}", params.database);
             }
         }
         "sqlite" => {
             let mut pools = SQLITE_POOLS.write().await;
             if let Some(pool) = pools.remove(&key) {
+                log::info!("Closing SQLite connection pool for: {}", params.database);
                 pool.close().await;
+                log::info!("SQLite connection pool closed for: {}", params.database);
             }
         }
         _ => {}
