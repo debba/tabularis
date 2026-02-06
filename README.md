@@ -105,6 +105,15 @@ yay -S tabularis-bin
 - **Export:** Save results as CSV or JSON.
 - **Smart Context:** Read-only mode for aggregates, edit mode for tables.
 
+### Logging
+
+- **Real-time Monitoring:** View application logs directly in Settings.
+- **Level Filtering:** Filter by DEBUG, INFO, WARN, or ERROR severity.
+- **In-memory Buffer:** Configurable retention.
+- **Query Expansion:** Automatically expand and inspect SQL queries in logs.
+- **Export Logs:** Save logs to `.log` files for debugging or audit trails.
+- **Toggle Control:** Enable/disable logging and adjust buffer size without restart.
+
 ### Configuration Storage
 
 Configuration is stored in `~/.config/tabularis/` (Linux), `~/Library/Application Support/tabularis/` (macOS), or `%APPDATA%\tabularis\` (Windows).
