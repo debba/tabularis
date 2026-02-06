@@ -28,6 +28,7 @@ pub mod drivers {
 use clap::Parser;
 use logger::{create_log_buffer, init_logger, SharedLogBuffer};
 use std::sync::atomic::{AtomicBool, Ordering};
+use tauri::Manager;
 
 static DEBUG_MODE: AtomicBool = AtomicBool::new(false);
 
@@ -44,6 +45,18 @@ pub fn get_log_buffer() -> SharedLogBuffer {
 #[tauri::command]
 fn is_debug_mode() -> bool {
     DEBUG_MODE.load(Ordering::Relaxed)
+}
+
+#[tauri::command]
+fn open_devtools(window: tauri::WebviewWindow) {
+    window.open_devtools();
+    log::info!("DevTools opened");
+}
+
+#[tauri::command]
+fn close_devtools(window: tauri::WebviewWindow) {
+    window.close_devtools();
+    log::info!("DevTools closed");
 }
 
 #[derive(Parser, Debug)]
@@ -110,8 +123,20 @@ pub fn run() {
         .manage(export::ExportCancellationState::default())
         .manage(dump_commands::DumpCancellationState::default())
         .manage(log_buffer)
+        .setup(move |app| {
+            // Open devtools automatically in debug mode
+            if args.debug {
+                if let Some(window) = app.get_webview_window("main") {
+                    window.open_devtools();
+                    log::info!("DevTools opened (debug mode active)");
+                }
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             is_debug_mode,
+            open_devtools,
+            close_devtools,
             commands::test_connection,
             commands::list_databases,
             commands::save_connection,
