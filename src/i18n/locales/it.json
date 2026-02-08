@@ -53,6 +53,7 @@
     "showData": "Mostra Dati",
     "countRows": "Conta righe",
     "viewSchema": "Vedi schema",
+    "viewERDiagram": "Visualizza Diagramma ER",
     "generateSQL": "Genera SQL",
     "addColumn": "Aggiungi colonna",
     "addIndex": "Aggiungi Indice",
@@ -487,7 +488,15 @@
     "enterFullscreen": "Schermo Intero",
     "exitFullscreen": "Esci da Schermo Intero",
     "noConnection": "Nessun ID Connessione",
-    "noConnectionDesc": "Impossibile visualizzare il diagramma senza un ID connessione."
+    "noConnectionDesc": "Impossibile visualizzare il diagramma senza un ID connessione.",
+    "switchToVertical": "Passa a Layout Verticale",
+    "switchToHorizontal": "Passa a Layout Orizzontale",
+    "vertical": "Verticale",
+    "horizontal": "Orizzontale",
+    "showAllTables": "Mostra Tutte le Tabelle",
+    "showAll": "Mostra Tutto",
+    "focusedOn": "Focus su",
+    "focusOnTable": "Focus su Tabella"
   },
   "views": {
     "createView": "Crea Vista",

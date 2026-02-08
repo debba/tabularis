@@ -53,6 +53,7 @@
     "showData": "Show Data",
     "countRows": "Count Rows",
     "viewSchema": "View Schema",
+    "viewERDiagram": "View ER Diagram",
     "generateSQL": "Generate SQL",
     "addColumn": "Add Column",
     "addIndex": "Add Index",
@@ -487,7 +488,15 @@
     "enterFullscreen": "Fullscreen",
     "exitFullscreen": "Exit Fullscreen",
     "noConnection": "No Connection ID",
-    "noConnectionDesc": "Cannot display diagram without a connection ID."
+    "noConnectionDesc": "Cannot display diagram without a connection ID.",
+    "switchToVertical": "Switch to Vertical Layout",
+    "switchToHorizontal": "Switch to Horizontal Layout",
+    "vertical": "Vertical",
+    "horizontal": "Horizontal",
+    "showAllTables": "Show All Tables",
+    "showAll": "Show All",
+    "focusedOn": "Focused on",
+    "focusOnTable": "Focus on Table"
   },
   "views": {
     "createView": "Create View",

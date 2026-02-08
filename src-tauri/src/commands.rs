@@ -1735,17 +1735,23 @@ pub async fn open_er_diagram_window(
     connection_id: String,
     connection_name: String,
     database_name: String,
+    focus_table: Option<String>,
 ) -> Result<(), String> {
     use tauri::{WebviewUrl, WebviewWindowBuilder};
     use urlencoding::encode;
 
     let title = format!("tabularis - {} ({})", database_name, connection_name);
-    let url = format!(
+    let mut url = format!(
         "/schema-diagram?connectionId={}&connectionName={}&databaseName={}",
         encode(&connection_id),
         encode(&connection_name),
         encode(&database_name)
     );
+    
+    // Aggiungi il parametro focusTable se presente
+    if let Some(table) = focus_table {
+        url.push_str(&format!("&focusTable={}", encode(&table)));
+    }
 
     let _webview = WebviewWindowBuilder::new(&app, "er-diagram", WebviewUrl::App(url.into()))
         .title(&title)

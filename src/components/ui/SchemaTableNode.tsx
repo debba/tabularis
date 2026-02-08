@@ -15,7 +15,7 @@ export const SchemaTableNodeComponent = memo(({ data }: NodeProps<SchemaTableNod
 
   return (
     <div
-      className="bg-elevated border border-strong rounded shadow-xl min-w-[220px] overflow-hidden"
+      className="bg-elevated border border-strong rounded shadow-xl min-w-[220px] overflow-hidden cursor-pointer hover:border-indigo-500 transition-colors"
       onMouseEnter={() => setShowHandles(true)}
       onMouseLeave={() => setShowHandles(false)}
     >

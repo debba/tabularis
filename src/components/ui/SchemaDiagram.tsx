@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   ReactFlow,
   Background,
@@ -16,7 +16,10 @@ import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import { useEditor } from "../../hooks/useEditor";
 import { SchemaTableNodeComponent } from "./SchemaTableNode";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeftRight, ArrowUpDown, Maximize2, Focus } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { ContextMenu } from "./ContextMenu";
+import { useSearchParams } from "react-router-dom";
 
 const nodeTypes = {
   schemaTable: SchemaTableNodeComponent,
@@ -77,11 +80,66 @@ const SchemaDiagramContent = ({
   connectionId,
   refreshTrigger,
 }: SchemaDiagramContentProps) => {
+  const { t } = useTranslation();
   const { getSchema } = useEditor();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const [loading, setLoading] = useState(false);
+  const [layoutDirection, setLayoutDirection] = useState<"LR" | "TB">("LR");
+  const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [allNodes, setAllNodes] = useState<Node[]>([]);
+  const [allEdges, setAllEdges] = useState<Edge[]>([]);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    tableId: string;
+  } | null>(null);
+  const [searchParams] = useSearchParams();
+
+  // Callback per gestire il click su una tabella
+  const handleTableClick = useCallback((tableId: string) => {
+    setSelectedTable((prev) => (prev === tableId ? null : tableId));
+  }, []);
+
+  // Gestione click sui nodi tramite React Flow
+  const onNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      handleTableClick(node.id);
+    },
+    [handleTableClick],
+  );
+
+  // Gestione context menu sui nodi tramite React Flow
+  const onNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      event.preventDefault();
+      setContextMenu({ x: event.clientX, y: event.clientY, tableId: node.id });
+    },
+    [],
+  );
+
+  // Callback per cambiare la direzione del layout
+  const toggleLayoutDirection = useCallback(() => {
+    setLayoutDirection((prev) => (prev === "LR" ? "TB" : "LR"));
+  }, []);
+
+  // Callback per tornare alla vista completa
+  const handleResetView = useCallback(() => {
+    setSelectedTable(null);
+  }, []);
+
+  // Effetto per impostare il focus iniziale dalla URL
+  useEffect(() => {
+    const focusTable = searchParams.get("focusTable");
+    if (focusTable && allNodes.length > 0) {
+      // Verifica che la tabella esista
+      const tableExists = allNodes.some((node) => node.id === focusTable);
+      if (tableExists) {
+        setSelectedTable(focusTable);
+      }
+    }
+  }, [searchParams, allNodes]);
 
   // Keyboard shortcuts for zoom
   useEffect(() => {
@@ -154,9 +212,11 @@ const SchemaDiagramContent = ({
 
         // Calculate layout
         const { nodes: layoutedNodes, edges: layoutedEdges } =
-          getLayoutedElements(initialNodes, initialEdges);
+          getLayoutedElements(initialNodes, initialEdges, layoutDirection);
 
         if (isMounted) {
+          setAllNodes(layoutedNodes);
+          setAllEdges(layoutedEdges);
           setNodes(layoutedNodes);
           setEdges(layoutedEdges);
 
@@ -181,7 +241,59 @@ const SchemaDiagramContent = ({
     return () => {
       isMounted = false;
     };
-  }, [connectionId, refreshTrigger, getSchema, fitView, setNodes, setEdges]);
+  }, [
+    connectionId,
+    refreshTrigger,
+    getSchema,
+    fitView,
+    setNodes,
+    setEdges,
+    layoutDirection,
+  ]);
+
+  // Effetto per filtrare i nodi quando una tabella è selezionata
+  useEffect(() => {
+    if (!selectedTable || allNodes.length === 0) {
+      // Mostra tutti i nodi
+      setNodes(allNodes);
+      setEdges(allEdges);
+      setTimeout(() => fitView({ padding: 0.2 }), 100);
+      return;
+    }
+
+    // Trova tutte le tabelle correlate
+    const relatedTables = new Set<string>([selectedTable]);
+    
+    // Trova tutte le tabelle che hanno FK verso la tabella selezionata o viceversa
+    allEdges.forEach((edge) => {
+      if (edge.source === selectedTable) {
+        relatedTables.add(edge.target);
+      }
+      if (edge.target === selectedTable) {
+        relatedTables.add(edge.source);
+      }
+    });
+
+    // Filtra i nodi per mostrare solo la tabella selezionata e le sue relazioni
+    const filteredNodes = allNodes.filter((node) =>
+      relatedTables.has(node.id),
+    );
+
+    // Filtra gli edge per mostrare solo quelli tra le tabelle filtrate
+    const filteredEdges = allEdges.filter(
+      (edge) =>
+        relatedTables.has(edge.source) && relatedTables.has(edge.target),
+    );
+
+    // Ricalcola il layout per i nodi filtrati
+    const { nodes: layoutedNodes, edges: layoutedEdges } =
+      getLayoutedElements(filteredNodes, filteredEdges, layoutDirection);
+
+    setNodes(layoutedNodes);
+    setEdges(layoutedEdges);
+
+    setTimeout(() => fitView({ padding: 0.2 }), 100);
+  }, [selectedTable, allNodes, allEdges, setNodes, setEdges, fitView, layoutDirection]);
 
   // Conditionally show MiniMap only for medium-sized schemas
   const shouldShowMiniMap = useMemo(() => {
@@ -200,11 +312,55 @@ const SchemaDiagramContent = ({
         </div>
       )}
 
+      {/* Toolbar per i controlli */}
+      <div className="absolute top-4 left-4 z-10 flex gap-2">
+        <button
+          onClick={toggleLayoutDirection}
+          className="flex items-center gap-2 px-3 py-2 bg-elevated hover:bg-surface-secondary text-primary rounded-lg border border-strong transition-colors shadow-lg text-sm font-medium"
+          title={
+            layoutDirection === "LR"
+              ? t("erDiagram.switchToVertical")
+              : t("erDiagram.switchToHorizontal")
+          }
+        >
+          {layoutDirection === "LR" ? (
+            <>
+              <ArrowUpDown size={16} />
+              <span>{t("erDiagram.vertical")}</span>
+            </>
+          ) : (
+            <>
+              <ArrowLeftRight size={16} />
+              <span>{t("erDiagram.horizontal")}</span>
+            </>
+          )}
+        </button>
+
+        {selectedTable && (
+          <button
+            onClick={handleResetView}
+            className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg border border-indigo-500 transition-colors shadow-lg text-sm font-medium"
+            title={t("erDiagram.showAllTables")}
+          >
+            <Maximize2 size={16} />
+            <span>{t("erDiagram.showAll")}</span>
+          </button>
+        )}
+      </div>
+
+      {selectedTable && (
+        <div className="absolute top-4 right-4 z-10 px-4 py-2 bg-indigo-600 text-white rounded-lg border border-indigo-500 shadow-lg text-sm font-medium">
+          {t("erDiagram.focusedOn")}: {selectedTable}
+        </div>
+      )}
+
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeClick={onNodeClick}
+        onNodeContextMenu={onNodeContextMenu}
         nodeTypes={nodeTypes}
         fitView
         minZoom={0.05}
@@ -212,7 +368,7 @@ const SchemaDiagramContent = ({
         defaultEdgeOptions={{ type: "smoothstep" }}
         nodesDraggable={false}
         nodesConnectable={false}
-        elementsSelectable={false}
+        elementsSelectable={true}
         panOnScroll={false}
         zoomOnScroll={true}
         zoomOnPinch={true}
@@ -233,6 +389,35 @@ const SchemaDiagramContent = ({
           />
         )}
       </ReactFlow>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          items={[
+            {
+              label: t("erDiagram.focusOnTable"),
+              icon: Focus,
+              action: () => {
+                setSelectedTable(contextMenu.tableId);
+              },
+            },
+            ...(selectedTable
+              ? [
+                  {
+                    label: t("erDiagram.showAll"),
+                    icon: Maximize2,
+                    action: () => {
+                      setSelectedTable(null);
+                    },
+                  },
+                ]
+              : []),
+          ]}
+        />
+      )}
     </div>
   );
 };

@@ -676,6 +676,22 @@ export const Sidebar = () => {
                     action: () => setSchemaModalTable(contextMenu.id),
                   },
                   {
+                    label: t("sidebar.viewERDiagram"),
+                    icon: Network,
+                    action: async () => {
+                      try {
+                        await invoke("open_er_diagram_window", {
+                          connectionId: activeConnectionId || "",
+                          connectionName: activeConnectionName || "Unknown",
+                          databaseName: activeDatabaseName || "Unknown",
+                          focusTable: contextMenu.id,
+                        });
+                      } catch (e) {
+                        console.error("Failed to open ER Diagram window:", e);
+                      }
+                    },
+                  },
+                  {
                     label: t("sidebar.generateSQL"),
                     icon: FileCode,
                     action: () => setGenerateSQLModal(contextMenu.id),
