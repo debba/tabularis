@@ -43,6 +43,16 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
           if (config.aiEnabled === null || config.aiEnabled === undefined) {
             finalSettings.aiEnabled = false;
           }
+
+          // Ensure resultPageSize has a valid default
+          if (!finalSettings.resultPageSize || finalSettings.resultPageSize < 0) {
+            finalSettings.resultPageSize = DEFAULT_SETTINGS.resultPageSize;
+          }
+
+          // Ensure erDiagramDefaultLayout has a valid default
+          if (!finalSettings.erDiagramDefaultLayout) {
+            finalSettings.erDiagramDefaultLayout = DEFAULT_SETTINGS.erDiagramDefaultLayout;
+          }
         }
 
         // Smart detect AI Provider and Model if aiEnabled but provider/model not set

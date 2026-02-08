@@ -7,6 +7,7 @@ export type AiProvider =
   | "openrouter"
   | "ollama"
   | "custom-openai";
+export type ERDiagramLayout = "LR" | "TB";
 
 export interface Settings {
   resultPageSize: number; // Changed from queryLimit to match backend config
@@ -23,6 +24,7 @@ export interface Settings {
   autoCheckUpdatesOnStartup?: boolean;
   loggingEnabled?: boolean;
   maxLogEntries?: number;
+  erDiagramDefaultLayout?: ERDiagramLayout;
 }
 
 export interface SettingsContextType {
@@ -49,4 +51,5 @@ export const DEFAULT_SETTINGS: Settings = {
   aiCustomOpenaiModel: "",
   loggingEnabled: true,
   maxLogEntries: 1000,
+  erDiagramDefaultLayout: "LR",
 };

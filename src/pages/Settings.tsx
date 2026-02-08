@@ -31,6 +31,7 @@ import clsx from "clsx";
 import { useSettings } from "../hooks/useSettings";
 import { useTheme } from "../hooks/useTheme";
 import type { AppLanguage, AiProvider } from "../contexts/SettingsContext";
+import { DEFAULT_SETTINGS } from "../contexts/SettingsContext";
 import { APP_VERSION } from "../version";
 import { message, ask, save } from "@tauri-apps/plugin-dialog";
 import { AVAILABLE_FONTS, ROADMAP } from "../utils/settings";
@@ -623,18 +624,62 @@ export const Settings = () => {
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
-                        value={settings.resultPageSize}
+                        value={settings.resultPageSize ?? DEFAULT_SETTINGS.resultPageSize}
                         onChange={(e) =>
                           updateSetting(
                             "resultPageSize",
-                            parseInt(e.target.value) || 0,
+                            parseInt(e.target.value) || DEFAULT_SETTINGS.resultPageSize,
                           )
                         }
+                        min="0"
                         className="bg-base border border-strong rounded px-3 py-2 text-primary w-32 focus:outline-none focus:border-blue-500 transition-colors"
                       />
                       <span className="text-sm text-muted">
                         {t("settings.rows")}
                       </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ER Diagram Settings */}
+              <div className="bg-elevated border border-default rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+                  <Code2 size={20} className="text-orange-400" />
+                  {t("settings.erDiagram")}
+                </h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-secondary mb-1">
+                      {t("settings.erDiagramDefaultLayout")}
+                    </label>
+                    <p className="text-xs text-muted mb-3">
+                      {t("settings.erDiagramDefaultLayoutDesc")}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updateSetting("erDiagramDefaultLayout", "LR")}
+                        className={clsx(
+                          "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
+                          (settings.erDiagramDefaultLayout ?? DEFAULT_SETTINGS.erDiagramDefaultLayout) === "LR"
+                            ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/20"
+                            : "bg-base border-default text-muted hover:border-strong hover:text-primary",
+                        )}
+                      >
+                        {t("erDiagram.horizontal")}
+                      </button>
+                      <button
+                        onClick={() => updateSetting("erDiagramDefaultLayout", "TB")}
+                        className={clsx(
+                          "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
+                          (settings.erDiagramDefaultLayout ?? DEFAULT_SETTINGS.erDiagramDefaultLayout) === "TB"
+                            ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/20"
+                            : "bg-base border-default text-muted hover:border-strong hover:text-primary",
+                        )}
+                      >
+                        {t("erDiagram.vertical")}
+                      </button>
                     </div>
                   </div>
                 </div>

@@ -25,6 +25,7 @@ pub struct AppConfig {
     pub check_for_updates: Option<bool>,
     pub auto_check_updates_on_startup: Option<bool>,
     pub last_dismissed_version: Option<String>,
+    pub er_diagram_default_layout: Option<String>,
 }
 
 pub fn get_config_dir(app: &AppHandle) -> Option<PathBuf> {
@@ -107,6 +108,9 @@ pub fn save_config(app: AppHandle, config: AppConfig) -> Result<(), String> {
         }
         if config.last_dismissed_version.is_some() {
             existing_config.last_dismissed_version = config.last_dismissed_version;
+        }
+        if config.er_diagram_default_layout.is_some() {
+            existing_config.er_diagram_default_layout = config.er_diagram_default_layout;
         }
 
         let content = serde_json::to_string_pretty(&existing_config).map_err(|e| e.to_string())?;

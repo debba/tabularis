@@ -214,7 +214,10 @@
     "debug": "Debug",
     "info": "Info",
     "warn": "Warn",
-    "error": "Error"
+    "error": "Error",
+    "erDiagram": "ER Diagram",
+    "erDiagramDefaultLayout": "Default Layout",
+    "erDiagramDefaultLayoutDesc": "Choose the default layout direction for ER diagrams"
   },
   "update": {
     "newVersionAvailable": "New Version Available",

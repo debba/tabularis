@@ -20,6 +20,8 @@ import { Loader2, ArrowLeftRight, ArrowUpDown, Maximize2, Focus } from "lucide-r
 import { useTranslation } from "react-i18next";
 import { ContextMenu } from "./ContextMenu";
 import { useSearchParams } from "react-router-dom";
+import { useSettings } from "../../hooks/useSettings";
+import { DEFAULT_SETTINGS } from "../../contexts/SettingsContext";
 
 const nodeTypes = {
   schemaTable: SchemaTableNodeComponent,
@@ -30,7 +32,7 @@ const ANIMATION_THRESHOLD = 50;
 const getLayoutedElements = (
   nodes: Node[],
   edges: Edge[],
-  direction = "LR",
+  direction = "TB",  // Changed default
 ) => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -39,7 +41,9 @@ const getLayoutedElements = (
   // Node height approximation unused by dagre simple layout but good for spacing
   // const nodeHeight = 40;
 
-  dagreGraph.setGraph({ rankdir: direction, ranksep: 150, nodesep: 50 });
+  // FIX: Swap LR<->TB to correct the inversion bug
+  const dagreDirection = direction === "LR" ? "TB" : "LR";
+  dagreGraph.setGraph({ rankdir: dagreDirection, ranksep: 150, nodesep: 50 });
 
   nodes.forEach((node) => {
     // Estimate height based on columns for vertical spacing
@@ -59,8 +63,9 @@ const getLayoutedElements = (
     const nodeWithPosition = dagreGraph.node(node.id);
     return {
       ...node,
-      targetPosition: direction === "LR" ? Position.Left : Position.Top,
-      sourcePosition: direction === "LR" ? Position.Right : Position.Bottom,
+      // FIX: Swap positions to match inverted direction
+      targetPosition: direction === "LR" ? Position.Top : Position.Left,
+      sourcePosition: direction === "LR" ? Position.Bottom : Position.Right,
       position: {
         x: nodeWithPosition.x - nodeWidth / 2,
         y: nodeWithPosition.y - dagreGraph.node(node.id).height / 2,
@@ -82,11 +87,20 @@ const SchemaDiagramContent = ({
 }: SchemaDiagramContentProps) => {
   const { t } = useTranslation();
   const { getSchema } = useEditor();
+  const { settings } = useSettings();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const [loading, setLoading] = useState(false);
-  const [layoutDirection, setLayoutDirection] = useState<"LR" | "TB">("LR");
+  
+  // Use settings value directly, with fallback to default
+  const layoutDirectionFromSettings = (settings.erDiagramDefaultLayout ?? DEFAULT_SETTINGS.erDiagramDefaultLayout) as "LR" | "TB";
+  // Track user override - null means use settings, otherwise use user's manual selection
+  const [layoutDirectionOverride, setLayoutDirectionOverride] = useState<"LR" | "TB" | null>(null);
+  
+  // Use user override if set, otherwise use settings
+  const layoutDirection = layoutDirectionOverride ?? layoutDirectionFromSettings;
+  
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [allNodes, setAllNodes] = useState<Node[]>([]);
   const [allEdges, setAllEdges] = useState<Edge[]>([]);
@@ -121,8 +135,11 @@ const SchemaDiagramContent = ({
 
   // Callback per cambiare la direzione del layout
   const toggleLayoutDirection = useCallback(() => {
-    setLayoutDirection((prev) => (prev === "LR" ? "TB" : "LR"));
-  }, []);
+    setLayoutDirectionOverride((prev) => {
+      const current = prev ?? layoutDirectionFromSettings;
+      return current === "LR" ? "TB" : "LR";
+    });
+  }, [layoutDirectionFromSettings]);
 
   // Callback per tornare alla vista completa
   const handleResetView = useCallback(() => {
@@ -325,13 +342,13 @@ const SchemaDiagramContent = ({
         >
           {layoutDirection === "LR" ? (
             <>
-              <ArrowUpDown size={16} />
-              <span>{t("erDiagram.vertical")}</span>
+              <ArrowLeftRight size={16} />
+              <span>{t("erDiagram.horizontal")}</span>
             </>
           ) : (
             <>
-              <ArrowLeftRight size={16} />
-              <span>{t("erDiagram.horizontal")}</span>
+              <ArrowUpDown size={16} />
+              <span>{t("erDiagram.vertical")}</span>
             </>
           )}
         </button>
