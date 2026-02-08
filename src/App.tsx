@@ -21,7 +21,15 @@ function App() {
   const [isDebugMode, setIsDebugMode] = useState(false);
 
   useEffect(() => {
-    invoke<boolean>("is_debug_mode").then(setIsDebugMode);
+    invoke<boolean>("is_debug_mode").then((debugMode) => {
+      const isLocalhost =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1";
+      if (isLocalhost) {
+        debugMode = true;
+      }
+      setIsDebugMode(debugMode);
+    });
   }, []);
 
   useEffect(() => {

@@ -5,6 +5,11 @@ use crate::models::{
 use crate::pool_manager::get_mysql_pool;
 use sqlx::{Column, Row};
 
+// Helper function to escape backticks in identifiers for MySQL
+fn escape_identifier(name: &str) -> String {
+    name.replace('`', "``")
+}
+
 pub async fn get_databases(params: &ConnectionParams) -> Result<Vec<String>, String> {
     let pool = get_mysql_pool(params).await?;
     let rows = sqlx::query("SHOW DATABASES")
@@ -449,7 +454,8 @@ fn remove_order_by(query: &str) -> String {
         view_name: &str,
     ) -> Result<String, String> {
         let pool = get_mysql_pool(params).await?;
-        let query = format!("SHOW CREATE VIEW `{}`", view_name);
+        let escaped_name = escape_identifier(view_name);
+        let query = format!("SHOW CREATE VIEW `{}`", escaped_name);
         let row = sqlx::query(&query)
             .fetch_one(&pool)
             .await
@@ -465,9 +471,10 @@ fn remove_order_by(query: &str) -> String {
         definition: &str,
     ) -> Result<(), String> {
         let pool = get_mysql_pool(params).await?;
+        let escaped_name = escape_identifier(view_name);
         let query = format!(
             "CREATE VIEW `{}` AS {}",
-            view_name, definition
+            escaped_name, definition
         );
         sqlx::query(&query)
             .execute(&pool)
@@ -482,9 +489,10 @@ fn remove_order_by(query: &str) -> String {
         definition: &str,
     ) -> Result<(), String> {
         let pool = get_mysql_pool(params).await?;
+        let escaped_name = escape_identifier(view_name);
         let query = format!(
             "ALTER VIEW `{}` AS {}",
-            view_name, definition
+            escaped_name, definition
         );
         sqlx::query(&query)
             .execute(&pool)
@@ -498,7 +506,8 @@ fn remove_order_by(query: &str) -> String {
         view_name: &str,
     ) -> Result<(), String> {
         let pool = get_mysql_pool(params).await?;
-        let query = format!("DROP VIEW IF EXISTS `{}`", view_name);
+        let escaped_name = escape_identifier(view_name);
+        let query = format!("DROP VIEW IF EXISTS `{}`", escaped_name);
         sqlx::query(&query)
             .execute(&pool)
             .await

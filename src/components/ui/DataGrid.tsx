@@ -11,7 +11,7 @@ import { ContextMenu } from "./ContextMenu";
 import { Trash2, Edit, ArrowUp, ArrowDown, ArrowUpDown, Copy } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { ask, message } from "@tauri-apps/plugin-dialog";
-import { EditRowModal } from "./EditRowModal";
+import { EditRowModal } from "../modals/EditRowModal";
 import { formatCellValue, getColumnSortState, calculateSelectionRange, toggleSetValue } from "../../utils/dataGrid";
 import { rowToTSV, rowsToTSV, getSelectedRows, copyTextToClipboard } from "../../utils/clipboard";
 

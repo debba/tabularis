@@ -141,6 +141,7 @@ export const SidebarViewItem = ({
                     driver={driver}
                     onRefresh={refreshColumns}
                     onEdit={() => {}}
+                    isView={true}
                   />
                 ))}
               </div>

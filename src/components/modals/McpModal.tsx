@@ -132,8 +132,8 @@ export const McpModal = ({ isOpen, onClose }: McpModalProps) => {
                         <div className="space-y-2">
                              <label className="text-xs uppercase font-bold text-muted">{t("mcp.manualConfig")}</label>
                              <div className="relative group">
-                                 <div className="rounded-lg overflow-hidden border border-default">
-                                  <Editor
+                                  <div className="rounded-lg overflow-hidden border border-default">
+                                   <Editor
                                     height="180px"
                                     defaultLanguage="json"
                                     theme={currentTheme.id}
@@ -149,9 +149,10 @@ export const McpModal = ({ isOpen, onClose }: McpModalProps) => {
                                       contextmenu: false,
                                       fontSize: 12,
                                       padding: { top: 12, bottom: 12 },
+                                      wordWrap: 'on',
                                     }}
-                                  />
-                                </div>
+                                   />
+                                 </div>
                                  <button 
                                     onClick={() => {
                                       navigator.clipboard.writeText(jsonValue);

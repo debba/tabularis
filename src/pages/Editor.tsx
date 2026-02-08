@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AiQueryModal } from "../components/ui/AiQueryModal";
-import { AiExplainModal } from "../components/ui/AiExplainModal";
+import { quoteIdentifier } from "../utils/identifiers";
+import { AiQueryModal } from "../components/modals/AiQueryModal";
+import { AiExplainModal } from "../components/modals/AiExplainModal";
 import {
   Play,
   Plus,
@@ -34,15 +35,21 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { TableToolbar } from "../components/ui/TableToolbar";
 import { DataGrid } from "../components/ui/DataGrid";
-import { NewRowModal } from "../components/ui/NewRowModal";
-import { QuerySelectionModal } from "../components/ui/QuerySelectionModal";
-import { QueryModal } from "../components/ui/QueryModal";
+import { NewRowModal } from "../components/modals/NewRowModal";
+import { QuerySelectionModal } from "../components/modals/QuerySelectionModal";
+import { QueryModal } from "../components/modals/QueryModal";
 import { QueryParamsModal } from "../components/modals/QueryParamsModal";
 import { VisualQueryBuilder } from "../components/ui/VisualQueryBuilder";
 import { ContextMenu } from "../components/ui/ContextMenu";
-import { ExportProgressModal, type ExportStatus } from "../components/ui/ExportProgressModal";
+import {
+  ExportProgressModal,
+  type ExportStatus,
+} from "../components/modals/ExportProgressModal";
 import { splitQueries, extractTableName } from "../utils/sql";
-import { extractQueryParams, interpolateQueryParams } from "../utils/queryParameters";
+import {
+  extractQueryParams,
+  interpolateQueryParams,
+} from "../utils/queryParameters";
 import { formatDuration } from "../utils/formatTime";
 import { SqlEditorWrapper } from "../components/ui/SqlEditorWrapper";
 import { registerSqlAutocomplete } from "../utils/autocomplete";
@@ -63,18 +70,18 @@ interface TableColumn {
 }
 
 interface EditorState {
-    initialQuery?: string;
-    tableName?: string;
-    queryName?: string;
+  initialQuery?: string;
+  tableName?: string;
+  queryName?: string;
 }
 
 interface ExportProgress {
-    rows_processed: number;
+  rows_processed: number;
 }
 
 export const Editor = () => {
   const { t } = useTranslation();
-  const { activeConnectionId, tables } = useDatabase();
+  const { activeConnectionId, tables, activeDriver } = useDatabase();
   const { settings } = useSettings();
   const { saveQuery } = useSavedQueries();
   const {
@@ -116,10 +123,13 @@ export const Editor = () => {
 
   useEffect(() => {
     const unlisten = listen<ExportProgress>("export_progress", (event) => {
-       setExportState(prev => ({ ...prev, rowsProcessed: event.payload.rows_processed }));
+      setExportState((prev) => ({
+        ...prev,
+        rowsProcessed: event.payload.rows_processed,
+      }));
     });
     return () => {
-        unlisten.then(f => f());
+      unlisten.then((f) => f());
     };
   }, []);
 
@@ -129,33 +139,37 @@ export const Editor = () => {
     setTabContextMenu({ x: e.clientX, y: e.clientY, tabId });
   };
 
-  const handleConvertToConsole = useCallback((tabId: string) => {
-      const tab = tabsRef.current.find(t => t.id === tabId);
+  const handleConvertToConsole = useCallback(
+    (tabId: string) => {
+      const tab = tabsRef.current.find((t) => t.id === tabId);
       if (!tab) return;
 
       let query = tab.query;
-      
+
       // Reconstruct query for table tabs (respecting active filters)
       if (tab.type === "table" && tab.activeTable) {
-          const filter = tab.filterClause ? `WHERE ${tab.filterClause}` : "";
-          const sort = tab.sortClause ? `ORDER BY ${tab.sortClause}` : "";
-          
-          let baseQuery = `SELECT * FROM ${tab.activeTable} ${filter} ${sort}`;
-          
-          if (tab.limitClause && tab.limitClause > 0) {
-              baseQuery = `${baseQuery} LIMIT ${tab.limitClause}`;
-          }
-          
-          query = baseQuery;
+        const filter = tab.filterClause ? `WHERE ${tab.filterClause}` : "";
+        const sort = tab.sortClause ? `ORDER BY ${tab.sortClause}` : "";
+        const quotedTable = quoteIdentifier(tab.activeTable, activeDriver);
+
+        let baseQuery = `SELECT * FROM ${quotedTable} ${filter} ${sort}`;
+
+        if (tab.limitClause && tab.limitClause > 0) {
+          baseQuery = `${baseQuery} LIMIT ${tab.limitClause}`;
+        }
+
+        query = baseQuery;
       }
-      
+
       addTab({
-          type: 'console',
-          title: `Console - ${tab.title}`,
-          query: query,
-          connectionId: tab.connectionId
+        type: "console",
+        title: `Console - ${tab.title}`,
+        query: query,
+        connectionId: tab.connectionId,
       });
-  }, [addTab]);
+    },
+    [addTab],
+  );
 
   const [saveQueryModal, setSaveQueryModal] = useState<{
     isOpen: boolean;
@@ -169,7 +183,13 @@ export const Editor = () => {
     pendingPageNum: number;
     pendingTabId?: string;
     mode: "run" | "save";
-  }>({ isOpen: false, sql: "", parameters: [], pendingPageNum: 1, mode: "save" });
+  }>({
+    isOpen: false,
+    sql: "",
+    parameters: [],
+    pendingPageNum: 1,
+    mode: "save",
+  });
 
   const [showNewRowModal, setShowNewRowModal] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -193,8 +213,7 @@ export const Editor = () => {
   const activeTabQuery = activeTab?.query;
   const isTableTab = activeTab?.type === "table";
   const isEditorOpen =
-    !isTableTab &&
-    (activeTab?.isEditorOpen ?? activeTab?.type !== "table");
+    !isTableTab && (activeTab?.isEditorOpen ?? activeTab?.type !== "table");
 
   // Define updateActiveTab first to be used in handleQueryChange
   const updateActiveTab = useCallback(
@@ -206,10 +225,13 @@ export const Editor = () => {
 
   // Placeholder Logic - memoized to avoid recalculation on every render
 
-  const placeholders = useMemo(() => ({
-    column: activeTab?.result?.columns?.[0] || 'id',
-    sort: activeTab?.result?.columns?.[0] || 'created_at'
-  }), [activeTab?.result?.columns]);
+  const placeholders = useMemo(
+    () => ({
+      column: activeTab?.result?.columns?.[0] || "id",
+      sort: activeTab?.result?.columns?.[0] || "created_at",
+    }),
+    [activeTab?.result?.columns],
+  );
 
   const dropdownQueries = useMemo(() => {
     if (activeTabType === "query_builder" && activeTabQuery) {
@@ -221,13 +243,17 @@ export const Editor = () => {
   const tabsRef = useRef<Tab[]>([]);
   const activeTabIdRef = useRef<string | null>(null);
   const processingRef = useRef<string | null>(null);
-  const pendingExecutionsRef = useRef<Record<string, { sql: string, page: number }>>({});
+  const pendingExecutionsRef = useRef<
+    Record<string, { sql: string; page: number }>
+  >({});
 
   const selectionHasPending = useMemo(() => {
     if (!activeTab) return false;
-    const { pendingChanges, pendingDeletions, selectedRows, result, pkColumn } = activeTab;
-    const hasGlobalPending = (pendingChanges && Object.keys(pendingChanges).length > 0) ||
-                             (pendingDeletions && Object.keys(pendingDeletions).length > 0);
+    const { pendingChanges, pendingDeletions, selectedRows, result, pkColumn } =
+      activeTab;
+    const hasGlobalPending =
+      (pendingChanges && Object.keys(pendingChanges).length > 0) ||
+      (pendingDeletions && Object.keys(pendingDeletions).length > 0);
 
     if (!selectedRows || selectedRows.length === 0) return hasGlobalPending;
 
@@ -235,17 +261,24 @@ export const Editor = () => {
     const pkIndex = result.columns.indexOf(pkColumn);
     if (pkIndex === -1) return false;
 
-    return selectedRows.some(rowIndex => {
-        const row = result.rows[rowIndex];
-        if (!row) return false;
-        const pkVal = String(row[pkIndex]);
-        return (pendingChanges && pendingChanges[pkVal]) || (pendingDeletions && pendingDeletions[pkVal]);
+    return selectedRows.some((rowIndex) => {
+      const row = result.rows[rowIndex];
+      if (!row) return false;
+      const pkVal = String(row[pkIndex]);
+      return (
+        (pendingChanges && pendingChanges[pkVal]) ||
+        (pendingDeletions && pendingDeletions[pkVal])
+      );
     });
   }, [activeTab]);
 
   const hasPendingChanges = useMemo(() => {
-    return (activeTab?.pendingChanges && Object.keys(activeTab.pendingChanges).length > 0) || 
-           (activeTab?.pendingDeletions && Object.keys(activeTab.pendingDeletions).length > 0);
+    return (
+      (activeTab?.pendingChanges &&
+        Object.keys(activeTab.pendingChanges).length > 0) ||
+      (activeTab?.pendingDeletions &&
+        Object.keys(activeTab.pendingDeletions).length > 0)
+    );
   }, [activeTab?.pendingChanges, activeTab?.pendingDeletions]);
 
   useEffect(() => {
@@ -293,7 +326,13 @@ export const Editor = () => {
       filterOverride?: string,
       sortOverride?: string,
       limitOverride?: number,
-      preservePendingChanges?: { pendingChanges?: Record<string, { pkOriginalValue: unknown; changes: Record<string, unknown> }>; pendingDeletions?: Record<string, unknown> }
+      preservePendingChanges?: {
+        pendingChanges?: Record<
+          string,
+          { pkOriginalValue: unknown; changes: Record<string, unknown> }
+        >;
+        pendingDeletions?: Record<string, unknown>;
+      },
     ) => {
       const targetTabId = tabId || activeTabIdRef.current;
       if (!activeConnectionId || !targetTabId) return;
@@ -302,25 +341,30 @@ export const Editor = () => {
       if (!targetTab) return;
 
       let textToRun = sql?.trim() || targetTab?.query;
-
       // For Table Tabs, reconstruct query if filter/sort are present
       if (targetTab?.type === "table" && targetTab.activeTable) {
-          // Use overrides if provided, otherwise use tab values
-          const filterClause = filterOverride !== undefined ? filterOverride : targetTab.filterClause;
-          const sortClause = sortOverride !== undefined ? sortOverride : targetTab.sortClause;
-          const limitClause = limitOverride !== undefined ? limitOverride : targetTab.limitClause;
+        // Use overrides if provided, otherwise use tab values
+        const filterClause =
+          filterOverride !== undefined
+            ? filterOverride
+            : targetTab.filterClause;
+        const sortClause =
+          sortOverride !== undefined ? sortOverride : targetTab.sortClause;
+        const limitClause =
+          limitOverride !== undefined ? limitOverride : targetTab.limitClause;
 
-          const filter = filterClause ? `WHERE ${filterClause}` : "";
-          const sort = sortClause ? `ORDER BY ${sortClause}` : "";
+        const filter = filterClause ? `WHERE ${filterClause}` : "";
+        const sort = sortClause ? `ORDER BY ${sortClause}` : "";
+        const quotedTable = quoteIdentifier(targetTab.activeTable, activeDriver);
 
-          const baseQuery = `SELECT * FROM ${targetTab.activeTable} ${filter} ${sort}`;
+        const baseQuery = `SELECT * FROM ${quotedTable} ${filter} ${sort}`;
 
-          if (limitClause && limitClause > 0) {
-              // Wrap in subquery to apply "Total Limit" while allowing pagination (Page Size) via backend
-              textToRun = `SELECT * FROM (${baseQuery} LIMIT ${limitClause}) AS limited_subset`;
-          } else {
-              textToRun = baseQuery;
-          }
+        if (limitClause && limitClause > 0) {
+          // Wrap in subquery to apply "Total Limit" while allowing pagination (Page Size) via backend
+          textToRun = `SELECT * FROM (${baseQuery} LIMIT ${limitClause}) AS limited_subset`;
+        } else {
+          textToRun = baseQuery;
+        }
       }
 
       if (!textToRun || !textToRun.trim()) return;
@@ -328,26 +372,26 @@ export const Editor = () => {
       // Check for parameters
       const params = extractQueryParams(textToRun);
       if (params.length > 0) {
-          const storedParams = paramsOverride || targetTab.queryParams || {};
-          const missingParams = params.filter(p => 
-              storedParams[p] === undefined || storedParams[p].trim() === ""
-          );
-          
-          // If we have missing params
-          if (missingParams.length > 0) {
-              setQueryParamsModal({
-                  isOpen: true,
-                  sql: textToRun,
-                  parameters: params,
-                  pendingPageNum: pageNum,
-                  pendingTabId: targetTabId,
-                  mode: "run"
-              });
-              return;
-          }
-          
-          // Interpolate parameters before execution
-          textToRun = interpolateQueryParams(textToRun, storedParams);
+        const storedParams = paramsOverride || targetTab.queryParams || {};
+        const missingParams = params.filter(
+          (p) => storedParams[p] === undefined || storedParams[p].trim() === "",
+        );
+
+        // If we have missing params
+        if (missingParams.length > 0) {
+          setQueryParamsModal({
+            isOpen: true,
+            sql: textToRun,
+            parameters: params,
+            pendingPageNum: pageNum,
+            pendingTabId: targetTabId,
+            mode: "run",
+          });
+          return;
+        }
+
+        // Interpolate parameters before execution
+        textToRun = interpolateQueryParams(textToRun, storedParams);
       }
 
       // Log query from Visual Query Builder
@@ -376,7 +420,10 @@ export const Editor = () => {
         const start = performance.now();
         // Use settings.resultPageSize for Page Size (pagination), ignoring the "Total Limit" input which is handled in SQL
         // Fallback to 100 if settings not loaded yet
-        const pageSize = (settings.resultPageSize && settings.resultPageSize > 0) ? settings.resultPageSize : 100;
+        const pageSize =
+          settings.resultPageSize && settings.resultPageSize > 0
+            ? settings.resultPageSize
+            : 100;
 
         const res = await invoke<QueryResult>("execute_query", {
           connectionId: activeConnectionId,
@@ -460,153 +507,196 @@ export const Editor = () => {
   }, [activeTab, runQuery]);
 
   const handleRefresh = useCallback(() => {
-    const currentTab = tabsRef.current.find(t => t.id === activeTabIdRef.current);
+    const currentTab = tabsRef.current.find(
+      (t) => t.id === activeTabIdRef.current,
+    );
     if (currentTab?.activeTable && activeConnectionId)
       runQuery(currentTab.query, currentTab.page);
   }, [activeConnectionId, runQuery]);
 
-  const handleToolbarUpdate = useCallback((filter: string, sort: string, limit: number | undefined) => {
-    if (!activeTabIdRef.current) return;
+  const handleToolbarUpdate = useCallback(
+    (filter: string, sort: string, limit: number | undefined) => {
+      if (!activeTabIdRef.current) return;
 
-    updateTab(activeTabIdRef.current, {
+      updateTab(activeTabIdRef.current, {
         filterClause: filter,
         sortClause: sort,
-        limitClause: limit
-    });
+        limitClause: limit,
+      });
 
-    // Pass values directly to runQuery to avoid race conditions with ref updates
-    runQuery(undefined, 1, undefined, undefined, filter, sort, limit);
-  }, [updateTab, runQuery]);
+      // Pass values directly to runQuery to avoid race conditions with ref updates
+      runQuery(undefined, 1, undefined, undefined, filter, sort, limit);
+    },
+    [updateTab, runQuery],
+  );
 
-  const handleSort = useCallback((colName: string) => {
-    if (!activeTab) return;
+  const handleSort = useCallback(
+    (colName: string) => {
+      if (!activeTab) return;
 
-    const currentSort = activeTab.sortClause || "";
-    const parts = currentSort.trim().split(/\s+/);
+      const currentSort = activeTab.sortClause || "";
+      const parts = currentSort.trim().split(/\s+/);
 
-    let newSort = "";
+      let newSort = "";
 
-    // Check if we are currently sorting by this column
-    if (parts[0] === colName && parts.length <= 2) {
+      // Check if we are currently sorting by this column
+      if (parts[0] === colName && parts.length <= 2) {
         // Toggle logic
         const currentDir = parts[1]?.toUpperCase();
 
-        if (!currentDir || currentDir === 'ASC') {
-            // ASC -> DESC
-            newSort = `${colName} DESC`;
+        if (!currentDir || currentDir === "ASC") {
+          // ASC -> DESC
+          newSort = `${colName} DESC`;
         } else {
-             // DESC -> None (Clear)
-             newSort = "";
+          // DESC -> None (Clear)
+          newSort = "";
         }
-    } else {
+      } else {
         // New column -> ASC
         newSort = `${colName} ASC`;
-    }
+      }
 
-    handleToolbarUpdate(activeTab.filterClause || "", newSort, activeTab.limitClause);
-  }, [activeTab, handleToolbarUpdate]);
+      handleToolbarUpdate(
+        activeTab.filterClause || "",
+        newSort,
+        activeTab.limitClause,
+      );
+    },
+    [activeTab, handleToolbarUpdate],
+  );
 
-  const handlePendingChange = useCallback((pkVal: unknown, colName: string, value: unknown) => {
-    if (!activeTabIdRef.current) return;
-    const tabId = activeTabIdRef.current;
-    
-    const currentTab = tabsRef.current.find(t => t.id === tabId);
-    if (!currentTab) return;
+  const handlePendingChange = useCallback(
+    (pkVal: unknown, colName: string, value: unknown) => {
+      if (!activeTabIdRef.current) return;
+      const tabId = activeTabIdRef.current;
 
-    const pkKey = String(pkVal);
-    const currentPending = currentTab.pendingChanges || {};
-    const rowEntry = currentPending[pkKey] || { pkOriginalValue: pkVal, changes: {} };
-    
-    // Create new changes object
-    const newChanges = { ...rowEntry.changes };
-    
-    if (value === undefined) {
+      const currentTab = tabsRef.current.find((t) => t.id === tabId);
+      if (!currentTab) return;
+
+      const pkKey = String(pkVal);
+      const currentPending = currentTab.pendingChanges || {};
+      const rowEntry = currentPending[pkKey] || {
+        pkOriginalValue: pkVal,
+        changes: {},
+      };
+
+      // Create new changes object
+      const newChanges = { ...rowEntry.changes };
+
+      if (value === undefined) {
         // Remove change
         delete newChanges[colName];
-    } else {
+      } else {
         // Update change
         newChanges[colName] = value;
-    }
+      }
 
-    const newPending = { ...currentPending };
+      const newPending = { ...currentPending };
 
-    // If no changes left for this row, remove the row entry
-    if (Object.keys(newChanges).length === 0) {
+      // If no changes left for this row, remove the row entry
+      if (Object.keys(newChanges).length === 0) {
         delete newPending[pkKey];
-    } else {
+      } else {
         newPending[pkKey] = {
-            ...rowEntry,
-            changes: newChanges
+          ...rowEntry,
+          changes: newChanges,
         };
-    }
-    
-    updateTab(tabId, { pendingChanges: newPending });
-  }, [updateTab]);
+      }
 
-  const handleSelectionChange = useCallback((indices: Set<number>) => {
-    if (!activeTabIdRef.current) return;
-    updateTab(activeTabIdRef.current, { selectedRows: Array.from(indices) });
-  }, [updateTab]);
+      updateTab(tabId, { pendingChanges: newPending });
+    },
+    [updateTab],
+  );
+
+  const handleSelectionChange = useCallback(
+    (indices: Set<number>) => {
+      if (!activeTabIdRef.current) return;
+      updateTab(activeTabIdRef.current, { selectedRows: Array.from(indices) });
+    },
+    [updateTab],
+  );
 
   const handleDeleteRows = useCallback(() => {
-    if (!activeTab || !activeTab.result || !activeTab.pkColumn || !activeTab.selectedRows || activeTab.selectedRows.length === 0) return;
-    
+    if (
+      !activeTab ||
+      !activeTab.result ||
+      !activeTab.pkColumn ||
+      !activeTab.selectedRows ||
+      activeTab.selectedRows.length === 0
+    )
+      return;
+
     const pkIndex = activeTab.result.columns.indexOf(activeTab.pkColumn);
     if (pkIndex === -1) return;
 
     const currentPendingDeletions = activeTab.pendingDeletions || {};
     const newPendingDeletions = { ...currentPendingDeletions };
 
-    activeTab.selectedRows.forEach(rowIndex => {
-        const row = activeTab.result!.rows[rowIndex];
-        if (row) {
-            const pkVal = row[pkIndex];
-            newPendingDeletions[String(pkVal)] = pkVal;
-        }
+    activeTab.selectedRows.forEach((rowIndex) => {
+      const row = activeTab.result!.rows[rowIndex];
+      if (row) {
+        const pkVal = row[pkIndex];
+        newPendingDeletions[String(pkVal)] = pkVal;
+      }
     });
 
-    updateActiveTab({ pendingDeletions: newPendingDeletions, selectedRows: [] });
+    updateActiveTab({
+      pendingDeletions: newPendingDeletions,
+      selectedRows: [],
+    });
   }, [activeTab, updateActiveTab]);
 
   const handleSubmitChanges = useCallback(async () => {
-    if (!activeTab || !activeTab.activeTable || !activeTab.pkColumn || !activeConnectionId) return;
-    
-    const { pendingChanges, pendingDeletions, activeTable, pkColumn, selectedRows } = activeTab;
+    if (
+      !activeTab ||
+      !activeTab.activeTable ||
+      !activeTab.pkColumn ||
+      !activeConnectionId
+    )
+      return;
+
+    const {
+      pendingChanges,
+      pendingDeletions,
+      activeTable,
+      pkColumn,
+      selectedRows,
+    } = activeTab;
     const updates: { pkVal: unknown; colName: string; newVal: unknown }[] = [];
     const deletions: unknown[] = [];
 
     // Filter pending changes by selected rows IF there is a selection AND applyToAll is false
     const hasSelection = !applyToAll && selectedRows && selectedRows.length > 0;
     const selectedPkSet = new Set<string>();
-    
+
     if (hasSelection && activeTab.result) {
-        const pkIndex = activeTab.result.columns.indexOf(pkColumn);
-        if (pkIndex !== -1) {
-            selectedRows.forEach(rowIndex => {
-                const row = activeTab.result!.rows[rowIndex];
-                if (row) selectedPkSet.add(String(row[pkIndex]));
-            });
-        }
+      const pkIndex = activeTab.result.columns.indexOf(pkColumn);
+      if (pkIndex !== -1) {
+        selectedRows.forEach((rowIndex) => {
+          const row = activeTab.result!.rows[rowIndex];
+          if (row) selectedPkSet.add(String(row[pkIndex]));
+        });
+      }
     }
 
     if (pendingChanges) {
-        for (const [pkKey, rowData] of Object.entries(pendingChanges)) {
-            // Apply filter if selection exists (and applyToAll is false)
-            if (hasSelection && !selectedPkSet.has(pkKey)) continue;
+      for (const [pkKey, rowData] of Object.entries(pendingChanges)) {
+        // Apply filter if selection exists (and applyToAll is false)
+        if (hasSelection && !selectedPkSet.has(pkKey)) continue;
 
-            const { pkOriginalValue, changes } = rowData;
-            for (const [colName, newVal] of Object.entries(changes)) {
-                updates.push({ pkVal: pkOriginalValue, colName, newVal });
-            }
+        const { pkOriginalValue, changes } = rowData;
+        for (const [colName, newVal] of Object.entries(changes)) {
+          updates.push({ pkVal: pkOriginalValue, colName, newVal });
         }
+      }
     }
 
     if (pendingDeletions) {
-        for (const [pkKey, pkVal] of Object.entries(pendingDeletions)) {
-             // Apply filter if selection exists (and applyToAll is false)
-             if (hasSelection && !selectedPkSet.has(pkKey)) continue;
-             deletions.push(pkVal);
-        }
+      for (const [pkKey, pkVal] of Object.entries(pendingDeletions)) {
+        // Apply filter if selection exists (and applyToAll is false)
+        if (hasSelection && !selectedPkSet.has(pkKey)) continue;
+        deletions.push(pkVal);
+      }
     }
 
     if (updates.length === 0 && deletions.length === 0) return;
@@ -614,136 +704,169 @@ export const Editor = () => {
     updateActiveTab({ isLoading: true });
 
     try {
-        const promises = [];
-        
-        // Deletions
-        if (deletions.length > 0) {
-            promises.push(...deletions.map(pkVal => invoke('delete_record', {
-                connectionId: activeConnectionId,
-                table: activeTable,
-                pkCol: pkColumn,
-                pkVal
-            })));
-        }
+      const promises = [];
 
-        // Updates
-        if (updates.length > 0) {
-            promises.push(...updates.map(u => invoke('update_record', {
-                connectionId: activeConnectionId,
-                table: activeTable,
-                pkCol: pkColumn,
-                pkVal: u.pkVal,
-                colName: u.colName,
-                newVal: u.newVal
-            })));
-        }
-
-        await Promise.all(promises);
-        
-        // Remove processed changes from state
-        const newPendingChanges = { ...(pendingChanges || {}) };
-        const newPendingDeletions = { ...(pendingDeletions || {}) };
-
-        // Partial cleanup - remove only processed changes
-        updates.forEach(u => delete newPendingChanges[String(u.pkVal)]);
-        deletions.forEach(d => delete newPendingDeletions[String(d)]);
-
-        // Cleanup empty change objects
-        Object.keys(newPendingChanges).forEach(key => {
-            if (Object.keys(newPendingChanges[key]?.changes || {}).length === 0) delete newPendingChanges[key];
-        });
-
-        const remainingChanges = Object.keys(newPendingChanges).length > 0 ? newPendingChanges : undefined;
-        const remainingDeletions = Object.keys(newPendingDeletions).length > 0 ? newPendingDeletions : undefined;
-
-        // Refresh query preserving remaining pending changes
-        runQuery(
-            activeTab.query,
-            activeTab.page,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            { pendingChanges: remainingChanges, pendingDeletions: remainingDeletions }
+      // Deletions
+      if (deletions.length > 0) {
+        promises.push(
+          ...deletions.map((pkVal) =>
+            invoke("delete_record", {
+              connectionId: activeConnectionId,
+              table: activeTable,
+              pkCol: pkColumn,
+              pkVal,
+            }),
+          ),
         );
+      }
+
+      // Updates
+      if (updates.length > 0) {
+        promises.push(
+          ...updates.map((u) =>
+            invoke("update_record", {
+              connectionId: activeConnectionId,
+              table: activeTable,
+              pkCol: pkColumn,
+              pkVal: u.pkVal,
+              colName: u.colName,
+              newVal: u.newVal,
+            }),
+          ),
+        );
+      }
+
+      await Promise.all(promises);
+
+      // Remove processed changes from state
+      const newPendingChanges = { ...(pendingChanges || {}) };
+      const newPendingDeletions = { ...(pendingDeletions || {}) };
+
+      // Partial cleanup - remove only processed changes
+      updates.forEach((u) => delete newPendingChanges[String(u.pkVal)]);
+      deletions.forEach((d) => delete newPendingDeletions[String(d)]);
+
+      // Cleanup empty change objects
+      Object.keys(newPendingChanges).forEach((key) => {
+        if (Object.keys(newPendingChanges[key]?.changes || {}).length === 0)
+          delete newPendingChanges[key];
+      });
+
+      const remainingChanges =
+        Object.keys(newPendingChanges).length > 0
+          ? newPendingChanges
+          : undefined;
+      const remainingDeletions =
+        Object.keys(newPendingDeletions).length > 0
+          ? newPendingDeletions
+          : undefined;
+
+      // Refresh query preserving remaining pending changes
+      runQuery(
+        activeTab.query,
+        activeTab.page,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          pendingChanges: remainingChanges,
+          pendingDeletions: remainingDeletions,
+        },
+      );
     } catch (e) {
-        console.error("Batch update failed", e);
-        updateActiveTab({ isLoading: false });
-        await message(t('dataGrid.updateFailed') + String(e), { title: t('common.error'), kind: 'error' });
+      console.error("Batch update failed", e);
+      updateActiveTab({ isLoading: false });
+      await message(t("dataGrid.updateFailed") + String(e), {
+        title: t("common.error"),
+        kind: "error",
+      });
     }
   }, [activeTab, activeConnectionId, updateActiveTab, runQuery, t, applyToAll]);
 
-  const handleParamsSubmit = useCallback((values: Record<string, string>) => {
-    const { pendingTabId, mode, sql, pendingPageNum } = queryParamsModal;
-    if (!pendingTabId) return;
+  const handleParamsSubmit = useCallback(
+    (values: Record<string, string>) => {
+      const { pendingTabId, mode, sql, pendingPageNum } = queryParamsModal;
+      if (!pendingTabId) return;
 
-    // Update tab with new params (merge with existing)
-    const currentTab = tabsRef.current.find(t => t.id === pendingTabId);
-    const newParams = { ...(currentTab?.queryParams || {}), ...values };
-    
-    updateTab(pendingTabId, { queryParams: newParams });
-    
-    // Close modal
-    setQueryParamsModal(prev => ({ ...prev, isOpen: false }));
+      // Update tab with new params (merge with existing)
+      const currentTab = tabsRef.current.find((t) => t.id === pendingTabId);
+      const newParams = { ...(currentTab?.queryParams || {}), ...values };
 
-    // If mode was run, execute query immediately
-    if (mode === "run") {
+      updateTab(pendingTabId, { queryParams: newParams });
+
+      // Close modal
+      setQueryParamsModal((prev) => ({ ...prev, isOpen: false }));
+
+      // If mode was run, execute query immediately
+      if (mode === "run") {
         runQuery(sql, pendingPageNum, pendingTabId, newParams);
-    }
-  }, [queryParamsModal, updateTab, runQuery]);
+      }
+    },
+    [queryParamsModal, updateTab, runQuery],
+  );
 
   const handleEditParams = useCallback(() => {
     if (!activeTab || !activeTab.query) return;
-    
+
     const params = extractQueryParams(activeTab.query);
     if (params.length === 0) return;
 
     setQueryParamsModal({
-        isOpen: true,
-        sql: activeTab.query,
-        parameters: params,
-        pendingPageNum: 1,
-        pendingTabId: activeTab.id,
-        mode: "save"
+      isOpen: true,
+      sql: activeTab.query,
+      parameters: params,
+      pendingPageNum: 1,
+      pendingTabId: activeTab.id,
+      mode: "save",
     });
   }, [activeTab]);
 
   const handleRollbackChanges = useCallback(() => {
     if (!activeTab) return;
-    const { selectedRows, result, pkColumn, pendingChanges, pendingDeletions } = activeTab;
+    const { selectedRows, result, pkColumn, pendingChanges, pendingDeletions } =
+      activeTab;
 
     // If applyToAll is true OR no selection, rollback everything
     if (applyToAll || !selectedRows || selectedRows.length === 0) {
-        updateActiveTab({ pendingChanges: undefined, pendingDeletions: undefined });
-        return;
+      updateActiveTab({
+        pendingChanges: undefined,
+        pendingDeletions: undefined,
+      });
+      return;
     }
 
     // Filter rollback by selection
     const selectedPkSet = new Set<string>();
     if (result && pkColumn) {
-        const pkIndex = result.columns.indexOf(pkColumn);
-        if (pkIndex !== -1) {
-            selectedRows.forEach(rowIndex => {
-                const row = result.rows[rowIndex];
-                if (row) selectedPkSet.add(String(row[pkIndex]));
-            });
-        }
+      const pkIndex = result.columns.indexOf(pkColumn);
+      if (pkIndex !== -1) {
+        selectedRows.forEach((rowIndex) => {
+          const row = result.rows[rowIndex];
+          if (row) selectedPkSet.add(String(row[pkIndex]));
+        });
+      }
     }
 
     const newPendingChanges = { ...(pendingChanges || {}) };
     const newPendingDeletions = { ...(pendingDeletions || {}) };
 
-    selectedPkSet.forEach(pk => {
-        delete newPendingChanges[pk];
-        delete newPendingDeletions[pk];
+    selectedPkSet.forEach((pk) => {
+      delete newPendingChanges[pk];
+      delete newPendingDeletions[pk];
     });
 
     updateActiveTab({
-        pendingChanges: Object.keys(newPendingChanges).length > 0 ? newPendingChanges : undefined,
-        pendingDeletions: Object.keys(newPendingDeletions).length > 0 ? newPendingDeletions : undefined
+      pendingChanges:
+        Object.keys(newPendingChanges).length > 0
+          ? newPendingChanges
+          : undefined,
+      pendingDeletions:
+        Object.keys(newPendingDeletions).length > 0
+          ? newPendingDeletions
+          : undefined,
     });
-
   }, [activeTab, updateActiveTab, applyToAll]);
 
   const handleEditorMount: OnMount = (editor, monaco) => {
@@ -774,7 +897,7 @@ export const Editor = () => {
       const disposable = registerSqlAutocomplete(
         monacoInstance,
         activeConnectionId,
-        tables
+        tables,
       );
       return () => disposable.dispose();
     }
@@ -784,37 +907,38 @@ export const Editor = () => {
     const state = location.state as EditorState;
     if (activeConnectionId) {
       if (state?.initialQuery) {
-       const queryKey = `${state.initialQuery}-${state.tableName}-${state.queryName}`;
+        const queryKey = `${state.initialQuery}-${state.tableName}-${state.queryName}`;
 
-      if (processingRef.current === queryKey) return;
-      processingRef.current = queryKey;
+        if (processingRef.current === queryKey) return;
+        processingRef.current = queryKey;
 
-      const { initialQuery: sql, tableName: table, queryName } = state;
-      const tabId = addTab({
-        type: table ? "table" : "console",
-        title: queryName || table || (table ? table : t("sidebar.newConsole")),
-        query: sql,
-        activeTable: table,
-      });
+        const { initialQuery: sql, tableName: table, queryName } = state;
+        const tabId = addTab({
+          type: table ? "table" : "console",
+          title:
+            queryName || table || (table ? table : t("sidebar.newConsole")),
+          query: sql,
+          activeTable: table,
+        });
 
-      if (tabId) {
-        // Queue execution
-        pendingExecutionsRef.current[tabId] = { sql: sql || "", page: 1 };
+        if (tabId) {
+          // Queue execution
+          pendingExecutionsRef.current[tabId] = { sql: sql || "", page: 1 };
 
-        // Try immediate execution if tab exists (reused)
-        const existingTab = tabsRef.current.find((t) => t.id === tabId);
-        if (existingTab) {
-          runQuery(sql, 1, tabId);
-          delete pendingExecutionsRef.current[tabId];
+          // Try immediate execution if tab exists (reused)
+          const existingTab = tabsRef.current.find((t) => t.id === tabId);
+          if (existingTab) {
+            runQuery(sql, 1, tabId);
+            delete pendingExecutionsRef.current[tabId];
+          }
         }
-      }
 
-      navigate(location.pathname, { replace: true, state: {} });
-      setTimeout(() => {
-        processingRef.current = null;
-      }, 500);
+        navigate(location.pathname, { replace: true, state: {} });
+        setTimeout(() => {
+          processingRef.current = null;
+        }, 500);
+      }
     }
-  }
   }, [
     location.state,
     location.pathname,
@@ -855,17 +979,21 @@ export const Editor = () => {
   };
 
   const cancelExport = useCallback(async () => {
-      if (!activeConnectionId) return;
-      try {
-          await invoke("cancel_export", { connectionId: activeConnectionId });
-          setExportState(prev => ({ ...prev, isOpen: false, isExporting: false }));
-      } catch (e) {
-          console.error("Failed to cancel export", e);
-      }
+    if (!activeConnectionId) return;
+    try {
+      await invoke("cancel_export", { connectionId: activeConnectionId });
+      setExportState((prev) => ({
+        ...prev,
+        isOpen: false,
+        isExporting: false,
+      }));
+    } catch (e) {
+      console.error("Failed to cancel export", e);
+    }
   }, [activeConnectionId]);
 
   const closeExportModal = useCallback(() => {
-      setExportState(prev => ({ ...prev, isOpen: false, isExporting: false }));
+    setExportState((prev) => ({ ...prev, isOpen: false, isExporting: false }));
   }, []);
 
   const handleExportCommon = async (format: "csv" | "json") => {
@@ -875,56 +1003,65 @@ export const Editor = () => {
 
     // For Table Tabs, reconstruct query (ignoring Page Size limit, but respecting User Limit)
     if (activeTab.type === "table" && activeTab.activeTable) {
-        const filter = activeTab.filterClause ? `WHERE ${activeTab.filterClause}` : "";
-        const sort = activeTab.sortClause ? `ORDER BY ${activeTab.sortClause}` : "";
-        
-        // Base query
-        let baseQuery = `SELECT * FROM ${activeTab.activeTable} ${filter} ${sort}`;
-        
-        // Apply user manual limit if present
-        if (activeTab.limitClause && activeTab.limitClause > 0) {
-            baseQuery = `${baseQuery} LIMIT ${activeTab.limitClause}`;
-        }
-        
-        query = baseQuery;
+      const filter = activeTab.filterClause
+        ? `WHERE ${activeTab.filterClause}`
+        : "";
+      const sort = activeTab.sortClause
+        ? `ORDER BY ${activeTab.sortClause}`
+        : "";
+      const quotedTable = quoteIdentifier(activeTab.activeTable, activeDriver);
+
+      // Base query
+      let baseQuery = `SELECT * FROM ${quotedTable} ${filter} ${sort}`;
+
+      // Apply user manual limit if present
+      if (activeTab.limitClause && activeTab.limitClause > 0) {
+        baseQuery = `${baseQuery} LIMIT ${activeTab.limitClause}`;
+      }
+
+      query = baseQuery;
     }
 
     if (!query || !query.trim()) return;
 
     try {
-        const filePath = await save({
-            filters: [{ name: format.toUpperCase(), extensions: [format] }],
-            defaultPath: `result_${Date.now()}.${format}`,
-        });
+      const filePath = await save({
+        filters: [{ name: format.toUpperCase(), extensions: [format] }],
+        defaultPath: `result_${Date.now()}.${format}`,
+      });
 
-        if (!filePath) return;
+      if (!filePath) return;
 
-        setExportState({
-            isOpen: true,
-            isExporting: true,
-            status: "exporting",
-            rowsProcessed: 0,
-            fileName: filePath.split(/[/\\]/).pop() || filePath, // Show only filename
-        });
-        setExportMenuOpen(false);
+      setExportState({
+        isOpen: true,
+        isExporting: true,
+        status: "exporting",
+        rowsProcessed: 0,
+        fileName: filePath.split(/[/\\]/).pop() || filePath, // Show only filename
+      });
+      setExportMenuOpen(false);
 
-        await invoke("export_query_to_file", {
-            connectionId: activeConnectionId,
-            query,
-            filePath,
-            format
-        });
-        
-        // Success: update modal state instead of showing toast
-        setExportState(prev => ({ ...prev, isExporting: false, status: "completed" }));
+      await invoke("export_query_to_file", {
+        connectionId: activeConnectionId,
+        query,
+        filePath,
+        format,
+      });
+
+      // Success: update modal state instead of showing toast
+      setExportState((prev) => ({
+        ...prev,
+        isExporting: false,
+        status: "completed",
+      }));
     } catch (e) {
-        // Error: update modal state
-        setExportState(prev => ({ 
-            ...prev, 
-            isExporting: false, 
-            status: "error", 
-            errorMessage: String(e) 
-        }));
+      // Error: update modal state
+      setExportState((prev) => ({
+        ...prev,
+        isExporting: false,
+        status: "error",
+        errorMessage: String(e),
+      }));
     }
   };
 
@@ -1050,7 +1187,7 @@ export const Editor = () => {
               disabled={!activeConnectionId}
               className={clsx(
                 "flex items-center gap-2 px-3 py-1.5 text-white text-sm font-medium disabled:opacity-50 hover:bg-green-600",
-                isTableTab ? "rounded" : "rounded-l"
+                isTableTab ? "rounded" : "rounded-l",
               )}
             >
               <Play size={16} fill="currentColor" /> {t("editor.run")}
@@ -1118,39 +1255,46 @@ export const Editor = () => {
         {/* Params Button */}
         {!isTableTab && (
           <button
-              onClick={handleEditParams}
-              disabled={!activeTab?.query || extractQueryParams(activeTab.query).length === 0}
-              className="flex items-center gap-2 px-3 py-1.5 bg-surface-secondary hover:bg-surface text-primary rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-strong"
-              title={t("editor.queryParameters")}
+            onClick={handleEditParams}
+            disabled={
+              !activeTab?.query ||
+              extractQueryParams(activeTab.query).length === 0
+            }
+            className="flex items-center gap-2 px-3 py-1.5 bg-surface-secondary hover:bg-surface text-primary rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-strong"
+            title={t("editor.queryParameters")}
           >
-              <span className="font-mono text-xs font-bold border border-muted text-secondary rounded px-1.5 py-0.5">P</span>
-              {t("editor.parameters")}
+            <span className="font-mono text-xs font-bold border border-muted text-secondary rounded px-1.5 py-0.5">
+              P
+            </span>
+            {t("editor.parameters")}
           </button>
         )}
 
         {/* AI Assist Button */}
-        {!isTableTab && activeTab.type !== "query_builder" && settings.aiEnabled && (
-           <div className="flex items-center gap-1 ml-2">
-             <button
-               onClick={() => setIsAiModalOpen(true)}
-               disabled={!activeConnectionId}
-               className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/40 hover:bg-purple-900/60 text-purple-200 border border-purple-500/30 rounded text-sm font-medium transition-colors disabled:opacity-50"
-               title="Generate SQL with AI"
-             >
-               <Sparkles size={16} />
-               <span className="hidden sm:inline">AI Assist</span>
-             </button>
-             <button
-               onClick={() => setIsAiExplainModalOpen(true)}
-               disabled={!activeConnectionId || !activeTab.query?.trim()}
-               className="flex items-center gap-2 px-3 py-1.5 bg-blue-900/40 hover:bg-blue-900/60 text-blue-200 border border-blue-500/30 rounded text-sm font-medium transition-colors disabled:opacity-50"
-               title="Explain this Query"
-             >
-               <BookOpen size={16} />
-               <span className="hidden sm:inline">Explain</span>
-             </button>
-           </div>
-        )}
+        {!isTableTab &&
+          activeTab.type !== "query_builder" &&
+          settings.aiEnabled && (
+            <div className="flex items-center gap-1 ml-2">
+              <button
+                onClick={() => setIsAiModalOpen(true)}
+                disabled={!activeConnectionId}
+                className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/40 hover:bg-purple-900/60 text-purple-200 border border-purple-500/30 rounded text-sm font-medium transition-colors disabled:opacity-50"
+                title="Generate SQL with AI"
+              >
+                <Sparkles size={16} />
+                <span className="hidden sm:inline">AI Assist</span>
+              </button>
+              <button
+                onClick={() => setIsAiExplainModalOpen(true)}
+                disabled={!activeConnectionId || !activeTab.query?.trim()}
+                className="flex items-center gap-2 px-3 py-1.5 bg-blue-900/40 hover:bg-blue-900/60 text-blue-200 border border-blue-500/30 rounded text-sm font-medium transition-colors disabled:opacity-50"
+                title="Explain this Query"
+              >
+                <BookOpen size={16} />
+                <span className="hidden sm:inline">Explain</span>
+              </button>
+            </div>
+          )}
 
         <div className="relative ml-auto">
           <button
@@ -1184,17 +1328,19 @@ export const Editor = () => {
           )}
         </div>
         <span className="text-xs text-muted ml-2">
-          {activeConnectionId ? t("editor.connected") : t("editor.disconnected")}
+          {activeConnectionId
+            ? t("editor.connected")
+            : t("editor.disconnected")}
         </span>
       </div>
 
       {/* Render all non-table tabs to prevent Monaco remounting */}
       {tabs.map((tab) => {
         if (tab.type === "table") return null;
-        
+
         const isActive = tab.id === activeTabId;
         const isVisible = isActive && !isTableTab && isEditorOpen;
-        
+
         return (
           <div
             key={tab.id}
@@ -1234,15 +1380,15 @@ export const Editor = () => {
       {isTableTab || !isResultsCollapsed ? (
         <>
           {isTableTab ? (
-             <TableToolbar
-                initialFilter={activeTab?.filterClause}
-                initialSort={activeTab?.sortClause}
-                initialLimit={activeTab?.limitClause}
-                placeholderColumn={placeholders.column}
-                placeholderSort={placeholders.sort}
-                defaultLimit={settings.resultPageSize || 100}
-                onUpdate={handleToolbarUpdate}
-             />
+            <TableToolbar
+              initialFilter={activeTab?.filterClause}
+              initialSort={activeTab?.sortClause}
+              initialLimit={activeTab?.limitClause}
+              placeholderColumn={placeholders.column}
+              placeholderSort={placeholders.sort}
+              defaultLimit={settings.resultPageSize || 100}
+              onUpdate={handleToolbarUpdate}
+            />
           ) : (
             <div
               onMouseDown={isEditorOpen ? startResize : undefined}
@@ -1250,7 +1396,7 @@ export const Editor = () => {
                 "h-6 bg-elevated border-y border-default flex items-center px-2 relative",
                 isEditorOpen
                   ? "cursor-row-resize justify-between"
-                  : "justify-between"
+                  : "justify-between",
               )}
             >
               <div className="flex items-center">
@@ -1305,7 +1451,9 @@ export const Editor = () => {
                 <div className="p-2 bg-elevated text-xs text-secondary border-b border-default flex justify-between items-center shrink-0">
                   <div className="flex items-center gap-4">
                     <span>
-                      {t("editor.rowsRetrieved", { count: activeTab.result.rows.length })}{" "}
+                      {t("editor.rowsRetrieved", {
+                        count: activeTab.result.rows.length,
+                      })}{" "}
                       {activeTab.executionTime !== null && (
                         <span className="text-muted ml-2 font-mono">
                           ({formatDuration(activeTab.executionTime)})
@@ -1394,12 +1542,12 @@ export const Editor = () => {
                           />
                         ) : (
                           <>
-                            {t("editor.pageOf", { 
-                                current: activeTab.result.pagination.page, 
-                                total: Math.ceil(
-                                    activeTab.result.pagination.total_rows /
-                                      activeTab.result.pagination.page_size,
-                                  )
+                            {t("editor.pageOf", {
+                              current: activeTab.result.pagination.page,
+                              total: Math.ceil(
+                                activeTab.result.pagination.total_rows /
+                                  activeTab.result.pagination.page_size,
+                              ),
                             })}
                           </>
                         )}
@@ -1447,77 +1595,82 @@ export const Editor = () => {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Data Manipulation Toolbar (Below Header) */}
                 {activeTab.activeTable && activeTab.pkColumn && (
-                    <div className="p-1 px-2 bg-elevated border-b border-default flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => setShowNewRowModal(true)}
-                                className="flex items-center justify-center w-7 h-7 text-secondary hover:text-green-400 hover:bg-surface-secondary rounded transition-colors"
-                                title={t("editor.newRow")}
-                            >
-                                <Plus size={16} />
-                            </button>
-                            <button
-                                onClick={handleDeleteRows}
-                                disabled={!activeTab.selectedRows || activeTab.selectedRows.length === 0}
-                                className="flex items-center justify-center w-7 h-7 text-secondary hover:text-red-400 hover:bg-surface-secondary rounded transition-colors disabled:opacity-30"
-                                title={t("dataGrid.deleteRow")}
-                            >
-                                <Minus size={16} />
-                            </button>
-                        </div>
-
-                        {/* Separator */}
-                        {(hasPendingChanges) && (
-                            <div className="w-[1px] h-4 bg-surface-secondary mx-1"></div>
-                        )}
-                        
-                        {hasPendingChanges && (
-                            <div className="flex items-center gap-1 ml-2 border border-blue-900 bg-blue-900/20 rounded px-1 py-0.5">
-                                <label className="flex items-center gap-1.5 px-2 py-1 cursor-pointer select-none group">
-                                    <input
-                                        type="checkbox"
-                                        checked={applyToAll}
-                                        onChange={(e) => setApplyToAll(e.target.checked)}
-                                        className="w-3.5 h-3.5 cursor-pointer accent-blue-500"
-                                    />
-                                    <span className="text-[10px] text-secondary group-hover:text-primary transition-colors">
-                                        {t("editor.applyToAll")}
-                                    </span>
-                                </label>
-                                <div className="w-[1px] h-4 bg-blue-900/50 mx-0.5"></div>
-                                <button
-                                    onClick={handleSubmitChanges}
-                                    disabled={!applyToAll && !selectionHasPending}
-                                    className="flex items-center gap-1.5 px-2 h-7 text-green-400 hover:bg-green-900/20 hover:text-green-300 rounded text-xs font-medium border border-transparent hover:border-green-900/50 transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-transparent disabled:cursor-not-allowed"
-                                    title={t("editor.submitChanges")}
-                                >
-                                    <Check size={14} />
-                                    <span>Submit</span>
-                                </button>
-                                <button
-                                    onClick={handleRollbackChanges}
-                                    disabled={!applyToAll && !selectionHasPending}
-                                    className="flex items-center gap-1.5 px-2 h-7 text-secondary hover:bg-surface-secondary hover:text-primary rounded text-xs font-medium border border-transparent hover:border-strong transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-transparent disabled:cursor-not-allowed"
-                                    title={t("editor.rollbackChanges")}
-                                >
-                                    <Undo2 size={14} />
-                                    <span>Rollback</span>
-                                </button>
-                                <span className="text-[10px] text-blue-400 bg-blue-900/20 border border-blue-900/30 px-2 py-0.5 rounded-full font-medium select-none ml-2">
-                                    {(Object.keys(activeTab.pendingChanges || {}).length) + (Object.keys(activeTab.pendingDeletions || {}).length)} pending
-                                </span>
-                            </div>
-                        )}
-
+                  <div className="p-1 px-2 bg-elevated border-b border-default flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setShowNewRowModal(true)}
+                        className="flex items-center justify-center w-7 h-7 text-secondary hover:text-green-400 hover:bg-surface-secondary rounded transition-colors"
+                        title={t("editor.newRow")}
+                      >
+                        <Plus size={16} />
+                      </button>
+                      <button
+                        onClick={handleDeleteRows}
+                        disabled={
+                          !activeTab.selectedRows ||
+                          activeTab.selectedRows.length === 0
+                        }
+                        className="flex items-center justify-center w-7 h-7 text-secondary hover:text-red-400 hover:bg-surface-secondary rounded transition-colors disabled:opacity-30"
+                        title={t("dataGrid.deleteRow")}
+                      >
+                        <Minus size={16} />
+                      </button>
                     </div>
+
+                    {/* Separator */}
+                    {hasPendingChanges && (
+                      <div className="w-[1px] h-4 bg-surface-secondary mx-1"></div>
+                    )}
+
+                    {hasPendingChanges && (
+                      <div className="flex items-center gap-1 ml-2 border border-blue-900 bg-blue-900/20 rounded px-1 py-0.5">
+                        <label className="flex items-center gap-1.5 px-2 py-1 cursor-pointer select-none group">
+                          <input
+                            type="checkbox"
+                            checked={applyToAll}
+                            onChange={(e) => setApplyToAll(e.target.checked)}
+                            className="w-3.5 h-3.5 cursor-pointer accent-blue-500"
+                          />
+                          <span className="text-[10px] text-secondary group-hover:text-primary transition-colors">
+                            {t("editor.applyToAll")}
+                          </span>
+                        </label>
+                        <div className="w-[1px] h-4 bg-blue-900/50 mx-0.5"></div>
+                        <button
+                          onClick={handleSubmitChanges}
+                          disabled={!applyToAll && !selectionHasPending}
+                          className="flex items-center gap-1.5 px-2 h-7 text-green-400 hover:bg-green-900/20 hover:text-green-300 rounded text-xs font-medium border border-transparent hover:border-green-900/50 transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-transparent disabled:cursor-not-allowed"
+                          title={t("editor.submitChanges")}
+                        >
+                          <Check size={14} />
+                          <span>Submit</span>
+                        </button>
+                        <button
+                          onClick={handleRollbackChanges}
+                          disabled={!applyToAll && !selectionHasPending}
+                          className="flex items-center gap-1.5 px-2 h-7 text-secondary hover:bg-surface-secondary hover:text-primary rounded text-xs font-medium border border-transparent hover:border-strong transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-transparent disabled:cursor-not-allowed"
+                          title={t("editor.rollbackChanges")}
+                        >
+                          <Undo2 size={14} />
+                          <span>Rollback</span>
+                        </button>
+                        <span className="text-[10px] text-blue-400 bg-blue-900/20 border border-blue-900/30 px-2 py-0.5 rounded-full font-medium select-none ml-2">
+                          {Object.keys(activeTab.pendingChanges || {}).length +
+                            Object.keys(activeTab.pendingDeletions || {})
+                              .length}{" "}
+                          pending
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 <div className="flex-1 min-h-0 overflow-hidden">
                   <DataGrid
-                    key={`${activeTab.id}-${activeTab.sortClause || 'none'}-${activeTab.filterClause || 'none'}-${activeTab.result.rows.length}`}
+                    key={`${activeTab.id}-${activeTab.sortClause || "none"}-${activeTab.filterClause || "none"}-${activeTab.result.rows.length}`}
                     columns={activeTab.result.columns}
                     data={activeTab.result.rows}
                     tableName={activeTab.activeTable}
@@ -1530,7 +1683,7 @@ export const Editor = () => {
                     selectedRows={new Set(activeTab.selectedRows || [])}
                     onSelectionChange={handleSelectionChange}
                     sortClause={activeTab.sortClause}
-                    onSort={activeTab.type === 'table' ? handleSort : undefined}
+                    onSort={activeTab.type === "table" ? handleSort : undefined}
                   />
                 </div>
               </div>
@@ -1586,8 +1739,8 @@ export const Editor = () => {
         isOpen={isAiModalOpen}
         onClose={() => setIsAiModalOpen(false)}
         onInsert={(q) => {
-            updateActiveTab({ query: q });
-            runQuery(q, 1);
+          updateActiveTab({ query: q });
+          runQuery(q, 1);
         }}
       />
       <AiExplainModal
@@ -1601,11 +1754,16 @@ export const Editor = () => {
           y={tabContextMenu.y}
           onClose={() => setTabContextMenu(null)}
           items={[
-            ...(tabs.find(t => t.id === tabContextMenu.tabId)?.type !== 'console' ? [{
-                label: t("editor.convertToConsole"),
-                icon: FileCode,
-                action: () => handleConvertToConsole(tabContextMenu.tabId),
-            }] : []),
+            ...(tabs.find((t) => t.id === tabContextMenu.tabId)?.type !==
+            "console"
+              ? [
+                  {
+                    label: t("editor.convertToConsole"),
+                    icon: FileCode,
+                    action: () => handleConvertToConsole(tabContextMenu.tabId),
+                  },
+                ]
+              : []),
             {
               label: t("editor.closeTab"),
               icon: X,
@@ -1635,22 +1793,25 @@ export const Editor = () => {
           ]}
         />
       )}
-      <ExportProgressModal 
-        isOpen={exportState.isOpen} 
+      <ExportProgressModal
+        isOpen={exportState.isOpen}
         status={exportState.status}
-        rowsProcessed={exportState.rowsProcessed} 
+        rowsProcessed={exportState.rowsProcessed}
         fileName={exportState.fileName}
         errorMessage={exportState.errorMessage}
-        onCancel={cancelExport} 
+        onCancel={cancelExport}
         onClose={closeExportModal}
       />
-      <QueryParamsModal 
+      <QueryParamsModal
         isOpen={queryParamsModal.isOpen}
-        onClose={() => setQueryParamsModal(prev => ({ ...prev, isOpen: false }))}
+        onClose={() =>
+          setQueryParamsModal((prev) => ({ ...prev, isOpen: false }))
+        }
         onSubmit={handleParamsSubmit}
         parameters={queryParamsModal.parameters}
         initialValues={
-             tabsRef.current.find(t => t.id === queryParamsModal.pendingTabId)?.queryParams || {}
+          tabsRef.current.find((t) => t.id === queryParamsModal.pendingTabId)
+            ?.queryParams || {}
         }
         mode={queryParamsModal.mode}
       />

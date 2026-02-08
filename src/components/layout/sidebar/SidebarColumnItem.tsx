@@ -14,6 +14,7 @@ interface SidebarColumnItemProps {
   driver: string;
   onRefresh: () => void;
   onEdit: (column: TableColumn) => void;
+  isView?: boolean;
 }
 
 export const SidebarColumnItem = ({
@@ -23,6 +24,7 @@ export const SidebarColumnItem = ({
   driver,
   onRefresh,
   onEdit,
+  isView = false,
 }: SidebarColumnItemProps) => {
   const { t } = useTranslation();
   const [contextMenu, setContextMenu] = useState<{
@@ -70,8 +72,8 @@ export const SidebarColumnItem = ({
     <>
       <div
         className="flex items-center gap-2 px-3 py-1 text-xs text-secondary hover:bg-surface-secondary hover:text-primary cursor-pointer group font-mono"
-        onContextMenu={handleContextMenu}
-        onDoubleClick={() => onEdit(column)}
+        onContextMenu={!isView ? handleContextMenu : undefined}
+        onDoubleClick={!isView ? () => onEdit(column) : undefined}
       >
         {column.is_pk ? (
           <Key size={12} className="text-yellow-500 shrink-0" />
@@ -90,7 +92,7 @@ export const SidebarColumnItem = ({
           {column.data_type}
         </span>
       </div>
-      {contextMenu && (
+      {contextMenu && !isView && (
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}

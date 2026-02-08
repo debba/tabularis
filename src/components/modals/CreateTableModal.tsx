@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { X, Plus, Trash2, Save, Code, Loader2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useDatabase } from '../../hooks/useDatabase';
-import { SqlPreview } from './SqlPreview';
+import { SqlPreview } from '../ui/SqlPreview';
 
 // Common types across DBs (simplified for MVP)
 const COMMON_TYPES = [

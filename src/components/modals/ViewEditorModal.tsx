@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { X, Loader2, Eye, AlertCircle, Play } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { message, ask } from "@tauri-apps/plugin-dialog";
+import { SqlEditorWrapper } from "../ui/SqlEditorWrapper";
 
 interface ViewEditorModalProps {
   isOpen: boolean;
@@ -210,18 +211,20 @@ export const ViewEditorModal = ({
 
           {/* View Definition */}
           <div>
-            <label htmlFor="view-definition" className="text-xs uppercase font-bold text-muted mb-1 block">
+            <label className="text-xs uppercase font-bold text-muted mb-1 block">
               {t("views.viewDefinition")}
             </label>
-            <textarea
-              id="view-definition"
-              value={definition}
-              onChange={(e) => setDefinition(e.target.value)}
-              disabled={loading}
-              className="w-full px-3 py-2 bg-base border border-strong rounded-lg text-primary focus:border-blue-500 focus:outline-none font-mono text-sm resize-none h-32"
-              placeholder={t("views.definitionPlaceholder")}
-              spellCheck={false}
-            />
+            <div className="border border-strong rounded-lg overflow-hidden h-48">
+              <SqlEditorWrapper
+                initialValue={definition}
+                onChange={setDefinition}
+                onRun={handlePreview}
+                height="100%"
+                options={{
+                  readOnly: loading,
+                }}
+              />
+            </div>
           </div>
 
           {/* Preview Section */}

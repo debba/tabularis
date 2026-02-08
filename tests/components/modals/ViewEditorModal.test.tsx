@@ -37,6 +37,17 @@ vi.mock("lucide-react", () => ({
   Play: () => <div data-testid="icon-play" />,
 }));
 
+// Mock SqlEditorWrapper
+vi.mock("../../../src/components/ui/SqlEditorWrapper", () => ({
+  SqlEditorWrapper: ({ initialValue, onChange }: { initialValue: string; onChange: (val: string) => void }) => (
+    <textarea
+      aria-label="views.viewDefinition"
+      value={initialValue}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  ),
+}));
+
 describe("ViewEditorModal", () => {
   const defaultProps = {
     isOpen: true,

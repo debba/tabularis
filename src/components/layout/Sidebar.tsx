@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { quoteIdentifier } from "../../utils/identifiers";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Database,
@@ -31,13 +32,13 @@ import { useTheme } from "../../hooks/useTheme";
 import { useSavedQueries } from "../../hooks/useSavedQueries";
 import type { SavedQuery } from "../../contexts/SavedQueriesContext";
 import { ContextMenu } from "../ui/ContextMenu";
-import { SchemaModal } from "../ui/SchemaModal";
-import { CreateTableModal } from "../ui/CreateTableModal";
-import { QueryModal } from "../ui/QueryModal";
-import { ModifyColumnModal } from "../ui/ModifyColumnModal";
-import { CreateIndexModal } from "../ui/CreateIndexModal";
-import { CreateForeignKeyModal } from "../ui/CreateForeignKeyModal";
-import { GenerateSQLModal } from "../ui/GenerateSQLModal";
+import { SchemaModal } from "../modals/SchemaModal";
+import { CreateTableModal } from "../modals/CreateTableModal";
+import { QueryModal } from "../modals/QueryModal";
+import { ModifyColumnModal } from "../modals/ModifyColumnModal";
+import { CreateIndexModal } from "../modals/CreateIndexModal";
+import { CreateForeignKeyModal } from "../modals/CreateForeignKeyModal";
+import { GenerateSQLModal } from "../modals/GenerateSQLModal";
 import { McpModal } from "../modals/McpModal";
 import { DumpDatabaseModal } from "../modals/DumpDatabaseModal";
 import { ImportDatabaseModal } from "../modals/ImportDatabaseModal";
@@ -127,9 +128,6 @@ export const Sidebar = () => {
   // Resize Hook
   const { sidebarWidth, startResize } = useSidebarResize();
 
-  const getQuote = () =>
-    activeDriver === "mysql" || activeDriver === "mariadb" ? "`" : '"';
-
   const runQuery = (sql: string, queryName?: string, tableName?: string) => {
     navigate("/editor", {
       state: { initialQuery: sql, queryName, tableName },
@@ -141,10 +139,10 @@ export const Sidebar = () => {
   };
 
   const handleOpenTable = (tableName: string) => {
-    const q = getQuote();
+    const quotedTable = quoteIdentifier(tableName, activeDriver);
     navigate("/editor", {
       state: {
-        initialQuery: `SELECT * FROM ${q}${tableName}${q}`,
+        initialQuery: `SELECT * FROM ${quotedTable}`,
         tableName: tableName,
       },
     });
@@ -155,10 +153,10 @@ export const Sidebar = () => {
   };
 
   const handleOpenView = (viewName: string) => {
-    const q = getQuote();
+    const quotedView = quoteIdentifier(viewName, activeDriver);
     navigate("/editor", {
       state: {
-        initialQuery: `SELECT * FROM ${q}${viewName}${q}`,
+        initialQuery: `SELECT * FROM ${quotedView}`,
         tableName: viewName,
       },
     });
@@ -177,9 +175,7 @@ export const Sidebar = () => {
 
   const handleImportDatabase = async () => {
     const file = await open({
-      filters: [
-        { name: "SQL / Zip File", extensions: ["sql", "zip"] },
-      ],
+      filters: [{ name: "SQL / Zip File", extensions: ["sql", "zip"] }],
     });
     if (file && typeof file === "string") {
       const confirmed = await ask(
@@ -275,7 +271,9 @@ export const Sidebar = () => {
                 {sidebarWidth < 200 ? (
                   <div className="relative">
                     <button
-                      onClick={() => setIsActionsDropdownOpen(!isActionsDropdownOpen)}
+                      onClick={() =>
+                        setIsActionsDropdownOpen(!isActionsDropdownOpen)
+                      }
                       className="text-muted hover:text-secondary transition-colors p-1 hover:bg-surface-secondary rounded"
                       title={t("sidebar.actions")}
                     >
@@ -297,7 +295,10 @@ export const Sidebar = () => {
                             }}
                             className="w-full flex items-center gap-3 px-3 py-2 text-sm text-secondary hover:bg-surface-secondary hover:text-primary transition-colors text-left whitespace-nowrap"
                           >
-                            <Upload size={16} className="text-green-400 shrink-0" />
+                            <Upload
+                              size={16}
+                              className="text-green-400 shrink-0"
+                            />
                             <span>{t("dump.importDatabase")}</span>
                           </button>
                           <button
@@ -307,7 +308,10 @@ export const Sidebar = () => {
                             }}
                             className="w-full flex items-center gap-3 px-3 py-2 text-sm text-secondary hover:bg-surface-secondary hover:text-primary transition-colors text-left whitespace-nowrap"
                           >
-                            <Download size={16} className="text-blue-400 shrink-0" />
+                            <Download
+                              size={16}
+                              className="text-blue-400 shrink-0"
+                            />
                             <span>{t("dump.dumpDatabase")}</span>
                           </button>
                           <button
@@ -315,17 +319,24 @@ export const Sidebar = () => {
                               try {
                                 await invoke("open_er_diagram_window", {
                                   connectionId: activeConnectionId || "",
-                                  connectionName: activeConnectionName || "Unknown",
+                                  connectionName:
+                                    activeConnectionName || "Unknown",
                                   databaseName: activeDatabaseName || "Unknown",
                                 });
                               } catch (e) {
-                                console.error("Failed to open ER Diagram window:", e);
+                                console.error(
+                                  "Failed to open ER Diagram window:",
+                                  e,
+                                );
                               }
                               setIsActionsDropdownOpen(false);
                             }}
                             className="w-full flex items-center gap-3 px-3 py-2 text-sm text-secondary hover:bg-surface-secondary hover:text-primary transition-colors text-left whitespace-nowrap"
                           >
-                            <Network size={16} className="rotate-90 text-orange-400 shrink-0" />
+                            <Network
+                              size={16}
+                              className="rotate-90 text-orange-400 shrink-0"
+                            />
                             <span>View Schema Diagram</span>
                           </button>
                         </div>
@@ -555,29 +566,32 @@ export const Sidebar = () => {
                     onToggle={() => setViewsOpen(!viewsOpen)}
                     actions={
                       <div className="flex items-center gap-1">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (refreshViews) refreshViews();
-                      }}
-                      className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
-                      title={t("sidebar.refreshViews") || "Refresh Views"}
-                    >
-                      <RefreshCw size={14} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setViewEditorModal({ isOpen: true, isNewView: true });
-                      }}
-                      className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
-                      title={t("sidebar.createView") || "Create New View"}
-                    >
-                      <Plus size={14} />
-                    </button>
-                  </div>
-                }
-              >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (refreshViews) refreshViews();
+                          }}
+                          className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
+                          title={t("sidebar.refreshViews") || "Refresh Views"}
+                        >
+                          <RefreshCw size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setViewEditorModal({
+                              isOpen: true,
+                              isNewView: true,
+                            });
+                          }}
+                          className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
+                          title={t("sidebar.createView") || "Create New View"}
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                    }
+                  >
                     {views.length === 0 ? (
                       <div className="text-center p-2 text-xs text-muted italic">
                         {t("sidebar.noViews")}
@@ -637,9 +651,9 @@ export const Sidebar = () => {
                     label: t("sidebar.showData"),
                     icon: PlaySquare,
                     action: () => {
-                      const q = getQuote();
+                      const quotedTable = quoteIdentifier(contextMenu.id, activeDriver);
                       runQuery(
-                        `SELECT * FROM ${q}${contextMenu.id}${q}`,
+                        `SELECT * FROM ${quotedTable}`,
                         undefined,
                         contextMenu.id,
                       );
@@ -649,10 +663,10 @@ export const Sidebar = () => {
                     label: t("sidebar.countRows"),
                     icon: Hash,
                     action: () => {
-                      const q = getQuote();
+                      const quotedTable = quoteIdentifier(contextMenu.id, activeDriver);
                       // Don't pass tableName for aggregate queries - let extractTableName handle it
                       runQuery(
-                        `SELECT COUNT(*) as count FROM ${q}${contextMenu.id}${q}`,
+                        `SELECT COUNT(*) as count FROM ${quotedTable}`,
                       );
                     },
                   },
@@ -686,7 +700,7 @@ export const Sidebar = () => {
                     icon: Trash2,
                     danger: true,
                     action: async () => {
-                      const q = getQuote();
+                      const quotedTable = quoteIdentifier(contextMenu.id, activeDriver);
                       if (
                         await ask(
                           t("sidebar.deleteTableConfirm", {
@@ -698,14 +712,17 @@ export const Sidebar = () => {
                         try {
                           await invoke("execute_query", {
                             connectionId: activeConnectionId,
-                            query: `DROP TABLE ${q}${contextMenu.id}${q}`,
+                            query: `DROP TABLE ${quotedTable}`,
                           });
                           if (refreshTables) refreshTables();
                         } catch (e) {
                           console.error(e);
-                          await message(t("sidebar.failDeleteTable") + String(e), {
-                            kind: "error",
-                          });
+                          await message(
+                            t("sidebar.failDeleteTable") + String(e),
+                            {
+                              kind: "error",
+                            },
+                          );
                         }
                       }
                     },
@@ -834,7 +851,7 @@ export const Sidebar = () => {
                           },
                         },
                       ]
-                      : contextMenu.type === "folder_fks"
+                    : contextMenu.type === "folder_fks"
                       ? [
                           {
                             label: t("sidebar.addFk"),
@@ -853,152 +870,132 @@ export const Sidebar = () => {
                           },
                         ]
                       : contextMenu.type === "view"
-                      ? [
-                          {
-                            label: t("sidebar.showData"),
-                            icon: PlaySquare,
-                            action: () => {
-                              const q = getQuote();
-                              runQuery(
-                                `SELECT * FROM ${q}${contextMenu.id}${q}`,
-                                undefined,
-                                contextMenu.id,
-                              );
-                            },
-                          },
-                          {
-                            label: t("sidebar.countRows"),
-                            icon: Hash,
-                            action: () => {
-                              const q = getQuote();
-                              runQuery(
-                                `SELECT COUNT(*) as count FROM ${q}${contextMenu.id}${q}`,
-                              );
-                            },
-                          },
-                          {
-                            label: t("sidebar.viewDefinition"),
-                            icon: FileText,
-                            action: async () => {
-                              try {
-                                const definition = await invoke<string>(
-                                  "get_view_definition",
-                                  {
-                                    connectionId: activeConnectionId,
-                                    viewName: contextMenu.id,
-                                  },
+                        ? [
+                            {
+                              label: t("sidebar.showData"),
+                              icon: PlaySquare,
+                              action: () => {
+                                const quotedView = quoteIdentifier(contextMenu.id, activeDriver);
+                                runQuery(
+                                  `SELECT * FROM ${quotedView}`,
+                                  undefined,
+                                  contextMenu.id,
                                 );
-                                runQuery(definition, undefined, contextMenu.id);
-                              } catch (e) {
-                                console.error(e);
-                                await message(
-                                  t("sidebar.failGetViewDefinition") + String(e),
-                                  {
-                                    kind: "error",
-                                  },
+                              },
+                            },
+                            {
+                              label: t("sidebar.countRows"),
+                              icon: Hash,
+                              action: () => {
+                                const quotedView = quoteIdentifier(contextMenu.id, activeDriver);
+                                runQuery(
+                                  `SELECT COUNT(*) as count FROM ${quotedView}`,
                                 );
-                              }
+                              },
                             },
-                          },
-                          {
-                            label: t("sidebar.editView"),
-                            icon: Edit,
-                            action: () => {
-                              setViewEditorModal({
-                                isOpen: true,
-                                viewName: contextMenu.id,
-                                isNewView: false,
-                              });
+                            {
+                              label: t("sidebar.editView"),
+                              icon: Edit,
+                              action: () => {
+                                setViewEditorModal({
+                                  isOpen: true,
+                                  viewName: contextMenu.id,
+                                  isNewView: false,
+                                });
+                              },
                             },
-                          },
-                          {
-                            label: t("sidebar.copyName"),
-                            icon: Copy,
-                            action: () => navigator.clipboard.writeText(contextMenu.id),
-                          },
-                          {
-                            label: t("sidebar.dropView"),
-                            icon: Trash2,
-                            danger: true,
-                            action: async () => {
-                              if (
-                                await ask(
-                                  t("sidebar.dropViewConfirm", {
-                                    view: contextMenu.id,
-                                  }),
-                                  { title: t("sidebar.dropView"), kind: "warning" },
-                                )
-                              ) {
-                                try {
-                                  await invoke("drop_view", {
-                                    connectionId: activeConnectionId,
-                                    viewName: contextMenu.id,
-                                  });
-                                  if (refreshViews) refreshViews();
-                                } catch (e) {
-                                  console.error(e);
-                                  await message(
-                                    t("sidebar.failDropView") + String(e),
+                            {
+                              label: t("sidebar.copyName"),
+                              icon: Copy,
+                              action: () =>
+                                navigator.clipboard.writeText(contextMenu.id),
+                            },
+                            {
+                              label: t("sidebar.dropView"),
+                              icon: Trash2,
+                              danger: true,
+                              action: async () => {
+                                if (
+                                  await ask(
+                                    t("sidebar.dropViewConfirm", {
+                                      view: contextMenu.id,
+                                    }),
                                     {
-                                      kind: "error",
+                                      title: t("sidebar.dropView"),
+                                      kind: "warning",
                                     },
+                                  )
+                                ) {
+                                  try {
+                                    await invoke("drop_view", {
+                                      connectionId: activeConnectionId,
+                                      viewName: contextMenu.id,
+                                    });
+                                    if (refreshViews) refreshViews();
+                                  } catch (e) {
+                                    console.error(e);
+                                    await message(
+                                      t("sidebar.failDropView") + String(e),
+                                      {
+                                        kind: "error",
+                                      },
+                                    );
+                                  }
+                                }
+                              },
+                            },
+                          ]
+                        : [
+                            // Saved Query Actions (Default fallback)
+                            {
+                              label: t("sidebar.execute"),
+                              icon: Play,
+                              action: () => {
+                                if (
+                                  contextMenu.data &&
+                                  "sql" in contextMenu.data
+                                ) {
+                                  runQuery(
+                                    contextMenu.data.sql,
+                                    contextMenu.data.name,
                                   );
                                 }
-                              }
+                              },
                             },
-                          },
-                        ]
-                      : [
-                          // Saved Query Actions (Default fallback)
-                          {
-                            label: t("sidebar.execute"),
-                            icon: Play,
-                            action: () => {
-                              if (
-                                contextMenu.data &&
-                                "sql" in contextMenu.data
-                              ) {
-                                runQuery(
-                                  contextMenu.data.sql,
-                                  contextMenu.data.name,
+                            {
+                              label: t("sidebar.edit"),
+                              icon: Edit,
+                              action: () => {
+                                if (
+                                  contextMenu.data &&
+                                  "sql" in contextMenu.data
+                                ) {
+                                  setQueryModal({
+                                    isOpen: true,
+                                    query: contextMenu.data as SavedQuery,
+                                  });
+                                }
+                              },
+                            },
+                            {
+                              label: t("sidebar.delete"),
+                              icon: Trash2,
+                              action: async () => {
+                                const confirmed = await ask(
+                                  t("sidebar.confirmDeleteQuery", {
+                                    name: contextMenu.label,
+                                  }),
+                                  {
+                                    title: t("sidebar.confirmDeleteTitle"),
+                                    kind: "warning",
+                                  },
                                 );
-                              }
+                                if (confirmed) {
+                                  deleteQuery(contextMenu.id);
+                                }
+                              },
                             },
-                          },
-                          {
-                            label: t("sidebar.edit"),
-                            icon: Edit,
-                            action: () => {
-                              if (
-                                contextMenu.data &&
-                                "sql" in contextMenu.data
-                              ) {
-                                setQueryModal({
-                                  isOpen: true,
-                                  query: contextMenu.data as SavedQuery,
-                                });
-                              }
-                            },
-                          },
-                          {
-                            label: t("sidebar.delete"),
-                            icon: Trash2,
-                            action: async () => {
-                              const confirmed = await ask(
-                                t("sidebar.confirmDeleteQuery", {
-                                  name: contextMenu.label,
-                                }),
-                                {
-                                  title: t("sidebar.confirmDeleteTitle"),
-                                  kind: "warning",
-                                },
-                              );
-                              if (confirmed) {
-                                deleteQuery(contextMenu.id);
-                              }
-                            },
-                          },
-                        ]
+                          ]
           }
         />
       )}

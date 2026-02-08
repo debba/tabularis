@@ -5,6 +5,11 @@ use crate::models::{
 use crate::pool_manager::get_postgres_pool;
 use sqlx::{Column, Row};
 
+// Helper function to escape double quotes in identifiers for PostgreSQL
+fn escape_identifier(name: &str) -> String {
+    name.replace('"', "\"\"")
+}
+
 
 pub async fn get_databases(params: &ConnectionParams) -> Result<Vec<String>, String> {
     let pool = get_postgres_pool(params).await?;
@@ -631,9 +636,10 @@ pub async fn create_view(
     definition: &str,
 ) -> Result<(), String> {
     let pool = get_postgres_pool(params).await?;
+    let escaped_name = escape_identifier(view_name);
     let query = format!(
         "CREATE VIEW \"{}\" AS {}",
-        view_name, definition
+        escaped_name, definition
     );
     sqlx::query(&query)
         .execute(&pool)
@@ -648,9 +654,10 @@ pub async fn alter_view(
     definition: &str,
 ) -> Result<(), String> {
     let pool = get_postgres_pool(params).await?;
+    let escaped_name = escape_identifier(view_name);
     let query = format!(
         "CREATE OR REPLACE VIEW \"{}\" AS {}",
-        view_name, definition
+        escaped_name, definition
     );
     sqlx::query(&query)
         .execute(&pool)
@@ -664,7 +671,8 @@ pub async fn drop_view(
     view_name: &str,
 ) -> Result<(), String> {
     let pool = get_postgres_pool(params).await?;
-    let query = format!("DROP VIEW IF EXISTS \"{}\"", view_name);
+    let escaped_name = escape_identifier(view_name);
+    let query = format!("DROP VIEW IF EXISTS \"{}\"", escaped_name);
     sqlx::query(&query)
         .execute(&pool)
         .await

@@ -1,4 +1,5 @@
 import type { Tab, SchemaCache, TableSchema } from '../types/editor';
+import { quoteIdentifier } from './identifiers';
 
 export interface TabsStorage {
   tabs: Tab[];
@@ -268,17 +269,19 @@ export function createSchemaCacheEntry(
 /**
  * Reconstruct a SELECT query for a table tab with filters, sort, and limit
  * @param tab - Tab containing table state
+ * @param driver - Database driver for proper identifier quoting
  * @returns Reconstructed SQL query
  */
-export function reconstructTableQuery(tab: Tab): string {
+export function reconstructTableQuery(tab: Tab, driver?: string): string {
   if (!tab.activeTable) {
     return tab.query;
   }
 
   const filter = tab.filterClause ? `WHERE ${tab.filterClause}` : "";
   const sort = tab.sortClause ? `ORDER BY ${tab.sortClause}` : "";
+  const quotedTable = quoteIdentifier(tab.activeTable, driver);
 
-  let baseQuery = `SELECT * FROM ${tab.activeTable} ${filter} ${sort}`.trim();
+  let baseQuery = `SELECT * FROM ${quotedTable} ${filter} ${sort}`.trim();
 
   if (tab.limitClause && tab.limitClause > 0) {
     baseQuery = `${baseQuery} LIMIT ${tab.limitClause}`;

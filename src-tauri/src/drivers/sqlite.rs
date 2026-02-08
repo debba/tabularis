@@ -5,6 +5,11 @@ use crate::models::{
 use sqlx::{Column, Row};
 use crate::pool_manager::get_sqlite_pool;
 
+// Helper function to escape double quotes in identifiers for SQLite
+fn escape_identifier(name: &str) -> String {
+    name.replace('"', "\"\"")
+}
+
 pub async fn get_databases(_params: &ConnectionParams) -> Result<Vec<String>, String> {
     // SQLite doesn't support multiple databases in the same connection
     Ok(vec![])
@@ -525,9 +530,10 @@ pub async fn create_view(
     definition: &str,
 ) -> Result<(), String> {
     let pool = get_sqlite_pool(params).await?;
+    let escaped_name = escape_identifier(view_name);
     let query = format!(
         "CREATE VIEW \"{}\" AS {}",
-        view_name, definition
+        escaped_name, definition
     );
     sqlx::query(&query)
         .execute(&pool)
@@ -543,7 +549,8 @@ pub async fn alter_view(
 ) -> Result<(), String> {
     let pool = get_sqlite_pool(params).await?;
     // SQLite does not support ALTER VIEW, so we must drop and recreate
-    let drop_query = format!("DROP VIEW IF EXISTS \"{}\"", view_name);
+    let escaped_name = escape_identifier(view_name);
+    let drop_query = format!("DROP VIEW IF EXISTS \"{}\"", escaped_name);
     sqlx::query(&drop_query)
         .execute(&pool)
         .await
@@ -551,12 +558,13 @@ pub async fn alter_view(
 
     let create_query = format!(
         "CREATE VIEW \"{}\" AS {}",
-        view_name, definition
+        escaped_name, definition
     );
     sqlx::query(&create_query)
         .execute(&pool)
         .await
-        .map_err(|e| format!("Failed to recreate view: {}", e))?;
+        .map_err(|e| format!("Failed to create view: {}", e))?;
+
     Ok(())
 }
 
@@ -565,7 +573,8 @@ pub async fn drop_view(
     view_name: &str,
 ) -> Result<(), String> {
     let pool = get_sqlite_pool(params).await?;
-    let query = format!("DROP VIEW IF EXISTS \"{}\"", view_name);
+    let escaped_name = escape_identifier(view_name);
+    let query = format!("DROP VIEW IF EXISTS \"{}\"", escaped_name);
     sqlx::query(&query)
         .execute(&pool)
         .await

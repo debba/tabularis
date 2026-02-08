@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { X, Loader2, Plus } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useDatabase } from "../../hooks/useDatabase";
+import { quoteIdentifier } from "../../utils/identifiers";
 
 interface TableColumn {
   name: string;
@@ -53,10 +54,9 @@ export const NewRowModal = ({
     setLoadingFk((prev) => ({ ...prev, [fk.column_name]: true }));
     setFkErrors((prev) => ({ ...prev, [fk.column_name]: "" }));
     try {
-      const q =
-        activeDriver === "mysql" || activeDriver === "mariadb" ? "`" : '"';
+      const quotedTable = quoteIdentifier(fk.ref_table, activeDriver);
       // Select * from referenced table to get context
-      const query = `SELECT * FROM ${q}${fk.ref_table}${q} LIMIT 100`;
+      const query = `SELECT * FROM ${quotedTable} LIMIT 100`;
 
       const result = await invoke<{ columns: string[], rows: unknown[][] }>("execute_query", {
         connectionId: activeConnectionId,

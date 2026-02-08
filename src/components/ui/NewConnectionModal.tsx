@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import clsx from "clsx";
-import { SshConnectionsModal } from "./SshConnectionsModal";
+import { SshConnectionsModal } from "../modals/SshConnectionsModal";
 import { SearchableSelect } from "./SearchableSelect";
 import { loadSshConnections, type SshConnection } from "../../utils/ssh";
 
