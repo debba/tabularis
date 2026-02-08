@@ -107,6 +107,7 @@ pub fn resolve_connection_params(params: &ConnectionParams) -> Result<Connection
     {
         let tunnels = get_tunnels().lock().unwrap();
         if let Some(tunnel) = tunnels.get(&map_key) {
+            log::debug!("Reusing existing SSH tunnel on port {}", tunnel.local_port);
             let mut new_params = params.clone();
             new_params.host = Some("127.0.0.1".to_string());
             new_params.port = Some(tunnel.local_port);
@@ -115,6 +116,7 @@ pub fn resolve_connection_params(params: &ConnectionParams) -> Result<Connection
     }
 
     // Create new tunnel
+    log::info!("Creating new SSH tunnel for {}@{}:{}", ssh_user, ssh_host, ssh_port);
     let tunnel = SshTunnel::new(
         ssh_host,
         ssh_port,
@@ -131,6 +133,7 @@ pub fn resolve_connection_params(params: &ConnectionParams) -> Result<Connection
     })?;
 
     let local_port = tunnel.local_port;
+    log::info!("SSH tunnel created successfully on port {}", local_port);
 
     {
         let mut tunnels = get_tunnels().lock().unwrap();
@@ -141,6 +144,16 @@ pub fn resolve_connection_params(params: &ConnectionParams) -> Result<Connection
     new_params.host = Some("127.0.0.1".to_string());
     new_params.port = Some(local_port);
     Ok(new_params)
+}
+
+/// Resolve connection params and set connection_id for stable pooling
+pub fn resolve_connection_params_with_id(
+    params: &ConnectionParams,
+    connection_id: &str,
+) -> Result<ConnectionParams, String> {
+    let mut resolved = resolve_connection_params(params)?;
+    resolved.connection_id = Some(connection_id.to_string());
+    Ok(resolved)
 }
 
 pub fn get_config_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
@@ -211,7 +224,7 @@ pub async fn get_routines<R: Runtime>(
 
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_routines(&params).await,
@@ -231,7 +244,7 @@ pub async fn get_routine_parameters<R: Runtime>(
 
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_routine_parameters(&params, &routine_name).await,
@@ -252,7 +265,7 @@ pub async fn get_routine_definition<R: Runtime>(
 
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_routine_definition(&params, &routine_name, &routine_type).await,
@@ -269,7 +282,7 @@ pub async fn get_schema_snapshot<R: Runtime>(
 ) -> Result<Vec<crate::models::TableSchema>, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     let driver = saved_conn.params.driver.clone();
 
     // 1. Get Tables
@@ -963,7 +976,11 @@ pub async fn test_connection<R: Runtime>(
             });
     }
 
-    let resolved_params = resolve_connection_params(&expanded_params)?;
+    let resolved_params = if let Some(conn_id) = &request.connection_id {
+        resolve_connection_params_with_id(&expanded_params, conn_id)?
+    } else {
+        resolve_connection_params(&expanded_params)?
+    };
     log::debug!(
         "Test connection params: Host={:?}, Port={:?}",
         resolved_params.host, resolved_params.port
@@ -1003,6 +1020,7 @@ mod tests {
             ssh_key_file: None,
             ssh_key_passphrase: None,
             save_in_keychain: None,
+            connection_id: None,
         }
     }
 
@@ -1080,6 +1098,7 @@ mod tests {
                 ssh_key_file: None,
                 ssh_key_passphrase: None,
                 save_in_keychain: None,
+                connection_id: None,
             }
         }
 
@@ -1356,6 +1375,7 @@ mod tests {
                 ssh_key_file: Some("/home/user/.ssh/id_rsa".to_string()),
                 ssh_key_passphrase: None,
                 save_in_keychain: None,
+                connection_id: None,
             }
         }
 
@@ -1464,7 +1484,11 @@ pub async fn list_databases<R: Runtime>(
             });
     }
 
-    let resolved_params = resolve_connection_params(&expanded_params)?;
+    let resolved_params = if let Some(conn_id) = &request.connection_id {
+        resolve_connection_params_with_id(&expanded_params, conn_id)?
+    } else {
+        resolve_connection_params(&expanded_params)?
+    };
 
     println!(
         "[List Databases] Resolved Params: Host={:?}, Port={:?}, Username={:?}, Password={:?}",
@@ -1523,7 +1547,7 @@ pub async fn get_tables<R: Runtime>(
     
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     
     log::debug!("Getting tables from {} database: {}", saved_conn.params.driver, params.database);
     
@@ -1550,7 +1574,7 @@ pub async fn get_columns<R: Runtime>(
 ) -> Result<Vec<TableColumn>, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_columns(&params, &table_name).await,
         "postgres" => postgres::get_columns(&params, &table_name).await,
@@ -1567,7 +1591,7 @@ pub async fn get_foreign_keys<R: Runtime>(
 ) -> Result<Vec<ForeignKey>, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_foreign_keys(&params, &table_name).await,
         "postgres" => postgres::get_foreign_keys(&params, &table_name).await,
@@ -1584,7 +1608,7 @@ pub async fn get_indexes<R: Runtime>(
 ) -> Result<Vec<Index>, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_indexes(&params, &table_name).await,
         "postgres" => postgres::get_indexes(&params, &table_name).await,
@@ -1603,7 +1627,7 @@ pub async fn delete_record<R: Runtime>(
 ) -> Result<u64, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::delete_record(&params, &table, &pk_col, pk_val).await,
         "postgres" => postgres::delete_record(&params, &table, &pk_col, pk_val).await,
@@ -1624,7 +1648,7 @@ pub async fn update_record<R: Runtime>(
 ) -> Result<u64, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val).await,
         "postgres" => {
@@ -1646,7 +1670,7 @@ pub async fn insert_record<R: Runtime>(
 ) -> Result<u64, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::insert_record(&params, &table, data).await,
         "postgres" => postgres::insert_record(&params, &table, data).await,
@@ -1685,7 +1709,7 @@ pub async fn execute_query<R: Runtime>(
 
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
     // 2. Spawn Cancellable Task
     let task = tokio::spawn(async move {
@@ -1946,7 +1970,7 @@ pub async fn get_views<R: Runtime>(
 
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
     log::debug!("Getting views from {} database: {}", saved_conn.params.driver, params.database);
 
@@ -1975,7 +1999,7 @@ pub async fn get_view_definition<R: Runtime>(
 
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_view_definition(&params, &view_name).await,
@@ -2003,7 +2027,7 @@ pub async fn create_view<R: Runtime>(
 
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::create_view(&params, &view_name, &definition).await,
@@ -2031,7 +2055,7 @@ pub async fn alter_view<R: Runtime>(
 
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::alter_view(&params, &view_name, &definition).await,
@@ -2058,7 +2082,7 @@ pub async fn drop_view<R: Runtime>(
 
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::drop_view(&params, &view_name).await,
@@ -2085,7 +2109,7 @@ pub async fn get_view_columns<R: Runtime>(
 
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
-    let params = resolve_connection_params(&expanded_params)?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_view_columns(&params, &view_name).await,

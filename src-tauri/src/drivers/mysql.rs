@@ -38,7 +38,11 @@ pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, Str
             name: r.try_get("name").unwrap_or_default(),
         })
         .collect();
-    log::debug!("MySQL: Found {} tables in {}", tables.len(), params.database);
+    log::debug!(
+        "MySQL: Found {} tables in {}",
+        tables.len(),
+        params.database
+    );
     Ok(tables)
 }
 
@@ -156,7 +160,10 @@ pub async fn get_all_columns_batch(
             is_auto_increment: extra.contains("auto_increment"),
         };
 
-        result.entry(table_name).or_insert_with(Vec::new).push(column);
+        result
+            .entry(table_name)
+            .or_insert_with(Vec::new)
+            .push(column);
     }
 
     Ok(result)
@@ -265,20 +272,11 @@ pub async fn delete_record(
     let result = match pk_val {
         serde_json::Value::Number(n) => {
             if n.is_i64() {
-                sqlx::query(&query)
-                    .bind(n.as_i64())
-                    .execute(&pool)
-                    .await
+                sqlx::query(&query).bind(n.as_i64()).execute(&pool).await
             } else if n.is_f64() {
-                sqlx::query(&query)
-                    .bind(n.as_f64())
-                    .execute(&pool)
-                    .await
+                sqlx::query(&query).bind(n.as_f64()).execute(&pool).await
             } else {
-                sqlx::query(&query)
-                    .bind(n.to_string())
-                    .execute(&pool)
-                    .await
+                sqlx::query(&query).bind(n.to_string()).execute(&pool).await
             }
         }
         serde_json::Value::String(s) => sqlx::query(&query).bind(s).execute(&pool).await,
@@ -415,245 +413,241 @@ fn remove_order_by(query: &str) -> String {
     }
 }
 
-    pub async fn get_table_ddl(
-        params: &ConnectionParams,
-        table_name: &str,
-    ) -> Result<String, String> {
-        let pool = get_mysql_pool(params).await?;
-        let query = format!("SHOW CREATE TABLE `{}`", table_name);
-        let row = sqlx::query(&query)
-            .fetch_one(&pool)
-            .await
-            .map_err(|e| e.to_string())?;
+pub async fn get_table_ddl(params: &ConnectionParams, table_name: &str) -> Result<String, String> {
+    let pool = get_mysql_pool(params).await?;
+    let query = format!("SHOW CREATE TABLE `{}`", table_name);
+    let row = sqlx::query(&query)
+        .fetch_one(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
-        let create_sql: String = row.try_get(1).unwrap_or_default();
-        Ok(format!("{};", create_sql))
-    }
+    let create_sql: String = row.try_get(1).unwrap_or_default();
+    Ok(format!("{};", create_sql))
+}
 
-    pub async fn get_views(params: &ConnectionParams) -> Result<Vec<ViewInfo>, String> {
-        log::debug!("MySQL: Fetching views for database: {}", params.database);
-        let pool = get_mysql_pool(params).await?;
-        let rows = sqlx::query(
+pub async fn get_views(params: &ConnectionParams) -> Result<Vec<ViewInfo>, String> {
+    log::debug!("MySQL: Fetching views for database: {}", params.database);
+    let pool = get_mysql_pool(params).await?;
+    let rows = sqlx::query(
             "SELECT table_name as name FROM information_schema.views WHERE table_schema = DATABASE() ORDER BY table_name ASC",
         )
         .fetch_all(&pool)
         .await
         .map_err(|e| e.to_string())?;
-        let views: Vec<ViewInfo> = rows
-            .iter()
-            .map(|r| ViewInfo {
-                name: r.try_get("name").unwrap_or_default(),
-                definition: None,
-            })
-            .collect();
-        log::debug!("MySQL: Found {} views in {}", views.len(), params.database);
-        Ok(views)
-    }
+    let views: Vec<ViewInfo> = rows
+        .iter()
+        .map(|r| ViewInfo {
+            name: r.try_get("name").unwrap_or_default(),
+            definition: None,
+        })
+        .collect();
+    log::debug!("MySQL: Found {} views in {}", views.len(), params.database);
+    Ok(views)
+}
 
-    pub async fn get_view_definition(
-        params: &ConnectionParams,
-        view_name: &str,
-    ) -> Result<String, String> {
-        let pool = get_mysql_pool(params).await?;
-        let escaped_name = escape_identifier(view_name);
-        let query = format!("SHOW CREATE VIEW `{}`", escaped_name);
-        let row = sqlx::query(&query)
-            .fetch_one(&pool)
-            .await
-            .map_err(|e| format!("Failed to get view definition: {}", e))?;
+pub async fn get_view_definition(
+    params: &ConnectionParams,
+    view_name: &str,
+) -> Result<String, String> {
+    let pool = get_mysql_pool(params).await?;
+    let escaped_name = escape_identifier(view_name);
+    let query = format!("SHOW CREATE VIEW `{}`", escaped_name);
+    let row = sqlx::query(&query)
+        .fetch_one(&pool)
+        .await
+        .map_err(|e| format!("Failed to get view definition: {}", e))?;
+    let definition: String = row.try_get(1).unwrap_or_default();
 
-        let definition: String = row.try_get("Create View").unwrap_or_default();
-        Ok(definition)
-    }
+    Ok(definition)
+}
 
-    pub async fn create_view(
-        params: &ConnectionParams,
-        view_name: &str,
-        definition: &str,
-    ) -> Result<(), String> {
-        let pool = get_mysql_pool(params).await?;
-        let escaped_name = escape_identifier(view_name);
-        let query = format!(
-            "CREATE VIEW `{}` AS {}",
-            escaped_name, definition
-        );
-        sqlx::query(&query)
-            .execute(&pool)
-            .await
-            .map_err(|e| format!("Failed to create view: {}", e))?;
-        Ok(())
-    }
+pub async fn create_view(
+    params: &ConnectionParams,
+    view_name: &str,
+    definition: &str,
+) -> Result<(), String> {
+    let pool = get_mysql_pool(params).await?;
+    let escaped_name = escape_identifier(view_name);
+    let query = format!("CREATE VIEW `{}` AS {}", escaped_name, definition);
+    sqlx::query(&query)
+        .execute(&pool)
+        .await
+        .map_err(|e| format!("Failed to create view: {}", e))?;
+    Ok(())
+}
 
-    pub async fn alter_view(
-        params: &ConnectionParams,
-        view_name: &str,
-        definition: &str,
-    ) -> Result<(), String> {
-        let pool = get_mysql_pool(params).await?;
-        let escaped_name = escape_identifier(view_name);
-        let query = format!(
-            "ALTER VIEW `{}` AS {}",
-            escaped_name, definition
-        );
-        sqlx::query(&query)
-            .execute(&pool)
-            .await
-            .map_err(|e| format!("Failed to alter view: {}", e))?;
-        Ok(())
-    }
+pub async fn alter_view(
+    params: &ConnectionParams,
+    view_name: &str,
+    definition: &str,
+) -> Result<(), String> {
+    let pool = get_mysql_pool(params).await?;
+    let escaped_name = escape_identifier(view_name);
+    let query = format!("ALTER VIEW `{}` AS {}", escaped_name, definition);
+    sqlx::query(&query)
+        .execute(&pool)
+        .await
+        .map_err(|e| format!("Failed to alter view: {}", e))?;
+    Ok(())
+}
 
-    pub async fn drop_view(
-        params: &ConnectionParams,
-        view_name: &str,
-    ) -> Result<(), String> {
-        let pool = get_mysql_pool(params).await?;
-        let escaped_name = escape_identifier(view_name);
-        let query = format!("DROP VIEW IF EXISTS `{}`", escaped_name);
-        sqlx::query(&query)
-            .execute(&pool)
-            .await
-            .map_err(|e| format!("Failed to drop view: {}", e))?;
-        Ok(())
-    }
+pub async fn drop_view(params: &ConnectionParams, view_name: &str) -> Result<(), String> {
+    let pool = get_mysql_pool(params).await?;
+    let escaped_name = escape_identifier(view_name);
+    let query = format!("DROP VIEW IF EXISTS `{}`", escaped_name);
+    sqlx::query(&query)
+        .execute(&pool)
+        .await
+        .map_err(|e| format!("Failed to drop view: {}", e))?;
+    Ok(())
+}
 
-    pub async fn get_view_columns(
-        params: &ConnectionParams,
-        view_name: &str,
-    ) -> Result<Vec<TableColumn>, String> {
-        // Views in MySQL can be queried like tables for column info
-        let pool = get_mysql_pool(params).await?;
+pub async fn get_view_columns(
+    params: &ConnectionParams,
+    view_name: &str,
+) -> Result<Vec<TableColumn>, String> {
+    // Views in MySQL can be queried like tables for column info
+    let pool = get_mysql_pool(params).await?;
 
-        let query = r#"
+    let query = r#"
             SELECT column_name, data_type, column_key, is_nullable, extra
             FROM information_schema.columns
             WHERE table_schema = DATABASE() AND table_name = ?
             ORDER BY ordinal_position
         "#;
 
-        let rows = sqlx::query(query)
-            .bind(view_name)
-            .fetch_all(&pool)
-            .await
-            .map_err(|e| e.to_string())?;
+    let rows = sqlx::query(query)
+        .bind(view_name)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
-        Ok(rows
-            .iter()
-            .map(|r| {
-                let key: String = r.try_get("column_key").unwrap_or_default();
-                let null_str: String = r.try_get("is_nullable").unwrap_or_default();
-                let extra: String = r.try_get("extra").unwrap_or_default();
-                TableColumn {
-                    name: r.try_get("column_name").unwrap_or_default(),
-                    data_type: r.try_get("data_type").unwrap_or_default(),
-                    is_pk: key == "PRI",
-                    is_nullable: null_str == "YES",
-                    is_auto_increment: extra.contains("auto_increment"),
-                }
-            })
-            .collect())
-    }
+    Ok(rows
+        .iter()
+        .map(|r| {
+            let key: String = r.try_get("column_key").unwrap_or_default();
+            let null_str: String = r.try_get("is_nullable").unwrap_or_default();
+            let extra: String = r.try_get("extra").unwrap_or_default();
+            TableColumn {
+                name: r.try_get("column_name").unwrap_or_default(),
+                data_type: r.try_get("data_type").unwrap_or_default(),
+                is_pk: key == "PRI",
+                is_nullable: null_str == "YES",
+                is_auto_increment: extra.contains("auto_increment"),
+            }
+        })
+        .collect())
+}
 
-    pub async fn get_routines(params: &ConnectionParams) -> Result<Vec<RoutineInfo>, String> {
-        let pool = get_mysql_pool(params).await?;
-        let query = r#"
-            SELECT routine_name, routine_type, routine_definition 
-            FROM information_schema.routines 
+pub async fn get_routines(params: &ConnectionParams) -> Result<Vec<RoutineInfo>, String> {
+    let pool = get_mysql_pool(params).await?;
+    let query = r#"
+            SELECT routine_name, routine_type, routine_definition
+            FROM information_schema.routines
             WHERE routine_schema = DATABASE()
             ORDER BY routine_name
         "#;
-        
-        let rows = sqlx::query(query)
-            .fetch_all(&pool)
-            .await
-            .map_err(|e| e.to_string())?;
-            
-        Ok(rows.iter().map(|r| RoutineInfo {
+
+    let rows = sqlx::query(query)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(rows
+        .iter()
+        .map(|r| RoutineInfo {
             name: r.try_get("routine_name").unwrap_or_default(),
             routine_type: r.try_get("routine_type").unwrap_or_default(),
             definition: r.try_get("routine_definition").ok(),
-        }).collect())
-    }
+        })
+        .collect())
+}
 
-    pub async fn get_routine_parameters(
-        params: &ConnectionParams,
-        routine_name: &str,
-    ) -> Result<Vec<RoutineParameter>, String> {
-        let pool = get_mysql_pool(params).await?;
+pub async fn get_routine_parameters(
+    params: &ConnectionParams,
+    routine_name: &str,
+) -> Result<Vec<RoutineParameter>, String> {
+    let pool = get_mysql_pool(params).await?;
 
-        // 1. Get return type for functions from routines table
-        let return_type_query = r#"
+    // 1. Get return type for functions from routines table
+    let return_type_query = r#"
             SELECT DATA_TYPE, ROUTINE_TYPE
             FROM information_schema.routines
             WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = ?
         "#;
 
-        let routine_info = sqlx::query(return_type_query)
-            .bind(routine_name)
-            .fetch_optional(&pool)
-            .await
-            .map_err(|e| e.to_string())?;
+    let routine_info = sqlx::query(return_type_query)
+        .bind(routine_name)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
-        let mut parameters = Vec::new();
+    let mut parameters = Vec::new();
 
-        if let Some(info) = routine_info {
-            let routine_type: String = info.try_get("ROUTINE_TYPE").unwrap_or_default();
-            if routine_type == "FUNCTION" {
-                let data_type: String = info.try_get("DATA_TYPE").unwrap_or_default();
-                if !data_type.is_empty() {
-                    parameters.push(RoutineParameter {
-                        name: "".to_string(), // Empty name for return value
-                        data_type,
-                        mode: "OUT".to_string(),
-                        ordinal_position: 0,
-                    });
-                }
+    if let Some(info) = routine_info {
+        let routine_type: String = info.try_get("ROUTINE_TYPE").unwrap_or_default();
+        if routine_type == "FUNCTION" {
+            let data_type: String = info.try_get("DATA_TYPE").unwrap_or_default();
+            if !data_type.is_empty() {
+                parameters.push(RoutineParameter {
+                    name: "".to_string(), // Empty name for return value
+                    data_type,
+                    mode: "OUT".to_string(),
+                    ordinal_position: 0,
+                });
             }
         }
+    }
 
-        // 2. Get parameters
-        let query = r#"
+    // 2. Get parameters
+    let query = r#"
             SELECT parameter_name, data_type, parameter_mode, ordinal_position
             FROM information_schema.parameters
             WHERE specific_schema = DATABASE() AND specific_name = ?
             ORDER BY ordinal_position
         "#;
-        
-        let rows = sqlx::query(query)
-            .bind(routine_name)
-            .fetch_all(&pool)
-            .await
-            .map_err(|e| e.to_string())?;
-            
-        parameters.extend(rows.iter().map(|r| RoutineParameter {
-            name: r.try_get("parameter_name").unwrap_or_default(),
-            data_type: r.try_get("data_type").unwrap_or_default(),
-            mode: r.try_get("parameter_mode").unwrap_or_default(),
-            ordinal_position: r.try_get("ordinal_position").unwrap_or(0),
-        }));
 
-        Ok(parameters)
-    }
+    let rows = sqlx::query(query)
+        .bind(routine_name)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
-    pub async fn get_routine_definition(
-        params: &ConnectionParams,
-        routine_name: &str,
-        routine_type: &str,
-    ) -> Result<String, String> {
-        let pool = get_mysql_pool(params).await?;
-        let query = format!("SHOW CREATE {} `{}`", routine_type, escape_identifier(routine_name));
-        
-        let row = sqlx::query(&query)
-            .fetch_one(&pool)
-            .await
-            .map_err(|e| e.to_string())?;
-            
-        // The column name is "Create Procedure" or "Create Function" or retrieved by index 2
-        let definition: String = row.try_get(2).unwrap_or_else(|_| {
-             row.try_get(format!("Create {}", routine_type).as_str()).unwrap_or_default()
-        });
-        
-        Ok(definition)
-    }
+    parameters.extend(rows.iter().map(|r| RoutineParameter {
+        name: r.try_get("parameter_name").unwrap_or_default(),
+        data_type: r.try_get("data_type").unwrap_or_default(),
+        mode: r.try_get("parameter_mode").unwrap_or_default(),
+        ordinal_position: r.try_get("ordinal_position").unwrap_or(0),
+    }));
+
+    Ok(parameters)
+}
+
+pub async fn get_routine_definition(
+    params: &ConnectionParams,
+    routine_name: &str,
+    routine_type: &str,
+) -> Result<String, String> {
+    let pool = get_mysql_pool(params).await?;
+    let query = format!(
+        "SHOW CREATE {} `{}`",
+        routine_type,
+        escape_identifier(routine_name)
+    );
+
+    let row = sqlx::query(&query)
+        .fetch_one(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // The column name is "Create Procedure" or "Create Function" or retrieved by index 2
+    let definition: String = row.try_get(2).unwrap_or_else(|_| {
+        row.try_get(format!("Create {}", routine_type).as_str())
+            .unwrap_or_default()
+    });
+
+    Ok(definition)
+}
 
 pub async fn execute_query(
     params: &ConnectionParams,
@@ -815,7 +809,10 @@ mod tests {
         #[test]
         fn test_remove_order_by_with_where() {
             let query = "SELECT * FROM users WHERE active = true ORDER BY created_at DESC";
-            assert_eq!(remove_order_by(query), "SELECT * FROM users WHERE active = true");
+            assert_eq!(
+                remove_order_by(query),
+                "SELECT * FROM users WHERE active = true"
+            );
         }
 
         #[test]

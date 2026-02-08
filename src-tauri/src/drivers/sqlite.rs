@@ -3,8 +3,8 @@ use crate::models::{
     ConnectionParams, ForeignKey, Index, Pagination, QueryResult, RoutineInfo, RoutineParameter,
     TableColumn, TableInfo, ViewInfo,
 };
-use sqlx::{Column, Row};
 use crate::pool_manager::get_sqlite_pool;
+use sqlx::{Column, Row};
 
 // Helper function to escape double quotes in identifiers for SQLite
 fn escape_identifier(name: &str) -> String {
@@ -31,7 +31,11 @@ pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, Str
             name: r.try_get("name").unwrap_or_default(),
         })
         .collect();
-    log::debug!("SQLite: Found {} tables in {}", tables.len(), params.database);
+    log::debug!(
+        "SQLite: Found {} tables in {}",
+        tables.len(),
+        params.database
+    );
     Ok(tables)
 }
 
@@ -58,7 +62,7 @@ pub async fn get_columns(
             let notnull: i32 = r.try_get("notnull").unwrap_or(0);
             let dtype: String = r.try_get("type").unwrap_or_default();
 
-            let is_auto = pk > 0 && dtype.to_uppercase().contains("INT");
+            let _is_auto = pk > 0 && dtype.to_uppercase().contains("INT");
 
             TableColumn {
                 name: r.try_get("name").unwrap_or_default(),
@@ -254,15 +258,9 @@ pub async fn delete_record(
     let result = match pk_val {
         serde_json::Value::Number(n) => {
             if n.is_i64() {
-                sqlx::query(&query)
-                    .bind(n.as_i64())
-                    .execute(&pool)
-                    .await
+                sqlx::query(&query).bind(n.as_i64()).execute(&pool).await
             } else {
-                sqlx::query(&query)
-                    .bind(n.as_f64())
-                    .execute(&pool)
-                    .await
+                sqlx::query(&query).bind(n.as_f64()).execute(&pool).await
             }
         }
         serde_json::Value::String(s) => sqlx::query(&query).bind(s).execute(&pool).await,
@@ -400,10 +398,7 @@ fn remove_order_by(query: &str) -> String {
     }
 }
 
-pub async fn get_table_ddl(
-    params: &ConnectionParams,
-    table_name: &str,
-) -> Result<String, String> {
+pub async fn get_table_ddl(params: &ConnectionParams, table_name: &str) -> Result<String, String> {
     let pool = get_sqlite_pool(params).await?;
     let query = "SELECT sql FROM sqlite_master WHERE type='table' AND name = ?";
     let row: (String,) = sqlx::query_as(query)
@@ -512,12 +507,10 @@ pub async fn execute_query(
 pub async fn get_views(params: &ConnectionParams) -> Result<Vec<ViewInfo>, String> {
     log::debug!("SQLite: Fetching views for database: {}", params.database);
     let pool = get_sqlite_pool(params).await?;
-    let rows = sqlx::query(
-        "SELECT name FROM sqlite_master WHERE type='view' ORDER BY name ASC",
-    )
-    .fetch_all(&pool)
-    .await
-    .map_err(|e| e.to_string())?;
+    let rows = sqlx::query("SELECT name FROM sqlite_master WHERE type='view' ORDER BY name ASC")
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
     let views: Vec<ViewInfo> = rows
         .iter()
         .map(|r| ViewInfo {
@@ -552,10 +545,7 @@ pub async fn create_view(
 ) -> Result<(), String> {
     let pool = get_sqlite_pool(params).await?;
     let escaped_name = escape_identifier(view_name);
-    let query = format!(
-        "CREATE VIEW \"{}\" AS {}",
-        escaped_name, definition
-    );
+    let query = format!("CREATE VIEW \"{}\" AS {}", escaped_name, definition);
     sqlx::query(&query)
         .execute(&pool)
         .await
@@ -577,10 +567,7 @@ pub async fn alter_view(
         .await
         .map_err(|e| format!("Failed to drop view: {}", e))?;
 
-    let create_query = format!(
-        "CREATE VIEW \"{}\" AS {}",
-        escaped_name, definition
-    );
+    let create_query = format!("CREATE VIEW \"{}\" AS {}", escaped_name, definition);
     sqlx::query(&create_query)
         .execute(&pool)
         .await
@@ -589,10 +576,7 @@ pub async fn alter_view(
     Ok(())
 }
 
-pub async fn drop_view(
-    params: &ConnectionParams,
-    view_name: &str,
-) -> Result<(), String> {
+pub async fn drop_view(params: &ConnectionParams, view_name: &str) -> Result<(), String> {
     let pool = get_sqlite_pool(params).await?;
     let escaped_name = escape_identifier(view_name);
     let query = format!("DROP VIEW IF EXISTS \"{}\"", escaped_name);
@@ -660,6 +644,7 @@ mod tests {
             ssh_key_file: None,
             ssh_key_passphrase: None,
             save_in_keychain: None,
+            connection_id: None,
         };
 
         // Initialize DB with a table
@@ -668,7 +653,7 @@ mod tests {
         let options = SqliteConnectOptions::from_str(&url)
             .unwrap()
             .create_if_missing(true);
-            
+
         let pool = SqlitePoolOptions::new()
             .connect_with(options)
             .await
@@ -678,12 +663,12 @@ mod tests {
             .execute(&pool)
             .await
             .expect("Failed to create table");
-            
+
         sqlx::query("INSERT INTO users (name) VALUES ('Alice'), ('Bob')")
             .execute(&pool)
             .await
             .expect("Failed to insert data");
-            
+
         // Close this pool so the file isn't locked (though SQLite handles concurrent reads usually)
         pool.close().await;
 
@@ -712,30 +697,38 @@ mod tests {
         let def = get_view_definition(&params, view_name)
             .await
             .expect("Failed to get definition");
-        // SQLite stores the full "CREATE VIEW ..." statement in 'sql' column usually, 
-        // OR just the definition depending on normalization. 
+        // SQLite stores the full "CREATE VIEW ..." statement in 'sql' column usually,
+        // OR just the definition depending on normalization.
         // The get_view_definition implementation returns 'sql' column from sqlite_master.
         // It usually is "CREATE VIEW view_users AS SELECT name FROM users"
         assert!(def.to_uppercase().contains("CREATE VIEW"));
         assert!(def.to_uppercase().contains("SELECT NAME FROM USERS"));
 
         // 4. Get View Columns
-        let cols = get_view_columns(&params, view_name).await.expect("Failed to get columns");
+        let cols = get_view_columns(&params, view_name)
+            .await
+            .expect("Failed to get columns");
         assert_eq!(cols.len(), 1);
         assert_eq!(cols[0].name, "name");
 
         // 5. Alter View (Drop & Recreate)
         let new_def = "SELECT id, name FROM users";
-        alter_view(&params, view_name, new_def).await.expect("Failed to alter view");
-        
-        let cols_after = get_view_columns(&params, view_name).await.expect("Failed to get columns after alter");
+        alter_view(&params, view_name, new_def)
+            .await
+            .expect("Failed to alter view");
+
+        let cols_after = get_view_columns(&params, view_name)
+            .await
+            .expect("Failed to get columns after alter");
         assert_eq!(cols_after.len(), 2);
 
         // 6. Drop View
-        drop_view(&params, view_name).await.expect("Failed to drop view");
+        drop_view(&params, view_name)
+            .await
+            .expect("Failed to drop view");
         let views_final = get_views(&params).await.expect("Failed to get views final");
         assert_eq!(views_final.len(), 0);
-        
+
         // Cleanup: Close the pool created by the functions (via pool_manager)
         crate::pool_manager::close_pool(&params).await;
     }

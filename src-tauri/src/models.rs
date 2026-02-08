@@ -73,6 +73,9 @@ pub struct ConnectionParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ssh_key_passphrase: Option<String>,
     pub save_in_keychain: Option<bool>,
+    // Connection ID for stable pooling (not persisted, set at runtime)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connection_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
