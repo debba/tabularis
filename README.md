@@ -17,7 +17,7 @@ A lightweight, developer-focused database management tool, built with Tauri and 
 
 ## Release Download:
 
-[![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/debba/tabularis/releases/download/v0.8.9/tabularis_0.8.9_x64-setup.exe) [![macOS](https://img.shields.io/badge/macOS-Download-black?logo=apple)](https://github.com/debba/tabularis/releases/download/v0.8.9/tabularis_0.8.9_x64.dmg) [![Linux](https://img.shields.io/badge/Linux-Download-green?logo=linux)](https://github.com/debba/tabularis/releases/download/v0.8.9/tabularis_0.8.9_amd64.AppImage)
+[![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/debba/tabularis/releases/download/v0.8.10/tabularis_0.8.10_x64-setup.exe) [![macOS](https://img.shields.io/badge/macOS-Download-black?logo=apple)](https://github.com/debba/tabularis/releases/download/v0.8.10/tabularis_0.8.10_x64.dmg) [![Linux](https://img.shields.io/badge/Linux-Download-green?logo=linux)](https://github.com/debba/tabularis/releases/download/v0.8.10/tabularis_0.8.10_amd64.AppImage)
 
 ## Installation
 
@@ -224,7 +224,8 @@ npm run tauri build
 - [x] AI Integration
 - [x] Theme Customization
 - [x] Database Export/Dump
-- [x] Views and Stored Routines Support
+- [x] Support for Views
+- [x] Support for Functions and Stored Procedures
 - [ ] Better support for PostgreSQL & SQLite
 - [ ] Query history
 ## License
