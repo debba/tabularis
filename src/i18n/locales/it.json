@@ -408,7 +408,10 @@
     "queryParameters": "Parametri Query",
     "convertToConsole": "Converti in Console",
     "parameters": "Parametri",
-    "paramValuePlaceholder": "Valore (es. 'testo' o 123)"
+    "paramValuePlaceholder": "Valore (es. 'testo' o 123)",
+    "failedCreateRow": "Impossibile creare nuova riga: ",
+    "failedProcessInsertions": "Impossibile processare gli inserimenti: ",
+    "fieldRequired": "Questo campo è obbligatorio"
   },
   "createTable": {
     "title": "Crea Nuova Tabella",

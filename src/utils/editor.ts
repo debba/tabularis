@@ -1,12 +1,12 @@
-import type { Tab, SchemaCache, TableSchema } from '../types/editor';
-import { quoteIdentifier } from './identifiers';
+import type { Tab, SchemaCache, TableSchema } from "../types/editor";
+import { quoteIdentifier } from "./identifiers";
 
 export interface TabsStorage {
   tabs: Tab[];
   activeTabIds: Record<string, string>;
 }
 
-export const STORAGE_KEY = 'sql_editor_tabs_v2';
+export const STORAGE_KEY = "tabularis_editor_tabs";
 
 export function generateTabId(): string {
   return Math.random().toString(36).substring(2, 9);
@@ -22,35 +22,38 @@ export function loadTabsFromStorage(): TabsStorage | null {
         activeTabIds: parsed.activeTabIds || {},
       };
     } catch (e) {
-      console.error('Failed to load tabs from storage', e);
+      console.error("Failed to load tabs from storage", e);
       return null;
     }
   }
   return null;
 }
 
-export function saveTabsToStorage(tabs: Tab[], activeTabIds: Record<string, string>): void {
+export function saveTabsToStorage(
+  tabs: Tab[],
+  activeTabIds: Record<string, string>,
+): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ tabs, activeTabIds }));
 }
 
 export function createInitialTabState(
   connectionId: string | null,
-  partial?: Partial<Tab>
+  partial?: Partial<Tab>,
 ): Tab {
   return {
     id: generateTabId(),
-    title: 'Console',
-    type: 'console',
-    query: '',
+    title: "Console",
+    type: "console",
+    query: "",
     result: null,
-    error: '',
+    error: "",
     executionTime: null,
     page: 1,
     activeTable: null,
     pkColumn: null,
     isLoading: false,
-    connectionId: connectionId || '',
-    isEditorOpen: partial?.isEditorOpen ?? (partial?.type !== 'table'),
+    connectionId: connectionId || "",
+    isEditorOpen: partial?.isEditorOpen ?? partial?.type !== "table",
     ...partial,
   };
 }
@@ -58,45 +61,50 @@ export function createInitialTabState(
 export function generateTabTitle(
   tabs: Tab[],
   activeConnectionId: string,
-  partial?: Partial<Tab>
+  partial?: Partial<Tab>,
 ): string {
   if (partial?.title) {
     return partial.title;
   }
 
-  if (partial?.type === 'table' && partial.activeTable) {
+  if (partial?.type === "table" && partial.activeTable) {
     return partial.activeTable;
   }
 
   const consoleCount = tabs.filter(
-    (t) => t.connectionId === activeConnectionId && t.type === 'console'
+    (t) => t.connectionId === activeConnectionId && t.type === "console",
   ).length;
   const queryBuilderCount = tabs.filter(
-    (t) => t.connectionId === activeConnectionId && t.type === 'query_builder'
+    (t) => t.connectionId === activeConnectionId && t.type === "query_builder",
   ).length;
 
-  if (partial?.type === 'query_builder') {
-    return queryBuilderCount === 0 ? 'Visual Query' : `Visual Query ${queryBuilderCount + 1}`;
+  if (partial?.type === "query_builder") {
+    return queryBuilderCount === 0
+      ? "Visual Query"
+      : `Visual Query ${queryBuilderCount + 1}`;
   }
 
-  return consoleCount === 0 ? 'Console' : `Console ${consoleCount + 1}`;
+  return consoleCount === 0 ? "Console" : `Console ${consoleCount + 1}`;
 }
 
 export function findExistingTableTab(
   tabs: Tab[],
   connectionId: string,
-  tableName: string | undefined
+  tableName: string | undefined,
 ): Tab | undefined {
   if (!tableName) return undefined;
   return tabs.find(
     (t) =>
       t.connectionId === connectionId &&
-      t.type === 'table' &&
-      t.activeTable === tableName
+      t.type === "table" &&
+      t.activeTable === tableName,
   );
 }
 
-export function getConnectionTabs(tabs: Tab[], connectionId: string | null): Tab[] {
+export function getConnectionTabs(
+  tabs: Tab[],
+  connectionId: string | null,
+): Tab[] {
   if (!connectionId) return [];
   return tabs.filter((t) => t.connectionId === connectionId);
 }
@@ -104,7 +112,7 @@ export function getConnectionTabs(tabs: Tab[], connectionId: string | null): Tab
 export function getActiveTab(
   tabs: Tab[],
   connectionId: string | null,
-  activeTabId: string | null
+  activeTabId: string | null,
 ): Tab | null {
   if (!connectionId || !activeTabId) return null;
   const tab = tabs.find((t) => t.id === activeTabId);
@@ -122,7 +130,7 @@ export function closeTabWithState(
   connectionId: string,
   activeTabId: string | null,
   tabIdToClose: string,
-  createTabFn: (connectionId: string) => Tab
+  createTabFn: (connectionId: string) => Tab,
 ): CloseTabResult {
   const tabToClose = tabs.find((t) => t.id === tabIdToClose);
   const newTabs = tabs.filter((t) => t.id !== tabIdToClose);
@@ -142,7 +150,9 @@ export function closeTabWithState(
   let newActiveTabIdResult = activeTabId;
   if (activeTabId === tabIdToClose) {
     // Find index in the original connection tabs list
-    const originalConnTabs = tabs.filter((t) => t.connectionId === connectionId);
+    const originalConnTabs = tabs.filter(
+      (t) => t.connectionId === connectionId,
+    );
     const closedIdx = originalConnTabs.findIndex((t) => t.id === tabIdToClose);
     // Prefer the previous tab, otherwise the first available
     const nextActiveIdx = Math.max(0, closedIdx - 1);
@@ -160,7 +170,7 @@ export function closeTabWithState(
 export function closeAllTabsForConnection(
   tabs: Tab[],
   connectionId: string,
-  createTabFn: (connectionId: string) => Tab
+  createTabFn: (connectionId: string) => Tab,
 ): { newTabs: Tab[]; newActiveTabId: string } {
   const otherConnTabs = tabs.filter((t) => t.connectionId !== connectionId);
   const newTab = createTabFn(connectionId);
@@ -173,20 +183,22 @@ export function closeAllTabsForConnection(
 export function closeOtherTabsForConnection(
   tabs: Tab[],
   connectionId: string,
-  keepTabId: string
+  keepTabId: string,
 ): Tab[] {
-  return tabs.filter((t) => t.connectionId !== connectionId || t.id === keepTabId);
+  return tabs.filter(
+    (t) => t.connectionId !== connectionId || t.id === keepTabId,
+  );
 }
 
 export function closeTabsToLeft(
   tabs: Tab[],
   connectionId: string,
   targetTabId: string,
-  activeTabId: string | null
+  activeTabId: string | null,
 ): { newTabs: Tab[]; newActiveTabId: string | null } {
   const connTabs = tabs.filter((t) => t.connectionId === connectionId);
   const targetIndex = connTabs.findIndex((t) => t.id === targetTabId);
-  
+
   if (targetIndex === -1) {
     return { newTabs: tabs, newActiveTabId: activeTabId };
   }
@@ -195,7 +207,9 @@ export function closeTabsToLeft(
   const otherConnTabs = tabs.filter((t) => t.connectionId !== connectionId);
   const remainingConnTabs = connTabs.slice(targetIndex);
 
-  const activeTabWasClosed = activeTabId ? tabsToClose.includes(activeTabId) : false;
+  const activeTabWasClosed = activeTabId
+    ? tabsToClose.includes(activeTabId)
+    : false;
   const newActiveTabId = activeTabWasClosed ? targetTabId : activeTabId;
 
   return {
@@ -208,11 +222,11 @@ export function closeTabsToRight(
   tabs: Tab[],
   connectionId: string,
   targetTabId: string,
-  activeTabId: string | null
+  activeTabId: string | null,
 ): { newTabs: Tab[]; newActiveTabId: string | null } {
   const connTabs = tabs.filter((t) => t.connectionId === connectionId);
   const targetIndex = connTabs.findIndex((t) => t.id === targetTabId);
-  
+
   if (targetIndex === -1) {
     return { newTabs: tabs, newActiveTabId: activeTabId };
   }
@@ -221,7 +235,9 @@ export function closeTabsToRight(
   const otherConnTabs = tabs.filter((t) => t.connectionId !== connectionId);
   const remainingConnTabs = connTabs.slice(0, targetIndex + 1);
 
-  const activeTabWasClosed = activeTabId ? tabsToClose.includes(activeTabId) : false;
+  const activeTabWasClosed = activeTabId
+    ? tabsToClose.includes(activeTabId)
+    : false;
   const newActiveTabId = activeTabWasClosed ? targetTabId : activeTabId;
 
   return {
@@ -233,7 +249,7 @@ export function closeTabsToRight(
 export function updateTabInList(
   tabs: Tab[],
   tabId: string,
-  partial: Partial<Tab>
+  partial: Partial<Tab>,
 ): Tab[] {
   return tabs.map((t) => (t.id === tabId ? { ...t, ...partial } : t));
 }
@@ -241,15 +257,15 @@ export function updateTabInList(
 // Schema cache utilities
 export function shouldUseCachedSchema(
   cached: SchemaCache | undefined,
-  schemaVersion?: number
+  schemaVersion?: number,
 ): boolean {
   if (!cached) return false;
-  
+
   // If schemaVersion is provided, check if it matches
   if (schemaVersion !== undefined && cached.version !== schemaVersion) {
     return false;
   }
-  
+
   // Check if cache is less than 5 minutes old (300000 ms)
   const isFresh = Date.now() - cached.timestamp < 300000;
   return isFresh;
@@ -257,7 +273,7 @@ export function shouldUseCachedSchema(
 
 export function createSchemaCacheEntry(
   data: TableSchema[],
-  version: number
+  version: number,
 ): SchemaCache {
   return {
     data,
@@ -287,7 +303,7 @@ export function reconstructTableQuery(tab: Tab, driver?: string): string {
     baseQuery = `${baseQuery} LIMIT ${tab.limitClause}`;
   }
 
-  return baseQuery.replace(/\s+/g, ' ').trim();
+  return baseQuery.replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -296,9 +312,12 @@ export function reconstructTableQuery(tab: Tab, driver?: string): string {
  * @param format - Export format (csv, json, etc.)
  * @returns Formatted filename
  */
-export function formatExportFileName(tableName: string, format: string): string {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const safeName = tableName.replace(/[^a-zA-Z0-9_-]/g, '_');
+export function formatExportFileName(
+  tableName: string,
+  format: string,
+): string {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const safeName = tableName.replace(/[^a-zA-Z0-9_-]/g, "_");
   return `${safeName}_${timestamp}.${format}`;
 }
 
@@ -308,7 +327,10 @@ export function formatExportFileName(tableName: string, format: string): string 
  * @param totalPages - Total number of pages available
  * @returns True if page number is valid
  */
-export function validatePageNumber(pageInput: string, totalPages: number): boolean {
+export function validatePageNumber(
+  pageInput: string,
+  totalPages: number,
+): boolean {
   const num = parseInt(pageInput, 10);
   return !isNaN(num) && num >= 1 && num <= totalPages;
 }
@@ -319,7 +341,10 @@ export function validatePageNumber(pageInput: string, totalPages: number): boole
  * @param pageSize - Number of rows per page
  * @returns Total number of pages
  */
-export function calculateTotalPages(totalRows: number | null, pageSize: number): number {
+export function calculateTotalPages(
+  totalRows: number | null,
+  pageSize: number,
+): number {
   if (totalRows === null || totalRows === 0) return 1;
   return Math.ceil(totalRows / pageSize);
 }

@@ -2,6 +2,12 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { quoteIdentifier } from "../utils/identifiers";
+import {
+  generateTempId,
+  initializeNewRow,
+  validatePendingInsertion,
+  insertionToBackendData,
+} from "../utils/pendingInsertions";
 import { AiQueryModal } from "../components/modals/AiQueryModal";
 import { AiExplainModal } from "../components/modals/AiExplainModal";
 import {
@@ -59,7 +65,7 @@ import { useDatabase } from "../hooks/useDatabase";
 import { useSavedQueries } from "../hooks/useSavedQueries";
 import { useSettings } from "../hooks/useSettings";
 import { useEditor } from "../hooks/useEditor";
-import type { QueryResult, Tab } from "../types/editor";
+import type { QueryResult, Tab, PendingInsertion } from "../types/editor";
 import clsx from "clsx";
 
 interface TableColumn {
@@ -67,6 +73,7 @@ interface TableColumn {
   data_type: string;
   is_pk: boolean;
   is_nullable: boolean;
+  is_auto_increment: boolean;
 }
 
 interface EditorState {
@@ -278,9 +285,15 @@ export const Editor = () => {
       (activeTab?.pendingChanges &&
         Object.keys(activeTab.pendingChanges).length > 0) ||
       (activeTab?.pendingDeletions &&
-        Object.keys(activeTab.pendingDeletions).length > 0)
+        Object.keys(activeTab.pendingDeletions).length > 0) ||
+      (activeTab?.pendingInsertions &&
+        Object.keys(activeTab.pendingInsertions).length > 0)
     );
-  }, [activeTab?.pendingChanges, activeTab?.pendingDeletions]);
+  }, [
+    activeTab?.pendingChanges,
+    activeTab?.pendingDeletions,
+    activeTab?.pendingInsertions,
+  ]);
 
   useEffect(() => {
     tabsRef.current = tabs;
@@ -333,6 +346,7 @@ export const Editor = () => {
           { pkOriginalValue: unknown; changes: Record<string, unknown> }
         >;
         pendingDeletions?: Record<string, unknown>;
+        pendingInsertions?: Record<string, PendingInsertion>;
       },
     ) => {
       const targetTabId = tabId || activeTabIdRef.current;
@@ -647,30 +661,119 @@ export const Editor = () => {
     });
   }, [activeTab, updateActiveTab]);
 
+  const handlePendingInsertionChange = useCallback(
+    (tempId: string, colName: string, value: unknown) => {
+      if (!activeTabIdRef.current) return;
+      const tabId = activeTabIdRef.current;
+
+      const currentTab = tabsRef.current.find((t) => t.id === tabId);
+      if (!currentTab) return;
+
+      const currentPendingInsertions = currentTab.pendingInsertions || {};
+      const insertion = currentPendingInsertions[tempId];
+      if (!insertion) return;
+
+      const newData = { ...insertion.data };
+      if (value === undefined) {
+        delete newData[colName];
+      } else {
+        newData[colName] = value;
+      }
+
+      const newPendingInsertions = {
+        ...currentPendingInsertions,
+        [tempId]: {
+          ...insertion,
+          data: newData,
+        },
+      };
+
+      updateTab(tabId, { pendingInsertions: newPendingInsertions });
+    },
+    [updateTab],
+  );
+
+  const handleNewRow = useCallback(async () => {
+    if (!activeTabIdRef.current || !activeConnectionId || !activeTab?.activeTable) {
+      console.warn("Cannot create new row: missing required context", {
+        tabId: activeTabIdRef.current,
+        connectionId: activeConnectionId,
+        table: activeTab?.activeTable,
+      });
+      return;
+    }
+
+    try {
+      // Fetch table columns
+      const columns = await invoke<TableColumn[]>("get_columns", {
+        connectionId: activeConnectionId,
+        tableName: activeTab.activeTable,
+      });
+
+      if (!columns || columns.length === 0) {
+        throw new Error("No columns found for table");
+      }
+
+      // Generate temp ID and initialize data
+      const tempId = generateTempId();
+      const data = initializeNewRow(columns);
+
+      const currentPendingInsertions = activeTab.pendingInsertions || {};
+      const existingRowCount = activeTab.result?.rows.length || 0;
+      const insertionCount = Object.keys(currentPendingInsertions).length;
+
+      // displayIndex will be calculated in DataGrid (existingRowCount + insertionIndex)
+      const displayIndex = existingRowCount + insertionCount;
+
+      const newPendingInsertions = {
+        ...currentPendingInsertions,
+        [tempId]: {
+          tempId,
+          data,
+          displayIndex,
+        },
+      };
+
+      updateTab(activeTabIdRef.current, {
+        pendingInsertions: newPendingInsertions,
+      });
+    } catch (err) {
+      console.error("Failed to create new row:", err);
+      await message(t("editor.failedCreateRow") + String(err), {
+        title: t("general.error"),
+        kind: "error",
+      });
+    }
+  }, [activeConnectionId, activeTab, updateTab, t]);
+
   const handleSubmitChanges = useCallback(async () => {
     if (
       !activeTab ||
       !activeTab.activeTable ||
-      !activeTab.pkColumn ||
       !activeConnectionId
     )
       return;
 
+    // pkColumn is required for updates/deletions but not for insertions-only
+    const hasPkColumn = !!activeTab.pkColumn;
+
     const {
       pendingChanges,
       pendingDeletions,
+      pendingInsertions,
       activeTable,
       pkColumn,
       selectedRows,
     } = activeTab;
     const updates: { pkVal: unknown; colName: string; newVal: unknown }[] = [];
     const deletions: unknown[] = [];
+    const insertions: { tempId: string; data: Record<string, unknown> }[] = [];
 
     // Filter pending changes by selected rows IF there is a selection AND applyToAll is false
     const hasSelection = !applyToAll && selectedRows && selectedRows.length > 0;
     const selectedPkSet = new Set<string>();
 
-    if (hasSelection && activeTab.result) {
+    if (hasSelection && activeTab.result && hasPkColumn && pkColumn) {
       const pkIndex = activeTab.result.columns.indexOf(pkColumn);
       if (pkIndex !== -1) {
         selectedRows.forEach((rowIndex) => {
@@ -680,7 +783,7 @@ export const Editor = () => {
       }
     }
 
-    if (pendingChanges) {
+    if (hasPkColumn && pkColumn && pendingChanges) {
       for (const [pkKey, rowData] of Object.entries(pendingChanges)) {
         // Apply filter if selection exists (and applyToAll is false)
         if (hasSelection && !selectedPkSet.has(pkKey)) continue;
@@ -692,7 +795,7 @@ export const Editor = () => {
       }
     }
 
-    if (pendingDeletions) {
+    if (hasPkColumn && pkColumn && pendingDeletions) {
       for (const [pkKey, pkVal] of Object.entries(pendingDeletions)) {
         // Apply filter if selection exists (and applyToAll is false)
         if (hasSelection && !selectedPkSet.has(pkKey)) continue;
@@ -700,7 +803,65 @@ export const Editor = () => {
       }
     }
 
-    if (updates.length === 0 && deletions.length === 0) return;
+    // Process insertions
+    if (pendingInsertions && Object.keys(pendingInsertions).length > 0) {
+      try {
+        // Fetch columns for validation
+        const columns = await invoke<TableColumn[]>("get_columns", {
+          connectionId: activeConnectionId,
+          tableName: activeTable,
+        });
+
+        const selectedDisplayIndices = new Set<number>();
+
+        if (hasSelection && selectedRows) {
+          // Convert selectedRows to displayIndices
+          // Insertions have displayIndex 0, 1, 2, ... (numInsertions - 1)
+          // Existing rows have displayIndex numInsertions, numInsertions + 1, ...
+          selectedRows.forEach((rowIndex) => {
+            // Row indices in the merged grid:
+            // - First numInsertions rows are insertions (displayIndex < numInsertions)
+            // - Remaining rows are existing data (displayIndex >= numInsertions)
+            selectedDisplayIndices.add(rowIndex);
+          });
+        }
+
+        // Filter and validate insertions
+        let insertionIndex = 0;
+        for (const [tempId, insertion] of Object.entries(pendingInsertions)) {
+          // Check if this insertion is selected (if filtering by selection)
+          const insertionDisplayIndex = insertionIndex;
+          if (hasSelection && !selectedDisplayIndices.has(insertionDisplayIndex)) {
+            insertionIndex++;
+            continue;
+          }
+
+          // Validate insertion
+          const errors = validatePendingInsertion(insertion, columns);
+          if (Object.keys(errors).length > 0) {
+            // Skip invalid insertions (optionally show error to user)
+            console.warn(`Skipping invalid insertion ${tempId}:`, errors);
+            insertionIndex++;
+            continue;
+          }
+
+          // Convert to backend format
+          const backendData = insertionToBackendData(insertion, columns);
+          insertions.push({ tempId, data: backendData });
+          insertionIndex++;
+        }
+      } catch (err) {
+        console.error("Failed to process insertions:", err);
+        await message(t("editor.failedProcessInsertions") + String(err), {
+          title: t("common.error"),
+          kind: "error",
+        });
+        return;
+      }
+    }
+
+    if (updates.length === 0 && deletions.length === 0 && insertions.length === 0)
+      return;
 
     updateActiveTab({ isLoading: true });
 
@@ -737,15 +898,30 @@ export const Editor = () => {
         );
       }
 
+      // Insertions
+      if (insertions.length > 0) {
+        promises.push(
+          ...insertions.map((insertion) =>
+            invoke("insert_record", {
+              connectionId: activeConnectionId,
+              table: activeTable,
+              data: insertion.data,
+            }),
+          ),
+        );
+      }
+
       await Promise.all(promises);
 
       // Remove processed changes from state
       const newPendingChanges = { ...(pendingChanges || {}) };
       const newPendingDeletions = { ...(pendingDeletions || {}) };
+      const newPendingInsertions = { ...(pendingInsertions || {}) };
 
       // Partial cleanup - remove only processed changes
       updates.forEach((u) => delete newPendingChanges[String(u.pkVal)]);
       deletions.forEach((d) => delete newPendingDeletions[String(d)]);
+      insertions.forEach((i) => delete newPendingInsertions[i.tempId]);
 
       // Cleanup empty change objects
       Object.keys(newPendingChanges).forEach((key) => {
@@ -761,6 +937,10 @@ export const Editor = () => {
         Object.keys(newPendingDeletions).length > 0
           ? newPendingDeletions
           : undefined;
+      const remainingInsertions =
+        Object.keys(newPendingInsertions).length > 0
+          ? newPendingInsertions
+          : undefined;
 
       // Refresh query preserving remaining pending changes
       runQuery(
@@ -774,6 +954,7 @@ export const Editor = () => {
         {
           pendingChanges: remainingChanges,
           pendingDeletions: remainingDeletions,
+          pendingInsertions: remainingInsertions,
         },
       );
     } catch (e) {
@@ -826,24 +1007,34 @@ export const Editor = () => {
 
   const handleRollbackChanges = useCallback(() => {
     if (!activeTab) return;
-    const { selectedRows, result, pkColumn, pendingChanges, pendingDeletions } =
-      activeTab;
+    const {
+      selectedRows,
+      result,
+      pkColumn,
+      pendingChanges,
+      pendingDeletions,
+      pendingInsertions,
+    } = activeTab;
 
     // If applyToAll is true OR no selection, rollback everything
     if (applyToAll || !selectedRows || selectedRows.length === 0) {
       updateActiveTab({
         pendingChanges: undefined,
         pendingDeletions: undefined,
+        pendingInsertions: undefined,
       });
       return;
     }
 
     // Filter rollback by selection
     const selectedPkSet = new Set<string>();
+    const selectedDisplayIndices = new Set<number>();
+
     if (result && pkColumn) {
       const pkIndex = result.columns.indexOf(pkColumn);
       if (pkIndex !== -1) {
         selectedRows.forEach((rowIndex) => {
+          selectedDisplayIndices.add(rowIndex);
           const row = result.rows[rowIndex];
           if (row) selectedPkSet.add(String(row[pkIndex]));
         });
@@ -852,11 +1043,23 @@ export const Editor = () => {
 
     const newPendingChanges = { ...(pendingChanges || {}) };
     const newPendingDeletions = { ...(pendingDeletions || {}) };
+    const newPendingInsertions = { ...(pendingInsertions || {}) };
 
+    // Rollback changes and deletions (for existing rows)
     selectedPkSet.forEach((pk) => {
       delete newPendingChanges[pk];
       delete newPendingDeletions[pk];
     });
+
+    // Rollback insertions (for new rows)
+    let insertionIndex = 0;
+    for (const tempId of Object.keys(newPendingInsertions)) {
+      const insertionDisplayIndex = insertionIndex;
+      if (selectedDisplayIndices.has(insertionDisplayIndex)) {
+        delete newPendingInsertions[tempId];
+      }
+      insertionIndex++;
+    }
 
     updateActiveTab({
       pendingChanges:
@@ -866,6 +1069,10 @@ export const Editor = () => {
       pendingDeletions:
         Object.keys(newPendingDeletions).length > 0
           ? newPendingDeletions
+          : undefined,
+      pendingInsertions:
+        Object.keys(newPendingInsertions).length > 0
+          ? newPendingInsertions
           : undefined,
     });
   }, [activeTab, updateActiveTab, applyToAll]);
@@ -1447,14 +1654,15 @@ export const Editor = () => {
               <div className="p-4 text-red-400 font-mono text-sm bg-red-900/10 h-full overflow-auto whitespace-pre-wrap">
                 Error: {activeTab.error}
               </div>
-            ) : activeTab.result ? (
+            ) : activeTab.result || (activeTab.activeTable && activeTab.pkColumn) ? (
               <div className="flex-1 min-h-0 flex flex-col">
-                <div className="p-2 bg-elevated text-xs text-secondary border-b border-default flex justify-between items-center shrink-0">
-                  <div className="flex items-center gap-4">
-                    <span>
-                      {t("editor.rowsRetrieved", {
-                        count: activeTab.result.rows.length,
-                      })}{" "}
+                {activeTab.result && (
+                  <div className="p-2 bg-elevated text-xs text-secondary border-b border-default flex justify-between items-center shrink-0">
+                    <div className="flex items-center gap-4">
+                      <span>
+                        {t("editor.rowsRetrieved", {
+                          count: activeTab.result.rows.length,
+                        })}{" "}
                       {activeTab.executionTime !== null && (
                         <span className="text-muted ml-2 font-mono">
                           ({formatDuration(activeTab.executionTime)})
@@ -1595,14 +1803,15 @@ export const Editor = () => {
                       </button>
                     </div>
                   )}
-                </div>
+                  </div>
+                )}
 
                 {/* Data Manipulation Toolbar (Below Header) */}
-                {activeTab.activeTable && activeTab.pkColumn && (
+                {activeTab.activeTable && (activeTab.pkColumn || activeTab.result) && (
                   <div className="p-1 px-2 bg-elevated border-b border-default flex items-center gap-2">
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => setShowNewRowModal(true)}
+                        onClick={handleNewRow}
                         className="flex items-center justify-center w-7 h-7 text-secondary hover:text-green-400 hover:bg-surface-secondary rounded transition-colors"
                         title={t("editor.newRow")}
                       >
@@ -1660,7 +1869,8 @@ export const Editor = () => {
                         </button>
                         <span className="text-[10px] text-blue-400 bg-blue-900/20 border border-blue-900/30 px-2 py-0.5 rounded-full font-medium select-none ml-2">
                           {Object.keys(activeTab.pendingChanges || {}).length +
-                            Object.keys(activeTab.pendingDeletions || {})
+                            Object.keys(activeTab.pendingDeletions || {}).length +
+                            Object.keys(activeTab.pendingInsertions || {})
                               .length}{" "}
                           pending
                         </span>
@@ -1671,20 +1881,22 @@ export const Editor = () => {
 
                 <div className="flex-1 min-h-0 overflow-hidden">
                   <DataGrid
-                    key={`${activeTab.id}-${activeTab.sortClause || "none"}-${activeTab.filterClause || "none"}-${activeTab.result.rows.length}`}
-                    columns={activeTab.result.columns}
-                    data={activeTab.result.rows}
+                    key={`${activeTab.id}-${activeTab.sortClause || "none"}-${activeTab.filterClause || "none"}-${activeTab.result?.rows.length || 0}`}
+                    columns={activeTab.result?.columns || []}
+                    data={activeTab.result?.rows || []}
                     tableName={activeTab.activeTable}
                     pkColumn={activeTab.pkColumn}
                     connectionId={activeConnectionId}
                     onRefresh={handleRefresh}
                     pendingChanges={activeTab.pendingChanges}
                     pendingDeletions={activeTab.pendingDeletions}
+                    pendingInsertions={activeTab.pendingInsertions}
                     onPendingChange={handlePendingChange}
+                    onPendingInsertionChange={handlePendingInsertionChange}
                     selectedRows={new Set(activeTab.selectedRows || [])}
                     onSelectionChange={handleSelectionChange}
                     sortClause={activeTab.sortClause}
-                    onSort={activeTab.type === "table" ? handleSort : undefined}
+                    onSort={activeTab.type === "table" && (activeTab.result?.rows.length ?? 0) > 0 ? handleSort : undefined}
                   />
                 </div>
               </div>

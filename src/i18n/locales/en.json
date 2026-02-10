@@ -408,7 +408,10 @@
     "queryParameters": "Query Parameters",
     "convertToConsole": "Convert to Console",
     "parameters": "Parameters",
-    "paramValuePlaceholder": "Value (e.g. 'text' or 123)"
+    "paramValuePlaceholder": "Value (e.g. 'text' or 123)",
+    "failedCreateRow": "Failed to create new row: ",
+    "failedProcessInsertions": "Failed to process insertions: ",
+    "fieldRequired": "This field is required"
   },
   "createTable": {
     "title": "Create New Table",

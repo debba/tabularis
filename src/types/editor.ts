@@ -9,6 +9,7 @@ export interface TableColumn {
   data_type: string;
   is_pk: boolean;
   is_nullable: boolean;
+  is_auto_increment: boolean;
 }
 
 export interface ForeignKey {
@@ -45,6 +46,12 @@ export interface FlowState {
   edges: Edge[];
 }
 
+export interface PendingInsertion {
+  tempId: string;
+  data: Record<string, unknown>;
+  displayIndex: number;
+}
+
 export interface Tab {
   id: string;
   title: string;
@@ -61,6 +68,7 @@ export interface Tab {
   flowState?: FlowState;
   pendingChanges?: Record<string, { pkOriginalValue: unknown; changes: Record<string, unknown> }>;
   pendingDeletions?: Record<string, unknown>; // Map of stringified PK -> original PK value
+  pendingInsertions?: Record<string, PendingInsertion>; // Map of tempId -> pending insertion
   selectedRows?: number[]; // Selected row indices
   isEditorOpen?: boolean; // Whether the SQL editor is visible
   filterClause?: string; // SQL WHERE clause (without "WHERE")

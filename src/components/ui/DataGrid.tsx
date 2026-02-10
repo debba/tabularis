@@ -14,6 +14,7 @@ import { ask, message } from "@tauri-apps/plugin-dialog";
 import { EditRowModal } from "../modals/EditRowModal";
 import { formatCellValue, getColumnSortState, calculateSelectionRange, toggleSetValue } from "../../utils/dataGrid";
 import { rowToTSV, rowsToTSV, getSelectedRows, copyTextToClipboard } from "../../utils/clipboard";
+import type { PendingInsertion } from "../../types/editor";
 
 interface DataGridProps {
   columns: string[];
@@ -27,7 +28,13 @@ interface DataGridProps {
     { pkOriginalValue: unknown; changes: Record<string, unknown> }
   >;
   pendingDeletions?: Record<string, unknown>;
+  pendingInsertions?: Record<string, PendingInsertion>;
   onPendingChange?: (pkVal: unknown, colName: string, value: unknown) => void;
+  onPendingInsertionChange?: (
+    tempId: string,
+    colName: string,
+    value: unknown
+  ) => void;
   selectedRows?: Set<number>;
   onSelectionChange?: (indices: Set<number>) => void;
   sortClause?: string;
@@ -43,7 +50,9 @@ export const DataGrid = React.memo(({
   onRefresh,
   pendingChanges,
   pendingDeletions,
+  pendingInsertions,
   onPendingChange,
+  onPendingInsertionChange,
   selectedRows: externalSelectedRows,
   onSelectionChange,
   sortClause,
@@ -91,6 +100,46 @@ export const DataGrid = React.memo(({
     return pkIndex >= 0 ? pkIndex : null;
   }, [columns, pkColumn]);
 
+  // Merge existing rows with pending insertions
+  const mergedRows = useMemo(() => {
+    type MergedRow = {
+      type: "existing" | "insertion";
+      rowData: unknown[];
+      displayIndex: number;
+      tempId?: string;
+    };
+
+    const rows: MergedRow[] = [];
+
+    // Add existing rows first (displayIndex 0, 1, 2, ...)
+    data.forEach((rowData, idx) => {
+      rows.push({
+        type: "existing",
+        rowData,
+        displayIndex: idx,
+      });
+    });
+
+    // Add pending insertions at the end
+    if (pendingInsertions) {
+      const existingRowCount = data.length;
+      let insertionIndex = 0;
+      Object.entries(pendingInsertions).forEach(([tempId, insertion]) => {
+        const rowData = columns.map((col) => insertion.data[col] ?? null);
+        rows.push({
+          type: "insertion",
+          rowData,
+          displayIndex: existingRowCount + insertionIndex,
+          tempId,
+        });
+        insertionIndex++;
+      });
+    }
+
+    // Sort by displayIndex (insertions are now at the end)
+    return rows.sort((a, b) => a.displayIndex - b.displayIndex);
+  }, [data, pendingInsertions, columns]);
+
   const handleRowClick = useCallback((index: number, event: React.MouseEvent) => {
     let newSelected = new Set(selectedRowIndices);
 
@@ -119,13 +168,13 @@ export const DataGrid = React.memo(({
   }, [selectedRowIndices, lastSelectedRowIndex, updateSelection]);
 
   const handleSelectAll = useCallback(() => {
-    if (selectedRowIndices.size === data.length) {
+    if (selectedRowIndices.size === mergedRows.length) {
       updateSelection(new Set());
     } else {
-      const allIndices = new Set(data.map((_, i) => i));
+      const allIndices = new Set(mergedRows.map((_, i) => i));
       updateSelection(allIndices);
     }
-  }, [selectedRowIndices.size, data, updateSelection]);
+  }, [selectedRowIndices.size, mergedRows, updateSelection]);
 
   useEffect(() => {
     if (editingCell && editInputRef.current) {
@@ -138,66 +187,110 @@ export const DataGrid = React.memo(({
     colIndex: number,
     value: unknown,
   ) => {
-    if (!tableName || !pkColumn) return; // Only edit if context is known
+    if (!tableName) return; // Only edit if table context is known
+
+    // For insertion rows, allow editing without pkColumn
+    const mergedRow = mergedRows[rowIndex];
+    if (!mergedRow) return;
+    if (mergedRow.type !== "insertion" && !pkColumn) return;
+
     setEditingCell({ rowIndex, colIndex, value });
   };
 
+  const isCommittingRef = useRef(false);
+
   const handleEditCommit = async () => {
-    if (!editingCell || !tableName || !pkColumn) {
+    // Prevent multiple concurrent commits (e.g., from rapid blur events)
+    if (isCommittingRef.current) return;
+    if (!editingCell || !tableName) {
       setEditingCell(null);
       return;
     }
 
-    const { rowIndex, colIndex, value } = editingCell;
-    const row = data[rowIndex];
+    isCommittingRef.current = true;
 
-    // Original value
-    const originalValue = row[colIndex];
-
-    // Check if value changed (handling string/number differences)
-    const isUnchanged = String(value) === String(originalValue);
-
-    if (isUnchanged && !onPendingChange) {
-      setEditingCell(null);
-      return;
-    }
-
-    // PK Value - check pkIndexMap is valid
-    if (pkIndexMap === null) {
-      setEditingCell(null);
-      return;
-    }
-    const pkVal = row[pkIndexMap];
-    const colName = columns[colIndex];
-
-    if (onPendingChange) {
-      // If value matches original, pass undefined to remove the pending change
-      onPendingChange(pkVal, colName, isUnchanged ? undefined : value);
-      setEditingCell(null);
-      return;
-    }
-
-    if (!connectionId) return;
-
-    // Legacy immediate update
     try {
-      await invoke("update_record", {
-        connectionId,
-        table: tableName,
-        pkCol: pkColumn,
-        pkVal,
-        colName,
-        newVal: value,
-      });
-      if (onRefresh) onRefresh();
-    } catch (e) {
-      console.error("Update failed:", e);
-      await message(t("dataGrid.updateFailed") + e, {
-        title: t("common.error"),
-        kind: "error",
-      });
+      const { rowIndex, colIndex, value } = editingCell;
+
+      // Safety check: ensure mergedRows has data
+      if (!mergedRows || rowIndex >= mergedRows.length) {
+        console.warn("Invalid rowIndex in handleEditCommit");
+        setEditingCell(null);
+        return;
+      }
+
+      // Check if this is an insertion row
+      const mergedRow = mergedRows[rowIndex];
+      const isInsertion = mergedRow?.type === "insertion";
+
+      if (isInsertion) {
+        // Handle insertion cell edit
+        if (onPendingInsertionChange && mergedRow.tempId) {
+          const colName = columns[colIndex];
+          onPendingInsertionChange(mergedRow.tempId, colName, value);
+        }
+        setEditingCell(null);
+        return;
+      }
+
+      // Existing row logic
+      const row = mergedRow.rowData;
+      if (!row) {
+        console.warn("Invalid row data in handleEditCommit");
+        setEditingCell(null);
+        return;
+      }
+
+      // Original value
+      const originalValue = row[colIndex];
+
+      // Check if value changed (handling string/number differences)
+      const isUnchanged = String(value) === String(originalValue);
+
+      if (isUnchanged && !onPendingChange) {
+        setEditingCell(null);
+        return;
+      }
+
+      // PK Value - check pkIndexMap is valid
+      if (pkIndexMap === null) {
+        setEditingCell(null);
+        return;
+      }
+      const pkVal = row[pkIndexMap];
+      const colName = columns[colIndex];
+
+      if (onPendingChange) {
+        // If value matches original, pass undefined to remove the pending change
+        onPendingChange(pkVal, colName, isUnchanged ? undefined : value);
+        setEditingCell(null);
+        return;
+      }
+
+      if (!connectionId) return;
+
+      // Legacy immediate update
+      try {
+        await invoke("update_record", {
+          connectionId,
+          table: tableName,
+          pkCol: pkColumn,
+          pkVal,
+          colName,
+          newVal: value,
+        });
+        if (onRefresh) onRefresh();
+      } catch (e) {
+        console.error("Update failed:", e);
+        await message(t("dataGrid.updateFailed") + e, {
+          title: t("common.error"),
+          kind: "error",
+        });
+      }
+      setEditingCell(null);
+    } finally {
+      isCommittingRef.current = false;
     }
-    setEditingCell(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -273,7 +366,7 @@ export const DataGrid = React.memo(({
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
-    data,
+    data: mergedRows.map((r) => r.rowData),
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -286,6 +379,16 @@ export const DataGrid = React.memo(({
     estimateSize: () => 35,
     overscan: 10,
   });
+
+  // Track insertion count to auto-scroll to bottom when new rows are added
+  const prevInsertionCountRef = useRef(0);
+  useEffect(() => {
+    const insertionCount = pendingInsertions ? Object.keys(pendingInsertions).length : 0;
+    if (insertionCount > prevInsertionCountRef.current && rows.length > 0) {
+      rowVirtualizer.scrollToIndex(rows.length - 1, { align: "end" });
+    }
+    prevInsertionCountRef.current = insertionCount;
+  }, [pendingInsertions, rows.length, rowVirtualizer]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, row: unknown[]) => {
     if (tableName && pkColumn) {
@@ -417,9 +520,13 @@ export const DataGrid = React.memo(({
               const rowIndex = virtualRow.index;
               const isSelected = selectedRowIndices.has(rowIndex);
 
+              // Check if this is an insertion row
+              const mergedRow = mergedRows[rowIndex];
+              const isInsertion = mergedRow?.type === "insertion";
+
               // Get PK for pending check (using pre-calculated pkIndexMap)
               const pkVal = pkIndexMap !== null ? String(row.original[pkIndexMap]) : null;
-              const isPendingDelete = pkVal
+              const isPendingDelete = !isInsertion && pkVal
                 ? pendingDeletions?.[pkVal] !== undefined
                 : false;
 
@@ -429,25 +536,29 @@ export const DataGrid = React.memo(({
                   data-index={virtualRow.index}
                   ref={rowVirtualizer.measureElement}
                   className={`transition-colors group ${
-                    isPendingDelete
-                      ? "bg-red-900/20 opacity-60"
-                      : isSelected
-                        ? "bg-blue-900/20"
-                        : "hover:bg-surface-secondary/50"
+                    isInsertion
+                      ? "bg-green-500/8 border-l-4 border-green-400"
+                      : isPendingDelete
+                        ? "bg-red-900/20 opacity-60"
+                        : isSelected
+                          ? "bg-blue-900/20"
+                          : "hover:bg-surface-secondary/50"
                   }`}
                   onContextMenu={(e) => handleContextMenu(e, row.original)}
                 >
                   <td
                     onClick={(e) => handleRowClick(rowIndex, e)}
                     className={`px-2 py-1.5 text-xs text-center border-b border-r border-default sticky left-0 z-10 cursor-pointer select-none w-[50px] min-w-[50px] ${
-                      isPendingDelete
-                        ? "bg-red-950/50 text-red-500 line-through"
-                        : isSelected
-                          ? "bg-blue-900/40 text-blue-200 font-bold"
-                          : "bg-base text-muted hover:bg-surface-secondary"
+                      isInsertion
+                        ? "bg-green-950/30 text-green-300 font-bold"
+                        : isPendingDelete
+                          ? "bg-red-950/50 text-red-500 line-through"
+                          : isSelected
+                            ? "bg-blue-900/40 text-blue-200 font-bold"
+                            : "bg-base text-muted hover:bg-surface-secondary"
                     }`}
                   >
-                    {rowIndex + 1}
+                    {isInsertion ? "NEW" : rowIndex + 1}
                   </td>
                   {row.getVisibleCells().map((cell, colIndex) => {
                     const isEditing =
@@ -456,15 +567,27 @@ export const DataGrid = React.memo(({
 
                     // Check if this cell has a pending change (ONLY if pkColumn exists)
                     const colName = cell.column.id;
-                    const pendingVal =
-                      pkColumn && pkVal && pendingChanges?.[pkVal]?.changes?.[colName];
-                    const hasPendingChange = pkColumn ? (pendingVal !== undefined) : false;
-                    const displayValue = hasPendingChange
-                      ? pendingVal
-                      : cell.getValue();
-                    const isModified =
-                      hasPendingChange &&
-                      String(pendingVal) !== String(cell.getValue());
+
+                    // For insertions, all cells are "pending" (new data)
+                    let displayValue: unknown;
+                    let hasPendingChange = false;
+                    let isModified = false;
+
+                    if (isInsertion) {
+                      // Insertion cell - show data from pendingInsertions
+                      displayValue = cell.getValue();
+                      hasPendingChange = true; // All insertion cells are "pending"
+                      isModified = displayValue !== null && displayValue !== "";
+                    } else {
+                      // Existing row - check for pending changes
+                      const pendingVal =
+                        pkColumn && pkVal && pendingChanges?.[pkVal]?.changes?.[colName];
+                      hasPendingChange = pkColumn ? (pendingVal !== undefined) : false;
+                      displayValue = hasPendingChange ? pendingVal : cell.getValue();
+                      isModified =
+                        hasPendingChange &&
+                        String(pendingVal) !== String(cell.getValue());
+                    }
 
                     return (
                       <td
@@ -477,9 +600,13 @@ export const DataGrid = React.memo(({
                         className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 whitespace-nowrap font-mono truncate max-w-[300px] cursor-text ${
                           isPendingDelete
                             ? "text-red-400/60 line-through decoration-red-500/30"
-                            : isModified
-                              ? "bg-blue-600/30 text-blue-100 italic font-medium"
-                              : "text-secondary"
+                            : isInsertion
+                              ? isModified
+                                ? "bg-green-500/15 text-green-200 italic"
+                                : "bg-green-500/5 text-secondary italic"
+                              : isModified
+                                ? "bg-blue-600/30 text-blue-100 italic font-medium"
+                                : "text-secondary"
                         }`}
                         title={!isEditing ? String(displayValue) : ""}
                       >
