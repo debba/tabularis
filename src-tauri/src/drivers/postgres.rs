@@ -11,13 +11,14 @@ fn escape_identifier(name: &str) -> String {
     name.replace('"', "\"\"")
 }
 
-
 pub async fn get_databases(params: &ConnectionParams) -> Result<Vec<String>, String> {
     let pool = get_postgres_pool(params).await?;
-    let rows = sqlx::query("SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname")
-        .fetch_all(&pool)
-        .await
-        .map_err(|e| e.to_string())?;
+    let rows = sqlx::query(
+        "SELECT datname::text FROM pg_database WHERE datistemplate = false ORDER BY datname",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| e.to_string())?;
     Ok(rows
         .iter()
         .map(|r| r.try_get("datname").unwrap_or_default())
@@ -25,7 +26,10 @@ pub async fn get_databases(params: &ConnectionParams) -> Result<Vec<String>, Str
 }
 
 pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, String> {
-    log::debug!("PostgreSQL: Fetching tables for database: {}", params.database);
+    log::debug!(
+        "PostgreSQL: Fetching tables for database: {}",
+        params.database
+    );
     let pool = get_postgres_pool(params).await?;
     let rows = sqlx::query(
         "SELECT table_name as name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name ASC",
@@ -39,7 +43,11 @@ pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, Str
             name: r.try_get("name").unwrap_or_default(),
         })
         .collect();
-    log::debug!("PostgreSQL: Found {} tables in {}", tables.len(), params.database);
+    log::debug!(
+        "PostgreSQL: Found {} tables in {}",
+        tables.len(),
+        params.database
+    );
     Ok(tables)
 }
 
@@ -190,7 +198,10 @@ pub async fn get_all_columns_batch(
             is_auto_increment: is_auto,
         };
 
-        result.entry(table_name).or_insert_with(Vec::new).push(column);
+        result
+            .entry(table_name)
+            .or_insert_with(Vec::new)
+            .push(column);
     }
 
     Ok(result)
@@ -313,15 +324,9 @@ pub async fn delete_record(
     let result = match pk_val {
         serde_json::Value::Number(n) => {
             if n.is_i64() {
-                sqlx::query(&query)
-                    .bind(n.as_i64())
-                    .execute(&pool)
-                    .await
+                sqlx::query(&query).bind(n.as_i64()).execute(&pool).await
             } else {
-                sqlx::query(&query)
-                    .bind(n.as_f64())
-                    .execute(&pool)
-                    .await
+                sqlx::query(&query).bind(n.as_f64()).execute(&pool).await
             }
         }
         serde_json::Value::String(s) => sqlx::query(&query).bind(s).execute(&pool).await,
@@ -458,10 +463,7 @@ fn remove_order_by(query: &str) -> String {
     }
 }
 
-pub async fn get_table_ddl(
-    params: &ConnectionParams,
-    table_name: &str,
-) -> Result<String, String> {
+pub async fn get_table_ddl(params: &ConnectionParams, table_name: &str) -> Result<String, String> {
     let cols = get_columns(params, table_name).await?;
     if cols.is_empty() {
         return Err(format!("Table {} not found or empty", table_name));
@@ -472,11 +474,11 @@ pub async fn get_table_ddl(
 
     for col in cols {
         let mut def = format!("\"{}\" {}", col.name, col.data_type);
-        
+
         if !col.is_nullable {
             def.push_str(" NOT NULL");
         }
-        
+
         if col.is_pk {
             pks.push(format!("\"{}\"", col.name));
         }
@@ -596,7 +598,10 @@ pub async fn execute_query(
 }
 
 pub async fn get_views(params: &ConnectionParams) -> Result<Vec<ViewInfo>, String> {
-    log::debug!("PostgreSQL: Fetching views for database: {}", params.database);
+    log::debug!(
+        "PostgreSQL: Fetching views for database: {}",
+        params.database
+    );
     let pool = get_postgres_pool(params).await?;
     let rows = sqlx::query(
         "SELECT viewname as name FROM pg_views WHERE schemaname = 'public' ORDER BY viewname ASC",
@@ -611,7 +616,11 @@ pub async fn get_views(params: &ConnectionParams) -> Result<Vec<ViewInfo>, Strin
             definition: None,
         })
         .collect();
-    log::debug!("PostgreSQL: Found {} views in {}", views.len(), params.database);
+    log::debug!(
+        "PostgreSQL: Found {} views in {}",
+        views.len(),
+        params.database
+    );
     Ok(views)
 }
 
@@ -628,7 +637,10 @@ pub async fn get_view_definition(
         .map_err(|e| format!("Failed to get view definition: {}", e))?;
 
     let definition: String = row.try_get("definition").unwrap_or_default();
-    Ok(format!("CREATE OR REPLACE VIEW {} AS\n{}", view_name, definition))
+    Ok(format!(
+        "CREATE OR REPLACE VIEW {} AS\n{}",
+        view_name, definition
+    ))
 }
 
 pub async fn create_view(
@@ -638,10 +650,7 @@ pub async fn create_view(
 ) -> Result<(), String> {
     let pool = get_postgres_pool(params).await?;
     let escaped_name = escape_identifier(view_name);
-    let query = format!(
-        "CREATE VIEW \"{}\" AS {}",
-        escaped_name, definition
-    );
+    let query = format!("CREATE VIEW \"{}\" AS {}", escaped_name, definition);
     sqlx::query(&query)
         .execute(&pool)
         .await
@@ -667,10 +676,7 @@ pub async fn alter_view(
     Ok(())
 }
 
-pub async fn drop_view(
-    params: &ConnectionParams,
-    view_name: &str,
-) -> Result<(), String> {
+pub async fn drop_view(params: &ConnectionParams, view_name: &str) -> Result<(), String> {
     let pool = get_postgres_pool(params).await?;
     let escaped_name = escape_identifier(view_name);
     let query = format!("DROP VIEW IF EXISTS \"{}\"", escaped_name);
@@ -710,141 +716,145 @@ pub async fn get_view_columns(
         .await
         .map_err(|e| e.to_string())?;
 
-        Ok(rows
-            .iter()
-            .map(|r| {
-                let null_str: String = r.try_get("is_nullable").unwrap_or_default();
-                let is_pk: i64 = r.try_get("is_pk").unwrap_or(0);
-                let default_val: String = r.try_get("column_default").unwrap_or_default();
-                let is_identity: String = r.try_get("is_identity").unwrap_or_default();
+    Ok(rows
+        .iter()
+        .map(|r| {
+            let null_str: String = r.try_get("is_nullable").unwrap_or_default();
+            let is_pk: i64 = r.try_get("is_pk").unwrap_or(0);
+            let default_val: String = r.try_get("column_default").unwrap_or_default();
+            let is_identity: String = r.try_get("is_identity").unwrap_or_default();
 
-                let is_auto = is_identity == "YES" || default_val.contains("nextval");
+            let is_auto = is_identity == "YES" || default_val.contains("nextval");
 
-                TableColumn {
-                    name: r.try_get("column_name").unwrap_or_default(),
-                    data_type: r.try_get("data_type").unwrap_or_default(),
-                    is_pk: is_pk > 0,
-                    is_nullable: null_str == "YES",
-                    is_auto_increment: is_auto,
-                }
-            })
-            .collect())
-    }
+            TableColumn {
+                name: r.try_get("column_name").unwrap_or_default(),
+                data_type: r.try_get("data_type").unwrap_or_default(),
+                is_pk: is_pk > 0,
+                is_nullable: null_str == "YES",
+                is_auto_increment: is_auto,
+            }
+        })
+        .collect())
+}
 
-    pub async fn get_routines(params: &ConnectionParams) -> Result<Vec<RoutineInfo>, String> {
-        let pool = get_postgres_pool(params).await?;
-        let query = r#"
-            SELECT proname, prokind 
-            FROM pg_proc 
+pub async fn get_routines(params: &ConnectionParams) -> Result<Vec<RoutineInfo>, String> {
+    let pool = get_postgres_pool(params).await?;
+    let query = r#"
+            SELECT proname, prokind
+            FROM pg_proc
             WHERE pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
             AND prokind IN ('f', 'p')
             ORDER BY proname
         "#;
-        
-        let rows = sqlx::query(query)
-            .fetch_all(&pool)
-            .await
-            .map_err(|e| e.to_string())?;
-            
-        Ok(rows.iter().map(|r| {
+
+    let rows = sqlx::query(query)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(rows
+        .iter()
+        .map(|r| {
             let prokind: i8 = r.try_get("prokind").unwrap_or(b'f' as i8); // f=function, p=procedure
             let routine_type = match prokind as u8 as char {
                 'p' => "PROCEDURE",
                 _ => "FUNCTION",
             };
-            
+
             RoutineInfo {
                 name: r.try_get("proname").unwrap_or_default(),
                 routine_type: routine_type.to_string(),
-                definition: None, 
+                definition: None,
             }
-        }).collect())
-    }
+        })
+        .collect())
+}
 
-    pub async fn get_routine_parameters(
-        params: &ConnectionParams,
-        routine_name: &str,
-    ) -> Result<Vec<RoutineParameter>, String> {
-        let pool = get_postgres_pool(params).await?;
+pub async fn get_routine_parameters(
+    params: &ConnectionParams,
+    routine_name: &str,
+) -> Result<Vec<RoutineParameter>, String> {
+    let pool = get_postgres_pool(params).await?;
 
-        // 1. Get return type for functions
-        let return_type_query = r#"
+    // 1. Get return type for functions
+    let return_type_query = r#"
             SELECT data_type, routine_type
             FROM information_schema.routines
             WHERE routine_schema = 'public' AND routine_name = $1
             LIMIT 1
         "#;
-        
-        let routine_info = sqlx::query(return_type_query)
-            .bind(routine_name)
-            .fetch_optional(&pool)
-            .await
-            .map_err(|e| e.to_string())?;
 
-        let mut parameters = Vec::new();
+    let routine_info = sqlx::query(return_type_query)
+        .bind(routine_name)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
-        if let Some(info) = routine_info {
-            let routine_type: String = info.try_get("routine_type").unwrap_or_default();
-            if routine_type == "FUNCTION" {
-                let data_type: String = info.try_get("data_type").unwrap_or_default();
-                // Exclude void or trigger returns if not relevant
-                if !data_type.eq_ignore_ascii_case("void") && !data_type.eq_ignore_ascii_case("trigger") {
-                    parameters.push(RoutineParameter {
-                        name: "".to_string(), // Empty name for return value
-                        data_type,
-                        mode: "OUT".to_string(),
-                        ordinal_position: 0,
-                    });
-                }
+    let mut parameters = Vec::new();
+
+    if let Some(info) = routine_info {
+        let routine_type: String = info.try_get("routine_type").unwrap_or_default();
+        if routine_type == "FUNCTION" {
+            let data_type: String = info.try_get("data_type").unwrap_or_default();
+            // Exclude void or trigger returns if not relevant
+            if !data_type.eq_ignore_ascii_case("void") && !data_type.eq_ignore_ascii_case("trigger")
+            {
+                parameters.push(RoutineParameter {
+                    name: "".to_string(), // Empty name for return value
+                    data_type,
+                    mode: "OUT".to_string(),
+                    ordinal_position: 0,
+                });
             }
         }
-        
-        // 2. Get parameters
-        let query = r#"
+    }
+
+    // 2. Get parameters
+    let query = r#"
             SELECT p.parameter_name, p.data_type, p.parameter_mode, p.ordinal_position
             FROM information_schema.parameters p
             JOIN information_schema.routines r ON p.specific_name = r.specific_name
             WHERE r.routine_schema = 'public' AND r.routine_name = $1
             ORDER BY p.ordinal_position
         "#;
-        
-        let rows = sqlx::query(query)
-            .bind(routine_name)
-            .fetch_all(&pool)
-            .await
-            .map_err(|e| e.to_string())?;
-            
-        parameters.extend(rows.iter().map(|r| RoutineParameter {
-            name: r.try_get("parameter_name").unwrap_or_default(),
-            data_type: r.try_get("data_type").unwrap_or_default(),
-            mode: r.try_get("parameter_mode").unwrap_or_default(),
-            ordinal_position: r.try_get("ordinal_position").unwrap_or(0),
-        }));
 
-        Ok(parameters)
-    }
+    let rows = sqlx::query(query)
+        .bind(routine_name)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
-    pub async fn get_routine_definition(
-        params: &ConnectionParams,
-        routine_name: &str,
-        _routine_type: &str, 
-    ) -> Result<String, String> {
-        let pool = get_postgres_pool(params).await?;
-        
-        let query = r#"
+    parameters.extend(rows.iter().map(|r| RoutineParameter {
+        name: r.try_get("parameter_name").unwrap_or_default(),
+        data_type: r.try_get("data_type").unwrap_or_default(),
+        mode: r.try_get("parameter_mode").unwrap_or_default(),
+        ordinal_position: r.try_get("ordinal_position").unwrap_or(0),
+    }));
+
+    Ok(parameters)
+}
+
+pub async fn get_routine_definition(
+    params: &ConnectionParams,
+    routine_name: &str,
+    _routine_type: &str,
+) -> Result<String, String> {
+    let pool = get_postgres_pool(params).await?;
+
+    let query = r#"
             SELECT pg_get_functiondef(p.oid) as definition
             FROM pg_proc p
             JOIN pg_namespace n ON p.pronamespace = n.oid
             WHERE n.nspname = 'public' AND p.proname = $1
             LIMIT 1
         "#;
-        
-        let row = sqlx::query(query)
-            .bind(routine_name)
-            .fetch_one(&pool)
-            .await
-            .map_err(|e| e.to_string())?;
-            
-        let definition: String = row.try_get("definition").unwrap_or_default();
-        Ok(definition)
-    }
+
+    let row = sqlx::query(query)
+        .bind(routine_name)
+        .fetch_one(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let definition: String = row.try_get("definition").unwrap_or_default();
+    Ok(definition)
+}
