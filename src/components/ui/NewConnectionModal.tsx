@@ -508,12 +508,6 @@ export const NewConnectionModal = ({
                 </button>
               </div>
               <div className="space-y-2">
-                {databaseLoadError && (
-                  <div className="text-xs text-red-400 flex items-center gap-1">
-                    <AlertCircle size={12} />
-                    {databaseLoadError}
-                  </div>
-                )}
                 {availableDatabases.length > 0 ? (
                   <SearchableSelect
                     value={formData.database || null}
@@ -531,6 +525,12 @@ export const NewConnectionModal = ({
                     className={InputClass}
                     placeholder={t("newConnection.dbNamePlaceholder")}
                   />
+                )}
+                {databaseLoadError && (
+                  <div className="text-xs text-red-400 flex items-center gap-1">
+                    <AlertCircle size={12} />
+                    {databaseLoadError}
+                  </div>
                 )}
               </div>
             </div>
