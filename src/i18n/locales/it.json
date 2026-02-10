@@ -87,7 +87,6 @@
     "errorTitle": "Installazione Fallita"
   },
   "connections": {
-
     "title": "Connessioni",
     "addConnection": "Aggiungi Connessione",
     "noConnections": "Nessuna connessione attiva",
@@ -345,7 +344,12 @@
     "copyCells": "Copia {{count}} celle",
     "copyRows": "Copia {{count}} righe",
     "copied": "Copiato negli appunti",
-    "discardInsertion": "Clicca per scartare questa riga (rollback)"
+    "discardInsertion": "Clicca per scartare questa riga (rollback)",
+    "revertSelected": "Ripristina selezionato",
+    "setGenerate": "Imposta GENERATED",
+    "setNull": "Imposta NULL",
+    "setDefault": "Imposta DEFAULT",
+    "setEmpty": "Imposta VUOTO"
   },
   "editRow": {
     "title": "Modifica riga",

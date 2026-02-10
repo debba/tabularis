@@ -295,7 +295,12 @@ pub async fn update_record(
             }
         }
         serde_json::Value::String(s) => {
-            qb.push_bind(s);
+            // Check for special sentinel value to use DEFAULT
+            if s == "__USE_DEFAULT__" {
+                qb.push("DEFAULT");
+            } else {
+                qb.push_bind(s);
+            }
         }
         serde_json::Value::Bool(b) => {
             qb.push_bind(b);

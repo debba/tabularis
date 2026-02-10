@@ -8,12 +8,15 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ContextMenu } from "./ContextMenu";
-import { ArrowUp, ArrowDown, ArrowUpDown, Copy, Undo, Trash2, Edit } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, Copy, Undo, Trash2, Edit, Sparkles, Ban, FileDigit } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { message } from "@tauri-apps/plugin-dialog";
 import { formatCellValue, getColumnSortState, calculateSelectionRange, toggleSetValue } from "../../utils/dataGrid";
 import { rowToTSV, rowsToTSV, getSelectedRows, copyTextToClipboard } from "../../utils/clipboard";
 import type { PendingInsertion } from "../../types/editor";
+
+// Special sentinel value to indicate that the database DEFAULT value should be used
+export const USE_DEFAULT_SENTINEL = "__USE_DEFAULT__";
 
 interface DataGridProps {
   columns: string[];
@@ -77,6 +80,9 @@ export const DataGrid = React.memo(({
     x: number;
     y: number;
     row: unknown[];
+    rowIndex: number;
+    colIndex: number;
+    colName: string;
     mergedRow?: { type: "existing" | "insertion"; rowData: unknown[]; displayIndex: number; tempId?: string };
   } | null>(null);
   const [editingCell, setEditingCell] = useState<{
@@ -448,16 +454,20 @@ export const DataGrid = React.memo(({
     prevInsertionCountRef.current = insertionCount;
   }, [pendingInsertions, tableRows.length, rowVirtualizer]);
 
-  const handleContextMenu = useCallback((e: React.MouseEvent, row: unknown[]) => {
+  const handleContextMenu = useCallback((
+    e: React.MouseEvent,
+    row: unknown[],
+    rowIndex: number,
+    colIndex: number,
+    colName: string
+  ) => {
     if (tableName) {
       e.preventDefault();
-      // Find the merged row corresponding to this DOM element (using data attribute or similar would be better, but we have row object)
-      // Since `row` is just the data array, we can find it in mergedRows.
-      // BUT `mergedRows` contains `rowData` which is the same reference.
+      // Find the merged row corresponding to this DOM element
       const mergedRow = mergedRows.find(mr => mr.rowData === row);
-      setContextMenu({ x: e.clientX, y: e.clientY, row, mergedRow });
+      setContextMenu({ x: e.clientX, y: e.clientY, row, rowIndex, colIndex, colName, mergedRow });
     }
-  }, [tableName, mergedRows]); // Removed pkColumn dependency to allow context menu on new tables/views
+  }, [tableName, mergedRows]);
 
   const revertSelectedRow = useCallback(() => {
     if (!contextMenu) return;
@@ -539,6 +549,67 @@ export const DataGrid = React.memo(({
     setEditingCell({ rowIndex, colIndex: 0, value: firstColValue });
     setContextMenu(null);
   }, [contextMenu]);
+
+  // Cell value manipulation actions
+  const setCellGenerate = useCallback(() => {
+    if (!contextMenu) return;
+    const { rowIndex, colIndex, colName, mergedRow } = contextMenu;
+    const isInsertion = mergedRow?.type === "insertion";
+
+    if (isInsertion && onPendingInsertionChange && mergedRow.tempId) {
+      // For insertions, set to null (will be displayed as <generated>)
+      onPendingInsertionChange(mergedRow.tempId, colName, null);
+    } else if (onPendingChange && pkIndexMap !== null) {
+      // For existing rows, mark as pending change with null
+      const pkVal = contextMenu.row[pkIndexMap];
+      onPendingChange(pkVal, colName, null);
+    }
+    setContextMenu(null);
+  }, [contextMenu, onPendingInsertionChange, onPendingChange, pkIndexMap]);
+
+  const setCellNull = useCallback(() => {
+    if (!contextMenu) return;
+    const { rowIndex, colIndex, colName, mergedRow } = contextMenu;
+    const isInsertion = mergedRow?.type === "insertion";
+
+    if (isInsertion && onPendingInsertionChange && mergedRow.tempId) {
+      onPendingInsertionChange(mergedRow.tempId, colName, null);
+    } else if (onPendingChange && pkIndexMap !== null) {
+      const pkVal = contextMenu.row[pkIndexMap];
+      onPendingChange(pkVal, colName, null);
+    }
+    setContextMenu(null);
+  }, [contextMenu, onPendingInsertionChange, onPendingChange, pkIndexMap]);
+
+  const setCellDefault = useCallback(() => {
+    if (!contextMenu) return;
+    const { rowIndex, colIndex, colName, mergedRow } = contextMenu;
+    const isInsertion = mergedRow?.type === "insertion";
+
+    if (isInsertion && onPendingInsertionChange && mergedRow.tempId) {
+      // For insertions, set to null (will be displayed as <default>)
+      onPendingInsertionChange(mergedRow.tempId, colName, null);
+    } else if (onPendingChange && pkIndexMap !== null) {
+      // For existing rows, use sentinel value to indicate DEFAULT should be used
+      const pkVal = contextMenu.row[pkIndexMap];
+      onPendingChange(pkVal, colName, USE_DEFAULT_SENTINEL);
+    }
+    setContextMenu(null);
+  }, [contextMenu, onPendingInsertionChange, onPendingChange, pkIndexMap]);
+
+  const setCellEmpty = useCallback(() => {
+    if (!contextMenu) return;
+    const { rowIndex, colIndex, colName, mergedRow } = contextMenu;
+    const isInsertion = mergedRow?.type === "insertion";
+
+    if (isInsertion && onPendingInsertionChange && mergedRow.tempId) {
+      onPendingInsertionChange(mergedRow.tempId, colName, " ");
+    } else if (onPendingChange && pkIndexMap !== null) {
+      const pkVal = contextMenu.row[pkIndexMap];
+      onPendingChange(pkVal, colName, " ");
+    }
+    setContextMenu(null);
+  }, [contextMenu, onPendingInsertionChange, onPendingChange, pkIndexMap]);
 
   const copyToClipboard = useCallback(async (text: string) => {
     try {
@@ -661,7 +732,6 @@ export const DataGrid = React.memo(({
                           ? "bg-red-900/20 opacity-60"
                           : "hover:bg-surface-secondary/50"
                   }`}
-                  onContextMenu={(e) => handleContextMenu(e, row.original)}
                 >
                   <td
                     onClick={(e) => handleRowClick(rowIndex, e)}
@@ -726,6 +796,32 @@ export const DataGrid = React.memo(({
                       isModified =
                         hasPendingChange &&
                         String(pendingVal) !== String(cell.getValue());
+
+                      // Show placeholders for existing rows with pending changes
+                      if (hasPendingChange) {
+                        // Check for USE_DEFAULT sentinel value
+                        if (displayValue === USE_DEFAULT_SENTINEL) {
+                          displayValue = "<default>";
+                          isDefaultValuePlaceholder = true;
+                        }
+                        // Check for null or empty values
+                        else if (displayValue === null || displayValue === "") {
+                          // Check for auto-increment
+                          if (autoIncrementColumns?.includes(colName)) {
+                            displayValue = "<generated>";
+                            isAutoIncrementPlaceholder = true;
+                          }
+                          // Check for default value (only if not auto-increment and not nullable)
+                          else if (
+                            defaultValueColumns?.includes(colName) &&
+                            !nullableColumns?.includes(colName)
+                          ) {
+                            displayValue = "<default>";
+                            isDefaultValuePlaceholder = true;
+                          }
+                          // For nullable columns with null value, keep as null (formatted by formatCellValue)
+                        }
+                      }
                     }
 
                     return (
@@ -736,6 +832,7 @@ export const DataGrid = React.memo(({
                           !isPendingDelete &&
                           handleCellDoubleClick(rowIndex, colIndex, (isAutoIncrementPlaceholder || isDefaultValuePlaceholder) ? "" : displayValue)
                         }
+                        onContextMenu={(e) => handleContextMenu(e, row.original, rowIndex, colIndex, colName)}
                         className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 whitespace-nowrap font-mono truncate max-w-[300px] cursor-text ${
                           isPendingDelete
                             ? "text-red-400/60 line-through decoration-red-500/30"
@@ -798,35 +895,81 @@ export const DataGrid = React.memo(({
         // Enable revert if there's any pending change, deletion, or insertion
         const canRevert = isInsertion || hasPendingChanges || hasPendingDeletion;
 
+        // Determine which cell value options to show based on column properties
+        const { colName } = contextMenu;
+        const isAutoIncrement = autoIncrementColumns?.includes(colName);
+        const isNullable = nullableColumns?.includes(colName);
+        const hasDefault = defaultValueColumns?.includes(colName);
+
+        // Build menu items dynamically
+        const menuItems = [];
+
+        // Cell value manipulation options (shown first for cell context)
+        // SET GENERATED only for insertion rows, not for existing rows
+        if (isAutoIncrement && isInsertion) {
+          menuItems.push({
+            label: t("dataGrid.setGenerate"),
+            icon: Sparkles,
+            action: setCellGenerate,
+          });
+        }
+        if (isNullable) {
+          menuItems.push({
+            label: t("dataGrid.setNull"),
+            icon: Ban,
+            action: setCellNull,
+          });
+        }
+        if (hasDefault) {
+          menuItems.push({
+            label: t("dataGrid.setDefault"),
+            icon: FileDigit,
+            action: setCellDefault,
+          });
+        }
+        // Always allow setting empty string
+        menuItems.push({
+          label: t("dataGrid.setEmpty"),
+          icon: Copy,
+          action: setCellEmpty,
+        });
+
+        // Separator and row actions
+        if (menuItems.length > 0) {
+          menuItems.push({ separator: true } as any);
+        }
+
+        menuItems.push(
+          {
+            label: t("dataGrid.copyRow"),
+            icon: Copy,
+            action: copyCellValue,
+          },
+          {
+            label: t("dataGrid.editRow"),
+            icon: Edit,
+            action: editSelectedRow,
+          },
+          {
+            label: t("dataGrid.deleteRow"),
+            icon: Trash2,
+            danger: true,
+            action: deleteSelectedRow,
+          },
+          {
+            label: t("dataGrid.revertSelected"),
+            icon: Undo,
+            action: revertSelectedRow,
+            disabled: !canRevert,
+          }
+        );
+
         return (
           <ContextMenu
             x={contextMenu.x}
             y={contextMenu.y}
             onClose={() => setContextMenu(null)}
-            items={[
-              {
-                label: t("dataGrid.copyRow"),
-                icon: Copy,
-                action: copyCellValue,
-              },
-              {
-                label: t("dataGrid.editRow"),
-                icon: Edit,
-                action: editSelectedRow,
-              },
-              {
-                label: t("dataGrid.deleteRow"),
-                icon: Trash2,
-                danger: true,
-                action: deleteSelectedRow,
-              },
-              {
-                label: t("dataGrid.revertSelected"),
-                icon: Undo,
-                action: revertSelectedRow,
-                disabled: !canRevert,
-              },
-            ]}
+            items={menuItems}
           />
         );
       })()}

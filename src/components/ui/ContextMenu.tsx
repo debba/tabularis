@@ -2,11 +2,12 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { calculateContextMenuPosition, type ViewportConstraints } from '../../utils/contextMenu';
 
 interface ContextMenuItem {
-  label: string;
+  label?: string;
   icon?: React.ElementType;
-  action: () => void;
+  action?: () => void;
   danger?: boolean;
   disabled?: boolean;
+  separator?: boolean;
 }
 
 interface ContextMenuProps {
@@ -78,12 +79,22 @@ export const ContextMenu = ({ x, y, items, onClose }: ContextMenuProps) => {
       className="fixed z-50 min-w-[160px] bg-surface-secondary border border-strong rounded-lg shadow-xl py-1 animate-in fade-in zoom-in-95 duration-100"
     >
       {items.map((item, index) => {
+        // Render separator
+        if (item.separator) {
+          return (
+            <div
+              key={index}
+              className="h-px bg-default my-1"
+            />
+          );
+        }
+
         const Icon = item.icon;
         return (
           <button
             key={index}
             onClick={() => {
-              if (!item.disabled) {
+              if (!item.disabled && item.action) {
                 item.action();
                 onClose();
               }
