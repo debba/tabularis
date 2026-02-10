@@ -303,6 +303,47 @@ export const DataGrid = React.memo(({
       handleEditCommit();
     } else if (e.key === "Escape") {
       setEditingCell(null);
+    } else if (e.key === "Tab") {
+      e.preventDefault(); // Prevent default tab behavior
+
+      if (!editingCell) return;
+
+      // Commit current cell first
+      handleEditCommit();
+
+      const { rowIndex, colIndex } = editingCell;
+      const totalRows = mergedRows.length;
+      const totalCols = columns.length;
+
+      // Calculate next position
+      let nextRowIndex = rowIndex;
+      let nextColIndex = colIndex + 1;
+
+      // If we're at the last column, move to next row
+      if (nextColIndex >= totalCols) {
+        nextColIndex = 0;
+        nextRowIndex = rowIndex + 1;
+
+        // If we're at the last row, wrap to first row
+        if (nextRowIndex >= totalRows) {
+          nextRowIndex = 0;
+        }
+      }
+
+      // Get the value of the next cell
+      const nextRow = mergedRows[nextRowIndex];
+      if (nextRow) {
+        const nextValue = nextRow.rowData[nextColIndex];
+
+        // Set editing on the next cell
+        setTimeout(() => {
+          setEditingCell({
+            rowIndex: nextRowIndex,
+            colIndex: nextColIndex,
+            value: nextValue,
+          });
+        }, 0);
+      }
     }
   };
 
