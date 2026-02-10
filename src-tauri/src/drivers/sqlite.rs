@@ -342,39 +342,41 @@ pub async fn insert_record(
         vals.push(v);
     }
 
-    if cols.is_empty() {
-        return Err("No data to insert".into());
-    }
+    // Allow empty inserts for auto-generated values (e.g., auto-increment PKs)
+    let mut qb = if cols.is_empty() {
+        sqlx::QueryBuilder::new(format!("INSERT INTO \"{}\" DEFAULT VALUES", table))
+    } else {
+        let mut qb = sqlx::QueryBuilder::new(format!(
+            "INSERT INTO \"{}\" ({}) VALUES (",
+            table,
+            cols.join(", ")
+        ));
 
-    let mut qb = sqlx::QueryBuilder::new(format!(
-        "INSERT INTO \"{}\" ({}) VALUES (",
-        table,
-        cols.join(", ")
-    ));
-
-    let mut separated = qb.separated(", ");
-    for val in vals {
-        match val {
-            serde_json::Value::Number(n) => {
-                if n.is_i64() {
-                    separated.push_bind(n.as_i64());
-                } else {
-                    separated.push_bind(n.as_f64());
+        let mut separated = qb.separated(", ");
+        for val in vals {
+            match val {
+                serde_json::Value::Number(n) => {
+                    if n.is_i64() {
+                        separated.push_bind(n.as_i64());
+                    } else {
+                        separated.push_bind(n.as_f64());
+                    }
                 }
+                serde_json::Value::String(s) => {
+                    separated.push_bind(s);
+                }
+                serde_json::Value::Bool(b) => {
+                    separated.push_bind(b);
+                }
+                serde_json::Value::Null => {
+                    separated.push("NULL");
+                }
+                _ => return Err("Unsupported value type".into()),
             }
-            serde_json::Value::String(s) => {
-                separated.push_bind(s);
-            }
-            serde_json::Value::Bool(b) => {
-                separated.push_bind(b);
-            }
-            serde_json::Value::Null => {
-                separated.push("NULL");
-            }
-            _ => return Err("Unsupported value type".into()),
         }
-    }
-    separated.push_unseparated(")");
+        separated.push_unseparated(")");
+        qb
+    };
 
     let query = qb.build();
     let result = query.execute(&pool).await.map_err(|e| e.to_string())?;

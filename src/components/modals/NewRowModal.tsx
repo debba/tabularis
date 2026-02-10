@@ -183,21 +183,38 @@ export const NewRowModal = ({
     try {
       const dataToSend: Record<string, unknown> = {};
 
+      console.log("Form data before processing:", formData);
+
       for (const col of columns) {
         const rawVal = formData[col.name];
 
-        // Skip if auto-increment and empty/placeholder
-        if (col.is_auto_increment && (!rawVal || rawVal === "")) {
+        console.log(`Processing column ${col.name}:`, {
+          rawVal,
+          is_auto_increment: col.is_auto_increment,
+          type: typeof rawVal,
+        });
+
+        // Skip if auto-increment and empty (let database generate)
+        // But if user explicitly provides a value, include it (even "0")
+        if (col.is_auto_increment && (rawVal === "" || rawVal === null || rawVal === undefined)) {
+          console.log(`  -> Skipping auto-increment field ${col.name} (empty)`);
           continue;
         }
 
         if (rawVal === "" && col.is_nullable) {
+          console.log(`  -> Setting ${col.name} to NULL (nullable)`);
           dataToSend[col.name] = null;
         } else if (rawVal !== "") {
           // Parse value based on type
-          dataToSend[col.name] = parseValue(String(rawVal), col.data_type);
+          const parsed = parseValue(String(rawVal), col.data_type);
+          console.log(`  -> Setting ${col.name} to:`, parsed);
+          dataToSend[col.name] = parsed;
+        } else {
+          console.log(`  -> Skipping ${col.name} (empty non-nullable)`);
         }
       }
+
+      console.log("Data to send:", dataToSend);
 
       await invoke("insert_record", {
         connectionId: activeConnectionId,

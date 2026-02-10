@@ -1,25 +1,27 @@
 import type { TableColumn, PendingInsertion } from "../types/editor";
 
 /**
- * Genera un ID temporaneo univoco per una pending insertion
+ * Generates a unique temporary ID for a pending insertion
  */
 export function generateTempId(): string {
   return `temp_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
 
 /**
- * Inizializza i dati di una nuova riga con valori di default
+ * Initializes the data of a new row with default values
  */
-export function initializeNewRow(columns: TableColumn[]): Record<string, unknown> {
+export function initializeNewRow(
+  columns: TableColumn[],
+): Record<string, unknown> {
   const data: Record<string, unknown> = {};
 
   columns.forEach((col) => {
     if (col.is_auto_increment) {
-      data[col.name] = null; // Auto-increment gestito dal DB
+      data[col.name] = null; // Auto-increment handled by the DB
     } else if (col.is_nullable) {
-      data[col.name] = null; // NULL di default
+      data[col.name] = null; // NULL by default
     } else {
-      data[col.name] = ""; // Stringa vuota per required
+      data[col.name] = ""; // Empty string for required fields
     }
   });
 
@@ -27,24 +29,26 @@ export function initializeNewRow(columns: TableColumn[]): Record<string, unknown
 }
 
 /**
- * Valida una pending insertion controllando campi obbligatori
- * @returns Mappa colonna → messaggio errore (vuota se validazione OK)
+ * Validates a pending insertion by checking mandatory fields
+ * @returns Column → error message map (empty if validation passes)
  */
 export function validatePendingInsertion(
   insertion: PendingInsertion,
-  columns: TableColumn[]
+  columns: TableColumn[],
 ): Record<string, string> {
   const errors: Record<string, string> = {};
 
   columns.forEach((col) => {
-    // Skip auto-increment (gestito dal DB)
-    if (col.is_auto_increment) return;
+    // Skip auto-increment columns (they're optional - can be provided or auto-generated)
+    if (col.is_auto_increment) {
+      return;
+    }
 
-    // Controlla campi required
+    // Check required fields
     if (!col.is_nullable) {
       const value = insertion.data[col.name];
       if (value === null || value === undefined || value === "") {
-        errors[col.name] = "Campo obbligatorio";
+        errors[col.name] = "Required field";
       }
     }
   });
@@ -53,19 +57,22 @@ export function validatePendingInsertion(
 }
 
 /**
- * Converte una pending insertion in formato per backend insert_record
+ * Converts a pending insertion into format for backend insert_record
  */
 export function insertionToBackendData(
   insertion: PendingInsertion,
-  columns: TableColumn[]
+  columns: TableColumn[],
 ): Record<string, unknown> {
   const data: Record<string, unknown> = {};
 
   columns.forEach((col) => {
-    // Skip auto-increment columns
-    if (col.is_auto_increment) return;
-
     const value = insertion.data[col.name];
+
+    // Skip auto-increment columns if no value provided (let DB generate it)
+    if (col.is_auto_increment && (value === null || value === undefined || value === "")) {
+      return;
+    }
+
     data[col.name] = value;
   });
 
@@ -73,13 +80,13 @@ export function insertionToBackendData(
 }
 
 /**
- * Filtra pending insertions per row selection
+ * Filters pending insertions by row selection
  */
 export function filterInsertionsBySelection(
   pendingInsertions: Record<string, PendingInsertion>,
-  selectedDisplayIndices: Set<number>
+  selectedDisplayIndices: Set<number>,
 ): PendingInsertion[] {
   return Object.values(pendingInsertions).filter((insertion) =>
-    selectedDisplayIndices.has(insertion.displayIndex)
+    selectedDisplayIndices.has(insertion.displayIndex),
   );
 }
