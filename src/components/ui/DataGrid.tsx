@@ -8,10 +8,9 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ContextMenu } from "./ContextMenu";
-import { Trash2, Edit, ArrowUp, ArrowDown, ArrowUpDown, Copy } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, Copy, Undo } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { ask, message } from "@tauri-apps/plugin-dialog";
-import { EditRowModal } from "../modals/EditRowModal";
+import { message } from "@tauri-apps/plugin-dialog";
 import { formatCellValue, getColumnSortState, calculateSelectionRange, toggleSetValue } from "../../utils/dataGrid";
 import { rowToTSV, rowsToTSV, getSelectedRows, copyTextToClipboard } from "../../utils/clipboard";
 import type { PendingInsertion } from "../../types/editor";
@@ -37,6 +36,7 @@ interface DataGridProps {
     value: unknown
   ) => void;
   onDiscardInsertion?: (tempId: string) => void;
+  onRevertDeletion?: (pkVal: unknown) => void;
   selectedRows?: Set<number>;
   onSelectionChange?: (indices: Set<number>) => void;
   sortClause?: string;
@@ -57,6 +57,7 @@ export const DataGrid = React.memo(({
   onPendingChange,
   onPendingInsertionChange,
   onDiscardInsertion,
+  onRevertDeletion,
   selectedRows: externalSelectedRows,
   onSelectionChange,
   sortClause,
@@ -83,9 +84,6 @@ export const DataGrid = React.memo(({
   const [lastSelectedRowIndex, setLastSelectedRowIndex] = useState<
     number | null
   >(null);
-  const [editRowModalData, setEditRowModalData] = useState<unknown[] | null>(
-    null,
-  );
   const editInputRef = useRef<HTMLInputElement>(null);
 
   const selectedRowIndices = externalSelectedRows || internalSelectedRowIndices;
@@ -414,47 +412,55 @@ export const DataGrid = React.memo(({
     }
   }, [tableName, mergedRows]); // Removed pkColumn dependency to allow context menu on new tables/views
 
-  const deleteRow = useCallback(async () => {
-    if (!contextMenu || !tableName) return;
+  const revertSelectedRow = useCallback(() => {
+    if (!contextMenu) return;
 
-    // Check if this is an insertion
     const isInsertion = contextMenu.mergedRow?.type === "insertion";
     const tempId = contextMenu.mergedRow?.tempId;
 
-    if (isInsertion && tempId) {
-        if (onDiscardInsertion) {
-            onDiscardInsertion(tempId);
-        }
-        setContextMenu(null);
-        return;
+    // Handle insertion row revert (discard)
+    if (isInsertion && tempId && onDiscardInsertion) {
+      onDiscardInsertion(tempId);
+      setContextMenu(null);
+      return;
     }
 
-    if (!pkColumn || !connectionId || pkIndexMap === null) return;
+    // For existing rows, need pkColumn
+    if (!pkColumn || pkIndexMap === null) return;
 
     const pkVal = contextMenu.row[pkIndexMap];
+    const pkValStr = String(pkVal);
 
-    const confirmed = await ask(t("dataGrid.confirmDelete"), {
-      title: t("dataGrid.deleteTitle"),
-      kind: "warning",
-    });
-    if (confirmed) {
-      try {
-        await invoke("delete_record", {
-          connectionId,
-          table: tableName,
-          pkCol: pkColumn,
-          pkVal,
-        });
-        if (onRefresh) onRefresh();
-      } catch (e) {
-        console.error("Delete failed:", e);
-        await message(t("dataGrid.deleteFailed") + e, {
-          title: t("common.error"),
-          kind: "error",
-        });
-      }
+    // Handle pending deletion revert
+    const isPendingDelete = pendingDeletions?.[pkValStr] !== undefined;
+    if (isPendingDelete && onRevertDeletion) {
+      onRevertDeletion(pkVal);
+      setContextMenu(null);
+      return;
     }
-  }, [contextMenu, tableName, pkColumn, connectionId, pkIndexMap, onRefresh, t, onDiscardInsertion]);
+
+    // Handle pending changes revert
+    const rowPendingChanges = pendingChanges?.[pkValStr];
+    if (rowPendingChanges && onPendingChange) {
+      // Revert all pending changes for this row by setting them to undefined
+      Object.keys(rowPendingChanges.changes).forEach((colName) => {
+        onPendingChange(pkVal, colName, undefined);
+      });
+      setContextMenu(null);
+      return;
+    }
+
+    setContextMenu(null);
+  }, [
+    contextMenu,
+    onPendingChange,
+    onRevertDeletion,
+    onDiscardInsertion,
+    pkColumn,
+    pkIndexMap,
+    pendingChanges,
+    pendingDeletions,
+  ]);
 
   const copyToClipboard = useCallback(async (text: string) => {
     try {
@@ -695,45 +701,37 @@ export const DataGrid = React.memo(({
         </table>
       </div>
 
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onClose={() => setContextMenu(null)}
-          items={[
-            {
-              label: t("dataGrid.copyRow"),
-              icon: Copy,
-              action: copyCellValue,
-            },
-            {
-              label: t("dataGrid.editRow"),
-              icon: Edit,
-              action: () => setEditRowModalData(contextMenu.row),
-            },
-            {
-              label: t("dataGrid.deleteRow"),
-              icon: Trash2,
-              danger: true,
-              action: deleteRow,
-            },
-          ]}
-        />
-      )}
+      {contextMenu && (() => {
+        // Check if this row has any pending changes, deletions, or is an insertion
+        const isInsertion = contextMenu.mergedRow?.type === "insertion";
+        const pkVal = pkIndexMap !== null ? String(contextMenu.row[pkIndexMap]) : null;
+        const hasPendingChanges = !isInsertion && pkVal && pendingChanges?.[pkVal] !== undefined;
+        const hasPendingDeletion = !isInsertion && pkVal && pendingDeletions?.[pkVal] !== undefined;
 
-      {editRowModalData && tableName && pkColumn && (
-        <EditRowModal
-          isOpen={true}
-          onClose={() => setEditRowModalData(null)}
-          tableName={tableName}
-          pkColumn={pkColumn}
-          rowData={editRowModalData}
-          columns={columns}
-          onSaveSuccess={() => {
-            if (onRefresh) onRefresh();
-          }}
-        />
-      )}
+        // Enable revert if there's any pending change, deletion, or insertion
+        const canRevert = isInsertion || hasPendingChanges || hasPendingDeletion;
+
+        return (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            onClose={() => setContextMenu(null)}
+            items={[
+              {
+                label: t("dataGrid.copyRow"),
+                icon: Copy,
+                action: copyCellValue,
+              },
+              {
+                label: t("dataGrid.revertSelected"),
+                icon: Undo,
+                action: revertSelectedRow,
+                disabled: !canRevert,
+              },
+            ]}
+          />
+        );
+      })()}
     </div>
   );
 });

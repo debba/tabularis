@@ -345,7 +345,8 @@
     "copyCells": "Copy {{count}} Cells",
     "copyRows": "Copy {{count}} Rows",
     "copied": "Copied to clipboard",
-    "discardInsertion": "Click to discard this row (rollback)"
+    "discardInsertion": "Click to discard this row (rollback)",
+    "revertSelected": "Revert Selected"
   },
   "editRow": {
     "title": "Edit Row",

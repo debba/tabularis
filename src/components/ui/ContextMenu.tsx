@@ -6,6 +6,7 @@ interface ContextMenuItem {
   icon?: React.ElementType;
   action: () => void;
   danger?: boolean;
+  disabled?: boolean;
 }
 
 interface ContextMenuProps {
@@ -82,15 +83,21 @@ export const ContextMenu = ({ x, y, items, onClose }: ContextMenuProps) => {
           <button
             key={index}
             onClick={() => {
-              item.action();
-              onClose();
+              if (!item.disabled) {
+                item.action();
+                onClose();
+              }
             }}
+            disabled={item.disabled}
             className={`
-              w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-surface-tertiary
-              ${item.danger ? 'text-red-400' : 'text-primary'}
+              w-full text-left px-3 py-2 text-sm flex items-center gap-2
+              ${item.disabled
+                ? 'text-muted/50 cursor-not-allowed'
+                : `hover:bg-surface-tertiary ${item.danger ? 'text-red-400' : 'text-primary'}`
+              }
             `}
           >
-            {Icon && <Icon size={14} className={item.danger ? 'text-red-400' : 'text-secondary'} />}
+            {Icon && <Icon size={14} className={item.disabled ? 'text-muted/50' : item.danger ? 'text-red-400' : 'text-secondary'} />}
             {item.label}
           </button>
         );
