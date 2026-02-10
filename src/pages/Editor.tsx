@@ -551,6 +551,18 @@ export const Editor = () => {
     }
   }, [activeTab, runQuery]);
 
+  // Global Ctrl+F5 shortcut for Run
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "F5") {
+        e.preventDefault();
+        handleRunButton();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleRunButton]);
+
   const handleRefresh = useCallback(() => {
     const currentTab = tabsRef.current.find(
       (t) => t.id === activeTabIdRef.current,

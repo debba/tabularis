@@ -395,7 +395,7 @@
     "pageOf": "Page {{current}} of {{total}}",
     "jumpToPage": "Click to jump to page",
     "executePrompt": "Execute a query to see results",
-    "tableRunPrompt": "Press Run (Ctrl+Enter) to load table data",
+    "tableRunPrompt": "Press Run (Ctrl+F5) to load table data",
     "closeTab": "Close Tab",
     "closeOthers": "Close Other Tabs",
     "closeRight": "Close Tabs to Right",

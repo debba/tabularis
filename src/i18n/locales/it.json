@@ -394,7 +394,7 @@
     "pageOf": "Pagina {{current}} di {{total}}",
     "jumpToPage": "Clicca per saltare alla pagina",
     "executePrompt": "Esegui una query per vedere i risultati",
-    "tableRunPrompt": "Premi Esegui (Ctrl+Enter) per caricare i dati della tabella",
+    "tableRunPrompt": "Premi Esegui (Ctrl+F5) per caricare i dati della tabella",
     "closeTab": "Chiudi scheda",
     "closeOthers": "Chiudi altre schede",
     "closeRight": "Chiudi schede a destra",
