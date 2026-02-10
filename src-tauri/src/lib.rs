@@ -13,6 +13,7 @@ pub mod models;
 pub mod paths; // Added
 pub mod persistence;
 pub mod pool_manager;
+pub mod preferences;
 pub mod saved_queries;
 pub mod ssh_tunnel;
 pub mod theme_commands;
@@ -222,6 +223,11 @@ pub fn run() {
             log_commands::set_log_max_size,
             log_commands::export_logs,
             log_commands::test_log,
+            // Preferences
+            preferences::save_editor_preferences,
+            preferences::load_editor_preferences,
+            preferences::delete_editor_preferences,
+            preferences::list_all_preferences,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

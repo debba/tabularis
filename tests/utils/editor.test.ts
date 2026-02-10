@@ -2,8 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Tab, TableSchema, SchemaCache } from "../../src/types/editor";
 import {
   generateTabId,
-  loadTabsFromStorage,
-  saveTabsToStorage,
   createInitialTabState,
   generateTabTitle,
   findExistingTableTab,
@@ -21,30 +19,9 @@ import {
   formatExportFileName,
   validatePageNumber,
   calculateTotalPages,
-  STORAGE_KEY,
 } from "../../src/utils/editor";
 
 describe("editor", () => {
-  // Mock localStorage
-  const localStorageMock = {
-    getItem: vi.fn(),
-    setItem: vi.fn(),
-    removeItem: vi.fn(),
-    clear: vi.fn(),
-  };
-
-  beforeEach(() => {
-    Object.defineProperty(window, "localStorage", {
-      value: localStorageMock,
-      writable: true,
-    });
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   describe("generateTabId", () => {
     it("should generate a string of 7 characters", () => {
       const id = generateTabId();
@@ -61,68 +38,6 @@ describe("editor", () => {
     it("should only contain alphanumeric characters", () => {
       const id = generateTabId();
       expect(id).toMatch(/^[a-z0-9]+$/);
-    });
-  });
-
-  describe("loadTabsFromStorage", () => {
-    it("should return null when no data in localStorage", () => {
-      localStorageMock.getItem.mockReturnValue(null);
-      const result = loadTabsFromStorage();
-      expect(result).toBeNull();
-      expect(localStorageMock.getItem).toHaveBeenCalledWith(STORAGE_KEY);
-    });
-
-    it("should return parsed data from localStorage", () => {
-      const mockData = {
-        tabs: [{ id: "tab-1", title: "Test Tab" } as Tab],
-        activeTabIds: { "conn-1": "tab-1" },
-      };
-      localStorageMock.getItem.mockReturnValue(JSON.stringify(mockData));
-
-      const result = loadTabsFromStorage();
-
-      expect(result).toEqual(mockData);
-    });
-
-    it("should return null when JSON parsing fails", () => {
-      localStorageMock.getItem.mockReturnValue("invalid json");
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
-      const result = loadTabsFromStorage();
-
-      expect(result).toBeNull();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "Failed to load tabs from storage",
-        expect.any(Error),
-      );
-      consoleSpy.mockRestore();
-    });
-
-    it("should handle missing tabs or activeTabIds", () => {
-      localStorageMock.getItem.mockReturnValue(JSON.stringify({}));
-
-      const result = loadTabsFromStorage();
-
-      expect(result).toEqual({
-        tabs: [],
-        activeTabIds: {},
-      });
-    });
-  });
-
-  describe("saveTabsToStorage", () => {
-    it("should save data to localStorage", () => {
-      const tabs = [{ id: "tab-1", title: "Test Tab" } as Tab];
-      const activeTabIds = { "conn-1": "tab-1" };
-
-      saveTabsToStorage(tabs, activeTabIds);
-
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        STORAGE_KEY,
-        JSON.stringify({ tabs, activeTabIds }),
-      );
     });
   });
 
@@ -942,11 +857,11 @@ describe("editor", () => {
     it("should ignore zero or negative limit", () => {
       const tab1 = createMockTab({ limitClause: 0 });
       const result1 = reconstructTableQuery(tab1);
-      expect(result1).toBe("SELECT * FROM \"users\"");
+      expect(result1).toBe('SELECT * FROM "users"');
 
       const tab2 = createMockTab({ limitClause: -10 });
       const result2 = reconstructTableQuery(tab2);
-      expect(result2).toBe("SELECT * FROM \"users\"");
+      expect(result2).toBe('SELECT * FROM "users"');
     });
 
     it("should return original query when activeTable is null", () => {

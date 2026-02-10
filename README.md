@@ -19,6 +19,29 @@ A lightweight, developer-focused database management tool, built with Tauri and 
 
 [![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/debba/tabularis/releases/download/v0.8.10/tabularis_0.8.10_x64-setup.exe) [![macOS](https://img.shields.io/badge/macOS-Download-black?logo=apple)](https://github.com/debba/tabularis/releases/download/v0.8.10/tabularis_0.8.10_x64.dmg) [![Linux](https://img.shields.io/badge/Linux-Download-green?logo=linux)](https://github.com/debba/tabularis/releases/download/v0.8.10/tabularis_0.8.10_amd64.AppImage)
 
+## Table of Contents
+
+- [Installation](#installation)
+  - [macOS](#macos)
+  - [Arch Linux (AUR)](#arch-linux-aur)
+- [Updates](#updates)
+- [Gallery](#gallery)
+- [Changelog](#changelog)
+- [Features](#features)
+  - [Connection Management](#connection-management)
+  - [Database Explorer](#database-explorer)
+  - [SQL Editor](#sql-editor)
+  - [Visual Query Builder](#visual-query-builder)
+  - [Data Grid](#data-grid)
+  - [Logging](#logging)
+  - [Configuration Storage](#configuration-storage)
+  - [AI Features (Optional)](#ai-features-optional)
+- [Tech Stack](#tech-stack)
+- [Development](#development)
+- [Roadmap](#roadmap)
+- [License](#license)
+
+
 ## Installation
 
 ### macOS
@@ -62,9 +85,11 @@ yay -S tabularis-bin
 ## Updates
 
 ### Automatic Updates
+
 Tabularis checks for updates automatically on startup. When a new version is available, a notification will appear, allowing you to download and install the update seamlessly.
 
 ### Manual Updates
+
 You can also manually check for updates or download the latest version directly from the [Releases page](https://github.com/debba/tabularis/releases).
 
 ## Gallery
@@ -133,6 +158,32 @@ Configuration is stored in `~/.config/tabularis/` (Linux), `~/Library/Applicatio
 - `saved_queries.json`: Saved SQL queries.
 - `config.json`: App settings (theme, language, page size).
 - `themes/`: Custom themes.
+- `preferences/`: Editor preferences per connection (tabs, queries, layout).
+
+#### Editor Preferences
+
+Tabularis automatically saves your editor state for each database connection. When you reopen a connection, you'll see your previously opened tabs with their queries restored.
+
+**Location:** `~/.config/tabularis/preferences/{connectionId}/preferences.json`
+
+**What is saved:**
+
+- Tab titles and types (Console, Table, Visual Query)
+- SQL queries and query parameters
+- Active table and selected columns
+- Filter, sort, and limit clauses
+- Visual Query Builder flow state
+- Editor visibility state
+
+**What is NOT saved:**
+
+- Query results (you'll need to re-run queries)
+- Error messages
+- Execution times
+- Pending edits or deletions
+- Loading states
+
+This approach ensures fast startup times while preserving your workspace layout across sessions.
 
 #### `config.json` options
 
@@ -144,6 +195,7 @@ Configuration is stored in `~/.config/tabularis/` (Linux), `~/Library/Applicatio
 - `aiEnabled`: Enable/Disable AI features.
 
 #### Custom AI Models override
+
 You can override or add custom models for AI providers by editing `config.json` and adding the `aiCustomModels` object:
 
 ```json
@@ -163,6 +215,7 @@ You can override or add custom models for AI providers by editing `config.json` 
 ### AI Features (Optional)
 
 Optional Text-to-SQL and query explanation powered by:
+
 - **OpenAI**
 - **Anthropic**
 - **OpenRouter** (access to Gemini, Llama, DeepSeek, etc.)
@@ -170,16 +223,21 @@ Optional Text-to-SQL and query explanation powered by:
 - **OpenAI-Compatible APIs** (Groq, Perplexity, Azure OpenAI, LocalAI, and more)
 
 #### Local AI (Ollama)
+
 Select "Ollama" as your provider in Settings. Tabularis will automatically detect your local models running on port `11434` (configurable). No API key required.
 
 #### OpenAI-Compatible APIs
+
 Select "OpenAI Compatible" as your provider to connect to any service that implements the OpenAI API format. Configure your custom endpoint URL and model name in Settings. Examples:
+
 - **Groq**: `https://api.groq.com/openai/v1`
 - **Perplexity**: `https://api.perplexity.ai`
 - **Local servers**: `http://localhost:8000/v1`
 
 #### Dynamic Model Fetching
+
 Tabularis automatically fetches the latest available models from your configured provider.
+
 - **Refresh:** Click the refresh icon in Settings to update the model list from the API.
 - **Cache:** Model lists are cached locally for 24h to ensure fast startup.
 - **Validation:** Visual feedback if the selected model is not available for the current provider.
@@ -218,6 +276,7 @@ npm run tauri build
 - [ ] [Query History](https://github.com/debba/tabularis/issues/18)
 - [ ] [Better SQLite Support](https://github.com/debba/tabularis/issues/17)
 - [ ] [Better PostgreSQL Support](https://github.com/debba/tabularis/issues/16)
+
 ## License
 
 Apache License 2.0

@@ -1,5 +1,16 @@
-import type { Tab, SchemaCache, TableSchema } from "../types/editor";
+import type {
+  Tab,
+  SchemaCache,
+  TableSchema,
+  EditorPreferences,
+} from "../types/editor";
 import { quoteIdentifier } from "./identifiers";
+import { invoke } from "@tauri-apps/api/core";
+import { cleanTabForStorage, restoreTabFromStorage } from "./tabCleaner";
+import {
+  filterTabsByConnection,
+  getActiveTabForConnection,
+} from "./tabFilters";
 
 export interface TabsStorage {
   tabs: Tab[];
@@ -12,28 +23,66 @@ export function generateTabId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
-export function loadTabsFromStorage(): TabsStorage | null {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      return {
-        tabs: parsed.tabs || [],
-        activeTabIds: parsed.activeTabIds || {},
-      };
-    } catch (e) {
-      console.error("Failed to load tabs from storage", e);
-      return null;
-    }
+export async function loadTabsFromStorage(
+  connectionId: string | null,
+): Promise<Tab[]> {
+  if (!connectionId) return [];
+
+  try {
+    const prefs = await invoke<EditorPreferences | null>(
+      "load_editor_preferences",
+      {
+        connectionId,
+      },
+    );
+
+    // Restore tabs with default values for excluded fields
+    const tabs = prefs?.tabs || [];
+    return tabs.map(restoreTabFromStorage);
+  } catch (e) {
+    console.error("Failed to load tabs from storage", e);
+    return [];
   }
-  return null;
 }
 
-export function saveTabsToStorage(
+export async function loadActiveTabId(
+  connectionId: string | null,
+): Promise<string | null> {
+  if (!connectionId) return null;
+
+  try {
+    const prefs = await invoke<EditorPreferences | null>(
+      "load_editor_preferences",
+      {
+        connectionId,
+      },
+    );
+    return prefs?.active_tab_id || null;
+  } catch (e) {
+    console.error("Failed to load active tab ID from storage", e);
+    return null;
+  }
+}
+
+export async function saveTabsToStorage(
+  connectionId: string,
   tabs: Tab[],
-  activeTabIds: Record<string, string>,
-): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ tabs, activeTabIds }));
+  activeTabId: string | null,
+): Promise<void> {
+  try {
+    // Clean tabs before saving: remove temporary data like results, errors, etc.
+    const cleanedTabs = tabs.map(cleanTabForStorage);
+
+    await invoke("save_editor_preferences", {
+      connectionId,
+      preferences: {
+        tabs: cleanedTabs,
+        active_tab_id: activeTabId,
+      },
+    });
+  } catch (e) {
+    console.error("Failed to save tabs to storage", e);
+  }
 }
 
 export function createInitialTabState(
@@ -105,8 +154,7 @@ export function getConnectionTabs(
   tabs: Tab[],
   connectionId: string | null,
 ): Tab[] {
-  if (!connectionId) return [];
-  return tabs.filter((t) => t.connectionId === connectionId);
+  return filterTabsByConnection(tabs, connectionId);
 }
 
 export function getActiveTab(
@@ -114,9 +162,7 @@ export function getActiveTab(
   connectionId: string | null,
   activeTabId: string | null,
 ): Tab | null {
-  if (!connectionId || !activeTabId) return null;
-  const tab = tabs.find((t) => t.id === activeTabId);
-  return tab && tab.connectionId === connectionId ? tab : null;
+  return getActiveTabForConnection(tabs, connectionId, activeTabId);
 }
 
 export interface CloseTabResult {
