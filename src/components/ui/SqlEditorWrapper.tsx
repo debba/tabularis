@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useEffect } from "react";
 import MonacoEditor, { type OnMount, type BeforeMount } from "@monaco-editor/react";
+import type * as Monaco from "monaco-editor";
 import { useTheme } from "../../hooks/useTheme";
 import { loadMonacoTheme } from "../../themes/themeUtils";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
@@ -66,7 +67,7 @@ const SqlEditorInternal: React.FC<SqlEditorWrapperProps & { editorKey: string }>
         label: 'Paste',
         contextMenuGroupId: '9_cutcopypaste',
         contextMenuOrder: 2,
-        run: async (editor) => {
+        run: async (editor: Monaco.editor.IStandaloneCodeEditor) => {
           try {
             const text = await readText();
             const selection = editor.getSelection();
