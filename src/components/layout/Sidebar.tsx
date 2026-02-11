@@ -259,7 +259,7 @@ export const Sidebar = () => {
 
         <div className="mt-auto">
           <button
-            onClick={() => openUrl("https://discord.gg/WgsVw69F")}
+            onClick={() => openUrl("https://discord.gg/YrZPHAwMSG")}
             className="flex items-center justify-center w-12 h-12 rounded-lg transition-colors mb-2 relative group text-secondary hover:bg-surface-secondary hover:text-indigo-400"
           >
             <div className="relative">

@@ -8,11 +8,11 @@
 ![](https://img.shields.io/github/downloads/debba/tabularis/total.svg?style=flat)
 ![Build & Release](https://github.com/debba/tabularis/workflows/Release/badge.svg)
 [![Known Vulnerabilities](https://snyk.io//test/github/debba/tabularis/badge.svg?targetFile=package.json)](https://snyk.io//test/github/debba/tabularis?targetFile=package.json)
-[![Discord](https://img.shields.io/discord/1470772941296894128?color=5865F2&logo=discord&logoColor=white)](https://discord.gg/WgsVw69F)
+[![Discord](https://img.shields.io/discord/1470772941296894128?color=5865F2&logo=discord&logoColor=white)](https://discord.gg/YrZPHAwMSG)
 
 A lightweight, developer-focused database management tool, built with Tauri and React.
 
-**Discord** - [Join our discord server](https://discord.gg/WgsVw69F) and chat with the maintainers.
+**Discord** - [Join our discord server](https://discord.gg/YrZPHAwMSG) and chat with the maintainers.
 
 <div align="center">
   <img src="screenshots/overview.png?v" width="80%" alt="Tabularis" />
@@ -101,7 +101,7 @@ You can also manually check for updates or download the latest version directly 
 
 ## Discord
 
-Join our [Discord server](https://discord.gg/WgsVw69F) to chat with the maintainers, suggest features, or get help from the community.
+Join our [Discord server](https://discord.gg/YrZPHAwMSG) to chat with the maintainers, suggest features, or get help from the community.
 
 ## [Changelog](./CHANGELOG.md)
 
