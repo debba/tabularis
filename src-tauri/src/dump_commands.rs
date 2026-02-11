@@ -59,7 +59,8 @@ pub async fn dump_database<R: Runtime>(
         // Write header
         writeln!(writer, "-- Tabularis Dump").map_err(|e| e.to_string())?;
         writeln!(writer, "-- Database: {}", params.database).map_err(|e| e.to_string())?;
-        writeln!(writer, "-- Date: {}\n", chrono::Local::now().to_rfc3339()).map_err(|e| e.to_string())?;
+        writeln!(writer, "-- Date: {}\n", chrono::Local::now().to_rfc3339())
+            .map_err(|e| e.to_string())?;
 
         // Get tables
         let all_tables = match driver.as_str() {
@@ -77,16 +78,17 @@ pub async fn dump_database<R: Runtime>(
 
         for table in tables_to_process {
             if options.structure {
-                writeln!(writer, "-- Structure for table `{}`", table).map_err(|e| e.to_string())?;
+                writeln!(writer, "-- Structure for table `{}`", table)
+                    .map_err(|e| e.to_string())?;
                 writeln!(writer, "DROP TABLE IF EXISTS `{}`;", table).map_err(|e| e.to_string())?;
-                
+
                 let ddl = match driver.as_str() {
                     "mysql" => mysql::get_table_ddl(&params, &table).await?,
                     "postgres" => postgres::get_table_ddl(&params, &table).await?,
                     "sqlite" => sqlite::get_table_ddl(&params, &table).await?,
                     _ => return Err("Unsupported driver".into()),
                 };
-                
+
                 writeln!(writer, "{}\n", ddl).map_err(|e| e.to_string())?;
             }
 
@@ -135,89 +137,128 @@ async fn export_table_data(
     // Let's reuse `extract_value` logic but format for SQL.
 
     // Ideally we should use specific batch size
-    let query = format!("SELECT * FROM {}", match driver {
-        "mysql" => format!("`{}`", table),
-        "postgres" => format!("\"{}\"", table), // public schema assumed
-        "sqlite" => format!("\"{}\"", table),
-        _ => table.to_string()
-    });
+    let query = format!(
+        "SELECT * FROM {}",
+        match driver {
+            "mysql" => format!("`{}`", table),
+            "postgres" => format!("\"{}\"", table), // public schema assumed
+            "sqlite" => format!("\"{}\"", table),
+            _ => table.to_string(),
+        }
+    );
 
     match driver {
         "mysql" => {
-            use crate::pool_manager::get_mysql_pool;
-            use crate::drivers::common::extract_mysql_value; // Returns String (JSON value or "NULL")
-            
+            use crate::drivers::common::extract_mysql_value;
+            use crate::pool_manager::get_mysql_pool; // Returns String (JSON value or "NULL")
+
             let pool = get_mysql_pool(params).await?;
             let mut rows = sqlx::query(&query).fetch(&pool);
-            
+
             let mut batch = Vec::new();
             while let Some(row) = rows.try_next().await.map_err(|e| e.to_string())? {
-                 let mut values = Vec::new();
-                 for i in 0..row.columns().len() {
-                     let val = extract_mysql_value(&row, i); 
-                     values.push(escape_sql_value(val));
-                 }
-                 batch.push(format!("({})", values.join(", ")));
+                let mut values = Vec::new();
+                for i in 0..row.columns().len() {
+                    let val = extract_mysql_value(&row, i);
+                    values.push(escape_sql_value(val));
+                }
+                batch.push(format!("({})", values.join(", ")));
 
-                 if batch.len() >= 100 {
-                     writeln!(writer, "INSERT INTO `{}` VALUES {};", table, batch.join(", ")).map_err(|e| e.to_string())?;
-                     batch.clear();
-                 }
+                if batch.len() >= 100 {
+                    writeln!(
+                        writer,
+                        "INSERT INTO `{}` VALUES {};",
+                        table,
+                        batch.join(", ")
+                    )
+                    .map_err(|e| e.to_string())?;
+                    batch.clear();
+                }
             }
             if !batch.is_empty() {
-                writeln!(writer, "INSERT INTO `{}` VALUES {};", table, batch.join(", ")).map_err(|e| e.to_string())?;
+                writeln!(
+                    writer,
+                    "INSERT INTO `{}` VALUES {};",
+                    table,
+                    batch.join(", ")
+                )
+                .map_err(|e| e.to_string())?;
             }
-        },
+        }
         "postgres" => {
-            use crate::pool_manager::get_postgres_pool;
             use crate::drivers::common::extract_postgres_value;
-            
+            use crate::pool_manager::get_postgres_pool;
+
             let pool = get_postgres_pool(params).await?;
             let mut rows = sqlx::query(&query).fetch(&pool);
-            
+
             let mut batch = Vec::new();
-             while let Some(row) = rows.try_next().await.map_err(|e| e.to_string())? {
-                 let mut values = Vec::new();
-                 for i in 0..row.columns().len() {
-                     let val = extract_postgres_value(&row, i);
-                     values.push(escape_sql_value(val));
-                 }
-                 batch.push(format!("({})", values.join(", ")));
-                 
-                 if batch.len() >= 100 {
-                     writeln!(writer, "INSERT INTO \"{}\" VALUES {};", table, batch.join(", ")).map_err(|e| e.to_string())?;
-                     batch.clear();
-                 }
+            while let Some(row) = rows.try_next().await.map_err(|e| e.to_string())? {
+                let mut values = Vec::new();
+                for i in 0..row.columns().len() {
+                    let val = extract_postgres_value(&row, i);
+                    values.push(escape_sql_value(val));
+                }
+                batch.push(format!("({})", values.join(", ")));
+
+                if batch.len() >= 100 {
+                    writeln!(
+                        writer,
+                        "INSERT INTO \"{}\" VALUES {};",
+                        table,
+                        batch.join(", ")
+                    )
+                    .map_err(|e| e.to_string())?;
+                    batch.clear();
+                }
             }
             if !batch.is_empty() {
-                writeln!(writer, "INSERT INTO \"{}\" VALUES {};", table, batch.join(", ")).map_err(|e| e.to_string())?;
+                writeln!(
+                    writer,
+                    "INSERT INTO \"{}\" VALUES {};",
+                    table,
+                    batch.join(", ")
+                )
+                .map_err(|e| e.to_string())?;
             }
-        },
+        }
         "sqlite" => {
-            use crate::pool_manager::get_sqlite_pool;
             use crate::drivers::common::extract_sqlite_value;
-            
+            use crate::pool_manager::get_sqlite_pool;
+
             let pool = get_sqlite_pool(params).await?;
             let mut rows = sqlx::query(&query).fetch(&pool);
-            
+
             let mut batch = Vec::new();
-             while let Some(row) = rows.try_next().await.map_err(|e| e.to_string())? {
-                 let mut values = Vec::new();
-                 for i in 0..row.columns().len() {
-                     let val = extract_sqlite_value(&row, i);
-                     values.push(escape_sql_value(val));
-                 }
-                 batch.push(format!("({})", values.join(", ")));
-                 
-                 if batch.len() >= 100 {
-                     writeln!(writer, "INSERT INTO \"{}\" VALUES {};", table, batch.join(", ")).map_err(|e| e.to_string())?;
-                     batch.clear();
-                 }
+            while let Some(row) = rows.try_next().await.map_err(|e| e.to_string())? {
+                let mut values = Vec::new();
+                for i in 0..row.columns().len() {
+                    let val = extract_sqlite_value(&row, i);
+                    values.push(escape_sql_value(val));
+                }
+                batch.push(format!("({})", values.join(", ")));
+
+                if batch.len() >= 100 {
+                    writeln!(
+                        writer,
+                        "INSERT INTO \"{}\" VALUES {};",
+                        table,
+                        batch.join(", ")
+                    )
+                    .map_err(|e| e.to_string())?;
+                    batch.clear();
+                }
             }
             if !batch.is_empty() {
-                writeln!(writer, "INSERT INTO \"{}\" VALUES {};", table, batch.join(", ")).map_err(|e| e.to_string())?;
+                writeln!(
+                    writer,
+                    "INSERT INTO \"{}\" VALUES {};",
+                    table,
+                    batch.join(", ")
+                )
+                .map_err(|e| e.to_string())?;
             }
-        },
+        }
         _ => return Err("Unsupported driver".into()),
     }
 
@@ -228,7 +269,13 @@ fn escape_sql_value(val: serde_json::Value) -> String {
     match val {
         serde_json::Value::Null => "NULL".to_string(),
         serde_json::Value::Number(n) => n.to_string(),
-        serde_json::Value::Bool(b) => if b { "1".to_string() } else { "0".to_string() }, // Most SQL dialects
+        serde_json::Value::Bool(b) => {
+            if b {
+                "1".to_string()
+            } else {
+                "0".to_string()
+            }
+        } // Most SQL dialects
         serde_json::Value::String(s) => format!("'{}'", s.replace("'", "''").replace("\\", "\\\\")), // Basic escaping
         _ => format!("'{}'", val.to_string().replace("'", "''")), // Fallback
     }
@@ -261,7 +308,10 @@ impl<R: BufRead> SqlStatementStream<R> {
     fn next_statement(&mut self) -> Result<Option<String>, String> {
         loop {
             self.line_buffer.clear();
-            let bytes_read = self.reader.read_line(&mut self.line_buffer).map_err(|e| e.to_string())?;
+            let bytes_read = self
+                .reader
+                .read_line(&mut self.line_buffer)
+                .map_err(|e| e.to_string())?;
 
             if bytes_read == 0 {
                 // EOF - return last statement if any
@@ -305,12 +355,14 @@ macro_rules! execute_statements_streaming {
 
         while let Some(stmt) = $stream.next_statement()? {
             // Execute statement immediately without batching in memory
-            sqlx::query(&stmt)
-                .execute(&mut *$tx)
-                .await
-                .map_err(|e| {
-                    format!("Error at statement {}: {}\nQuery: {}", executed + 1, e, stmt)
-                })?;
+            sqlx::query(&stmt).execute(&mut *$tx).await.map_err(|e| {
+                format!(
+                    "Error at statement {}: {}\nQuery: {}",
+                    executed + 1,
+                    e,
+                    stmt
+                )
+            })?;
 
             executed += 1;
             since_last_progress += 1;
@@ -428,7 +480,7 @@ pub async fn import_database<R: Runtime>(
                     .map_err(|e| e.to_string())?;
 
                 tx.commit().await.map_err(|e| e.to_string())?;
-            },
+            }
             "postgres" => {
                 let pool = get_postgres_pool(&params).await?;
                 let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
@@ -447,7 +499,7 @@ pub async fn import_database<R: Runtime>(
                 execute_statements_streaming!(tx, stream, app_handle)?;
 
                 tx.commit().await.map_err(|e| e.to_string())?;
-            },
+            }
             "sqlite" => {
                 let pool = get_sqlite_pool(&params).await?;
                 let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
@@ -479,7 +531,7 @@ pub async fn import_database<R: Runtime>(
                     .map_err(|e| e.to_string())?;
 
                 tx.commit().await.map_err(|e| e.to_string())?;
-            },
+            }
             _ => return Err("Unsupported driver".into()),
         }
 
@@ -515,14 +567,17 @@ fn create_sql_reader(file: File, file_path: &str) -> Result<Box<dyn BufRead + Se
     if file_path.ends_with(".zip") {
         // For ZIP files, we need to extract the SQL content to memory
         // The zip crate doesn't support true streaming because by_index requires ownership
-        let mut archive = ZipArchive::new(file).map_err(|e| format!("Failed to open zip: {}", e))?;
+        let mut archive =
+            ZipArchive::new(file).map_err(|e| format!("Failed to open zip: {}", e))?;
 
         // Find first .sql file and extract content
         for i in 0..archive.len() {
             let mut zipped_file = archive.by_index(i).map_err(|e| e.to_string())?;
             if zipped_file.name().ends_with(".sql") {
                 let mut content = String::new();
-                zipped_file.read_to_string(&mut content).map_err(|e| e.to_string())?;
+                zipped_file
+                    .read_to_string(&mut content)
+                    .map_err(|e| e.to_string())?;
 
                 // Create a BufReader from the extracted string
                 let cursor = std::io::Cursor::new(content.into_bytes());

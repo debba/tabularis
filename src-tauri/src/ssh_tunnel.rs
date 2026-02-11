@@ -340,23 +340,39 @@ impl SshTunnel {
 
                     tokio::time::timeout(
                         Duration::from_secs(SSH_AUTH_TIMEOUT_SECS),
-                        handle.authenticate_publickey(&ssh_user, Arc::new(key))
+                        handle.authenticate_publickey(&ssh_user, Arc::new(key)),
                     )
                     .await
-                    .map_err(|_| format!("SSH key authentication timed out after {} seconds", SSH_AUTH_TIMEOUT_SECS))?
+                    .map_err(|_| {
+                        format!(
+                            "SSH key authentication timed out after {} seconds",
+                            SSH_AUTH_TIMEOUT_SECS
+                        )
+                    })?
                     .map_err(|e| format!("SSH key auth failed: {}", e))?
                 } else if let Some(pwd) = ssh_password.as_deref() {
-                    println!("[SSH Tunnel] Authenticating with password (length: {})", pwd.len());
+                    println!(
+                        "[SSH Tunnel] Authenticating with password (length: {})",
+                        pwd.len()
+                    );
 
                     let auth_result = tokio::time::timeout(
                         Duration::from_secs(SSH_AUTH_TIMEOUT_SECS),
-                        handle.authenticate_password(&ssh_user, pwd)
+                        handle.authenticate_password(&ssh_user, pwd),
                     )
                     .await
-                    .map_err(|_| format!("SSH password authentication timed out after {} seconds", SSH_AUTH_TIMEOUT_SECS))?
+                    .map_err(|_| {
+                        format!(
+                            "SSH password authentication timed out after {} seconds",
+                            SSH_AUTH_TIMEOUT_SECS
+                        )
+                    })?
                     .map_err(|e| format!("SSH password auth failed: {}", e))?;
 
-                    println!("[SSH Tunnel] Password authentication result: {}", auth_result);
+                    println!(
+                        "[SSH Tunnel] Password authentication result: {}",
+                        auth_result
+                    );
                     auth_result
                 } else {
                     let err = "No SSH credentials provided for russh".to_string();
@@ -384,8 +400,11 @@ impl SshTunnel {
 
                 println!("[SSH Tunnel] Starting tunnel forwarding loop");
                 while running_clone.load(Ordering::Relaxed) {
-                    let accept =
-                        tokio::time::timeout(Duration::from_millis(SSH_ACCEPT_POLL_MS), listener.accept()).await;
+                    let accept = tokio::time::timeout(
+                        Duration::from_millis(SSH_ACCEPT_POLL_MS),
+                        listener.accept(),
+                    )
+                    .await;
 
                     let (stream, _) = match accept {
                         Ok(Ok(result)) => result,
@@ -442,7 +461,10 @@ impl SshTunnel {
                 backend: TunnelBackend::Russh(running),
             }),
             Ok(Err(err)) => Err(err),
-            Err(_) => Err(format!("Timed out waiting for Russh tunnel to initialize ({}s)", SSH_TUNNEL_TIMEOUT_SECS)),
+            Err(_) => Err(format!(
+                "Timed out waiting for Russh tunnel to initialize ({}s)",
+                SSH_TUNNEL_TIMEOUT_SECS
+            )),
         }
     }
 
@@ -504,9 +526,12 @@ fn test_ssh_connection_system(
 
     let mut args = Vec::with_capacity(12);
     args.extend([
-        "-o", "BatchMode=yes",
-        "-o", "ConnectTimeout=10",
-        "-o", "StrictHostKeyChecking=accept-new",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "-o",
+        "StrictHostKeyChecking=accept-new",
     ]);
 
     if ssh_port != DEFAULT_SSH_PORT {
@@ -620,8 +645,8 @@ fn test_ssh_connection_russh(
     // Use std::thread::spawn to run in a completely separate OS thread
     // This avoids any Tokio runtime nesting issues
     std::thread::spawn(move || {
-        let runtime = Runtime::new()
-            .map_err(|e| format!("Failed to start Tokio runtime: {}", e))?;
+        let runtime =
+            Runtime::new().map_err(|e| format!("Failed to start Tokio runtime: {}", e))?;
         runtime.block_on(test_ssh_connection_russh_async(
             &ssh_host,
             ssh_port,

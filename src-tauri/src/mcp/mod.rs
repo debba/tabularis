@@ -1,17 +1,17 @@
-use std::io::{self, BufRead, Write};
-use serde_json::json;
 use crate::commands;
-use crate::persistence;
-use crate::paths;
 use crate::drivers::{mysql, postgres, sqlite};
+use crate::paths;
+use crate::persistence;
+use serde_json::json;
+use std::io::{self, BufRead, Write};
 
-pub mod protocol;
 pub mod install;
+pub mod protocol;
 use protocol::*;
 
 pub async fn run_mcp_server() {
     eprintln!("[MCP] Starting Tabularis MCP Server...");
-    
+
     let stdin = io::stdin();
     let mut stdout = io::stdout();
     let mut iterator = stdin.lock().lines();
@@ -22,10 +22,10 @@ pub async fn run_mcp_server() {
                 if line.trim().is_empty() {
                     continue;
                 }
-                
+
                 // Log input to stderr for debugging
                 eprintln!("[MCP] Received: {}", line);
-                
+
                 match serde_json::from_str::<JsonRpcRequest>(&line) {
                     Ok(request) => {
                         let response = handle_request(request).await;
@@ -87,9 +87,11 @@ async fn handle_request(req: JsonRpcRequest) -> Option<JsonRpcResponse> {
     })
 }
 
-fn handle_initialize(_params: Option<serde_json::Value>) -> Result<serde_json::Value, JsonRpcError> {
+fn handle_initialize(
+    _params: Option<serde_json::Value>,
+) -> Result<serde_json::Value, JsonRpcError> {
     let result = InitializeResult {
-        protocol_version: "2024-11-05".to_string(), 
+        protocol_version: "2024-11-05".to_string(),
         capabilities: ServerCapabilities {
             resources: Some(json!({ "listChanged": false })),
             tools: Some(json!({ "listChanged": false })),
@@ -105,15 +107,14 @@ fn handle_initialize(_params: Option<serde_json::Value>) -> Result<serde_json::V
 
 async fn handle_list_resources() -> Result<serde_json::Value, JsonRpcError> {
     let config_path = paths::get_app_config_dir().join("connections.json");
-    let connections = persistence::load_connections(&config_path)
-        .map_err(|e| JsonRpcError {
-            code: -32000,
-            message: format!("Failed to load connections: {}", e),
-            data: None
-        })?;
+    let connections = persistence::load_connections(&config_path).map_err(|e| JsonRpcError {
+        code: -32000,
+        message: format!("Failed to load connections: {}", e),
+        data: None,
+    })?;
 
     let mut resources = Vec::new();
-    
+
     // Add connection list resource
     resources.push(Resource {
         uri: "tabularis://connections".to_string(),
@@ -137,13 +138,15 @@ async fn handle_list_resources() -> Result<serde_json::Value, JsonRpcError> {
     }))
 }
 
-async fn handle_read_resource(params: Option<serde_json::Value>) -> Result<serde_json::Value, JsonRpcError> {
+async fn handle_read_resource(
+    params: Option<serde_json::Value>,
+) -> Result<serde_json::Value, JsonRpcError> {
     let params = params.ok_or(JsonRpcError {
         code: -32602,
         message: "Missing params".to_string(),
         data: None,
     })?;
-    
+
     let uri = params["uri"].as_str().ok_or(JsonRpcError {
         code: -32602,
         message: "Missing uri".to_string(),
@@ -152,16 +155,25 @@ async fn handle_read_resource(params: Option<serde_json::Value>) -> Result<serde
 
     if uri == "tabularis://connections" {
         let config_path = paths::get_app_config_dir().join("connections.json");
-        let connections = persistence::load_connections(&config_path)
-            .map_err(|e| JsonRpcError { code: -32000, message: e, data: None })?;
-        
-        let safe_list: Vec<_> = connections.iter().map(|c| json!({
-            "id": c.id,
-            "name": c.name,
-            "driver": c.params.driver,
-            "host": c.params.host,
-            "database": c.params.database
-        })).collect();
+        let connections =
+            persistence::load_connections(&config_path).map_err(|e| JsonRpcError {
+                code: -32000,
+                message: e,
+                data: None,
+            })?;
+
+        let safe_list: Vec<_> = connections
+            .iter()
+            .map(|c| {
+                json!({
+                    "id": c.id,
+                    "name": c.name,
+                    "driver": c.params.driver,
+                    "host": c.params.host,
+                    "database": c.params.database
+                })
+            })
+            .collect();
 
         return Ok(json!({
             "contents": [{
@@ -176,36 +188,55 @@ async fn handle_read_resource(params: Option<serde_json::Value>) -> Result<serde
         let parts: Vec<&str> = uri.split('/').collect();
         // uri format: tabularis://{id}/schema -> ["tabularis:", "", "{id}", "schema"]
         if parts.len() < 4 {
-             return Err(JsonRpcError { code: -32602, message: "Invalid URI format".to_string(), data: None });
+            return Err(JsonRpcError {
+                code: -32602,
+                message: "Invalid URI format".to_string(),
+                data: None,
+            });
         }
         let conn_id = parts[2];
-        
+
         let config_path = paths::get_app_config_dir().join("connections.json");
-        let connections = persistence::load_connections(&config_path)
-            .map_err(|e| JsonRpcError { code: -32000, message: e, data: None })?;
+        let connections =
+            persistence::load_connections(&config_path).map_err(|e| JsonRpcError {
+                code: -32000,
+                message: e,
+                data: None,
+            })?;
 
         // Try to find by ID or exact name (case-insensitive) first, then partial name match
-        let conn = connections.iter()
+        let conn = connections
+            .iter()
             .find(|c| c.id == conn_id || c.name.eq_ignore_ascii_case(conn_id))
-            .or_else(|| connections.iter().find(|c| c.name.to_lowercase().contains(&conn_id.to_lowercase())))
+            .or_else(|| {
+                connections
+                    .iter()
+                    .find(|c| c.name.to_lowercase().contains(&conn_id.to_lowercase()))
+            })
             .ok_or(JsonRpcError {
                 code: -32000,
                 message: format!("Connection not found: {}", conn_id),
-                data: None
+                data: None,
             })?;
 
-        let params = commands::resolve_connection_params(&conn.params).map_err(|e| JsonRpcError {
-            code: -32000,
-            message: e,
-            data: None
-        })?;
+        let params =
+            commands::resolve_connection_params(&conn.params).map_err(|e| JsonRpcError {
+                code: -32000,
+                message: e,
+                data: None,
+            })?;
 
         let tables = match conn.params.driver.as_str() {
-             "mysql" => mysql::get_tables(&params).await,
-             "postgres" => postgres::get_tables(&params).await,
-             "sqlite" => sqlite::get_tables(&params).await,
-             _ => Err("Unsupported driver".into()),
-        }.map_err(|e| JsonRpcError { code: -32000, message: e, data: None })?;
+            "mysql" => mysql::get_tables(&params).await,
+            "postgres" => postgres::get_tables(&params).await,
+            "sqlite" => sqlite::get_tables(&params).await,
+            _ => Err("Unsupported driver".into()),
+        }
+        .map_err(|e| JsonRpcError {
+            code: -32000,
+            message: e,
+            data: None,
+        })?;
 
         // Format as simplified DDL or JSON
         let schema_json = serde_json::to_string_pretty(&tables).unwrap();
@@ -227,65 +258,98 @@ async fn handle_read_resource(params: Option<serde_json::Value>) -> Result<serde
 }
 
 fn handle_list_tools() -> Result<serde_json::Value, JsonRpcError> {
-    let tools = vec![
-        Tool {
-            name: "run_query".to_string(),
-            description: Some("Execute a SQL query on a specific connection".to_string()),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "connection_id": { "type": "string", "description": "The ID or Name of the connection (from tabularis://connections)" },
-                    "query": { "type": "string", "description": "The SQL query to execute" }
-                },
-                "required": ["connection_id", "query"]
-            }),
-        }
-    ];
+    let tools = vec![Tool {
+        name: "run_query".to_string(),
+        description: Some("Execute a SQL query on a specific connection".to_string()),
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "connection_id": { "type": "string", "description": "The ID or Name of the connection (from tabularis://connections)" },
+                "query": { "type": "string", "description": "The SQL query to execute" }
+            },
+            "required": ["connection_id", "query"]
+        }),
+    }];
 
     Ok(json!({
         "tools": tools
     }))
 }
 
-async fn handle_call_tool(params: Option<serde_json::Value>) -> Result<serde_json::Value, JsonRpcError> {
-    let params = params.ok_or(JsonRpcError { code: -32602, message: "Missing params".to_string(), data: None })?;
+async fn handle_call_tool(
+    params: Option<serde_json::Value>,
+) -> Result<serde_json::Value, JsonRpcError> {
+    let params = params.ok_or(JsonRpcError {
+        code: -32602,
+        message: "Missing params".to_string(),
+        data: None,
+    })?;
     let name = params["name"].as_str().unwrap_or("");
-    let args = params["arguments"].as_object().ok_or(JsonRpcError { code: -32602, message: "Missing arguments".to_string(), data: None })?;
+    let args = params["arguments"].as_object().ok_or(JsonRpcError {
+        code: -32602,
+        message: "Missing arguments".to_string(),
+        data: None,
+    })?;
 
     if name == "run_query" {
-        let conn_id = args.get("connection_id").and_then(|v| v.as_str()).ok_or(JsonRpcError {
-            code: -32602, message: "Missing connection_id".to_string(), data: None
-        })?;
-        let query = args.get("query").and_then(|v| v.as_str()).ok_or(JsonRpcError {
-            code: -32602, message: "Missing query".to_string(), data: None
-        })?;
+        let conn_id = args
+            .get("connection_id")
+            .and_then(|v| v.as_str())
+            .ok_or(JsonRpcError {
+                code: -32602,
+                message: "Missing connection_id".to_string(),
+                data: None,
+            })?;
+        let query = args
+            .get("query")
+            .and_then(|v| v.as_str())
+            .ok_or(JsonRpcError {
+                code: -32602,
+                message: "Missing query".to_string(),
+                data: None,
+            })?;
 
         let config_path = paths::get_app_config_dir().join("connections.json");
-        let connections = persistence::load_connections(&config_path)
-             .map_err(|e| JsonRpcError { code: -32000, message: e, data: None })?;
+        let connections =
+            persistence::load_connections(&config_path).map_err(|e| JsonRpcError {
+                code: -32000,
+                message: e,
+                data: None,
+            })?;
 
         // Try to find by ID or exact name (case-insensitive) first, then partial name match
-        let conn = connections.iter()
+        let conn = connections
+            .iter()
             .find(|c| c.id == conn_id || c.name.eq_ignore_ascii_case(conn_id))
-            .or_else(|| connections.iter().find(|c| c.name.to_lowercase().contains(&conn_id.to_lowercase())))
+            .or_else(|| {
+                connections
+                    .iter()
+                    .find(|c| c.name.to_lowercase().contains(&conn_id.to_lowercase()))
+            })
             .ok_or(JsonRpcError {
                 code: -32000,
                 message: format!("Connection not found: {}", conn_id),
-                data: None
+                data: None,
             })?;
 
-        let db_params = commands::resolve_connection_params(&conn.params).map_err(|e| JsonRpcError {
-            code: -32000,
-            message: e,
-            data: None
-        })?;
+        let db_params =
+            commands::resolve_connection_params(&conn.params).map_err(|e| JsonRpcError {
+                code: -32000,
+                message: e,
+                data: None,
+            })?;
 
         let result = match conn.params.driver.as_str() {
-             "mysql" => mysql::execute_query(&db_params, query, Some(100), 1).await,
-             "postgres" => postgres::execute_query(&db_params, query, Some(100), 1).await,
-             "sqlite" => sqlite::execute_query(&db_params, query, Some(100), 1).await,
-             _ => Err("Unsupported driver".into()),
-        }.map_err(|e| JsonRpcError { code: -32000, message: e, data: None })?;
+            "mysql" => mysql::execute_query(&db_params, query, Some(100), 1).await,
+            "postgres" => postgres::execute_query(&db_params, query, Some(100), 1).await,
+            "sqlite" => sqlite::execute_query(&db_params, query, Some(100), 1).await,
+            _ => Err("Unsupported driver".into()),
+        }
+        .map_err(|e| JsonRpcError {
+            code: -32000,
+            message: e,
+            data: None,
+        })?;
 
         return Ok(json!({
             "content": [{

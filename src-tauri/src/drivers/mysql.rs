@@ -140,8 +140,8 @@ pub async fn get_foreign_keys(
             column_name: r.try_get(1).unwrap_or_default(), // COLUMN_NAME
             ref_table: r.try_get(2).unwrap_or_default(), // REFERENCED_TABLE_NAME
             ref_column: r.try_get(3).unwrap_or_default(), // REFERENCED_COLUMN_NAME
-            on_update: r.try_get(4).ok(), // UPDATE_RULE
-            on_delete: r.try_get(5).ok(), // DELETE_RULE
+            on_update: r.try_get(4).ok(),           // UPDATE_RULE
+            on_delete: r.try_get(5).ok(),           // DELETE_RULE
         })
         .collect())
 }
@@ -249,8 +249,8 @@ pub async fn get_all_foreign_keys_batch(
             column_name: row.try_get(2).unwrap_or_default(), // COLUMN_NAME
             ref_table: row.try_get(3).unwrap_or_default(), // REFERENCED_TABLE_NAME
             ref_column: row.try_get(4).unwrap_or_default(), // REFERENCED_COLUMN_NAME
-            on_update: row.try_get(5).ok(), // UPDATE_RULE
-            on_delete: row.try_get(6).ok(), // DELETE_RULE
+            on_update: row.try_get(5).ok(),           // UPDATE_RULE
+            on_delete: row.try_get(6).ok(),           // DELETE_RULE
         };
 
         result.entry(table_name).or_insert_with(Vec::new).push(fk);
@@ -627,7 +627,7 @@ pub async fn get_routines(params: &ConnectionParams) -> Result<Vec<RoutineInfo>,
             // Use column indices instead of names for Windows/MySQL 8 compatibility
             name: r.try_get(0).unwrap_or_default(), // routine_name
             routine_type: r.try_get(1).unwrap_or_default(), // routine_type
-            definition: r.try_get(2).ok(), // routine_definition
+            definition: r.try_get(2).ok(),          // routine_definition
         })
         .collect())
 }

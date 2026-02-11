@@ -48,8 +48,7 @@ pub async fn save_editor_preferences(
     let json = serde_json::to_string_pretty(&preferences)
         .map_err(|e| format!("Failed to serialize preferences: {}", e))?;
 
-    fs::write(&path, json)
-        .map_err(|e| format!("Failed to write preferences file: {}", e))?;
+    fs::write(&path, json).map_err(|e| format!("Failed to write preferences file: {}", e))?;
 
     Ok(())
 }
@@ -64,8 +63,8 @@ pub async fn load_editor_preferences(
         return Ok(None);
     }
 
-    let content = fs::read_to_string(&path)
-        .map_err(|e| format!("Failed to read preferences file: {}", e))?;
+    let content =
+        fs::read_to_string(&path).map_err(|e| format!("Failed to read preferences file: {}", e))?;
 
     let preferences: EditorPreferences = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse preferences file: {}", e))?;
@@ -74,14 +73,11 @@ pub async fn load_editor_preferences(
 }
 
 #[tauri::command]
-pub async fn delete_editor_preferences(
-    connection_id: String,
-) -> Result<(), String> {
+pub async fn delete_editor_preferences(connection_id: String) -> Result<(), String> {
     let path = get_connection_preferences_path(&connection_id);
 
     if path.exists() {
-        fs::remove_file(&path)
-            .map_err(|e| format!("Failed to delete preferences file: {}", e))?;
+        fs::remove_file(&path).map_err(|e| format!("Failed to delete preferences file: {}", e))?;
     }
 
     Ok(())
@@ -109,11 +105,14 @@ pub async fn list_all_preferences() -> Result<HashMap<String, EditorPreferences>
                 let pref_file = path.join("preferences.json");
 
                 if pref_file.exists() {
-                    let content = fs::read_to_string(&pref_file)
-                        .map_err(|e| format!("Failed to read preferences for {}: {}", connection_id, e))?;
+                    let content = fs::read_to_string(&pref_file).map_err(|e| {
+                        format!("Failed to read preferences for {}: {}", connection_id, e)
+                    })?;
 
-                    let preferences: EditorPreferences = serde_json::from_str(&content)
-                        .map_err(|e| format!("Failed to parse preferences for {}: {}", connection_id, e))?;
+                    let preferences: EditorPreferences =
+                        serde_json::from_str(&content).map_err(|e| {
+                            format!("Failed to parse preferences for {}: {}", connection_id, e)
+                        })?;
 
                     all_prefs.insert(connection_id.to_string(), preferences);
                 }

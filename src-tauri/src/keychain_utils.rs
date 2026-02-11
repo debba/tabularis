@@ -81,10 +81,12 @@ pub fn delete_ssh_password(connection_id: &str) -> Result<(), String> {
 }
 
 pub fn set_ssh_key_passphrase(connection_id: &str, passphrase: &str) -> Result<(), String> {
-    println!("[Keychain] Setting SSH key passphrase for {}", connection_id);
-    let entry =
-        Entry::new(SERVICE_NAME, &format!("{}:ssh_passphrase", connection_id))
-            .map_err(|e| e.to_string())?;
+    println!(
+        "[Keychain] Setting SSH key passphrase for {}",
+        connection_id
+    );
+    let entry = Entry::new(SERVICE_NAME, &format!("{}:ssh_passphrase", connection_id))
+        .map_err(|e| e.to_string())?;
     entry.set_password(passphrase).map_err(|e| {
         println!("[Keychain] Error setting SSH key passphrase: {}", e);
         e.to_string()
@@ -92,10 +94,12 @@ pub fn set_ssh_key_passphrase(connection_id: &str, passphrase: &str) -> Result<(
 }
 
 pub fn get_ssh_key_passphrase(connection_id: &str) -> Result<String, String> {
-    println!("[Keychain] Getting SSH key passphrase for {}", connection_id);
-    let entry =
-        Entry::new(SERVICE_NAME, &format!("{}:ssh_passphrase", connection_id))
-            .map_err(|e| e.to_string())?;
+    println!(
+        "[Keychain] Getting SSH key passphrase for {}",
+        connection_id
+    );
+    let entry = Entry::new(SERVICE_NAME, &format!("{}:ssh_passphrase", connection_id))
+        .map_err(|e| e.to_string())?;
     match entry.get_password() {
         Ok(pwd) => {
             println!("[Keychain] SSH key passphrase found for {}", connection_id);
@@ -112,9 +116,8 @@ pub fn get_ssh_key_passphrase(connection_id: &str) -> Result<String, String> {
 }
 
 pub fn delete_ssh_key_passphrase(connection_id: &str) -> Result<(), String> {
-    let entry =
-        Entry::new(SERVICE_NAME, &format!("{}:ssh_passphrase", connection_id))
-            .map_err(|e| e.to_string())?;
+    let entry = Entry::new(SERVICE_NAME, &format!("{}:ssh_passphrase", connection_id))
+        .map_err(|e| e.to_string())?;
     match entry.delete_credential() {
         Ok(_) => Ok(()),
         Err(keyring::Error::NoEntry) => Ok(()),
