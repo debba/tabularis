@@ -1,3 +1,17 @@
+## [0.8.12](https://github.com/debba/tabularis/compare/v0.8.11...v0.8.12) (2026-02-11)
+
+
+### Bug Fixes
+
+* **drivers-mysql:** use column indices for Windows/MySQL 8 ([8e30b8f](https://github.com/debba/tabularis/commit/8e30b8f6a2af61ef25e8dbc5c574705c2baa910e))
+
+
+### Features
+
+* **tauri:** integrate clipboard-manager plugin and editor paste ([0bc7a68](https://github.com/debba/tabularis/commit/0bc7a6891114a398ca5a07ba9e34b016c1a9daee))
+
+
+
 ## [0.8.11](https://github.com/debba/tabularis/compare/v0.8.10...v0.8.11) (2026-02-10)
 
 
