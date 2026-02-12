@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { message } from "@tauri-apps/plugin-dialog";
+import { useDatabase } from "../../hooks/useDatabase";
 import { Loader2, Download, Database, Square, CheckSquare } from "lucide-react";
 import {
   validateDumpOptions,
@@ -27,6 +28,7 @@ export const DumpDatabaseModal = ({
   tables,
 }: DumpDatabaseModalProps) => {
   const { t } = useTranslation();
+  const { activeSchema } = useDatabase();
   const [includeStructure, setIncludeStructure] = useState(true);
   const [includeData, setIncludeData] = useState(true);
   const [selectedTables, setSelectedTables] = useState<Set<string>>(
@@ -102,6 +104,7 @@ export const DumpDatabaseModal = ({
           data: includeData,
           tables: Array.from(selectedTables),
         },
+        ...(activeSchema ? { schema: activeSchema } : {}),
       });
 
       await message(t("dump.success"), { kind: "info" });

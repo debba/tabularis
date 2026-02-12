@@ -82,6 +82,7 @@ export interface Tab {
   sortClause?: string; // SQL ORDER BY clause (without "ORDER BY")
   limitClause?: number; // SQL LIMIT value
   queryParams?: Record<string, string>; // Saved values for query parameters
+  schema?: string; // Schema name (PostgreSQL) for query reconstruction
 }
 
 export interface EditorPreferences {

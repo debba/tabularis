@@ -152,6 +152,7 @@ pub fn run() {
             commands::update_ssh_connection,
             commands::delete_ssh_connection,
             commands::test_ssh_connection,
+            commands::get_schemas,
             commands::get_tables,
             commands::get_columns,
             commands::get_foreign_keys,
@@ -176,6 +177,10 @@ pub fn run() {
             saved_queries::update_saved_query,
             saved_queries::delete_saved_query,
             // Config
+            config::get_schema_preference,
+            config::set_schema_preference,
+            config::get_selected_schemas,
+            config::set_selected_schemas,
             config::get_config,
             config::save_config,
             config::set_ai_key,

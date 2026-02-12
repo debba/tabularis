@@ -14,6 +14,7 @@ export const SchemaDiagramPage = () => {
   const connectionId = searchParams.get('connectionId');
   const connectionName = searchParams.get('connectionName') || 'Unknown';
   const databaseName = searchParams.get('databaseName') || 'Unknown';
+  const schema = searchParams.get('schema') || undefined;
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -64,7 +65,7 @@ export const SchemaDiagramPage = () => {
           {/* Minimal Header */}
           <div className="h-12 bg-elevated border-b border-default flex items-center justify-between px-4 shrink-0">
             <h1 className="text-primary font-semibold">
-              {databaseName} ({connectionName})
+              {databaseName}{schema ? ` / ${schema}` : ''} ({connectionName})
             </h1>
             <div className="flex items-center gap-2">
               <button
@@ -97,7 +98,7 @@ export const SchemaDiagramPage = () => {
 
           {/* Diagram Canvas */}
           <div className="flex-1 overflow-hidden">
-            <SchemaDiagram connectionId={connectionId} refreshTrigger={refreshTrigger} />
+            <SchemaDiagram connectionId={connectionId} refreshTrigger={refreshTrigger} schema={schema} />
           </div>
         </div>
       </EditorProvider>

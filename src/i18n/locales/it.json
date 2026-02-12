@@ -69,7 +69,18 @@
     "procedures": "Procedure",
     "noRoutines": "Nessuna routine trovata",
     "refreshRoutines": "Aggiorna Routine",
-    "failGetRoutineDefinition": "Impossibile recuperare la definizione della routine: "
+    "objectSummary": "Oggetti",
+    "failGetRoutineDefinition": "Impossibile recuperare la definizione della routine: ",
+    "schemas": "Schemi",
+    "noSchemas": "Nessuno schema trovato",
+    "loadingSchemas": "Caricamento schemi...",
+    "expandExplorer": "Espandi Explorer",
+    "selectSchemas": "Seleziona Schemi",
+    "selectSchemasHint": "Seleziona gli schemi da caricare:",
+    "selectAll": "Seleziona Tutti",
+    "deselectAll": "Deseleziona Tutti",
+    "confirmSelection": "Conferma",
+    "editSchemas": "Modifica Schemi"
   },
   "mcp": {
     "title": "Integrazione Server MCP",
@@ -134,6 +145,7 @@
     "auto": "Auto (Sistema)",
     "english": "Inglese",
     "italian": "Italiano",
+    "spanish": "Spagnolo",
     "projectStatus": "Stato del Progetto",
     "roadmapDesc": "Questo progetto è un Work In Progress (WIP). Le funzioni principali sono stabili, ma abbiamo grandi piani.",
     "support": "Supporta lo Sviluppo",

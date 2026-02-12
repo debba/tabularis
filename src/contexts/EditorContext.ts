@@ -13,7 +13,7 @@ export interface EditorContextType {
   closeTabsToRight: (id: string) => void;
   updateTab: (id: string, partial: Partial<Tab>) => void;
   setActiveTabId: (id: string) => void;
-  getSchema: (connectionId: string, schemaVersion?: number) => Promise<TableSchema[]>;
+  getSchema: (connectionId: string, schemaVersion?: number, schema?: string) => Promise<TableSchema[]>;
 }
 
 export const EditorContext = createContext<EditorContextType | undefined>(undefined);

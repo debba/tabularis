@@ -1,6 +1,6 @@
 import { createContext } from "react";
 
-export type AppLanguage = "auto" | "en" | "it";
+export type AppLanguage = "auto" | "en" | "it" | "es";
 export type AiProvider =
   | "openai"
   | "anthropic"

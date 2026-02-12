@@ -25,6 +25,14 @@ export interface SavedConnection {
   };
 }
 
+export interface SchemaData {
+  tables: TableInfo[];
+  views: ViewInfo[];
+  routines: RoutineInfo[];
+  isLoading: boolean;
+  isLoaded: boolean;
+}
+
 export interface DatabaseContextType {
   activeConnectionId: string | null;
   activeDriver: string | null;
@@ -39,10 +47,21 @@ export interface DatabaseContextType {
   isLoadingRoutines: boolean;
   connect: (connectionId: string) => Promise<void>;
   disconnect: () => void;
-  setActiveTable: (table: string | null) => void;
+  setActiveTable: (table: string | null, schema?: string | null) => void;
   refreshTables: () => Promise<void>;
   refreshViews: () => Promise<void>;
   refreshRoutines: () => Promise<void>;
+  // Schema support (PostgreSQL)
+  schemas: string[];
+  isLoadingSchemas: boolean;
+  schemaDataMap: Record<string, SchemaData>;
+  activeSchema: string | null;
+  loadSchemaData: (schema: string) => Promise<void>;
+  refreshSchemaData: (schema: string) => Promise<void>;
+  // Schema selection (PostgreSQL)
+  selectedSchemas: string[];
+  setSelectedSchemas: (schemas: string[]) => Promise<void>;
+  needsSchemaSelection: boolean;
 }
 
 export const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);

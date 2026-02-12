@@ -25,7 +25,7 @@ export const GenerateSQLModal = ({
   tableName,
 }: GenerateSQLModalProps) => {
   const { t } = useTranslation();
-  const { activeConnectionId, activeDriver } = useDatabase();
+  const { activeConnectionId, activeDriver, activeSchema } = useDatabase();
   const [sql, setSql] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -36,18 +36,22 @@ export const GenerateSQLModal = ({
     const generateSQL = async () => {
       setLoading(true);
       try {
+        const schemaParam = activeSchema ? { schema: activeSchema } : {};
         const [columns, foreignKeys, indexes] = await Promise.all([
           invoke<TableColumn[]>("get_columns", {
             connectionId: activeConnectionId,
             tableName,
+            ...schemaParam,
           }),
           invoke<ForeignKey[]>("get_foreign_keys", {
             connectionId: activeConnectionId,
             tableName,
+            ...schemaParam,
           }),
           invoke<Index[]>("get_indexes", {
             connectionId: activeConnectionId,
             tableName,
+            ...schemaParam,
           }),
         ]);
 
@@ -68,7 +72,7 @@ export const GenerateSQLModal = ({
     };
 
     void generateSQL();
-  }, [isOpen, activeConnectionId, tableName, activeDriver, t]);
+  }, [isOpen, activeConnectionId, tableName, activeDriver, t, activeSchema]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(sql);

@@ -503,6 +503,7 @@ export const Settings = () => {
     { id: "auto", label: t("settings.auto") },
     { id: "en", label: t("settings.english") },
     { id: "it", label: t("settings.italian") },
+    { id: "es", label: t("settings.spanish") },
   ];
 
   const providers: Array<{ id: AiProvider; label: string }> = [

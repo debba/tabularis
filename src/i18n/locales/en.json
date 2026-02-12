@@ -69,7 +69,18 @@
     "procedures": "Procedures",
     "noRoutines": "No routines found",
     "refreshRoutines": "Refresh Routines",
-    "failGetRoutineDefinition": "Failed to get routine definition: "
+    "objectSummary": "Objects",
+    "failGetRoutineDefinition": "Failed to get routine definition: ",
+    "schemas": "Schemas",
+    "noSchemas": "No schemas found",
+    "loadingSchemas": "Loading schemas...",
+    "expandExplorer": "Expand Explorer",
+    "selectSchemas": "Select Schemas",
+    "selectSchemasHint": "Select schemas to load:",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "confirmSelection": "Confirm",
+    "editSchemas": "Edit Schemas"
   },
   "mcp": {
     "title": "MCP Server Integration",
@@ -135,6 +146,7 @@
     "auto": "Auto (System)",
     "english": "English",
     "italian": "Italiano",
+    "spanish": "Spanish",
     "projectStatus": "Project Status",
     "roadmapDesc": "This project is a Work In Progress (WIP). Core features are stable, but we have big plans.",
     "support": "Support the Development",

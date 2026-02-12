@@ -45,12 +45,12 @@ const cleanupCache = () => {
   }
 };
 
-const getTableColumns = async (connectionId: string, tableName: string) => {
+const getTableColumns = async (connectionId: string, tableName: string, schema?: string | null) => {
   if (!connectionId || !tableName) return [];
 
-  const cacheKey = `${connectionId}:${tableName}`;
+  const cacheKey = schema ? `${connectionId}:${schema}:${tableName}` : `${connectionId}:${tableName}`;
   const cached = columnsCache.get(cacheKey);
-  
+
   // Return cached data if valid
   if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
     return cached.data;
@@ -60,6 +60,7 @@ const getTableColumns = async (connectionId: string, tableName: string) => {
     const cols = await invoke<Array<{ name: string; data_type: string }>>("get_columns", {
       connectionId,
       tableName,
+      ...(schema ? { schema } : {}),
     });
     
     if (!Array.isArray(cols)) {
@@ -100,7 +101,8 @@ export const clearAutocompleteCache = (connectionId?: string) => {
 export const registerSqlAutocomplete = (
   monaco: Monaco,
   connectionId: string | null,
-  tables: TableInfo[]
+  tables: TableInfo[],
+  schema?: string | null,
 ) => {
   const provider = monaco.languages.registerCompletionItemProvider("sql", {
     triggerCharacters: [".", " ", "\n"],
@@ -147,7 +149,7 @@ export const registerSqlAutocomplete = (
         }
         
         if (actualTableName) {
-          const columns = await getTableColumns(connectionId, actualTableName);
+          const columns = await getTableColumns(connectionId, actualTableName, schema);
           
           // Calculate range for column name after dot
           const columnRange = {
@@ -196,7 +198,7 @@ export const registerSqlAutocomplete = (
         }
         
         const results = await Promise.all(
-          matchingTables.map(t => getTableColumns(connectionId, t.name))
+          matchingTables.map(t => getTableColumns(connectionId, t.name, schema))
         );
         
         const seenColumns = new Set<string>();

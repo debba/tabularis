@@ -221,9 +221,29 @@ pub fn find_connection_by_id<R: Runtime>(
 // --- Commands ---
 
 #[tauri::command]
+pub async fn get_schemas<R: Runtime>(
+    app: AppHandle<R>,
+    connection_id: String,
+) -> Result<Vec<String>, String> {
+    log::info!("Fetching schemas for connection: {}", connection_id);
+
+    let saved_conn = find_connection_by_id(&app, &connection_id)?;
+    let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
+
+    match saved_conn.params.driver.as_str() {
+        "mysql" => mysql::get_schemas(&params).await,
+        "postgres" => postgres::get_schemas(&params).await,
+        "sqlite" => sqlite::get_schemas(&params).await,
+        _ => Err("Unsupported driver".into()),
+    }
+}
+
+#[tauri::command]
 pub async fn get_routines<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
+    schema: Option<String>,
 ) -> Result<Vec<RoutineInfo>, String> {
     log::info!("Fetching routines for connection: {}", connection_id);
 
@@ -233,7 +253,7 @@ pub async fn get_routines<R: Runtime>(
 
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_routines(&params).await,
-        "postgres" => postgres::get_routines(&params).await,
+        "postgres" => postgres::get_routines(&params, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::get_routines(&params).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -244,6 +264,7 @@ pub async fn get_routine_parameters<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
     routine_name: String,
+    schema: Option<String>,
 ) -> Result<Vec<RoutineParameter>, String> {
     log::info!(
         "Fetching routine parameters for: {} on connection: {}",
@@ -257,7 +278,7 @@ pub async fn get_routine_parameters<R: Runtime>(
 
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_routine_parameters(&params, &routine_name).await,
-        "postgres" => postgres::get_routine_parameters(&params, &routine_name).await,
+        "postgres" => postgres::get_routine_parameters(&params, &routine_name, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::get_routine_parameters(&params, &routine_name).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -269,6 +290,7 @@ pub async fn get_routine_definition<R: Runtime>(
     connection_id: String,
     routine_name: String,
     routine_type: String, // "PROCEDURE" or "FUNCTION" - mainly for MySQL SHOW CREATE
+    schema: Option<String>,
 ) -> Result<String, String> {
     log::info!(
         "Fetching routine definition for: {} ({}) on connection: {}",
@@ -283,7 +305,7 @@ pub async fn get_routine_definition<R: Runtime>(
 
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_routine_definition(&params, &routine_name, &routine_type).await,
-        "postgres" => postgres::get_routine_definition(&params, &routine_name, &routine_type).await,
+        "postgres" => postgres::get_routine_definition(&params, &routine_name, &routine_type, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::get_routine_definition(&params, &routine_name, &routine_type).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -293,22 +315,24 @@ pub async fn get_routine_definition<R: Runtime>(
 pub async fn get_schema_snapshot<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
+    schema: Option<String>,
 ) -> Result<Vec<crate::models::TableSchema>, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     let driver = saved_conn.params.driver.clone();
+    let pg_schema = schema.as_deref().unwrap_or("public");
 
     // 1. Get Tables
     let tables = match driver.as_str() {
         "mysql" => mysql::get_tables(&params).await,
-        "postgres" => postgres::get_tables(&params).await,
+        "postgres" => postgres::get_tables(&params, pg_schema).await,
         "sqlite" => sqlite::get_tables(&params).await,
         _ => Err("Unsupported driver".into()),
     }?;
 
     // 2. Fetch ALL columns and foreign keys in batch (2 queries instead of N*2)
-    let schema = match driver.as_str() {
+    let result = match driver.as_str() {
         "mysql" => {
             let mut columns_map = mysql::get_all_columns_batch(&params).await?;
             let mut fks_map = mysql::get_all_foreign_keys_batch(&params).await?;
@@ -323,8 +347,8 @@ pub async fn get_schema_snapshot<R: Runtime>(
                 .collect()
         }
         "postgres" => {
-            let mut columns_map = postgres::get_all_columns_batch(&params).await?;
-            let mut fks_map = postgres::get_all_foreign_keys_batch(&params).await?;
+            let mut columns_map = postgres::get_all_columns_batch(&params, pg_schema).await?;
+            let mut fks_map = postgres::get_all_foreign_keys_batch(&params, pg_schema).await?;
 
             tables
                 .into_iter()
@@ -352,7 +376,7 @@ pub async fn get_schema_snapshot<R: Runtime>(
         _ => return Err("Unsupported driver".into()),
     };
 
-    Ok(schema)
+    Ok(result)
 }
 
 #[tauri::command]
@@ -1535,6 +1559,7 @@ pub async fn list_databases<R: Runtime>(
 pub async fn get_tables<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
+    schema: Option<String>,
 ) -> Result<Vec<TableInfo>, String> {
     log::info!("Fetching tables for connection: {}", connection_id);
 
@@ -1550,7 +1575,7 @@ pub async fn get_tables<R: Runtime>(
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_tables(&params).await,
-        "postgres" => postgres::get_tables(&params).await,
+        "postgres" => postgres::get_tables(&params, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::get_tables(&params).await,
         _ => Err("Unsupported driver".into()),
     };
@@ -1568,13 +1593,14 @@ pub async fn get_columns<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
     table_name: String,
+    schema: Option<String>,
 ) -> Result<Vec<TableColumn>, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_columns(&params, &table_name).await,
-        "postgres" => postgres::get_columns(&params, &table_name).await,
+        "postgres" => postgres::get_columns(&params, &table_name, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::get_columns(&params, &table_name).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -1585,13 +1611,14 @@ pub async fn get_foreign_keys<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
     table_name: String,
+    schema: Option<String>,
 ) -> Result<Vec<ForeignKey>, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_foreign_keys(&params, &table_name).await,
-        "postgres" => postgres::get_foreign_keys(&params, &table_name).await,
+        "postgres" => postgres::get_foreign_keys(&params, &table_name, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::get_foreign_keys(&params, &table_name).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -1602,13 +1629,14 @@ pub async fn get_indexes<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
     table_name: String,
+    schema: Option<String>,
 ) -> Result<Vec<Index>, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_indexes(&params, &table_name).await,
-        "postgres" => postgres::get_indexes(&params, &table_name).await,
+        "postgres" => postgres::get_indexes(&params, &table_name, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::get_indexes(&params, &table_name).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -1621,13 +1649,14 @@ pub async fn delete_record<R: Runtime>(
     table: String,
     pk_col: String,
     pk_val: serde_json::Value,
+    schema: Option<String>,
 ) -> Result<u64, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::delete_record(&params, &table, &pk_col, pk_val).await,
-        "postgres" => postgres::delete_record(&params, &table, &pk_col, pk_val).await,
+        "postgres" => postgres::delete_record(&params, &table, &pk_col, pk_val, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::delete_record(&params, &table, &pk_col, pk_val).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -1642,6 +1671,7 @@ pub async fn update_record<R: Runtime>(
     pk_val: serde_json::Value,
     col_name: String,
     new_val: serde_json::Value,
+    schema: Option<String>,
 ) -> Result<u64, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
@@ -1649,7 +1679,7 @@ pub async fn update_record<R: Runtime>(
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val).await,
         "postgres" => {
-            postgres::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val).await
+            postgres::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val, schema.as_deref().unwrap_or("public")).await
         }
         "sqlite" => {
             sqlite::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val).await
@@ -1664,13 +1694,14 @@ pub async fn insert_record<R: Runtime>(
     connection_id: String,
     table: String,
     data: std::collections::HashMap<String, serde_json::Value>,
+    schema: Option<String>,
 ) -> Result<u64, String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::insert_record(&params, &table, data).await,
-        "postgres" => postgres::insert_record(&params, &table, data).await,
+        "postgres" => postgres::insert_record(&params, &table, data, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::insert_record(&params, &table, data).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -1698,6 +1729,7 @@ pub async fn execute_query<R: Runtime>(
     query: String,
     limit: Option<u32>,
     page: Option<u32>,
+    schema: Option<String>,
 ) -> Result<QueryResult, String> {
     log::info!(
         "Executing query on connection: {} | Query: {}",
@@ -1705,8 +1737,15 @@ pub async fn execute_query<R: Runtime>(
         query.chars().take(200).collect::<String>()
     );
 
-    // 1. Sanitize Query (Ignore trailing semicolon)
-    let sanitized_query = query.trim().trim_end_matches(';').to_string();
+    // 1. Sanitize Query (Ignore trailing semicolon + normalize smart quotes)
+    let sanitized_query = query
+        .trim()
+        .trim_end_matches(';')
+        .replace('\u{2018}', "'")  // Left single quotation mark
+        .replace('\u{2019}', "'")  // Right single quotation mark
+        .replace('\u{201C}', "\"") // Left double quotation mark
+        .replace('\u{201D}', "\"") // Right double quotation mark
+        .to_string();
 
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
@@ -1719,7 +1758,14 @@ pub async fn execute_query<R: Runtime>(
                 mysql::execute_query(&params, &sanitized_query, limit, page.unwrap_or(1)).await
             }
             "postgres" => {
-                postgres::execute_query(&params, &sanitized_query, limit, page.unwrap_or(1)).await
+                postgres::execute_query(
+                    &params,
+                    &sanitized_query,
+                    limit,
+                    page.unwrap_or(1),
+                    schema.as_deref(),
+                )
+                .await
             }
             "sqlite" => {
                 sqlite::execute_query(&params, &sanitized_query, limit, page.unwrap_or(1)).await
@@ -1825,11 +1871,13 @@ pub async fn open_er_diagram_window(
     connection_name: String,
     database_name: String,
     focus_table: Option<String>,
+    schema: Option<String>,
 ) -> Result<(), String> {
     use tauri::{WebviewUrl, WebviewWindowBuilder};
     use urlencoding::encode;
 
-    let title = format!("tabularis - {} ({})", database_name, connection_name);
+    let schema_suffix = schema.as_deref().map(|s| format!("/{}", s)).unwrap_or_default();
+    let title = format!("tabularis - {} ({}{})", database_name, connection_name, schema_suffix);
     let mut url = format!(
         "/schema-diagram?connectionId={}&connectionName={}&databaseName={}",
         encode(&connection_id),
@@ -1837,9 +1885,12 @@ pub async fn open_er_diagram_window(
         encode(&database_name)
     );
 
-    // Aggiungi il parametro focusTable se presente
     if let Some(table) = focus_table {
         url.push_str(&format!("&focusTable={}", encode(&table)));
+    }
+
+    if let Some(s) = &schema {
+        url.push_str(&format!("&schema={}", encode(s)));
     }
 
     let _webview = WebviewWindowBuilder::new(&app, "er-diagram", WebviewUrl::App(url.into()))
@@ -1969,6 +2020,7 @@ fn resolve_ssh_test_password(
 pub async fn get_views<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
+    schema: Option<String>,
 ) -> Result<Vec<crate::models::ViewInfo>, String> {
     log::info!("Fetching views for connection: {}", connection_id);
 
@@ -1984,7 +2036,7 @@ pub async fn get_views<R: Runtime>(
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_views(&params).await,
-        "postgres" => postgres::get_views(&params).await,
+        "postgres" => postgres::get_views(&params, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::get_views(&params).await,
         _ => Err("Unsupported driver".into()),
     };
@@ -2002,6 +2054,7 @@ pub async fn get_view_definition<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
     view_name: String,
+    schema: Option<String>,
 ) -> Result<String, String> {
     log::info!(
         "Fetching view definition for: {} on connection: {}",
@@ -2015,7 +2068,7 @@ pub async fn get_view_definition<R: Runtime>(
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_view_definition(&params, &view_name).await,
-        "postgres" => postgres::get_view_definition(&params, &view_name).await,
+        "postgres" => postgres::get_view_definition(&params, &view_name, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::get_view_definition(&params, &view_name).await,
         _ => Err("Unsupported driver".into()),
     };
@@ -2034,6 +2087,7 @@ pub async fn create_view<R: Runtime>(
     connection_id: String,
     view_name: String,
     definition: String,
+    schema: Option<String>,
 ) -> Result<(), String> {
     log::info!(
         "Creating view: {} on connection: {}",
@@ -2047,7 +2101,7 @@ pub async fn create_view<R: Runtime>(
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::create_view(&params, &view_name, &definition).await,
-        "postgres" => postgres::create_view(&params, &view_name, &definition).await,
+        "postgres" => postgres::create_view(&params, &view_name, &definition, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::create_view(&params, &view_name, &definition).await,
         _ => Err("Unsupported driver".into()),
     };
@@ -2066,6 +2120,7 @@ pub async fn alter_view<R: Runtime>(
     connection_id: String,
     view_name: String,
     definition: String,
+    schema: Option<String>,
 ) -> Result<(), String> {
     log::info!(
         "Altering view: {} on connection: {}",
@@ -2079,7 +2134,7 @@ pub async fn alter_view<R: Runtime>(
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::alter_view(&params, &view_name, &definition).await,
-        "postgres" => postgres::alter_view(&params, &view_name, &definition).await,
+        "postgres" => postgres::alter_view(&params, &view_name, &definition, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::alter_view(&params, &view_name, &definition).await,
         _ => Err("Unsupported driver".into()),
     };
@@ -2097,6 +2152,7 @@ pub async fn drop_view<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
     view_name: String,
+    schema: Option<String>,
 ) -> Result<(), String> {
     log::info!(
         "Dropping view: {} on connection: {}",
@@ -2110,7 +2166,7 @@ pub async fn drop_view<R: Runtime>(
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::drop_view(&params, &view_name).await,
-        "postgres" => postgres::drop_view(&params, &view_name).await,
+        "postgres" => postgres::drop_view(&params, &view_name, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::drop_view(&params, &view_name).await,
         _ => Err("Unsupported driver".into()),
     };
@@ -2128,6 +2184,7 @@ pub async fn get_view_columns<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
     view_name: String,
+    schema: Option<String>,
 ) -> Result<Vec<TableColumn>, String> {
     log::info!(
         "Fetching view columns for: {} on connection: {}",
@@ -2141,7 +2198,7 @@ pub async fn get_view_columns<R: Runtime>(
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_view_columns(&params, &view_name).await,
-        "postgres" => postgres::get_view_columns(&params, &view_name).await,
+        "postgres" => postgres::get_view_columns(&params, &view_name, schema.as_deref().unwrap_or("public")).await,
         "sqlite" => sqlite::get_view_columns(&params, &view_name).await,
         _ => Err("Unsupported driver".into()),
     };

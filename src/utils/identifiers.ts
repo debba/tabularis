@@ -20,5 +20,22 @@ export function getQuoteChar(driver: string | null | undefined): string {
  */
 export function quoteIdentifier(identifier: string, driver: string | null | undefined): string {
   const quote = getQuoteChar(driver);
-  return `${quote}${identifier}${quote}`;
+  const escaped = quote === "`" ? identifier.replace(/`/g, "``") : identifier.replace(/"/g, '""');
+  return `${quote}${escaped}${quote}`;
+}
+
+/**
+ * Returns a schema-qualified, quoted table reference for use in SQL queries.
+ * When a schema is provided, returns "schema"."table" (or `schema`.`table` for MySQL).
+ * Otherwise returns just the quoted table name.
+ */
+export function quoteTableRef(
+  table: string,
+  driver: string | null | undefined,
+  schema?: string | null,
+): string {
+  if (schema) {
+    return `${quoteIdentifier(schema, driver)}.${quoteIdentifier(table, driver)}`;
+  }
+  return quoteIdentifier(table, driver);
 }

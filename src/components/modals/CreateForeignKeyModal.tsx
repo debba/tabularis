@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { X, Save, Loader2, AlertTriangle } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { SqlPreview } from '../ui/SqlPreview';
+import { useDatabase } from '../../hooks/useDatabase';
 
 interface CreateForeignKeyModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ export const CreateForeignKeyModal = ({
   driver
 }: CreateForeignKeyModalProps) => {
   const { t } = useTranslation();
+  const { activeSchema } = useDatabase();
   const [fkName, setFkName] = useState('');
   const [localColumn, setLocalColumn] = useState('');
   const [refTable, setRefTable] = useState('');
@@ -59,9 +61,10 @@ export const CreateForeignKeyModal = ({
         setError('');
         
         // Fetch tables and local columns
+        const schemaParam = activeSchema ? { schema: activeSchema } : {};
         Promise.all([
-            invoke<TableInfo[]>('get_tables', { connectionId }),
-            invoke<TableColumn[]>('get_columns', { connectionId, tableName })
+            invoke<TableInfo[]>('get_tables', { connectionId, ...schemaParam }),
+            invoke<TableColumn[]>('get_columns', { connectionId, tableName, ...schemaParam })
         ]).then(([tbls, cols]) => {
             setTables(tbls);
             setLocalColumns(cols);
@@ -69,13 +72,13 @@ export const CreateForeignKeyModal = ({
             if (tbls.length > 0) setRefTable(tbls[0].name); // Default first table
         }).catch(e => setError(String(e)));
     }
-  }, [isOpen, connectionId, tableName]);
+  }, [isOpen, connectionId, tableName, activeSchema]);
 
   // Fetch ref columns when refTable changes
   useEffect(() => {
       if (refTable && isOpen) {
           setFetchingRefCols(true);
-          invoke<TableColumn[]>('get_columns', { connectionId, tableName: refTable })
+          invoke<TableColumn[]>('get_columns', { connectionId, tableName: refTable, ...(activeSchema ? { schema: activeSchema } : {}) })
             .then(cols => {
                 setRefColumns(cols);
                 if (cols.length > 0) setRefColumn(cols[0].name);
@@ -83,7 +86,7 @@ export const CreateForeignKeyModal = ({
             .catch(e => console.error(e))
             .finally(() => setFetchingRefCols(false));
       }
-  }, [refTable, isOpen, connectionId]);
+  }, [refTable, isOpen, connectionId, activeSchema]);
 
   // Auto-generate name based on selection
   useEffect(() => {
@@ -112,7 +115,11 @@ export const CreateForeignKeyModal = ({
       setLoading(true);
       setError('');
       try {
-          await invoke('execute_query', { connectionId, query: sqlPreview });
+          await invoke('execute_query', {
+            connectionId,
+            query: sqlPreview,
+            ...(activeSchema ? { schema: activeSchema } : {}),
+          });
           onSuccess();
           onClose();
       } catch (e) {

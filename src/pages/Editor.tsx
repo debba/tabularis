@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { quoteIdentifier } from "../utils/identifiers";
+import { quoteTableRef } from "../utils/identifiers";
 import {
   generateTempId,
   initializeNewRow,
@@ -73,6 +73,7 @@ interface EditorState {
   tableName?: string;
   queryName?: string;
   preventAutoRun?: boolean;
+  schema?: string;
 }
 
 interface ExportProgress {
@@ -81,7 +82,7 @@ interface ExportProgress {
 
 export const Editor = () => {
   const { t } = useTranslation();
-  const { activeConnectionId, tables, activeDriver } = useDatabase();
+  const { activeConnectionId, tables, activeDriver, activeSchema } = useDatabase();
   const { settings } = useSettings();
   const { saveQuery } = useSavedQueries();
   const {
@@ -150,7 +151,7 @@ export const Editor = () => {
       if (tab.type === "table" && tab.activeTable) {
         const filter = tab.filterClause ? `WHERE ${tab.filterClause}` : "";
         const sort = tab.sortClause ? `ORDER BY ${tab.sortClause}` : "";
-        const quotedTable = quoteIdentifier(tab.activeTable, activeDriver);
+        const quotedTable = quoteTableRef(tab.activeTable, activeDriver, tab.schema);
 
         let baseQuery = `SELECT * FROM ${quotedTable} ${filter} ${sort}`;
 
@@ -309,6 +310,7 @@ export const Editor = () => {
         const cols = await invoke<TableColumn[]>("get_columns", {
           connectionId: activeConnectionId,
           tableName: table,
+          ...(activeSchema ? { schema: activeSchema } : {}),
         });
         const pk = cols.find((c) => c.is_pk);
         const autoInc = cols
@@ -336,7 +338,7 @@ export const Editor = () => {
           updateTab(targetId, { pkColumn: null, autoIncrementColumns: [], defaultValueColumns: [], nullableColumns: [] });
       }
     },
-    [activeConnectionId, activeTabId, updateTab],
+    [activeConnectionId, activeTabId, updateTab, activeSchema],
   );
 
   const stopQuery = useCallback(async () => {
@@ -388,7 +390,7 @@ export const Editor = () => {
 
         const filter = filterClause ? `WHERE ${filterClause}` : "";
         const sort = sortClause ? `ORDER BY ${sortClause}` : "";
-        const quotedTable = quoteIdentifier(targetTab.activeTable, activeDriver);
+        const quotedTable = quoteTableRef(targetTab.activeTable, activeDriver, targetTab.schema);
 
         const baseQuery = `SELECT * FROM ${quotedTable} ${filter} ${sort}`;
 
@@ -459,11 +461,13 @@ export const Editor = () => {
             ? settings.resultPageSize
             : 100;
 
+        const schema = targetTab?.schema ?? activeSchema;
         const res = await invoke<QueryResult>("execute_query", {
           connectionId: activeConnectionId,
           query: textToRun,
           limit: pageSize,
           page: pageNum,
+          ...(schema ? { schema } : {}),
         });
         const end = performance.now();
 
@@ -496,7 +500,7 @@ export const Editor = () => {
         });
       }
     },
-    [activeConnectionId, updateTab, settings.resultPageSize, fetchPkColumn, t, activeDriver],
+    [activeConnectionId, updateTab, settings.resultPageSize, fetchPkColumn, t, activeDriver, activeSchema],
   );
 
   const handleRunButton = useCallback(() => {
@@ -823,6 +827,7 @@ export const Editor = () => {
       const columns = await invoke<TableColumn[]>("get_columns", {
         connectionId: activeConnectionId,
         tableName: activeTab.activeTable,
+        ...(activeSchema ? { schema: activeSchema } : {}),
       });
 
       if (!columns || columns.length === 0) {
@@ -911,7 +916,7 @@ export const Editor = () => {
         kind: "error",
       });
     }
-  }, [activeConnectionId, activeTab, updateTab, t, settings.resultPageSize]);
+  }, [activeConnectionId, activeTab, updateTab, t, settings.resultPageSize, activeSchema]);
 
   const handleSubmitChanges = useCallback(async () => {
     if (
@@ -977,6 +982,7 @@ export const Editor = () => {
         const columns = await invoke<TableColumn[]>("get_columns", {
           connectionId: activeConnectionId,
           tableName: activeTable,
+          ...(activeSchema ? { schema: activeSchema } : {}),
         });
 
         const selectedDisplayIndices = new Set<number>();
@@ -1043,6 +1049,7 @@ export const Editor = () => {
               table: activeTable,
               pkCol: pkColumn,
               pkVal,
+              ...(activeSchema ? { schema: activeSchema } : {}),
             }),
           ),
         );
@@ -1059,6 +1066,7 @@ export const Editor = () => {
               pkVal: u.pkVal,
               colName: u.colName,
               newVal: u.newVal,
+              ...(activeSchema ? { schema: activeSchema } : {}),
             }),
           ),
         );
@@ -1072,6 +1080,7 @@ export const Editor = () => {
               connectionId: activeConnectionId,
               table: activeTable,
               data: insertion.data,
+              ...(activeSchema ? { schema: activeSchema } : {}),
             }),
           ),
         );
@@ -1131,7 +1140,7 @@ export const Editor = () => {
         kind: "error",
       });
     }
-  }, [activeTab, activeConnectionId, updateActiveTab, runQuery, t, applyToAll]);
+  }, [activeTab, activeConnectionId, updateActiveTab, runQuery, t, applyToAll, activeSchema]);
 
   const handleParamsSubmit = useCallback(
     (values: Record<string, string>) => {
@@ -1279,10 +1288,11 @@ export const Editor = () => {
         monacoInstance,
         activeConnectionId,
         tables,
+        activeSchema,
       );
       return () => disposable.dispose();
     }
-  }, [monacoInstance, activeConnectionId, tables]);
+  }, [monacoInstance, activeConnectionId, tables, activeSchema]);
 
   useEffect(() => {
     const state = location.state as EditorState;
@@ -1293,13 +1303,14 @@ export const Editor = () => {
         if (processingRef.current === queryKey) return;
         processingRef.current = queryKey;
 
-        const { initialQuery: sql, tableName: table, queryName, preventAutoRun } = state;
+        const { initialQuery: sql, tableName: table, queryName, preventAutoRun, schema: navSchema } = state;
         const tabId = addTab({
           type: table ? "table" : "console",
           title:
             queryName || table || (table ? table : t("sidebar.newConsole")),
           query: sql,
           activeTable: table,
+          schema: navSchema,
         });
 
         if (tabId && !preventAutoRun) {
@@ -1390,7 +1401,7 @@ export const Editor = () => {
       const sort = activeTab.sortClause
         ? `ORDER BY ${activeTab.sortClause}`
         : "";
-      const quotedTable = quoteIdentifier(activeTab.activeTable, activeDriver);
+      const quotedTable = quoteTableRef(activeTab.activeTable, activeDriver, activeTab.schema);
 
       // Base query
       let baseQuery = `SELECT * FROM ${quotedTable} ${filter} ${sort}`;

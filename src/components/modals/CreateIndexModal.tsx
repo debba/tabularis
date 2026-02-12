@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { X, Save, Loader2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { SqlPreview } from '../ui/SqlPreview';
+import { useDatabase } from '../../hooks/useDatabase';
 
 interface CreateIndexModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export const CreateIndexModal = ({
   driver
 }: CreateIndexModalProps) => {
   const { t } = useTranslation();
+  const { activeSchema } = useDatabase();
   const [indexName, setIndexName] = useState('');
   const [isUnique, setIsUnique] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
@@ -42,12 +44,12 @@ export const CreateIndexModal = ({
         setIsUnique(false);
         setError('');
         
-        invoke<TableColumn[]>('get_columns', { connectionId, tableName })
+        invoke<TableColumn[]>('get_columns', { connectionId, tableName, ...(activeSchema ? { schema: activeSchema } : {}) })
             .then(cols => setAvailableColumns(cols))
             .catch(e => console.error(e))
             .finally(() => setFetchingCols(false));
     }
-  }, [isOpen, connectionId, tableName]);
+  }, [isOpen, connectionId, tableName, activeSchema]);
 
   const toggleColumn = (colName: string) => {
       if (selectedColumns.includes(colName)) {
@@ -79,7 +81,11 @@ export const CreateIndexModal = ({
       setLoading(true);
       setError('');
       try {
-          await invoke('execute_query', { connectionId, query: sqlPreview });
+          await invoke('execute_query', {
+            connectionId,
+            query: sqlPreview,
+            ...(activeSchema ? { schema: activeSchema } : {}),
+          });
           onSuccess();
           onClose();
       } catch (e) {

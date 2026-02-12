@@ -23,6 +23,7 @@ import {
   type MergedRow,
   type ColumnDisplayInfo,
 } from "../../utils/dataGrid";
+import { useDatabase } from "../../hooks/useDatabase";
 import { rowToTSV, rowsToTSV, getSelectedRows, copyTextToClipboard } from "../../utils/clipboard";
 import type { PendingInsertion } from "../../types/editor";
 
@@ -81,8 +82,7 @@ export const DataGrid = React.memo(({
   onSort,
 }: DataGridProps) => {
   const { t } = useTranslation();
-
-
+  const { activeSchema } = useDatabase();
 
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -294,6 +294,7 @@ export const DataGrid = React.memo(({
           pkVal,
           colName,
           newVal: value,
+          ...(activeSchema ? { schema: activeSchema } : {}),
         });
         if (onRefresh) onRefresh();
       } catch (e) {
@@ -421,7 +422,7 @@ export const DataGrid = React.memo(({
           },
         }),
       ),
-    [columns, columnHelper, t, sortClause, onSort, autoIncrementColumns, defaultValueColumns, nullableColumns],
+    [columns, columnHelper, t, sortClause, onSort],
   );
 
   const parentRef = useRef<HTMLDivElement>(null);

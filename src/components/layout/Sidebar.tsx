@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { quoteIdentifier } from "../../utils/identifiers";
+import { quoteIdentifier, quoteTableRef } from "../../utils/identifiers";
 import { invoke } from "@tauri-apps/api/core";
 import { DISCORD_URL } from "../../config/links";
 import {
@@ -27,6 +27,10 @@ import {
   ChevronDown,
   RefreshCw,
   ChevronRight,
+  Settings2,
+  Check,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { DiscordIcon } from "../icons/DiscordIcon";
 import { ask, message, open } from "@tauri-apps/plugin-dialog";
@@ -54,6 +58,7 @@ import { Accordion } from "./sidebar/Accordion";
 import { SidebarTableItem } from "./sidebar/SidebarTableItem";
 import { SidebarViewItem } from "./sidebar/SidebarViewItem";
 import { SidebarRoutineItem } from "./sidebar/SidebarRoutineItem";
+import { SidebarSchemaItem } from "./sidebar/SidebarSchemaItem";
 
 // Hooks & Types
 import { useSidebarResize } from "../../hooks/useSidebarResize";
@@ -61,6 +66,7 @@ import type { TableColumn } from "../../types/schema";
 import type { ContextMenuData } from "../../types/sidebar";
 import type { RoutineInfo } from "../../contexts/DatabaseContext";
 import { groupRoutinesByType } from "../../utils/routines";
+import { formatObjectCount } from "../../utils/schema";
 
 export const Sidebar = () => {
   const { t } = useTranslation();
@@ -80,6 +86,16 @@ export const Sidebar = () => {
     refreshRoutines,
     activeConnectionName,
     activeDatabaseName,
+    // Schema support (PostgreSQL)
+    schemas,
+    isLoadingSchemas,
+    schemaDataMap,
+    activeSchema,
+    loadSchemaData,
+    refreshSchemaData,
+    selectedSchemas,
+    setSelectedSchemas,
+    needsSchemaSelection,
   } = useDatabase();
   const { queries, deleteQuery, updateQuery } = useSavedQueries();
   const navigate = useNavigate();
@@ -94,7 +110,7 @@ export const Sidebar = () => {
     label: string;
     data?: ContextMenuData;
   } | null>(null);
-  const [schemaModalTable, setSchemaModalTable] = useState<string | null>(null);
+  const [schemaModal, setSchemaModal] = useState<{ tableName: string; schema?: string } | null>(null);
   const [isCreateTableModalOpen, setIsCreateTableModalOpen] = useState(false);
   const [modifyColumnModal, setModifyColumnModal] = useState<{
     isOpen: boolean;
@@ -131,6 +147,8 @@ export const Sidebar = () => {
     filePath: string;
   }>({ isOpen: false, filePath: "" });
   const [isActionsDropdownOpen, setIsActionsDropdownOpen] = useState(false);
+  const [isSchemaFilterOpen, setIsSchemaFilterOpen] = useState(false);
+  const [pendingSchemaSelection, setPendingSchemaSelection] = useState<Set<string>>(new Set());
   const [viewEditorModal, setViewEditorModal] = useState<{
     isOpen: boolean;
     viewName?: string;
@@ -142,22 +160,26 @@ export const Sidebar = () => {
 
   const groupedRoutines = routines ? groupRoutinesByType(routines) : { procedures: [], functions: [] };
 
-  const runQuery = (sql: string, queryName?: string, tableName?: string, preventAutoRun: boolean = false) => {
+  const runQuery = (sql: string, queryName?: string, tableName?: string, preventAutoRun: boolean = false, schema?: string) => {
     navigate("/editor", {
-      state: { initialQuery: sql, queryName, tableName, preventAutoRun },
+      state: { initialQuery: sql, queryName, tableName, preventAutoRun, schema },
     });
   };
 
-  const handleTableClick = (tableName: string) => {
-    setActiveTable(tableName);
+  const handleTableClick = (tableName: string, schema?: string) => {
+    setActiveTable(tableName, schema);
   };
 
-  const handleOpenTable = (tableName: string) => {
-    const quotedTable = quoteIdentifier(tableName, activeDriver);
+  const handleOpenTable = (tableName: string, schema?: string) => {
+    if (schema) {
+      setActiveTable(tableName, schema);
+    }
+    const quotedTable = quoteTableRef(tableName, activeDriver, schema);
     navigate("/editor", {
       state: {
         initialQuery: `SELECT * FROM ${quotedTable}`,
         tableName: tableName,
+        schema,
       },
     });
   };
@@ -166,22 +188,24 @@ export const Sidebar = () => {
     setActiveView(viewName);
   };
 
-  const handleOpenView = (viewName: string) => {
-    const quotedView = quoteIdentifier(viewName, activeDriver);
+  const handleOpenView = (viewName: string, schema?: string) => {
+    const quotedView = quoteTableRef(viewName, activeDriver, schema);
     navigate("/editor", {
       state: {
         initialQuery: `SELECT * FROM ${quotedView}`,
         tableName: viewName,
+        schema,
       },
     });
   };
 
-  const handleRoutineDoubleClick = async (routine: RoutineInfo) => {
+  const handleRoutineDoubleClick = async (routine: RoutineInfo, schema?: string) => {
     try {
       const definition = await invoke<string>("get_routine_definition", {
         connectionId: activeConnectionId,
         routineName: routine.name,
         routineType: routine.routine_type,
+        ...(schema ? { schema } : {}),
       });
       runQuery(definition, `${routine.name} Definition`, undefined, true);
     } catch (e) {
@@ -367,6 +391,7 @@ export const Sidebar = () => {
                                   connectionName:
                                     activeConnectionName || "Unknown",
                                   databaseName: activeDatabaseName || "Unknown",
+                                  ...(activeSchema ? { schema: activeSchema } : {}),
                                 });
                               } catch (e) {
                                 console.error(
@@ -412,6 +437,7 @@ export const Sidebar = () => {
                             connectionId: activeConnectionId || "",
                             connectionName: activeConnectionName || "Unknown",
                             databaseName: activeDatabaseName || "Unknown",
+                            ...(activeSchema ? { schema: activeSchema } : {}),
                           });
                         } catch (e) {
                           console.error("Failed to open ER Diagram window:", e);
@@ -435,7 +461,7 @@ export const Sidebar = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto py-2">
-              {isLoadingTables ? (
+              {(isLoadingTables || isLoadingSchemas) ? (
                 <div className="flex items-center justify-center h-20 text-muted gap-2">
                   <Loader2 size={16} className="animate-spin" />
                   <span className="text-sm">{t("sidebar.loadingSchema")}</span>
@@ -475,267 +501,585 @@ export const Sidebar = () => {
                     )}
                   </Accordion>
 
-                  {/* Tables */}
-                  <Accordion
-                    title={`${t("sidebar.tables")} (${tables.length})`}
-                    isOpen={tablesOpen}
-                    onToggle={() => setTablesOpen(!tablesOpen)}
-                    actions={
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (refreshTables) refreshTables();
-                          }}
-                          className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
-                          title={t("sidebar.refreshTables") || "Refresh Tables"}
-                        >
-                          <RefreshCw size={14} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsCreateTableModalOpen(true);
-                          }}
-                          className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
-                          title="Create New Table"
-                        >
-                          <Plus size={14} />
-                        </button>
-                      </div>
-                    }
-                  >
-                    {tables.length === 0 ? (
-                      <div className="text-center p-2 text-xs text-muted italic">
-                        {t("sidebar.noTables")}
-                      </div>
-                    ) : (
-                      <div>
-                        {tables.map((table) => (
-                          <SidebarTableItem
-                            key={table.name}
-                            table={table}
-                            activeTable={activeTable}
-                            onTableClick={handleTableClick}
-                            onTableDoubleClick={handleOpenTable}
-                            onContextMenu={handleContextMenu}
-                            connectionId={activeConnectionId!}
-                            driver={activeDriver!}
-                            onAddColumn={(t_name) =>
-                              setModifyColumnModal({
-                                isOpen: true,
-                                tableName: t_name,
-                                column: null,
-                              })
-                            }
-                            onEditColumn={(t_name, c) =>
-                              setModifyColumnModal({
-                                isOpen: true,
-                                tableName: t_name,
-                                column: c,
-                              })
-                            }
-                            onAddIndex={(t_name) =>
-                              setCreateIndexModal({
-                                isOpen: true,
-                                tableName: t_name,
-                              })
-                            }
-                            onDropIndex={async (t_name, name) => {
-                              if (
-                                await ask(
-                                  t("sidebar.deleteIndexConfirm", { name }),
-                                  {
-                                    title: t("sidebar.deleteIndex"),
-                                    kind: "warning",
-                                  },
-                                )
-                              ) {
-                                const q =
-                                  activeDriver === "mysql" ||
-                                  activeDriver === "mariadb"
-                                    ? `DROP INDEX \`${name}\` ON \`${t_name}\``
-                                    : `DROP INDEX "${name}"`;
-                                await invoke("execute_query", {
-                                  connectionId: activeConnectionId,
-                                  query: q,
-                                }).catch(console.error);
-                                setSchemaVersion((v) => v + 1);
-                              }
-                            }}
-                            onAddForeignKey={(t_name) =>
-                              setCreateForeignKeyModal({
-                                isOpen: true,
-                                tableName: t_name,
-                              })
-                            }
-                            onDropForeignKey={async (t_name, name) => {
-                              if (
-                                await ask(
-                                  t("sidebar.deleteFkConfirm", { name }),
-                                  {
-                                    title: t("sidebar.deleteFk"),
-                                    kind: "warning",
-                                  },
-                                )
-                              ) {
-                                if (activeDriver === "sqlite") {
-                                  await message(t("sidebar.sqliteFkError"), {
-                                    kind: "error",
-                                  });
-                                  return;
+                  {/* PostgreSQL: Schema tree layout */}
+                  {activeDriver === "postgres" && schemas.length > 0 ? (
+                    <div>
+                      {needsSchemaSelection ? (
+                        /* Schema picker (first connect, no saved preference) */
+                        <div className="px-3 py-2">
+                          <div className="text-xs font-semibold uppercase text-muted tracking-wider mb-2">
+                            {t("sidebar.schemas")}
+                          </div>
+                          <div className="text-xs text-secondary mb-2">
+                            {t("sidebar.selectSchemasHint")}
+                          </div>
+                          <div className="border border-default rounded-lg overflow-hidden mb-2">
+                            <div className="max-h-[200px] overflow-y-auto py-1">
+                              {schemas.map((schemaName) => {
+                                const isSelected = pendingSchemaSelection.has(schemaName);
+                                return (
+                                  <div
+                                    key={schemaName}
+                                    onClick={() => {
+                                      const next = new Set(pendingSchemaSelection);
+                                      if (isSelected) {
+                                        next.delete(schemaName);
+                                      } else {
+                                        next.add(schemaName);
+                                      }
+                                      setPendingSchemaSelection(next);
+                                    }}
+                                    className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-colors ${
+                                      isSelected
+                                        ? "text-primary hover:bg-surface-secondary"
+                                        : "text-muted hover:bg-surface-secondary"
+                                    }`}
+                                  >
+                                    <div
+                                      className={`w-4 h-4 flex items-center justify-center shrink-0 ${
+                                        isSelected ? "text-blue-500" : "text-muted"
+                                      }`}
+                                    >
+                                      {isSelected ? (
+                                        <CheckSquare size={14} />
+                                      ) : (
+                                        <Square size={14} />
+                                      )}
+                                    </div>
+                                    <span className="text-sm truncate select-none">
+                                      {schemaName}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                if (pendingSchemaSelection.size === schemas.length) {
+                                  setPendingSchemaSelection(new Set());
+                                } else {
+                                  setPendingSchemaSelection(new Set(schemas));
                                 }
-                                const q =
-                                  activeDriver === "mysql" ||
-                                  activeDriver === "mariadb"
-                                    ? `ALTER TABLE \`${t_name}\` DROP FOREIGN KEY \`${name}\``
-                                    : `ALTER TABLE "${t_name}" DROP CONSTRAINT "${name}"`;
-                                await invoke("execute_query", {
-                                  connectionId: activeConnectionId,
-                                  query: q,
-                                }).catch(console.error);
-                                setSchemaVersion((v) => v + 1);
-                              }
-                            }}
-                            schemaVersion={schemaVersion}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </Accordion>
-
-                  {/* Views */}
-                  <Accordion
-                    title={`${t("sidebar.views")} (${views.length})`}
-                    isOpen={viewsOpen}
-                    onToggle={() => setViewsOpen(!viewsOpen)}
-                    actions={
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (refreshViews) refreshViews();
+                              }}
+                              className="text-xs text-blue-500 hover:underline"
+                            >
+                              {pendingSchemaSelection.size === schemas.length
+                                ? t("sidebar.deselectAll")
+                                : t("sidebar.selectAll")}
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (pendingSchemaSelection.size > 0) {
+                                  setSelectedSchemas(Array.from(pendingSchemaSelection));
+                                  setPendingSchemaSelection(new Set());
+                                }
+                              }}
+                              disabled={pendingSchemaSelection.size === 0}
+                              className={`ml-auto flex items-center gap-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                pendingSchemaSelection.size > 0
+                                  ? "bg-blue-500 text-white hover:bg-blue-600"
+                                  : "bg-surface-secondary text-muted cursor-not-allowed"
+                              }`}
+                            >
+                              <Check size={12} />
+                              {t("sidebar.confirmSelection")}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Schema selection header */}
+                          <div className="flex items-center justify-between px-3 py-1.5">
+                            <span className="text-xs font-semibold uppercase text-muted tracking-wider">
+                              {t("sidebar.schemas")} ({selectedSchemas.length}/{schemas.length})
+                            </span>
+                            <div className="relative">
+                              <button
+                                onClick={() => {
+                                  setPendingSchemaSelection(new Set(selectedSchemas));
+                                  setIsSchemaFilterOpen(!isSchemaFilterOpen);
+                                }}
+                                className={`p-1 rounded transition-colors ${
+                                  selectedSchemas.length < schemas.length
+                                    ? "text-blue-400 hover:text-blue-300 bg-blue-500/10"
+                                    : "text-muted hover:text-secondary hover:bg-surface-secondary"
+                                }`}
+                                title={t("sidebar.editSchemas")}
+                              >
+                                <Settings2 size={14} />
+                              </button>
+                              {isSchemaFilterOpen && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setIsSchemaFilterOpen(false)}
+                                  />
+                                  <div className="absolute right-0 top-8 bg-elevated border border-default rounded-lg shadow-lg z-50 py-2 min-w-[200px] max-h-[300px] flex flex-col">
+                                    <div className="flex items-center justify-between px-3 pb-2 border-b border-default">
+                                      <span className="text-xs font-semibold text-secondary">
+                                        {t("sidebar.editSchemas")}
+                                      </span>
+                                      <button
+                                        onClick={() => {
+                                          if (pendingSchemaSelection.size === schemas.length) {
+                                            setPendingSchemaSelection(new Set());
+                                          } else {
+                                            setPendingSchemaSelection(new Set(schemas));
+                                          }
+                                        }}
+                                        className="text-xs text-blue-500 hover:underline"
+                                      >
+                                        {pendingSchemaSelection.size === schemas.length
+                                          ? t("sidebar.deselectAll")
+                                          : t("sidebar.selectAll")}
+                                      </button>
+                                    </div>
+                                    <div className="overflow-y-auto py-1">
+                                      {schemas.map((schemaName) => {
+                                        const isSelected = pendingSchemaSelection.has(schemaName);
+                                        return (
+                                          <div
+                                            key={schemaName}
+                                            onClick={() => {
+                                              const next = new Set(pendingSchemaSelection);
+                                              if (isSelected) {
+                                                next.delete(schemaName);
+                                              } else {
+                                                next.add(schemaName);
+                                              }
+                                              setPendingSchemaSelection(next);
+                                            }}
+                                            className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-colors ${
+                                              isSelected
+                                                ? "text-primary hover:bg-surface-secondary"
+                                                : "text-muted hover:bg-surface-secondary"
+                                            }`}
+                                          >
+                                            <div
+                                              className={`w-4 h-4 flex items-center justify-center shrink-0 ${
+                                                isSelected ? "text-blue-500" : "text-muted"
+                                              }`}
+                                            >
+                                              {isSelected ? (
+                                                <CheckSquare size={14} />
+                                              ) : (
+                                                <Square size={14} />
+                                              )}
+                                            </div>
+                                            <span className="text-sm truncate select-none">
+                                              {schemaName}
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                    <div className="px-3 pt-2 border-t border-default">
+                                      <button
+                                        onClick={() => {
+                                          if (pendingSchemaSelection.size > 0) {
+                                            setSelectedSchemas(Array.from(pendingSchemaSelection));
+                                          }
+                                          setIsSchemaFilterOpen(false);
+                                        }}
+                                        disabled={pendingSchemaSelection.size === 0}
+                                        className={`w-full flex items-center justify-center gap-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                          pendingSchemaSelection.size > 0
+                                            ? "bg-blue-500 text-white hover:bg-blue-600"
+                                            : "bg-surface-secondary text-muted cursor-not-allowed"
+                                        }`}
+                                      >
+                                        <Check size={12} />
+                                        {t("sidebar.confirmSelection")}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          {selectedSchemas.map((schemaName) => (
+                        <SidebarSchemaItem
+                          key={schemaName}
+                          schemaName={schemaName}
+                          schemaData={schemaDataMap[schemaName]}
+                          activeTable={activeTable}
+                          activeSchema={activeSchema}
+                          connectionId={activeConnectionId!}
+                          driver={activeDriver!}
+                          schemaVersion={schemaVersion}
+                          onLoadSchema={loadSchemaData}
+                          onRefreshSchema={refreshSchemaData}
+                          onTableClick={(name, schema) => handleTableClick(name, schema)}
+                          onTableDoubleClick={(name, schema) => handleOpenTable(name, schema)}
+                          onViewClick={handleViewClick}
+                          onViewDoubleClick={(name, schema) => handleOpenView(name, schema)}
+                          onRoutineDoubleClick={(routine, schema) => handleRoutineDoubleClick(routine, schema)}
+                          onContextMenu={handleContextMenu}
+                          onAddColumn={(t_name) =>
+                            setModifyColumnModal({
+                              isOpen: true,
+                              tableName: t_name,
+                              column: null,
+                            })
+                          }
+                          onEditColumn={(t_name, c) =>
+                            setModifyColumnModal({
+                              isOpen: true,
+                              tableName: t_name,
+                              column: c,
+                            })
+                          }
+                          onAddIndex={(t_name) =>
+                            setCreateIndexModal({
+                              isOpen: true,
+                              tableName: t_name,
+                            })
+                          }
+                          onDropIndex={async (_t_name, name) => {
+                            if (
+                              await ask(
+                                t("sidebar.deleteIndexConfirm", { name }),
+                                {
+                                  title: t("sidebar.deleteIndex"),
+                                  kind: "warning",
+                                },
+                              )
+                            ) {
+                              const q = `DROP INDEX ${quoteTableRef(name, activeDriver, schemaName)}`;
+                              await invoke("execute_query", {
+                                connectionId: activeConnectionId,
+                                query: q,
+                                ...(schemaName ? { schema: schemaName } : {}),
+                              }).catch(console.error);
+                              setSchemaVersion((v) => v + 1);
+                            }
                           }}
-                          className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
-                          title={t("sidebar.refreshViews") || "Refresh Views"}
-                        >
-                          <RefreshCw size={14} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          onAddForeignKey={(t_name) =>
+                            setCreateForeignKeyModal({
+                              isOpen: true,
+                              tableName: t_name,
+                            })
+                          }
+                          onDropForeignKey={async (t_name, name) => {
+                            if (
+                              await ask(
+                                t("sidebar.deleteFkConfirm", { name }),
+                                {
+                                  title: t("sidebar.deleteFk"),
+                                  kind: "warning",
+                                },
+                              )
+                            ) {
+                              const q = `ALTER TABLE ${quoteTableRef(t_name, activeDriver, schemaName)} DROP CONSTRAINT ${quoteIdentifier(
+                                name,
+                                activeDriver,
+                              )}`;
+                              await invoke("execute_query", {
+                                connectionId: activeConnectionId,
+                                query: q,
+                                ...(schemaName ? { schema: schemaName } : {}),
+                              }).catch(console.error);
+                              setSchemaVersion((v) => v + 1);
+                            }
+                          }}
+                          onCreateTable={() => setIsCreateTableModalOpen(true)}
+                          onCreateView={() =>
                             setViewEditorModal({
                               isOpen: true,
                               isNewView: true,
-                            });
-                          }}
-                          className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
-                          title={t("sidebar.createView") || "Create New View"}
-                        >
-                          <Plus size={14} />
-                        </button>
-                      </div>
-                    }
-                  >
-                    {views.length === 0 ? (
-                      <div className="text-center p-2 text-xs text-muted italic">
-                        {t("sidebar.noViews")}
-                      </div>
-                    ) : (
-                      <div>
-                        {views.map((view) => (
-                          <SidebarViewItem
-                            key={view.name}
-                            view={view}
-                            activeView={activeView}
-                            onViewClick={handleViewClick}
-                            onViewDoubleClick={handleOpenView}
-                            onContextMenu={handleContextMenu}
-                            connectionId={activeConnectionId!}
-                            driver={activeDriver!}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </Accordion>
-
-                  {/* Routines */}
-                  {activeDriver !== "sqlite" && (
-                    <Accordion
-                      title={`${t("sidebar.routines")} (${routines.length})`}
-                      isOpen={routinesOpen}
-                      onToggle={() => setRoutinesOpen(!routinesOpen)}
-                      actions={
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (refreshRoutines) refreshRoutines();
-                            }}
-                            className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
-                            title={t("sidebar.refreshRoutines") || "Refresh Routines"}
-                          >
-                            <RefreshCw size={14} />
-                          </button>
-                        </div>
-                      }
-                    >
-                      {routines.length === 0 ? (
-                        <div className="text-center p-2 text-xs text-muted italic">
-                          {t("sidebar.noRoutines")}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col">
-                          {/* Functions */}
-                          {groupedRoutines.functions.length > 0 && (
-                            <div className="mb-2">
-                              <button 
-                                onClick={() => setFunctionsOpen(!functionsOpen)}
-                                className="flex items-center gap-1 px-2 py-1 w-full text-left text-xs font-semibold text-muted uppercase tracking-wider hover:text-secondary transition-colors"
-                              >
-                                {functionsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                                <span>{t("sidebar.functions")}</span>
-                                <span className="ml-auto text-[10px] opacity-50">{groupedRoutines.functions.length}</span>
-                              </button>
-                              
-                              {functionsOpen && groupedRoutines.functions.map((routine) => (
-                                <SidebarRoutineItem
-                                  key={routine.name}
-                                  routine={routine}
-                                  connectionId={activeConnectionId!}
-                                  onContextMenu={handleContextMenu}
-                                  onDoubleClick={handleRoutineDoubleClick}
-                                />
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Procedures */}
-                          {groupedRoutines.procedures.length > 0 && (
-                            <div>
-                              <button 
-                                onClick={() => setProceduresOpen(!proceduresOpen)}
-                                className="flex items-center gap-1 px-2 py-1 w-full text-left text-xs font-semibold text-muted uppercase tracking-wider hover:text-secondary transition-colors"
-                              >
-                                {proceduresOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                                <span>{t("sidebar.procedures")}</span>
-                                <span className="ml-auto text-[10px] opacity-50">{groupedRoutines.procedures.length}</span>
-                              </button>
-                              
-                              {proceduresOpen && groupedRoutines.procedures.map((routine) => (
-                                <SidebarRoutineItem
-                                  key={routine.name}
-                                  routine={routine}
-                                  connectionId={activeConnectionId!}
-                                  onContextMenu={handleContextMenu}
-                                  onDoubleClick={handleRoutineDoubleClick}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                            })
+                          }
+                        />
+                      ))}
+                        </>
                       )}
-                    </Accordion>
+                    </div>
+                  ) : (
+                    <>
+                      {/* MySQL/SQLite: Flat layout */}
+                      {/* Object count summary */}
+                      <div className="flex items-center justify-between px-3 py-1">
+                        <span className="text-[10px] text-muted opacity-80 uppercase tracking-wider">
+                          {t("sidebar.objectSummary")}
+                        </span>
+                        <span className="text-[10px] text-muted opacity-60">
+                          {formatObjectCount(tables.length, views.length, routines.length)}
+                        </span>
+                      </div>
+                      {/* Tables */}
+                      <Accordion
+                        title={`${t("sidebar.tables")} (${tables.length})`}
+                        isOpen={tablesOpen}
+                        onToggle={() => setTablesOpen(!tablesOpen)}
+                        actions={
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (refreshTables) refreshTables();
+                              }}
+                              className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
+                              title={t("sidebar.refreshTables") || "Refresh Tables"}
+                            >
+                              <RefreshCw size={14} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsCreateTableModalOpen(true);
+                              }}
+                              className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
+                              title="Create New Table"
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                        }
+                      >
+                        {tables.length === 0 ? (
+                          <div className="text-center p-2 text-xs text-muted italic">
+                            {t("sidebar.noTables")}
+                          </div>
+                        ) : (
+                          <div>
+                            {tables.map((table) => (
+                              <SidebarTableItem
+                                key={table.name}
+                                table={table}
+                                activeTable={activeTable}
+                                onTableClick={handleTableClick}
+                                onTableDoubleClick={handleOpenTable}
+                                onContextMenu={handleContextMenu}
+                                connectionId={activeConnectionId!}
+                                driver={activeDriver!}
+                                onAddColumn={(t_name) =>
+                                  setModifyColumnModal({
+                                    isOpen: true,
+                                    tableName: t_name,
+                                    column: null,
+                                  })
+                                }
+                                onEditColumn={(t_name, c) =>
+                                  setModifyColumnModal({
+                                    isOpen: true,
+                                    tableName: t_name,
+                                    column: c,
+                                  })
+                                }
+                                onAddIndex={(t_name) =>
+                                  setCreateIndexModal({
+                                    isOpen: true,
+                                    tableName: t_name,
+                                  })
+                                }
+                                onDropIndex={async (t_name, name) => {
+                                  if (
+                                    await ask(
+                                      t("sidebar.deleteIndexConfirm", { name }),
+                                      {
+                                        title: t("sidebar.deleteIndex"),
+                                        kind: "warning",
+                                      },
+                                    )
+                                  ) {
+                                    const q =
+                                      activeDriver === "mysql" ||
+                                      activeDriver === "mariadb"
+                                        ? `DROP INDEX ${quoteIdentifier(name, activeDriver)} ON ${quoteTableRef(
+                                            t_name,
+                                            activeDriver,
+                                          )}`
+                                        : `DROP INDEX ${quoteIdentifier(name, activeDriver)}`;
+                                    await invoke("execute_query", {
+                                      connectionId: activeConnectionId,
+                                      query: q,
+                                    }).catch(console.error);
+                                    setSchemaVersion((v) => v + 1);
+                                  }
+                                }}
+                                onAddForeignKey={(t_name) =>
+                                  setCreateForeignKeyModal({
+                                    isOpen: true,
+                                    tableName: t_name,
+                                  })
+                                }
+                                onDropForeignKey={async (t_name, name) => {
+                                  if (
+                                    await ask(
+                                      t("sidebar.deleteFkConfirm", { name }),
+                                      {
+                                        title: t("sidebar.deleteFk"),
+                                        kind: "warning",
+                                      },
+                                    )
+                                  ) {
+                                    if (activeDriver === "sqlite") {
+                                      await message(t("sidebar.sqliteFkError"), {
+                                        kind: "error",
+                                      });
+                                      return;
+                                    }
+                                    const q =
+                                      activeDriver === "mysql" ||
+                                      activeDriver === "mariadb"
+                                        ? `ALTER TABLE ${quoteTableRef(t_name, activeDriver)} DROP FOREIGN KEY ${quoteIdentifier(
+                                            name,
+                                            activeDriver,
+                                          )}`
+                                        : `ALTER TABLE ${quoteTableRef(t_name, activeDriver)} DROP CONSTRAINT ${quoteIdentifier(
+                                            name,
+                                            activeDriver,
+                                          )}`;
+                                    await invoke("execute_query", {
+                                      connectionId: activeConnectionId,
+                                      query: q,
+                                    }).catch(console.error);
+                                    setSchemaVersion((v) => v + 1);
+                                  }
+                                }}
+                                schemaVersion={schemaVersion}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </Accordion>
+
+                      {/* Views */}
+                      <Accordion
+                        title={`${t("sidebar.views")} (${views.length})`}
+                        isOpen={viewsOpen}
+                        onToggle={() => setViewsOpen(!viewsOpen)}
+                        actions={
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (refreshViews) refreshViews();
+                              }}
+                              className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
+                              title={t("sidebar.refreshViews") || "Refresh Views"}
+                            >
+                              <RefreshCw size={14} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewEditorModal({
+                                  isOpen: true,
+                                  isNewView: true,
+                                });
+                              }}
+                              className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
+                              title={t("sidebar.createView") || "Create New View"}
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                        }
+                      >
+                        {views.length === 0 ? (
+                          <div className="text-center p-2 text-xs text-muted italic">
+                            {t("sidebar.noViews")}
+                          </div>
+                        ) : (
+                          <div>
+                            {views.map((view) => (
+                              <SidebarViewItem
+                                key={view.name}
+                                view={view}
+                                activeView={activeView}
+                                onViewClick={handleViewClick}
+                                onViewDoubleClick={handleOpenView}
+                                onContextMenu={handleContextMenu}
+                                connectionId={activeConnectionId!}
+                                driver={activeDriver!}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </Accordion>
+
+                      {/* Routines */}
+                      {activeDriver !== "sqlite" && (
+                        <Accordion
+                          title={`${t("sidebar.routines")} (${routines.length})`}
+                          isOpen={routinesOpen}
+                          onToggle={() => setRoutinesOpen(!routinesOpen)}
+                          actions={
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (refreshRoutines) refreshRoutines();
+                                }}
+                                className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
+                                title={t("sidebar.refreshRoutines") || "Refresh Routines"}
+                              >
+                                <RefreshCw size={14} />
+                              </button>
+                            </div>
+                          }
+                        >
+                          {routines.length === 0 ? (
+                            <div className="text-center p-2 text-xs text-muted italic">
+                              {t("sidebar.noRoutines")}
+                            </div>
+                          ) : (
+                            <div className="flex flex-col">
+                              {/* Functions */}
+                              {groupedRoutines.functions.length > 0 && (
+                                <div className="mb-2">
+                                  <button
+                                    onClick={() => setFunctionsOpen(!functionsOpen)}
+                                    className="flex items-center gap-1 px-2 py-1 w-full text-left text-xs font-semibold text-muted uppercase tracking-wider hover:text-secondary transition-colors"
+                                  >
+                                    {functionsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                    <span>{t("sidebar.functions")}</span>
+                                    <span className="ml-auto text-[10px] opacity-50">{groupedRoutines.functions.length}</span>
+                                  </button>
+
+                                  {functionsOpen && groupedRoutines.functions.map((routine) => (
+                                    <SidebarRoutineItem
+                                      key={routine.name}
+                                      routine={routine}
+                                      connectionId={activeConnectionId!}
+                                      onContextMenu={handleContextMenu}
+                                      onDoubleClick={handleRoutineDoubleClick}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Procedures */}
+                              {groupedRoutines.procedures.length > 0 && (
+                                <div>
+                                  <button
+                                    onClick={() => setProceduresOpen(!proceduresOpen)}
+                                    className="flex items-center gap-1 px-2 py-1 w-full text-left text-xs font-semibold text-muted uppercase tracking-wider hover:text-secondary transition-colors"
+                                  >
+                                    {proceduresOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                    <span>{t("sidebar.procedures")}</span>
+                                    <span className="ml-auto text-[10px] opacity-50">{groupedRoutines.procedures.length}</span>
+                                  </button>
+
+                                  {proceduresOpen && groupedRoutines.procedures.map((routine) => (
+                                    <SidebarRoutineItem
+                                      key={routine.name}
+                                      routine={routine}
+                                      connectionId={activeConnectionId!}
+                                      onContextMenu={handleContextMenu}
+                                      onDoubleClick={handleRoutineDoubleClick}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </Accordion>
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -770,16 +1114,20 @@ export const Sidebar = () => {
           onClose={() => setContextMenu(null)}
           items={
             contextMenu.type === "table"
-              ? [
+              ? (() => {
+                  const ctxSchema = contextMenu.data && "schema" in contextMenu.data ? contextMenu.data.schema : undefined;
+                  return [
                   {
                     label: t("sidebar.showData"),
                     icon: PlaySquare,
                     action: () => {
-                      const quotedTable = quoteIdentifier(contextMenu.id, activeDriver);
+                      const quotedTable = quoteTableRef(contextMenu.id, activeDriver, ctxSchema);
                       runQuery(
                         `SELECT * FROM ${quotedTable}`,
                         undefined,
                         contextMenu.id,
+                        false,
+                        ctxSchema,
                       );
                     },
                   },
@@ -787,17 +1135,21 @@ export const Sidebar = () => {
                     label: t("sidebar.countRows"),
                     icon: Hash,
                     action: () => {
-                      const quotedTable = quoteIdentifier(contextMenu.id, activeDriver);
+                      const quotedTable = quoteTableRef(contextMenu.id, activeDriver, ctxSchema);
                       // Don't pass tableName for aggregate queries - let extractTableName handle it
                       runQuery(
                         `SELECT COUNT(*) as count FROM ${quotedTable}`,
+                        undefined,
+                        undefined,
+                        false,
+                        ctxSchema,
                       );
                     },
                   },
                   {
                     label: t("sidebar.viewSchema"),
                     icon: FileText,
-                    action: () => setSchemaModalTable(contextMenu.id),
+                    action: () => setSchemaModal({ tableName: contextMenu.id, schema: ctxSchema }),
                   },
                   {
                     label: t("sidebar.viewERDiagram"),
@@ -809,6 +1161,7 @@ export const Sidebar = () => {
                           connectionName: activeConnectionName || "Unknown",
                           databaseName: activeDatabaseName || "Unknown",
                           focusTable: contextMenu.id,
+                          ...(ctxSchema ? { schema: ctxSchema } : {}),
                         });
                       } catch (e) {
                         console.error("Failed to open ER Diagram window:", e);
@@ -840,7 +1193,7 @@ export const Sidebar = () => {
                     icon: Trash2,
                     danger: true,
                     action: async () => {
-                      const quotedTable = quoteIdentifier(contextMenu.id, activeDriver);
+                      const quotedTable = quoteTableRef(contextMenu.id, activeDriver, ctxSchema);
                       if (
                         await ask(
                           t("sidebar.deleteTableConfirm", {
@@ -853,6 +1206,7 @@ export const Sidebar = () => {
                           await invoke("execute_query", {
                             connectionId: activeConnectionId,
                             query: `DROP TABLE ${quotedTable}`,
+                            ...(ctxSchema ? { schema: ctxSchema } : {}),
                           });
                           if (refreshTables) refreshTables();
                         } catch (e) {
@@ -867,7 +1221,8 @@ export const Sidebar = () => {
                       }
                     },
                   },
-                ]
+                ];
+                })()
               : contextMenu.type === "index"
                 ? [
                     {
@@ -886,6 +1241,8 @@ export const Sidebar = () => {
                           "tableName" in contextMenu.data
                         ) {
                           const t_name = contextMenu.data.tableName;
+                          const ctxSchema =
+                            "schema" in contextMenu.data ? contextMenu.data.schema : undefined;
                           if (
                             await ask(
                               t("sidebar.deleteIndexConfirm", {
@@ -901,12 +1258,17 @@ export const Sidebar = () => {
                               const q =
                                 activeDriver === "mysql" ||
                                 activeDriver === "mariadb"
-                                  ? `DROP INDEX \`${contextMenu.id}\` ON \`${t_name}\``
-                                  : `DROP INDEX "${contextMenu.id}"`;
+                                  ? `DROP INDEX ${quoteIdentifier(contextMenu.id, activeDriver)} ON ${quoteTableRef(
+                                      t_name,
+                                      activeDriver,
+                                      ctxSchema,
+                                    )}`
+                                  : `DROP INDEX ${quoteTableRef(contextMenu.id, activeDriver, ctxSchema)}`;
 
                               await invoke("execute_query", {
                                 connectionId: activeConnectionId,
                                 query: q,
+                                ...(ctxSchema ? { schema: ctxSchema } : {}),
                               });
 
                               setSchemaVersion((v) => v + 1);
@@ -933,44 +1295,53 @@ export const Sidebar = () => {
                           navigator.clipboard.writeText(contextMenu.id),
                       },
                       {
-                        label: t("sidebar.deleteFk"),
-                        icon: Trash2,
-                        danger: true,
-                        action: async () => {
+                      label: t("sidebar.deleteFk"),
+                      icon: Trash2,
+                      danger: true,
+                      action: async () => {
+                        if (
+                          contextMenu.data &&
+                          "tableName" in contextMenu.data
+                        ) {
+                          const t_name = contextMenu.data.tableName;
+                          const ctxSchema =
+                            "schema" in contextMenu.data ? contextMenu.data.schema : undefined;
                           if (
-                            contextMenu.data &&
-                            "tableName" in contextMenu.data
+                            await ask(
+                              t("sidebar.deleteFkConfirm", {
+                                name: contextMenu.id,
+                              }),
+                              {
+                                title: t("sidebar.deleteFk"),
+                                kind: "warning",
+                              },
+                            )
                           ) {
-                            const t_name = contextMenu.data.tableName;
-                            if (
-                              await ask(
-                                t("sidebar.deleteFkConfirm", {
-                                  name: contextMenu.id,
-                                }),
-                                {
-                                  title: t("sidebar.deleteFk"),
-                                  kind: "warning",
-                                },
-                              )
-                            ) {
-                              if (activeDriver === "sqlite") {
-                                await message(t("sidebar.sqliteFkError"), {
-                                  kind: "error",
-                                });
-                                return;
-                              }
-                              const q =
-                                activeDriver === "mysql" ||
-                                activeDriver === "mariadb"
-                                  ? `ALTER TABLE \`${t_name}\` DROP FOREIGN KEY \`${contextMenu.id}\``
-                                  : `ALTER TABLE "${t_name}" DROP CONSTRAINT "${contextMenu.id}"`;
-                              await invoke("execute_query", {
-                                connectionId: activeConnectionId,
-                                query: q,
-                              }).catch(console.error);
+                            if (activeDriver === "sqlite") {
+                              await message(t("sidebar.sqliteFkError"), {
+                                kind: "error",
+                              });
+                              return;
                             }
+                            const q =
+                              activeDriver === "mysql" ||
+                              activeDriver === "mariadb"
+                                ? `ALTER TABLE ${quoteTableRef(t_name, activeDriver, ctxSchema)} DROP FOREIGN KEY ${quoteIdentifier(
+                                    contextMenu.id,
+                                    activeDriver,
+                                  )}`
+                                : `ALTER TABLE ${quoteTableRef(t_name, activeDriver, ctxSchema)} DROP CONSTRAINT ${quoteIdentifier(
+                                    contextMenu.id,
+                                    activeDriver,
+                                  )}`;
+                            await invoke("execute_query", {
+                              connectionId: activeConnectionId,
+                              query: q,
+                              ...(ctxSchema ? { schema: ctxSchema } : {}),
+                            }).catch(console.error);
                           }
-                        },
+                        }
+                      },
                       },
                     ]
                   : contextMenu.type === "folder_indexes"
@@ -1010,12 +1381,14 @@ export const Sidebar = () => {
                           },
                         ]
                       : contextMenu.type === "view"
-                        ? [
+                        ? (() => {
+                            const viewCtxSchema = contextMenu.data && "schema" in contextMenu.data ? contextMenu.data.schema : undefined;
+                            return [
                             {
                               label: t("sidebar.showData"),
                               icon: PlaySquare,
                               action: () => {
-                                const quotedView = quoteIdentifier(contextMenu.id, activeDriver);
+                                const quotedView = quoteTableRef(contextMenu.id, activeDriver, viewCtxSchema);
                                 runQuery(
                                   `SELECT * FROM ${quotedView}`,
                                   undefined,
@@ -1027,7 +1400,7 @@ export const Sidebar = () => {
                               label: t("sidebar.countRows"),
                               icon: Hash,
                               action: () => {
-                                const quotedView = quoteIdentifier(contextMenu.id, activeDriver);
+                                const quotedView = quoteTableRef(contextMenu.id, activeDriver, viewCtxSchema);
                                 runQuery(
                                   `SELECT COUNT(*) as count FROM ${quotedView}`,
                                 );
@@ -1070,6 +1443,7 @@ export const Sidebar = () => {
                                     await invoke("drop_view", {
                                       connectionId: activeConnectionId,
                                       viewName: contextMenu.id,
+                                      ...(activeSchema ? { schema: activeSchema } : {}),
                                     });
                                     if (refreshViews) refreshViews();
                                   } catch (e) {
@@ -1084,7 +1458,8 @@ export const Sidebar = () => {
                                 }
                               },
                             },
-                          ]
+                          ];
+                          })()
                         : contextMenu.type === "routine"
                           ? [
                               {
@@ -1100,6 +1475,7 @@ export const Sidebar = () => {
                                       connectionId: activeConnectionId,
                                       routineName: contextMenu.id,
                                       routineType: routineType,
+                                      ...(activeSchema ? { schema: activeSchema } : {}),
                                     });
                                     // Show definition in modal or editor?
                                     // For now, let's open in editor as comment or just text
@@ -1177,11 +1553,12 @@ export const Sidebar = () => {
         />
       )}
 
-      {schemaModalTable && (
+      {schemaModal && (
         <SchemaModal
           isOpen={true}
-          tableName={schemaModalTable}
-          onClose={() => setSchemaModalTable(null)}
+          tableName={schemaModal.tableName}
+          schema={schemaModal.schema}
+          onClose={() => setSchemaModal(null)}
         />
       )}
 

@@ -11,16 +11,42 @@ fn escape_identifier(name: &str) -> String {
     name.replace('`', "``")
 }
 
+/// Read a string from a MySQL row by index.
+/// MySQL 8 information_schema returns VARBINARY/BLOB instead of VARCHAR,
+/// so try_get::<String> fails silently. This falls back to reading raw bytes.
+fn mysql_row_str(row: &sqlx::mysql::MySqlRow, idx: usize) -> String {
+    row.try_get::<String, _>(idx).unwrap_or_else(|_| {
+        row.try_get::<Vec<u8>, _>(idx)
+            .map(|bytes| String::from_utf8_lossy(&bytes).to_string())
+            .unwrap_or_default()
+    })
+}
+
+/// Optional string variant of mysql_row_str.
+fn mysql_row_str_opt(row: &sqlx::mysql::MySqlRow, idx: usize) -> Option<String> {
+    match row.try_get::<Option<String>, _>(idx) {
+        Ok(val) => val,
+        Err(_) => row
+            .try_get::<Option<Vec<u8>>, _>(idx)
+            .ok()
+            .flatten()
+            .map(|bytes| String::from_utf8_lossy(&bytes).to_string()),
+    }
+}
+
+pub async fn get_schemas(_params: &ConnectionParams) -> Result<Vec<String>, String> {
+    Ok(vec![])
+}
+
 pub async fn get_databases(params: &ConnectionParams) -> Result<Vec<String>, String> {
     let pool = get_mysql_pool(params).await?;
     let rows = sqlx::query("SHOW DATABASES")
         .fetch_all(&pool)
         .await
         .map_err(|e| e.to_string())?;
-    // Already using column index - good for Windows/MySQL 8 compatibility
     Ok(rows
         .iter()
-        .map(|r| r.try_get(0).unwrap_or_default())
+        .map(|r| mysql_row_str(r, 0))
         .collect())
 }
 
@@ -36,7 +62,7 @@ pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, Str
     let tables: Vec<TableInfo> = rows
         .iter()
         .map(|r| TableInfo {
-            name: r.try_get(0).unwrap_or_default(),
+            name: mysql_row_str(r, 0),
         })
         .collect();
     log::debug!(
@@ -69,18 +95,15 @@ pub async fn get_columns(
     Ok(rows
         .iter()
         .map(|r| {
-            // Use column indices instead of names for Windows/MySQL 8 compatibility
-            let column_name: String = r.try_get(0).unwrap_or_default(); // column_name
-            let data_type: String = r.try_get(1).unwrap_or_default(); // data_type
-            let key: String = r.try_get(2).unwrap_or_default(); // column_key
-            let null_str: String = r.try_get(3).unwrap_or_default(); // is_nullable
-            let extra: String = r.try_get(4).unwrap_or_default(); // extra
-            let default_val: Option<String> = r.try_get(5).ok(); // column_default
+            let column_name = mysql_row_str(r, 0);
+            let data_type = mysql_row_str(r, 1);
+            let key = mysql_row_str(r, 2);
+            let null_str = mysql_row_str(r, 3);
+            let extra = mysql_row_str(r, 4);
+            let default_val = mysql_row_str_opt(r, 5);
 
             let is_auto_increment = extra.contains("auto_increment");
 
-            // Only set default_value if not auto-increment, value exists, and not NULL
-            // Filter out NULL defaults (MySQL may return "NULL" string for nullable without default)
             let default_value = if !is_auto_increment {
                 match default_val {
                     Some(val) if !val.is_empty() && !val.eq_ignore_ascii_case("null") => Some(val),
@@ -135,13 +158,12 @@ pub async fn get_foreign_keys(
     Ok(rows
         .iter()
         .map(|r| ForeignKey {
-            // Use column indices instead of names for Windows/MySQL 8 compatibility
-            name: r.try_get(0).unwrap_or_default(), // CONSTRAINT_NAME
-            column_name: r.try_get(1).unwrap_or_default(), // COLUMN_NAME
-            ref_table: r.try_get(2).unwrap_or_default(), // REFERENCED_TABLE_NAME
-            ref_column: r.try_get(3).unwrap_or_default(), // REFERENCED_COLUMN_NAME
-            on_update: r.try_get(4).ok(),           // UPDATE_RULE
-            on_delete: r.try_get(5).ok(),           // DELETE_RULE
+            name: mysql_row_str(r, 0),
+            column_name: mysql_row_str(r, 1),
+            ref_table: mysql_row_str(r, 2),
+            ref_column: mysql_row_str(r, 3),
+            on_update: mysql_row_str_opt(r, 4),
+            on_delete: mysql_row_str_opt(r, 5),
         })
         .collect())
 }
@@ -167,20 +189,17 @@ pub async fn get_all_columns_batch(
 
     let mut result: HashMap<String, Vec<TableColumn>> = HashMap::new();
 
-    for row in rows {
-        // Use column indices instead of names for Windows/MySQL 8 compatibility
-        let table_name: String = row.try_get(0).unwrap_or_default(); // table_name
-        let column_name: String = row.try_get(1).unwrap_or_default(); // column_name
-        let data_type: String = row.try_get(2).unwrap_or_default(); // data_type
-        let key: String = row.try_get(3).unwrap_or_default(); // column_key
-        let null_str: String = row.try_get(4).unwrap_or_default(); // is_nullable
-        let extra: String = row.try_get(5).unwrap_or_default(); // extra
-        let default_val: Option<String> = row.try_get(6).ok(); // column_default
+    for row in &rows {
+        let table_name = mysql_row_str(row, 0);
+        let column_name = mysql_row_str(row, 1);
+        let data_type = mysql_row_str(row, 2);
+        let key = mysql_row_str(row, 3);
+        let null_str = mysql_row_str(row, 4);
+        let extra = mysql_row_str(row, 5);
+        let default_val = mysql_row_str_opt(row, 6);
 
         let is_auto_increment = extra.contains("auto_increment");
 
-        // Only set default_value if not auto-increment, value exists, and not NULL
-        // Filter out NULL defaults (MySQL may return "NULL" string for nullable without default)
         let default_value = if !is_auto_increment {
             match default_val {
                 Some(val) if !val.is_empty() && !val.eq_ignore_ascii_case("null") => Some(val),
@@ -240,17 +259,16 @@ pub async fn get_all_foreign_keys_batch(
 
     let mut result: HashMap<String, Vec<ForeignKey>> = HashMap::new();
 
-    for row in rows {
-        // Use column indices instead of names for Windows/MySQL 8 compatibility
-        let table_name: String = row.try_get(0).unwrap_or_default(); // TABLE_NAME
+    for row in &rows {
+        let table_name = mysql_row_str(row, 0);
 
         let fk = ForeignKey {
-            name: row.try_get(1).unwrap_or_default(), // CONSTRAINT_NAME
-            column_name: row.try_get(2).unwrap_or_default(), // COLUMN_NAME
-            ref_table: row.try_get(3).unwrap_or_default(), // REFERENCED_TABLE_NAME
-            ref_column: row.try_get(4).unwrap_or_default(), // REFERENCED_COLUMN_NAME
-            on_update: row.try_get(5).ok(),           // UPDATE_RULE
-            on_delete: row.try_get(6).ok(),           // DELETE_RULE
+            name: mysql_row_str(row, 1),
+            column_name: mysql_row_str(row, 2),
+            ref_table: mysql_row_str(row, 3),
+            ref_column: mysql_row_str(row, 4),
+            on_update: mysql_row_str_opt(row, 5),
+            on_delete: mysql_row_str_opt(row, 6),
         };
 
         result.entry(table_name).or_insert_with(Vec::new).push(fk);
@@ -286,15 +304,14 @@ pub async fn get_indexes(
     Ok(rows
         .iter()
         .map(|r| {
-            // Use column indices instead of names for Windows/MySQL 8 compatibility
-            let index_name: String = r.try_get(0).unwrap_or_default(); // INDEX_NAME
-            let non_unique: i64 = r.try_get(2).unwrap_or(1); // NON_UNIQUE
+            let index_name = mysql_row_str(r, 0);
+            let non_unique: i64 = r.try_get(2).unwrap_or(1);
             Index {
                 name: index_name.clone(),
-                column_name: r.try_get(1).unwrap_or_default(), // COLUMN_NAME
+                column_name: mysql_row_str(r, 1),
                 is_unique: non_unique == 0,
                 is_primary: index_name == "PRIMARY",
-                seq_in_index: r.try_get::<i64, _>(3).unwrap_or(0) as i32, // SEQ_IN_INDEX
+                seq_in_index: r.try_get::<i64, _>(3).unwrap_or(0) as i32,
             }
         })
         .collect())
@@ -469,7 +486,7 @@ pub async fn get_table_ddl(params: &ConnectionParams, table_name: &str) -> Resul
         .await
         .map_err(|e| e.to_string())?;
 
-    let create_sql: String = row.try_get(1).unwrap_or_default();
+    let create_sql = mysql_row_str(&row, 1);
     Ok(format!("{};", create_sql))
 }
 
@@ -485,8 +502,7 @@ pub async fn get_views(params: &ConnectionParams) -> Result<Vec<ViewInfo>, Strin
     let views: Vec<ViewInfo> = rows
         .iter()
         .map(|r| ViewInfo {
-            // Use column index instead of name for Windows/MySQL 8 compatibility
-            name: r.try_get(0).unwrap_or_default(),
+            name: mysql_row_str(r, 0),
             definition: None,
         })
         .collect();
@@ -505,7 +521,7 @@ pub async fn get_view_definition(
         .fetch_one(&pool)
         .await
         .map_err(|e| format!("Failed to get view definition: {}", e))?;
-    let definition: String = row.try_get(1).unwrap_or_default();
+    let definition = mysql_row_str(&row, 1);
 
     Ok(definition)
 }
@@ -574,18 +590,15 @@ pub async fn get_view_columns(
     Ok(rows
         .iter()
         .map(|r| {
-            // Use column indices instead of names for Windows/MySQL 8 compatibility
-            let column_name: String = r.try_get(0).unwrap_or_default(); // column_name
-            let data_type: String = r.try_get(1).unwrap_or_default(); // data_type
-            let key: String = r.try_get(2).unwrap_or_default(); // column_key
-            let null_str: String = r.try_get(3).unwrap_or_default(); // is_nullable
-            let extra: String = r.try_get(4).unwrap_or_default(); // extra
-            let default_val: Option<String> = r.try_get(5).ok(); // column_default
+            let column_name = mysql_row_str(r, 0);
+            let data_type = mysql_row_str(r, 1);
+            let key = mysql_row_str(r, 2);
+            let null_str = mysql_row_str(r, 3);
+            let extra = mysql_row_str(r, 4);
+            let default_val = mysql_row_str_opt(r, 5);
 
             let is_auto_increment = extra.contains("auto_increment");
 
-            // Only set default_value if not auto-increment, value exists, and not NULL
-            // Filter out NULL defaults (MySQL may return "NULL" string for nullable without default)
             let default_value = if !is_auto_increment {
                 match default_val {
                     Some(val) if !val.is_empty() && !val.eq_ignore_ascii_case("null") => Some(val),
@@ -624,10 +637,9 @@ pub async fn get_routines(params: &ConnectionParams) -> Result<Vec<RoutineInfo>,
     Ok(rows
         .iter()
         .map(|r| RoutineInfo {
-            // Use column indices instead of names for Windows/MySQL 8 compatibility
-            name: r.try_get(0).unwrap_or_default(), // routine_name
-            routine_type: r.try_get(1).unwrap_or_default(), // routine_type
-            definition: r.try_get(2).ok(),          // routine_definition
+            name: mysql_row_str(r, 0),
+            routine_type: mysql_row_str(r, 1),
+            definition: mysql_row_str_opt(r, 2),
         })
         .collect())
 }
@@ -654,9 +666,8 @@ pub async fn get_routine_parameters(
     let mut parameters = Vec::new();
 
     if let Some(info) = routine_info {
-        // Use column indices instead of names for Windows/MySQL 8 compatibility
-        let data_type: String = info.try_get(0).unwrap_or_default(); // DATA_TYPE
-        let routine_type: String = info.try_get(1).unwrap_or_default(); // ROUTINE_TYPE
+        let data_type = mysql_row_str(&info, 0);
+        let routine_type = mysql_row_str(&info, 1);
         if routine_type == "FUNCTION" {
             if !data_type.is_empty() {
                 parameters.push(RoutineParameter {
@@ -684,11 +695,10 @@ pub async fn get_routine_parameters(
         .map_err(|e| e.to_string())?;
 
     parameters.extend(rows.iter().map(|r| RoutineParameter {
-        // Use column indices instead of names for Windows/MySQL 8 compatibility
-        name: r.try_get(0).unwrap_or_default(), // parameter_name
-        data_type: r.try_get(1).unwrap_or_default(), // data_type
-        mode: r.try_get(2).unwrap_or_default(), // parameter_mode
-        ordinal_position: r.try_get(3).unwrap_or(0), // ordinal_position
+        name: mysql_row_str(r, 0),
+        data_type: mysql_row_str(r, 1),
+        mode: mysql_row_str(r, 2),
+        ordinal_position: r.try_get(3).unwrap_or(0),
     }));
 
     Ok(parameters)
@@ -711,11 +721,7 @@ pub async fn get_routine_definition(
         .await
         .map_err(|e| e.to_string())?;
 
-    // The column name is "Create Procedure" or "Create Function" or retrieved by index 2
-    let definition: String = row.try_get(2).unwrap_or_else(|_| {
-        row.try_get(format!("Create {}", routine_type).as_str())
-            .unwrap_or_default()
-    });
+    let definition = mysql_row_str(&row, 2);
 
     Ok(definition)
 }

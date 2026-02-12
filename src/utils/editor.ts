@@ -4,7 +4,7 @@ import type {
   TableSchema,
   EditorPreferences,
 } from "../types/editor";
-import { quoteIdentifier } from "./identifiers";
+import { quoteTableRef } from "./identifiers";
 import { invoke } from "@tauri-apps/api/core";
 import { cleanTabForStorage, restoreTabFromStorage } from "./tabCleaner";
 import {
@@ -140,13 +140,15 @@ export function findExistingTableTab(
   tabs: Tab[],
   connectionId: string,
   tableName: string | undefined,
+  schema?: string,
 ): Tab | undefined {
   if (!tableName) return undefined;
   return tabs.find(
     (t) =>
       t.connectionId === connectionId &&
       t.type === "table" &&
-      t.activeTable === tableName,
+      t.activeTable === tableName &&
+      (t.schema || undefined) === (schema || undefined),
   );
 }
 
@@ -341,7 +343,7 @@ export function reconstructTableQuery(tab: Tab, driver?: string): string {
 
   const filter = tab.filterClause ? `WHERE ${tab.filterClause}` : "";
   const sort = tab.sortClause ? `ORDER BY ${tab.sortClause}` : "";
-  const quotedTable = quoteIdentifier(tab.activeTable, driver);
+  const quotedTable = quoteTableRef(tab.activeTable, driver, tab.schema);
 
   let baseQuery = `SELECT * FROM ${quotedTable} ${filter} ${sort}`.trim();
 

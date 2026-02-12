@@ -37,6 +37,7 @@ interface SidebarTableItemProps {
   onAddForeignKey: (tableName: string) => void;
   onDropForeignKey: (tableName: string, fkName: string) => void;
   schemaVersion: number;
+  schema?: string;
 }
 
 export const SidebarTableItem = ({
@@ -54,6 +55,7 @@ export const SidebarTableItem = ({
   onAddForeignKey,
   onDropForeignKey,
   schemaVersion,
+  schema,
 }: SidebarTableItemProps) => {
   const { t } = useTranslation();
   // Prevent unused variable warning
@@ -78,12 +80,18 @@ export const SidebarTableItem = ({
         invoke<TableColumn[]>("get_columns", {
           connectionId,
           tableName: table.name,
+          ...(schema ? { schema } : {}),
         }),
         invoke<ForeignKey[]>("get_foreign_keys", {
           connectionId,
           tableName: table.name,
+          ...(schema ? { schema } : {}),
         }),
-        invoke<Index[]>("get_indexes", { connectionId, tableName: table.name }),
+        invoke<Index[]>("get_indexes", {
+          connectionId,
+          tableName: table.name,
+          ...(schema ? { schema } : {}),
+        }),
       ]);
 
       setColumns(cols);
@@ -94,7 +102,7 @@ export const SidebarTableItem = ({
     } finally {
       setIsLoading(false);
     }
-  }, [connectionId, table.name]);
+  }, [connectionId, table.name, schema]);
 
   useEffect(() => {
     if (isExpanded) {
@@ -121,7 +129,7 @@ export const SidebarTableItem = ({
   const showContextMenu = (e: React.MouseEvent, type: string, name: string) => {
     e.preventDefault();
     e.stopPropagation();
-    onContextMenu(e, type, name, name, { tableName: table.name });
+    onContextMenu(e, type, name, name, { tableName: table.name, schema });
   };
 
   // Group indexes by name since API returns one row per column
@@ -212,6 +220,7 @@ export const SidebarTableItem = ({
                         driver={driver}
                         onRefresh={refreshMetadata}
                         onEdit={(c) => onEditColumn(table.name, c)}
+                        schema={schema}
                       />
                     ))}
                   </div>

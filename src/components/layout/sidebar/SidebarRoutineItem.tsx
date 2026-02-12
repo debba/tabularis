@@ -30,6 +30,7 @@ interface SidebarRoutineItemProps {
   ) => void;
   onDoubleClick: (routine: RoutineInfo) => void;
   connectionId: string;
+  schema?: string;
 }
 
 export const SidebarRoutineItem = ({
@@ -37,6 +38,7 @@ export const SidebarRoutineItem = ({
   onContextMenu,
   onDoubleClick,
   connectionId,
+  schema,
 }: SidebarRoutineItemProps) => {
   const { t } = useTranslation();
 
@@ -53,6 +55,7 @@ export const SidebarRoutineItem = ({
         {
           connectionId,
           routineName: routine.name,
+          ...(schema ? { schema } : {}),
         },
       );
       setParameters(params);
@@ -61,7 +64,7 @@ export const SidebarRoutineItem = ({
     } finally {
       setIsLoading(false);
     }
-  }, [connectionId, routine.name]);
+  }, [connectionId, routine.name, schema]);
 
   useEffect(() => {
     if (isExpanded) {

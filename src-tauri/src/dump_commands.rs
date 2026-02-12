@@ -46,10 +46,12 @@ pub async fn dump_database<R: Runtime>(
     connection_id: String,
     file_path: String,
     options: DumpOptions,
+    schema: Option<String>,
 ) -> Result<(), String> {
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let params = resolve_connection_params(&saved_conn.params)?;
     let driver = saved_conn.params.driver.clone();
+    let pg_schema = schema.unwrap_or_else(|| "public".to_string());
 
     // Spawn the dump process
     let task = tokio::spawn(async move {
@@ -65,7 +67,7 @@ pub async fn dump_database<R: Runtime>(
         // Get tables
         let all_tables = match driver.as_str() {
             "mysql" => mysql::get_tables(&params).await?,
-            "postgres" => postgres::get_tables(&params).await?,
+            "postgres" => postgres::get_tables(&params, &pg_schema).await?,
             "sqlite" => sqlite::get_tables(&params).await?,
             _ => return Err("Unsupported driver".into()),
         };
@@ -84,7 +86,7 @@ pub async fn dump_database<R: Runtime>(
 
                 let ddl = match driver.as_str() {
                     "mysql" => mysql::get_table_ddl(&params, &table).await?,
-                    "postgres" => postgres::get_table_ddl(&params, &table).await?,
+                    "postgres" => postgres::get_table_ddl(&params, &table, &pg_schema).await?,
                     "sqlite" => sqlite::get_table_ddl(&params, &table).await?,
                     _ => return Err("Unsupported driver".into()),
                 };
@@ -94,7 +96,7 @@ pub async fn dump_database<R: Runtime>(
 
             if options.data {
                 writeln!(writer, "-- Data for table `{}`", table).map_err(|e| e.to_string())?;
-                export_table_data(&mut writer, &params, &driver, &table).await?;
+                export_table_data(&mut writer, &params, &driver, &table, &pg_schema).await?;
                 writeln!(writer, "\n").map_err(|e| e.to_string())?;
             }
         }
@@ -130,6 +132,7 @@ async fn export_table_data(
     params: &ConnectionParams,
     driver: &str,
     table: &str,
+    pg_schema: &str,
 ) -> Result<(), String> {
     // We need to implement streaming fetch manually here because we need raw values, not JSON strings if possible,
     // or we parse JSON strings back to SQL literals.
@@ -141,7 +144,7 @@ async fn export_table_data(
         "SELECT * FROM {}",
         match driver {
             "mysql" => format!("`{}`", table),
-            "postgres" => format!("\"{}\"", table), // public schema assumed
+            "postgres" => format!("\"{}\".\"{}\"", pg_schema, table),
             "sqlite" => format!("\"{}\"", table),
             _ => table.to_string(),
         }

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { X, Loader2, Plus } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useDatabase } from "../../hooks/useDatabase";
-import { quoteIdentifier } from "../../utils/identifiers";
+import { quoteTableRef } from "../../utils/identifiers";
 
 interface TableColumn {
   name: string;
@@ -34,7 +34,7 @@ export const NewRowModal = ({
   onSaveSuccess,
 }: NewRowModalProps) => {
   const { t } = useTranslation();
-  const { activeConnectionId, activeDriver } = useDatabase();
+  const { activeConnectionId, activeDriver, activeSchema } = useDatabase();
   const [columns, setColumns] = useState<TableColumn[]>([]);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(false);
@@ -54,13 +54,14 @@ export const NewRowModal = ({
     setLoadingFk((prev) => ({ ...prev, [fk.column_name]: true }));
     setFkErrors((prev) => ({ ...prev, [fk.column_name]: "" }));
     try {
-      const quotedTable = quoteIdentifier(fk.ref_table, activeDriver);
+      const quotedTable = quoteTableRef(fk.ref_table, activeDriver, activeSchema);
       // Select * from referenced table to get context
       const query = `SELECT * FROM ${quotedTable} LIMIT 100`;
 
       const result = await invoke<{ columns: string[], rows: unknown[][] }>("execute_query", {
         connectionId: activeConnectionId,
         query,
+        ...(activeSchema ? { schema: activeSchema } : {}),
       });
 
       const options = result.rows.map((rowArray) => {
@@ -104,21 +105,24 @@ export const NewRowModal = ({
     } finally {
       setLoadingFk((prev) => ({ ...prev, [fk.column_name]: false }));
     }
-  }, [activeConnectionId, activeDriver]);
+  }, [activeConnectionId, activeDriver, activeSchema]);
 
   useEffect(() => {
     if (isOpen && activeConnectionId && tableName) {
       setSchemaLoading(true);
 
       // Fetch columns and FKs in parallel
+      const schemaParam = activeSchema ? { schema: activeSchema } : {};
       Promise.all([
         invoke<TableColumn[]>("get_columns", {
           connectionId: activeConnectionId,
           tableName,
+          ...schemaParam,
         }),
         invoke<ForeignKey[]>("get_foreign_keys", {
           connectionId: activeConnectionId,
           tableName,
+          ...schemaParam,
         }),
       ])
         .then(([cols, fks]) => {
@@ -140,7 +144,7 @@ export const NewRowModal = ({
         .catch((err) => setError(t("newRow.failLoad") + err))
         .finally(() => setSchemaLoading(false));
     }
-  }, [isOpen, activeConnectionId, tableName, fetchFkOptions, t]);
+  }, [isOpen, activeConnectionId, tableName, fetchFkOptions, t, activeSchema]);
 
   if (!isOpen) return null;
 
@@ -220,6 +224,7 @@ export const NewRowModal = ({
         connectionId: activeConnectionId,
         table: tableName,
         data: dataToSend,
+        ...(activeSchema ? { schema: activeSchema } : {}),
       });
 
       onSaveSuccess();

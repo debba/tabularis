@@ -335,4 +335,213 @@ describe('DatabaseProvider', () => {
       expect(result.current.views).toHaveLength(0);
     });
   });
+
+  describe('PostgreSQL Schema Selection', () => {
+    const mockPgConnections = [
+      {
+        id: 'pg-conn',
+        name: 'Local Postgres',
+        params: {
+          driver: 'postgres',
+          host: 'localhost',
+          database: 'mydb',
+        },
+      },
+    ];
+
+    const mockSchemas = ['public', 'analytics', 'staging'];
+    const mockPgTables = [{ name: 'users' }, { name: 'orders' }];
+    const mockPgViews = [{ name: 'active_users' }];
+    const mockPgRoutines = [{ name: 'calc', routine_type: 'FUNCTION' }];
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(DatabaseProvider, null, children);
+
+    it('should set needsSchemaSelection=true when no saved selection exists', async () => {
+      vi.mocked(invoke).mockImplementation((cmd: string) => {
+        if (cmd === 'get_connections') return Promise.resolve(mockPgConnections);
+        if (cmd === 'get_schemas') return Promise.resolve(mockSchemas);
+        if (cmd === 'get_selected_schemas') return Promise.resolve([]);
+        if (cmd === 'set_window_title') return Promise.resolve(undefined);
+        return Promise.resolve([]);
+      });
+
+      const { result } = renderHook(() => useDatabase(), { wrapper });
+
+      await act(async () => {
+        await result.current.connect('pg-conn');
+      });
+
+      await waitFor(() => {
+        expect(result.current.needsSchemaSelection).toBe(true);
+        expect(result.current.selectedSchemas).toEqual([]);
+      });
+
+      // Should NOT load tables/views when no schemas selected
+      expect(invoke).not.toHaveBeenCalledWith('get_tables', expect.objectContaining({ connectionId: 'pg-conn' }));
+    });
+
+    it('should load only selected schemas when saved selection exists', async () => {
+      vi.mocked(invoke).mockImplementation((cmd: string, args?: Record<string, unknown>) => {
+        if (cmd === 'get_connections') return Promise.resolve(mockPgConnections);
+        if (cmd === 'get_schemas') return Promise.resolve(mockSchemas);
+        if (cmd === 'get_selected_schemas') return Promise.resolve(['public']);
+        if (cmd === 'get_schema_preference') return Promise.resolve('public');
+        if (cmd === 'get_tables') return Promise.resolve(mockPgTables);
+        if (cmd === 'get_views') return Promise.resolve(mockPgViews);
+        if (cmd === 'get_routines') return Promise.resolve(mockPgRoutines);
+        if (cmd === 'set_window_title') return Promise.resolve(undefined);
+        return Promise.resolve(undefined);
+      });
+
+      const { result } = renderHook(() => useDatabase(), { wrapper });
+
+      await act(async () => {
+        await result.current.connect('pg-conn');
+      });
+
+      await waitFor(() => {
+        expect(result.current.needsSchemaSelection).toBe(false);
+        expect(result.current.selectedSchemas).toEqual(['public']);
+        expect(result.current.activeSchema).toBe('public');
+      });
+
+      // Should have loaded tables for 'public' schema
+      expect(invoke).toHaveBeenCalledWith('get_tables', { connectionId: 'pg-conn', schema: 'public' });
+    });
+
+    it('should persist and load data when setSelectedSchemas is called', async () => {
+      // Start with no saved selection (needsSchemaSelection=true)
+      vi.mocked(invoke).mockImplementation((cmd: string) => {
+        if (cmd === 'get_connections') return Promise.resolve(mockPgConnections);
+        if (cmd === 'get_schemas') return Promise.resolve(mockSchemas);
+        if (cmd === 'get_selected_schemas') return Promise.resolve([]);
+        if (cmd === 'set_selected_schemas') return Promise.resolve(undefined);
+        if (cmd === 'set_schema_preference') return Promise.resolve(undefined);
+        if (cmd === 'set_window_title') return Promise.resolve(undefined);
+        if (cmd === 'get_tables') return Promise.resolve(mockPgTables);
+        if (cmd === 'get_views') return Promise.resolve(mockPgViews);
+        if (cmd === 'get_routines') return Promise.resolve(mockPgRoutines);
+        return Promise.resolve(undefined);
+      });
+
+      const { result } = renderHook(() => useDatabase(), { wrapper });
+
+      await act(async () => {
+        await result.current.connect('pg-conn');
+      });
+
+      await waitFor(() => {
+        expect(result.current.needsSchemaSelection).toBe(true);
+      });
+
+      // User selects schemas
+      await act(async () => {
+        await result.current.setSelectedSchemas(['public', 'analytics']);
+      });
+
+      await waitFor(() => {
+        expect(result.current.needsSchemaSelection).toBe(false);
+        expect(result.current.selectedSchemas).toEqual(['public', 'analytics']);
+      });
+
+      // Should have persisted
+      expect(invoke).toHaveBeenCalledWith('set_selected_schemas', {
+        connectionId: 'pg-conn',
+        schemas: ['public', 'analytics'],
+      });
+    });
+
+    it('should update activeSchema when removed from selection', async () => {
+      vi.mocked(invoke).mockImplementation((cmd: string) => {
+        if (cmd === 'get_connections') return Promise.resolve(mockPgConnections);
+        if (cmd === 'get_schemas') return Promise.resolve(mockSchemas);
+        if (cmd === 'get_selected_schemas') return Promise.resolve(['public', 'analytics']);
+        if (cmd === 'get_schema_preference') return Promise.resolve('analytics');
+        if (cmd === 'set_selected_schemas') return Promise.resolve(undefined);
+        if (cmd === 'set_schema_preference') return Promise.resolve(undefined);
+        if (cmd === 'set_window_title') return Promise.resolve(undefined);
+        if (cmd === 'get_tables') return Promise.resolve(mockPgTables);
+        if (cmd === 'get_views') return Promise.resolve(mockPgViews);
+        if (cmd === 'get_routines') return Promise.resolve(mockPgRoutines);
+        return Promise.resolve(undefined);
+      });
+
+      const { result } = renderHook(() => useDatabase(), { wrapper });
+
+      await act(async () => {
+        await result.current.connect('pg-conn');
+      });
+
+      await waitFor(() => {
+        expect(result.current.activeSchema).toBe('analytics');
+      });
+
+      // Remove analytics from selection
+      await act(async () => {
+        await result.current.setSelectedSchemas(['public']);
+      });
+
+      await waitFor(() => {
+        expect(result.current.activeSchema).toBe('public');
+      });
+    });
+
+    it('should reset schema selection state on disconnect', async () => {
+      vi.mocked(invoke).mockImplementation((cmd: string) => {
+        if (cmd === 'get_connections') return Promise.resolve(mockPgConnections);
+        if (cmd === 'get_schemas') return Promise.resolve(mockSchemas);
+        if (cmd === 'get_selected_schemas') return Promise.resolve(['public']);
+        if (cmd === 'get_schema_preference') return Promise.resolve('public');
+        if (cmd === 'set_window_title') return Promise.resolve(undefined);
+        if (cmd === 'get_tables') return Promise.resolve(mockPgTables);
+        if (cmd === 'get_views') return Promise.resolve(mockPgViews);
+        if (cmd === 'get_routines') return Promise.resolve(mockPgRoutines);
+        return Promise.resolve(undefined);
+      });
+
+      const { result } = renderHook(() => useDatabase(), { wrapper });
+
+      await act(async () => {
+        await result.current.connect('pg-conn');
+      });
+
+      await waitFor(() => {
+        expect(result.current.selectedSchemas).toEqual(['public']);
+      });
+
+      act(() => {
+        result.current.disconnect();
+      });
+
+      expect(result.current.selectedSchemas).toEqual([]);
+      expect(result.current.needsSchemaSelection).toBe(false);
+    });
+
+    it('should filter saved selection against available schemas', async () => {
+      vi.mocked(invoke).mockImplementation((cmd: string) => {
+        if (cmd === 'get_connections') return Promise.resolve(mockPgConnections);
+        if (cmd === 'get_schemas') return Promise.resolve(['public', 'analytics']); // 'deleted_schema' not available
+        if (cmd === 'get_selected_schemas') return Promise.resolve(['public', 'deleted_schema']); // saved has stale entry
+        if (cmd === 'get_schema_preference') return Promise.resolve('public');
+        if (cmd === 'set_window_title') return Promise.resolve(undefined);
+        if (cmd === 'get_tables') return Promise.resolve(mockPgTables);
+        if (cmd === 'get_views') return Promise.resolve(mockPgViews);
+        if (cmd === 'get_routines') return Promise.resolve(mockPgRoutines);
+        return Promise.resolve(undefined);
+      });
+
+      const { result } = renderHook(() => useDatabase(), { wrapper });
+
+      await act(async () => {
+        await result.current.connect('pg-conn');
+      });
+
+      await waitFor(() => {
+        // Only 'public' should remain (deleted_schema filtered out)
+        expect(result.current.selectedSchemas).toEqual(['public']);
+        expect(result.current.needsSchemaSelection).toBe(false);
+      });
+    });
+  });
 });

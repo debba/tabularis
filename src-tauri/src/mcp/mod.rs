@@ -228,7 +228,7 @@ async fn handle_read_resource(
 
         let tables = match conn.params.driver.as_str() {
             "mysql" => mysql::get_tables(&params).await,
-            "postgres" => postgres::get_tables(&params).await,
+            "postgres" => postgres::get_tables(&params, "public").await,
             "sqlite" => sqlite::get_tables(&params).await,
             _ => Err("Unsupported driver".into()),
         }
@@ -341,7 +341,7 @@ async fn handle_call_tool(
 
         let result = match conn.params.driver.as_str() {
             "mysql" => mysql::execute_query(&db_params, query, Some(100), 1).await,
-            "postgres" => postgres::execute_query(&db_params, query, Some(100), 1).await,
+            "postgres" => postgres::execute_query(&db_params, query, Some(100), 1, None).await,
             "sqlite" => sqlite::execute_query(&db_params, query, Some(100), 1).await,
             _ => Err("Unsupported driver".into()),
         }

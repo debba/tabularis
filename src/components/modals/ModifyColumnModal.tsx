@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { X, Save, Loader2, AlertTriangle } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { SqlPreview } from "../ui/SqlPreview";
+import { useDatabase } from "../../hooks/useDatabase";
 
 const COMMON_TYPES = [
   "INTEGER",
@@ -56,6 +57,7 @@ export const ModifyColumnModal = ({
   column,
 }: ModifyColumnModalProps) => {
   const { t } = useTranslation();
+  const { activeSchema } = useDatabase();
   const isEdit = !!column;
 
   // Parse initial type/length from column.data_type if possible
@@ -232,6 +234,7 @@ export const ModifyColumnModal = ({
         await invoke("execute_query", {
           connectionId,
           query: `ALTER TABLE ${q}${tableName}${q} RENAME COLUMN ${q}${column?.name}${q} TO ${q}${form.name}${q}`,
+          ...(activeSchema ? { schema: activeSchema } : {}),
         });
       } else if (driver === "sqlite" && isEdit) {
         throw new Error(t("modifyColumn.sqliteWarn"));
@@ -248,10 +251,18 @@ export const ModifyColumnModal = ({
             .split("\n")
             .filter((s) => s.trim() && !s.startsWith("--"));
           for (const sql of statements) {
-            await invoke("execute_query", { connectionId, query: sql });
+            await invoke("execute_query", {
+              connectionId,
+              query: sql,
+              ...(activeSchema ? { schema: activeSchema } : {}),
+            });
           }
         } else {
-          await invoke("execute_query", { connectionId, query: sqlPreview });
+          await invoke("execute_query", {
+            connectionId,
+            query: sqlPreview,
+            ...(activeSchema ? { schema: activeSchema } : {}),
+          });
         }
       }
 

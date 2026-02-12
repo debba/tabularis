@@ -29,7 +29,7 @@ interface CreateTableModalProps {
 
 export const CreateTableModal = ({ isOpen, onClose, onSuccess }: CreateTableModalProps) => {
   const { t } = useTranslation();
-  const { activeConnectionId, activeDriver } = useDatabase();
+  const { activeConnectionId, activeDriver, activeSchema } = useDatabase();
   
   const [tableName, setTableName] = useState('');
   const [columns, setColumns] = useState<ColumnDef[]>([
@@ -140,7 +140,8 @@ export const CreateTableModal = ({ isOpen, onClose, onSuccess }: CreateTableModa
     try {
         await invoke('execute_query', {
             connectionId: activeConnectionId,
-            query: sqlPreview
+            query: sqlPreview,
+            ...(activeSchema ? { schema: activeSchema } : {}),
         });
         onSuccess();
         onClose();

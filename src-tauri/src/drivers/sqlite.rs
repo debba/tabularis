@@ -11,6 +11,10 @@ fn escape_identifier(name: &str) -> String {
     name.replace('"', "\"\"")
 }
 
+pub async fn get_schemas(_params: &ConnectionParams) -> Result<Vec<String>, String> {
+    Ok(vec![])
+}
+
 pub async fn get_databases(_params: &ConnectionParams) -> Result<Vec<String>, String> {
     // SQLite doesn't support multiple databases in the same connection
     Ok(vec![])

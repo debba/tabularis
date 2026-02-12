@@ -26,6 +26,8 @@ pub struct AppConfig {
     pub auto_check_updates_on_startup: Option<bool>,
     pub last_dismissed_version: Option<String>,
     pub er_diagram_default_layout: Option<String>,
+    pub schema_preferences: Option<HashMap<String, String>>,
+    pub selected_schemas: Option<HashMap<String, Vec<String>>>,
 }
 
 pub fn get_config_dir(app: &AppHandle) -> Option<PathBuf> {
@@ -112,8 +114,73 @@ pub fn save_config(app: AppHandle, config: AppConfig) -> Result<(), String> {
         if config.er_diagram_default_layout.is_some() {
             existing_config.er_diagram_default_layout = config.er_diagram_default_layout;
         }
+        if config.schema_preferences.is_some() {
+            existing_config.schema_preferences = config.schema_preferences;
+        }
+        if config.selected_schemas.is_some() {
+            existing_config.selected_schemas = config.selected_schemas;
+        }
 
         let content = serde_json::to_string_pretty(&existing_config).map_err(|e| e.to_string())?;
+        fs::write(config_path, content).map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err("Could not resolve config directory".to_string())
+    }
+}
+
+#[tauri::command]
+pub fn get_schema_preference(app: AppHandle, connection_id: String) -> Option<String> {
+    let config = load_config_internal(&app);
+    config.schema_preferences.and_then(|prefs| prefs.get(&connection_id).cloned())
+}
+
+#[tauri::command]
+pub fn set_schema_preference(app: AppHandle, connection_id: String, schema: String) -> Result<(), String> {
+    if let Some(config_dir) = get_config_dir(&app) {
+        if !config_dir.exists() {
+            fs::create_dir_all(&config_dir).map_err(|e| e.to_string())?;
+        }
+        let config_path = config_dir.join("config.json");
+        let mut config = load_config_internal(&app);
+        let prefs = config.schema_preferences.get_or_insert_with(HashMap::new);
+        prefs.insert(connection_id, schema);
+        let content = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
+        fs::write(config_path, content).map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err("Could not resolve config directory".to_string())
+    }
+}
+
+#[tauri::command]
+pub fn get_selected_schemas(app: AppHandle, connection_id: String) -> Vec<String> {
+    let config = load_config_internal(&app);
+    config
+        .selected_schemas
+        .and_then(|map| map.get(&connection_id).cloned())
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+pub fn set_selected_schemas(
+    app: AppHandle,
+    connection_id: String,
+    schemas: Vec<String>,
+) -> Result<(), String> {
+    if let Some(config_dir) = get_config_dir(&app) {
+        if !config_dir.exists() {
+            fs::create_dir_all(&config_dir).map_err(|e| e.to_string())?;
+        }
+        let config_path = config_dir.join("config.json");
+        let mut config = load_config_internal(&app);
+        let map = config.selected_schemas.get_or_insert_with(HashMap::new);
+        if schemas.is_empty() {
+            map.remove(&connection_id);
+        } else {
+            map.insert(connection_id, schemas);
+        }
+        let content = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
         fs::write(config_path, content).map_err(|e| e.to_string())?;
         Ok(())
     } else {
@@ -300,4 +367,67 @@ pub fn reset_explain_prompt(app: AppHandle) -> Result<String, String> {
         }
     }
     Ok(DEFAULT_EXPLAIN_PROMPT.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn selected_schemas_default_is_none() {
+        let config = AppConfig::default();
+        assert!(config.selected_schemas.is_none());
+    }
+
+    #[test]
+    fn selected_schemas_serialization_round_trip() {
+        let mut config = AppConfig::default();
+        let mut map = HashMap::new();
+        map.insert("conn-1".to_string(), vec!["public".to_string(), "analytics".to_string()]);
+        config.selected_schemas = Some(map);
+
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: AppConfig = serde_json::from_str(&json).unwrap();
+
+        let schemas = deserialized.selected_schemas.unwrap();
+        let conn1 = schemas.get("conn-1").unwrap();
+        assert_eq!(conn1, &vec!["public".to_string(), "analytics".to_string()]);
+    }
+
+    #[test]
+    fn selected_schemas_camel_case_in_json() {
+        let mut config = AppConfig::default();
+        let mut map = HashMap::new();
+        map.insert("conn-1".to_string(), vec!["public".to_string()]);
+        config.selected_schemas = Some(map);
+
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("selectedSchemas"));
+        assert!(!json.contains("selected_schemas"));
+    }
+
+    #[test]
+    fn multiple_connections_independent_selected_schemas() {
+        let mut config = AppConfig::default();
+        let mut map = HashMap::new();
+        map.insert("conn-1".to_string(), vec!["public".to_string()]);
+        map.insert("conn-2".to_string(), vec!["staging".to_string(), "prod".to_string()]);
+        config.selected_schemas = Some(map);
+
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: AppConfig = serde_json::from_str(&json).unwrap();
+
+        let schemas = deserialized.selected_schemas.unwrap();
+        assert_eq!(schemas.get("conn-1").unwrap(), &vec!["public".to_string()]);
+        assert_eq!(schemas.get("conn-2").unwrap(), &vec!["staging".to_string(), "prod".to_string()]);
+    }
+
+    #[test]
+    fn old_hidden_schemas_json_deserializes_without_error() {
+        // Ensure old config files with hiddenSchemas don't break deserialization
+        let json = r#"{"hiddenSchemas":{"conn-1":["secret"]}}"#;
+        let config: AppConfig = serde_json::from_str(json).unwrap();
+        // hiddenSchemas is no longer a field, so it's ignored; selectedSchemas is None
+        assert!(config.selected_schemas.is_none());
+    }
 }

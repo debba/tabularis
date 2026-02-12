@@ -11,6 +11,24 @@ fn escape_identifier(name: &str) -> String {
     name.replace('"', "\"\"")
 }
 
+pub async fn get_schemas(params: &ConnectionParams) -> Result<Vec<String>, String> {
+    let pool = get_postgres_pool(params).await?;
+    let rows = sqlx::query(
+        "SELECT schema_name::text FROM information_schema.schemata \
+         WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast') \
+         AND schema_name NOT LIKE 'pg_temp_%' \
+         AND schema_name NOT LIKE 'pg_toast_temp_%' \
+         ORDER BY schema_name",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(rows
+        .iter()
+        .map(|r| r.try_get("schema_name").unwrap_or_default())
+        .collect())
+}
+
 pub async fn get_databases(params: &ConnectionParams) -> Result<Vec<String>, String> {
     let pool = get_postgres_pool(params).await?;
     let rows = sqlx::query(
@@ -25,15 +43,17 @@ pub async fn get_databases(params: &ConnectionParams) -> Result<Vec<String>, Str
         .collect())
 }
 
-pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, String> {
+pub async fn get_tables(params: &ConnectionParams, schema: &str) -> Result<Vec<TableInfo>, String> {
     log::debug!(
-        "PostgreSQL: Fetching tables for database: {}",
-        params.database
+        "PostgreSQL: Fetching tables for database: {} schema: {}",
+        params.database,
+        schema
     );
     let pool = get_postgres_pool(params).await?;
     let rows = sqlx::query(
-        "SELECT table_name as name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name ASC",
+        "SELECT table_name as name FROM information_schema.tables WHERE table_schema = $1 AND table_type = 'BASE TABLE' ORDER BY table_name ASC",
     )
+    .bind(schema)
     .fetch_all(&pool)
     .await
     .map_err(|e| e.to_string())?;
@@ -54,6 +74,7 @@ pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, Str
 pub async fn get_columns(
     params: &ConnectionParams,
     table_name: &str,
+    schema: &str,
 ) -> Result<Vec<TableColumn>, String> {
     let pool = get_postgres_pool(params).await?;
 
@@ -67,15 +88,18 @@ pub async fn get_columns(
             c.is_identity,
             (SELECT COUNT(*) FROM information_schema.table_constraints tc
              JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+             AND tc.table_schema = kcu.table_schema
              WHERE tc.constraint_type = 'PRIMARY KEY'
+             AND tc.table_schema = c.table_schema
              AND kcu.table_name = c.table_name
              AND kcu.column_name = c.column_name) > 0 as is_pk
         FROM information_schema.columns c
-        WHERE c.table_schema = 'public' AND c.table_name = $1
+        WHERE c.table_schema = $1 AND c.table_name = $2
         ORDER BY c.ordinal_position
     "#;
 
     let rows = sqlx::query(query)
+        .bind(schema)
         .bind(table_name)
         .fetch_all(&pool)
         .await
@@ -118,6 +142,7 @@ pub async fn get_columns(
 pub async fn get_foreign_keys(
     params: &ConnectionParams,
     table_name: &str,
+    schema: &str,
 ) -> Result<Vec<ForeignKey>, String> {
     let pool = get_postgres_pool(params).await?;
 
@@ -139,11 +164,14 @@ pub async fn get_foreign_keys(
             AND ccu.table_schema = tc.table_schema
             JOIN information_schema.referential_constraints AS rc
             ON rc.constraint_name = tc.constraint_name
+            AND rc.constraint_schema = tc.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_name = $1
+        AND tc.table_schema = $1
+        AND tc.table_name = $2
     "#;
 
     let rows = sqlx::query(query)
+        .bind(schema)
         .bind(table_name)
         .fetch_all(&pool)
         .await
@@ -165,6 +193,7 @@ pub async fn get_foreign_keys(
 // Batch function: Get all columns for all tables in one query
 pub async fn get_all_columns_batch(
     params: &ConnectionParams,
+    schema: &str,
 ) -> Result<std::collections::HashMap<String, Vec<TableColumn>>, String> {
     use std::collections::HashMap;
     let pool = get_postgres_pool(params).await?;
@@ -179,15 +208,18 @@ pub async fn get_all_columns_batch(
             c.is_identity,
             (SELECT COUNT(*) FROM information_schema.table_constraints tc
              JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+             AND tc.table_schema = kcu.table_schema
              WHERE tc.constraint_type = 'PRIMARY KEY'
+             AND tc.table_schema = c.table_schema
              AND kcu.table_name = c.table_name
              AND kcu.column_name = c.column_name) > 0 as is_pk
         FROM information_schema.columns c
-        WHERE c.table_schema = 'public'
+        WHERE c.table_schema = $1
         ORDER BY c.table_name, c.ordinal_position
     "#;
 
     let rows = sqlx::query(query)
+        .bind(schema)
         .fetch_all(&pool)
         .await
         .map_err(|e| e.to_string())?;
@@ -236,6 +268,7 @@ pub async fn get_all_columns_batch(
 // Batch function: Get all foreign keys for all tables in one query
 pub async fn get_all_foreign_keys_batch(
     params: &ConnectionParams,
+    schema: &str,
 ) -> Result<std::collections::HashMap<String, Vec<ForeignKey>>, String> {
     use std::collections::HashMap;
     let pool = get_postgres_pool(params).await?;
@@ -259,11 +292,13 @@ pub async fn get_all_foreign_keys_batch(
             AND ccu.table_schema = tc.table_schema
             JOIN information_schema.referential_constraints AS rc
             ON rc.constraint_name = tc.constraint_name
+            AND rc.constraint_schema = tc.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_schema = 'public'
+        AND tc.table_schema = $1
     "#;
 
     let rows = sqlx::query(query)
+        .bind(schema)
         .fetch_all(&pool)
         .await
         .map_err(|e| e.to_string())?;
@@ -291,6 +326,7 @@ pub async fn get_all_foreign_keys_batch(
 pub async fn get_indexes(
     params: &ConnectionParams,
     table_name: &str,
+    schema: &str,
 ) -> Result<Vec<Index>, String> {
     let pool = get_postgres_pool(params).await?;
 
@@ -302,17 +338,15 @@ pub async fn get_indexes(
             ix.indisprimary as is_primary,
             array_position(ix.indkey, a.attnum) as seq_in_index
         FROM
-            pg_class t,
-            pg_class i,
-            pg_index ix,
-            pg_attribute a
+            pg_class t
+            JOIN pg_namespace n ON t.relnamespace = n.oid
+            JOIN pg_index ix ON t.oid = ix.indrelid
+            JOIN pg_class i ON i.oid = ix.indexrelid
+            JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
         WHERE
-            t.oid = ix.indrelid
-            AND i.oid = ix.indexrelid
-            AND a.attrelid = t.oid
-            AND a.attnum = ANY(ix.indkey)
-            AND t.relkind = 'r'
-            AND t.relname = $1
+            t.relkind = 'r'
+            AND n.nspname = $1
+            AND t.relname = $2
         ORDER BY
             t.relname,
             i.relname,
@@ -320,6 +354,7 @@ pub async fn get_indexes(
     "#;
 
     let rows = sqlx::query(query)
+        .bind(schema)
         .bind(table_name)
         .fetch_all(&pool)
         .await
@@ -342,10 +377,16 @@ pub async fn delete_record(
     table: &str,
     pk_col: &str,
     pk_val: serde_json::Value,
+    schema: &str,
 ) -> Result<u64, String> {
     let pool = get_postgres_pool(params).await?;
 
-    let query = format!("DELETE FROM \"{}\" WHERE \"{}\" = $1", table, pk_col);
+    let query = format!(
+        "DELETE FROM \"{}\".\"{}\" WHERE \"{}\" = $1",
+        escape_identifier(schema),
+        escape_identifier(table),
+        escape_identifier(pk_col)
+    );
 
     let result = match pk_val {
         serde_json::Value::Number(n) => {
@@ -369,10 +410,16 @@ pub async fn update_record(
     pk_val: serde_json::Value,
     col_name: &str,
     new_val: serde_json::Value,
+    schema: &str,
 ) -> Result<u64, String> {
     let pool = get_postgres_pool(params).await?;
 
-    let mut qb = sqlx::QueryBuilder::new(format!("UPDATE \"{}\" SET \"{}\" = ", table, col_name));
+    let mut qb = sqlx::QueryBuilder::new(format!(
+        "UPDATE \"{}\".\"{}\" SET \"{}\" = ",
+        escape_identifier(schema),
+        escape_identifier(table),
+        escape_identifier(col_name)
+    ));
 
     match new_val {
         serde_json::Value::Number(n) => {
@@ -424,6 +471,7 @@ pub async fn insert_record(
     params: &ConnectionParams,
     table: &str,
     data: std::collections::HashMap<String, serde_json::Value>,
+    schema: &str,
 ) -> Result<u64, String> {
     let pool = get_postgres_pool(params).await?;
 
@@ -437,11 +485,16 @@ pub async fn insert_record(
 
     // Allow empty inserts for auto-generated values (e.g., auto-increment PKs)
     let mut qb = if cols.is_empty() {
-        sqlx::QueryBuilder::new(format!("INSERT INTO \"{}\" DEFAULT VALUES", table))
+        sqlx::QueryBuilder::new(format!(
+            "INSERT INTO \"{}\".\"{}\" DEFAULT VALUES",
+            escape_identifier(schema),
+            escape_identifier(table)
+        ))
     } else {
         let mut qb = sqlx::QueryBuilder::new(format!(
-            "INSERT INTO \"{}\" ({}) VALUES (",
-            table,
+            "INSERT INTO \"{}\".\"{}\" ({}) VALUES (",
+            escape_identifier(schema),
+            escape_identifier(table),
             cols.join(", ")
         ));
 
@@ -496,8 +549,8 @@ fn remove_order_by(query: &str) -> String {
     }
 }
 
-pub async fn get_table_ddl(params: &ConnectionParams, table_name: &str) -> Result<String, String> {
-    let cols = get_columns(params, table_name).await?;
+pub async fn get_table_ddl(params: &ConnectionParams, table_name: &str, schema: &str) -> Result<String, String> {
+    let cols = get_columns(params, table_name, schema).await?;
     if cols.is_empty() {
         return Err(format!("Table {} not found or empty", table_name));
     }
@@ -523,8 +576,9 @@ pub async fn get_table_ddl(params: &ConnectionParams, table_name: &str) -> Resul
     }
 
     Ok(format!(
-        "CREATE TABLE public.\"{}\" (\n  {}\n);",
-        table_name,
+        "CREATE TABLE \"{}\".\"{}\" (\n  {}\n);",
+        escape_identifier(schema),
+        escape_identifier(table_name),
         defs.join(",\n  ")
     ))
 }
@@ -534,9 +588,21 @@ pub async fn execute_query(
     query: &str,
     limit: Option<u32>,
     page: u32,
+    schema: Option<&str>,
 ) -> Result<QueryResult, String> {
     let pool = get_postgres_pool(params).await?;
     let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
+
+    if let Some(schema) = schema {
+        let search_path = format!(
+            "SET search_path TO \"{}\"",
+            escape_identifier(schema)
+        );
+        sqlx::query(&search_path)
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
 
     let is_select = query.trim_start().to_uppercase().starts_with("SELECT");
     let mut pagination: Option<Pagination> = None;
@@ -630,15 +696,17 @@ pub async fn execute_query(
     })
 }
 
-pub async fn get_views(params: &ConnectionParams) -> Result<Vec<ViewInfo>, String> {
+pub async fn get_views(params: &ConnectionParams, schema: &str) -> Result<Vec<ViewInfo>, String> {
     log::debug!(
-        "PostgreSQL: Fetching views for database: {}",
-        params.database
+        "PostgreSQL: Fetching views for database: {} schema: {}",
+        params.database,
+        schema
     );
     let pool = get_postgres_pool(params).await?;
     let rows = sqlx::query(
-        "SELECT viewname as name FROM pg_views WHERE schemaname = 'public' ORDER BY viewname ASC",
+        "SELECT viewname as name FROM pg_views WHERE schemaname = $1 ORDER BY viewname ASC",
     )
+    .bind(schema)
     .fetch_all(&pool)
     .await
     .map_err(|e| e.to_string())?;
@@ -660,11 +728,13 @@ pub async fn get_views(params: &ConnectionParams) -> Result<Vec<ViewInfo>, Strin
 pub async fn get_view_definition(
     params: &ConnectionParams,
     view_name: &str,
+    schema: &str,
 ) -> Result<String, String> {
     let pool = get_postgres_pool(params).await?;
-    let query = "SELECT pg_get_viewdef($1, true) as definition";
+    let qualified = format!("\"{}\".\"{}\"", escape_identifier(schema), escape_identifier(view_name));
+    let query = "SELECT pg_get_viewdef($1::regclass, true) as definition";
     let row = sqlx::query(query)
-        .bind(view_name)
+        .bind(&qualified)
         .fetch_one(&pool)
         .await
         .map_err(|e| format!("Failed to get view definition: {}", e))?;
@@ -672,7 +742,7 @@ pub async fn get_view_definition(
     let definition: String = row.try_get("definition").unwrap_or_default();
     Ok(format!(
         "CREATE OR REPLACE VIEW {} AS\n{}",
-        view_name, definition
+        qualified, definition
     ))
 }
 
@@ -680,10 +750,15 @@ pub async fn create_view(
     params: &ConnectionParams,
     view_name: &str,
     definition: &str,
+    schema: &str,
 ) -> Result<(), String> {
     let pool = get_postgres_pool(params).await?;
-    let escaped_name = escape_identifier(view_name);
-    let query = format!("CREATE VIEW \"{}\" AS {}", escaped_name, definition);
+    let query = format!(
+        "CREATE VIEW \"{}\".\"{}\" AS {}",
+        escape_identifier(schema),
+        escape_identifier(view_name),
+        definition
+    );
     sqlx::query(&query)
         .execute(&pool)
         .await
@@ -695,12 +770,14 @@ pub async fn alter_view(
     params: &ConnectionParams,
     view_name: &str,
     definition: &str,
+    schema: &str,
 ) -> Result<(), String> {
     let pool = get_postgres_pool(params).await?;
-    let escaped_name = escape_identifier(view_name);
     let query = format!(
-        "CREATE OR REPLACE VIEW \"{}\" AS {}",
-        escaped_name, definition
+        "CREATE OR REPLACE VIEW \"{}\".\"{}\" AS {}",
+        escape_identifier(schema),
+        escape_identifier(view_name),
+        definition
     );
     sqlx::query(&query)
         .execute(&pool)
@@ -709,10 +786,13 @@ pub async fn alter_view(
     Ok(())
 }
 
-pub async fn drop_view(params: &ConnectionParams, view_name: &str) -> Result<(), String> {
+pub async fn drop_view(params: &ConnectionParams, view_name: &str, schema: &str) -> Result<(), String> {
     let pool = get_postgres_pool(params).await?;
-    let escaped_name = escape_identifier(view_name);
-    let query = format!("DROP VIEW IF EXISTS \"{}\"", escaped_name);
+    let query = format!(
+        "DROP VIEW IF EXISTS \"{}\".\"{}\"",
+        escape_identifier(schema),
+        escape_identifier(view_name)
+    );
     sqlx::query(&query)
         .execute(&pool)
         .await
@@ -723,6 +803,7 @@ pub async fn drop_view(params: &ConnectionParams, view_name: &str) -> Result<(),
 pub async fn get_view_columns(
     params: &ConnectionParams,
     view_name: &str,
+    schema: &str,
 ) -> Result<Vec<TableColumn>, String> {
     let pool = get_postgres_pool(params).await?;
 
@@ -735,15 +816,18 @@ pub async fn get_view_columns(
             c.is_identity,
             (SELECT COUNT(*) FROM information_schema.table_constraints tc
              JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+             AND tc.table_schema = kcu.table_schema
              WHERE tc.constraint_type = 'PRIMARY KEY'
+             AND tc.table_schema = c.table_schema
              AND kcu.table_name = c.table_name
              AND kcu.column_name = c.column_name) > 0 as is_pk
         FROM information_schema.columns c
-        WHERE c.table_schema = 'public' AND c.table_name = $1
+        WHERE c.table_schema = $1 AND c.table_name = $2
         ORDER BY c.ordinal_position
     "#;
 
     let rows = sqlx::query(query)
+        .bind(schema)
         .bind(view_name)
         .fetch_all(&pool)
         .await
@@ -783,17 +867,18 @@ pub async fn get_view_columns(
         .collect())
 }
 
-pub async fn get_routines(params: &ConnectionParams) -> Result<Vec<RoutineInfo>, String> {
+pub async fn get_routines(params: &ConnectionParams, schema: &str) -> Result<Vec<RoutineInfo>, String> {
     let pool = get_postgres_pool(params).await?;
     let query = r#"
             SELECT proname, prokind
             FROM pg_proc
-            WHERE pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+            WHERE pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = $1)
             AND prokind IN ('f', 'p')
             ORDER BY proname
         "#;
 
     let rows = sqlx::query(query)
+        .bind(schema)
         .fetch_all(&pool)
         .await
         .map_err(|e| e.to_string())?;
@@ -819,6 +904,7 @@ pub async fn get_routines(params: &ConnectionParams) -> Result<Vec<RoutineInfo>,
 pub async fn get_routine_parameters(
     params: &ConnectionParams,
     routine_name: &str,
+    schema: &str,
 ) -> Result<Vec<RoutineParameter>, String> {
     let pool = get_postgres_pool(params).await?;
 
@@ -826,11 +912,12 @@ pub async fn get_routine_parameters(
     let return_type_query = r#"
             SELECT data_type, routine_type
             FROM information_schema.routines
-            WHERE routine_schema = 'public' AND routine_name = $1
+            WHERE routine_schema = $1 AND routine_name = $2
             LIMIT 1
         "#;
 
     let routine_info = sqlx::query(return_type_query)
+        .bind(schema)
         .bind(routine_name)
         .fetch_optional(&pool)
         .await
@@ -860,11 +947,12 @@ pub async fn get_routine_parameters(
             SELECT p.parameter_name, p.data_type, p.parameter_mode, p.ordinal_position
             FROM information_schema.parameters p
             JOIN information_schema.routines r ON p.specific_name = r.specific_name
-            WHERE r.routine_schema = 'public' AND r.routine_name = $1
+            WHERE r.routine_schema = $1 AND r.routine_name = $2
             ORDER BY p.ordinal_position
         "#;
 
     let rows = sqlx::query(query)
+        .bind(schema)
         .bind(routine_name)
         .fetch_all(&pool)
         .await
@@ -884,6 +972,7 @@ pub async fn get_routine_definition(
     params: &ConnectionParams,
     routine_name: &str,
     _routine_type: &str,
+    schema: &str,
 ) -> Result<String, String> {
     let pool = get_postgres_pool(params).await?;
 
@@ -891,11 +980,12 @@ pub async fn get_routine_definition(
             SELECT pg_get_functiondef(p.oid) as definition
             FROM pg_proc p
             JOIN pg_namespace n ON p.pronamespace = n.oid
-            WHERE n.nspname = 'public' AND p.proname = $1
+            WHERE n.nspname = $1 AND p.proname = $2
             LIMIT 1
         "#;
 
     let row = sqlx::query(query)
+        .bind(schema)
         .bind(routine_name)
         .fetch_one(&pool)
         .await

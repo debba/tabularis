@@ -125,6 +125,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
         tabsRef.current,
         activeConnectionId,
         partial?.activeTable || undefined,
+        partial?.schema,
       );
       if (existing) {
         setActiveTabId(existing.id);
@@ -270,25 +271,28 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     async (
       connectionId: string,
       schemaVersion?: number,
+      schema?: string,
     ): Promise<TableSchema[]> => {
-      const cached = schemaCacheRef.current[connectionId];
+      const cacheKey = schema ? `${connectionId}:${schema}` : connectionId;
+      const cached = schemaCacheRef.current[cacheKey];
 
       // Cache hit: same version, less than 5 minutes old
       if (shouldUseCachedSchema(cached, schemaVersion)) {
-        console.log("Using cached schema for", connectionId);
+        console.log("Using cached schema for", cacheKey);
         return cached!.data;
       }
 
       // Cache miss: fetch from backend
-      console.log("Fetching schema from backend for", connectionId);
+      console.log("Fetching schema from backend for", cacheKey);
       const data = await invoke<TableSchema[]>("get_schema_snapshot", {
         connectionId,
+        ...(schema ? { schema } : {}),
       });
 
       // Update cache in ref (no state update = no re-render)
       schemaCacheRef.current = {
         ...schemaCacheRef.current,
-        [connectionId]: createSchemaCacheEntry(data, schemaVersion || 0),
+        [cacheKey]: createSchemaCacheEntry(data, schemaVersion || 0),
       };
 
       return data;
