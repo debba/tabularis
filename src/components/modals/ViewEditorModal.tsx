@@ -59,7 +59,7 @@ export const ViewEditorModal = ({
     } finally {
       setLoading(false);
     }
-  }, [connectionId, t]);
+  }, [connectionId, t, activeSchema]);
 
   useEffect(() => {
     if (isOpen) {
@@ -91,6 +91,7 @@ export const ViewEditorModal = ({
         query: definition,
         limit: 10,
         page: 1,
+        ...(activeSchema ? { schema: activeSchema } : {}),
       });
       setPreviewResult({
         columns: result.columns,

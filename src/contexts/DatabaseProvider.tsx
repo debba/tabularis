@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { DatabaseContext, type TableInfo, type ViewInfo, type RoutineInfo, type SavedConnection, type SchemaData } from './DatabaseContext';
 import type { ReactNode } from 'react';
@@ -183,8 +183,8 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      // Update activeSchema if it's no longer in the selection
-      if (activeSchema && !newSchemas.includes(activeSchema)) {
+      // Update activeSchema if missing or no longer in the selection
+      if (!activeSchema || !newSchemas.includes(activeSchema)) {
         const nextSchema = newSchemas[0] || null;
         setActiveSchema(nextSchema);
         if (nextSchema && activeConnectionId) {

@@ -1729,6 +1729,7 @@ pub async fn execute_query<R: Runtime>(
     query: String,
     limit: Option<u32>,
     page: Option<u32>,
+    schema: Option<String>,
 ) -> Result<QueryResult, String> {
     log::info!(
         "Executing query on connection: {} | Query: {}",
@@ -1757,7 +1758,14 @@ pub async fn execute_query<R: Runtime>(
                 mysql::execute_query(&params, &sanitized_query, limit, page.unwrap_or(1)).await
             }
             "postgres" => {
-                postgres::execute_query(&params, &sanitized_query, limit, page.unwrap_or(1)).await
+                postgres::execute_query(
+                    &params,
+                    &sanitized_query,
+                    limit,
+                    page.unwrap_or(1),
+                    schema.as_deref(),
+                )
+                .await
             }
             "sqlite" => {
                 sqlite::execute_query(&params, &sanitized_query, limit, page.unwrap_or(1)).await

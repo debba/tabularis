@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Loader2,
@@ -92,6 +92,12 @@ export const SidebarSchemaItem = ({
   const isLoaded = schemaData?.isLoaded ?? false;
 
   const groupedRoutines = routines.length > 0 ? groupRoutinesByType(routines) : { procedures: [], functions: [] };
+
+  useEffect(() => {
+    if (activeSchema === schemaName) {
+      setIsExpanded(true);
+    }
+  }, [activeSchema, schemaName]);
 
   const handleToggle = () => {
     const willExpand = !isExpanded;

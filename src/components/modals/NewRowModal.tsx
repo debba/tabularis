@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { X, Loader2, Plus } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useDatabase } from "../../hooks/useDatabase";
-import { quoteIdentifier } from "../../utils/identifiers";
+import { quoteTableRef } from "../../utils/identifiers";
 
 interface TableColumn {
   name: string;
@@ -54,13 +54,14 @@ export const NewRowModal = ({
     setLoadingFk((prev) => ({ ...prev, [fk.column_name]: true }));
     setFkErrors((prev) => ({ ...prev, [fk.column_name]: "" }));
     try {
-      const quotedTable = quoteIdentifier(fk.ref_table, activeDriver);
+      const quotedTable = quoteTableRef(fk.ref_table, activeDriver, activeSchema);
       // Select * from referenced table to get context
       const query = `SELECT * FROM ${quotedTable} LIMIT 100`;
 
       const result = await invoke<{ columns: string[], rows: unknown[][] }>("execute_query", {
         connectionId: activeConnectionId,
         query,
+        ...(activeSchema ? { schema: activeSchema } : {}),
       });
 
       const options = result.rows.map((rowArray) => {
@@ -104,7 +105,7 @@ export const NewRowModal = ({
     } finally {
       setLoadingFk((prev) => ({ ...prev, [fk.column_name]: false }));
     }
-  }, [activeConnectionId, activeDriver]);
+  }, [activeConnectionId, activeDriver, activeSchema]);
 
   useEffect(() => {
     if (isOpen && activeConnectionId && tableName) {

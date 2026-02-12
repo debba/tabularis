@@ -588,9 +588,21 @@ pub async fn execute_query(
     query: &str,
     limit: Option<u32>,
     page: u32,
+    schema: Option<&str>,
 ) -> Result<QueryResult, String> {
     let pool = get_postgres_pool(params).await?;
     let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
+
+    if let Some(schema) = schema {
+        let search_path = format!(
+            "SET search_path TO \"{}\"",
+            escape_identifier(schema)
+        );
+        sqlx::query(&search_path)
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
 
     let is_select = query.trim_start().to_uppercase().starts_with("SELECT");
     let mut pagination: Option<Pagination> = None;

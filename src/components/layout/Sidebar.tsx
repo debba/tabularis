@@ -109,7 +109,7 @@ export const Sidebar = () => {
     label: string;
     data?: ContextMenuData;
   } | null>(null);
-  const [schemaModalTable, setSchemaModalTable] = useState<string | null>(null);
+  const [schemaModal, setSchemaModal] = useState<{ tableName: string; schema?: string } | null>(null);
   const [isCreateTableModalOpen, setIsCreateTableModalOpen] = useState(false);
   const [modifyColumnModal, setModifyColumnModal] = useState<{
     isOpen: boolean;
@@ -173,9 +173,7 @@ export const Sidebar = () => {
     if (schema) {
       setActiveTable(tableName, schema);
     }
-    const quotedTable = schema
-      ? `"${schema}"."${tableName}"`
-      : quoteIdentifier(tableName, activeDriver);
+    const quotedTable = quoteTableRef(tableName, activeDriver, schema);
     navigate("/editor", {
       state: {
         initialQuery: `SELECT * FROM ${quotedTable}`,
@@ -190,9 +188,7 @@ export const Sidebar = () => {
   };
 
   const handleOpenView = (viewName: string, schema?: string) => {
-    const quotedView = schema
-      ? `"${schema}"."${viewName}"`
-      : quoteIdentifier(viewName, activeDriver);
+    const quotedView = quoteTableRef(viewName, activeDriver, schema);
     navigate("/editor", {
       state: {
         initialQuery: `SELECT * FROM ${quotedView}`,
@@ -740,7 +736,7 @@ export const Sidebar = () => {
                               tableName: t_name,
                             })
                           }
-                          onDropIndex={async (t_name, name) => {
+                          onDropIndex={async (_t_name, name) => {
                             if (
                               await ask(
                                 t("sidebar.deleteIndexConfirm", { name }),
@@ -750,10 +746,11 @@ export const Sidebar = () => {
                                 },
                               )
                             ) {
-                              const q = `DROP INDEX "${name}"`;
+                              const q = `DROP INDEX ${quoteTableRef(name, activeDriver, schemaName)}`;
                               await invoke("execute_query", {
                                 connectionId: activeConnectionId,
                                 query: q,
+                                ...(schemaName ? { schema: schemaName } : {}),
                               }).catch(console.error);
                               setSchemaVersion((v) => v + 1);
                             }
@@ -774,10 +771,14 @@ export const Sidebar = () => {
                                 },
                               )
                             ) {
-                              const q = `ALTER TABLE "${t_name}" DROP CONSTRAINT "${name}"`;
+                              const q = `ALTER TABLE ${quoteTableRef(t_name, activeDriver, schemaName)} DROP CONSTRAINT ${quoteIdentifier(
+                                name,
+                                activeDriver,
+                              )}`;
                               await invoke("execute_query", {
                                 connectionId: activeConnectionId,
                                 query: q,
+                                ...(schemaName ? { schema: schemaName } : {}),
                               }).catch(console.error);
                               setSchemaVersion((v) => v + 1);
                             }
@@ -876,8 +877,11 @@ export const Sidebar = () => {
                                     const q =
                                       activeDriver === "mysql" ||
                                       activeDriver === "mariadb"
-                                        ? `DROP INDEX \`${name}\` ON \`${t_name}\``
-                                        : `DROP INDEX "${name}"`;
+                                        ? `DROP INDEX ${quoteIdentifier(name, activeDriver)} ON ${quoteTableRef(
+                                            t_name,
+                                            activeDriver,
+                                          )}`
+                                        : `DROP INDEX ${quoteIdentifier(name, activeDriver)}`;
                                     await invoke("execute_query", {
                                       connectionId: activeConnectionId,
                                       query: q,
@@ -910,8 +914,14 @@ export const Sidebar = () => {
                                     const q =
                                       activeDriver === "mysql" ||
                                       activeDriver === "mariadb"
-                                        ? `ALTER TABLE \`${t_name}\` DROP FOREIGN KEY \`${name}\``
-                                        : `ALTER TABLE "${t_name}" DROP CONSTRAINT "${name}"`;
+                                        ? `ALTER TABLE ${quoteTableRef(t_name, activeDriver)} DROP FOREIGN KEY ${quoteIdentifier(
+                                            name,
+                                            activeDriver,
+                                          )}`
+                                        : `ALTER TABLE ${quoteTableRef(t_name, activeDriver)} DROP CONSTRAINT ${quoteIdentifier(
+                                            name,
+                                            activeDriver,
+                                          )}`;
                                     await invoke("execute_query", {
                                       connectionId: activeConnectionId,
                                       query: q,
@@ -1119,13 +1129,17 @@ export const Sidebar = () => {
                       // Don't pass tableName for aggregate queries - let extractTableName handle it
                       runQuery(
                         `SELECT COUNT(*) as count FROM ${quotedTable}`,
+                        undefined,
+                        undefined,
+                        false,
+                        ctxSchema,
                       );
                     },
                   },
                   {
                     label: t("sidebar.viewSchema"),
                     icon: FileText,
-                    action: () => setSchemaModalTable(contextMenu.id),
+                    action: () => setSchemaModal({ tableName: contextMenu.id, schema: ctxSchema }),
                   },
                   {
                     label: t("sidebar.viewERDiagram"),
@@ -1182,6 +1196,7 @@ export const Sidebar = () => {
                           await invoke("execute_query", {
                             connectionId: activeConnectionId,
                             query: `DROP TABLE ${quotedTable}`,
+                            ...(ctxSchema ? { schema: ctxSchema } : {}),
                           });
                           if (refreshTables) refreshTables();
                         } catch (e) {
@@ -1216,6 +1231,8 @@ export const Sidebar = () => {
                           "tableName" in contextMenu.data
                         ) {
                           const t_name = contextMenu.data.tableName;
+                          const ctxSchema =
+                            "schema" in contextMenu.data ? contextMenu.data.schema : undefined;
                           if (
                             await ask(
                               t("sidebar.deleteIndexConfirm", {
@@ -1231,12 +1248,17 @@ export const Sidebar = () => {
                               const q =
                                 activeDriver === "mysql" ||
                                 activeDriver === "mariadb"
-                                  ? `DROP INDEX \`${contextMenu.id}\` ON \`${t_name}\``
-                                  : `DROP INDEX "${contextMenu.id}"`;
+                                  ? `DROP INDEX ${quoteIdentifier(contextMenu.id, activeDriver)} ON ${quoteTableRef(
+                                      t_name,
+                                      activeDriver,
+                                      ctxSchema,
+                                    )}`
+                                  : `DROP INDEX ${quoteTableRef(contextMenu.id, activeDriver, ctxSchema)}`;
 
                               await invoke("execute_query", {
                                 connectionId: activeConnectionId,
                                 query: q,
+                                ...(ctxSchema ? { schema: ctxSchema } : {}),
                               });
 
                               setSchemaVersion((v) => v + 1);
@@ -1263,44 +1285,53 @@ export const Sidebar = () => {
                           navigator.clipboard.writeText(contextMenu.id),
                       },
                       {
-                        label: t("sidebar.deleteFk"),
-                        icon: Trash2,
-                        danger: true,
-                        action: async () => {
+                      label: t("sidebar.deleteFk"),
+                      icon: Trash2,
+                      danger: true,
+                      action: async () => {
+                        if (
+                          contextMenu.data &&
+                          "tableName" in contextMenu.data
+                        ) {
+                          const t_name = contextMenu.data.tableName;
+                          const ctxSchema =
+                            "schema" in contextMenu.data ? contextMenu.data.schema : undefined;
                           if (
-                            contextMenu.data &&
-                            "tableName" in contextMenu.data
+                            await ask(
+                              t("sidebar.deleteFkConfirm", {
+                                name: contextMenu.id,
+                              }),
+                              {
+                                title: t("sidebar.deleteFk"),
+                                kind: "warning",
+                              },
+                            )
                           ) {
-                            const t_name = contextMenu.data.tableName;
-                            if (
-                              await ask(
-                                t("sidebar.deleteFkConfirm", {
-                                  name: contextMenu.id,
-                                }),
-                                {
-                                  title: t("sidebar.deleteFk"),
-                                  kind: "warning",
-                                },
-                              )
-                            ) {
-                              if (activeDriver === "sqlite") {
-                                await message(t("sidebar.sqliteFkError"), {
-                                  kind: "error",
-                                });
-                                return;
-                              }
-                              const q =
-                                activeDriver === "mysql" ||
-                                activeDriver === "mariadb"
-                                  ? `ALTER TABLE \`${t_name}\` DROP FOREIGN KEY \`${contextMenu.id}\``
-                                  : `ALTER TABLE "${t_name}" DROP CONSTRAINT "${contextMenu.id}"`;
-                              await invoke("execute_query", {
-                                connectionId: activeConnectionId,
-                                query: q,
-                              }).catch(console.error);
+                            if (activeDriver === "sqlite") {
+                              await message(t("sidebar.sqliteFkError"), {
+                                kind: "error",
+                              });
+                              return;
                             }
+                            const q =
+                              activeDriver === "mysql" ||
+                              activeDriver === "mariadb"
+                                ? `ALTER TABLE ${quoteTableRef(t_name, activeDriver, ctxSchema)} DROP FOREIGN KEY ${quoteIdentifier(
+                                    contextMenu.id,
+                                    activeDriver,
+                                  )}`
+                                : `ALTER TABLE ${quoteTableRef(t_name, activeDriver, ctxSchema)} DROP CONSTRAINT ${quoteIdentifier(
+                                    contextMenu.id,
+                                    activeDriver,
+                                  )}`;
+                            await invoke("execute_query", {
+                              connectionId: activeConnectionId,
+                              query: q,
+                              ...(ctxSchema ? { schema: ctxSchema } : {}),
+                            }).catch(console.error);
                           }
-                        },
+                        }
+                      },
                       },
                     ]
                   : contextMenu.type === "folder_indexes"
@@ -1512,11 +1543,12 @@ export const Sidebar = () => {
         />
       )}
 
-      {schemaModalTable && (
+      {schemaModal && (
         <SchemaModal
           isOpen={true}
-          tableName={schemaModalTable}
-          onClose={() => setSchemaModalTable(null)}
+          tableName={schemaModal.tableName}
+          schema={schemaModal.schema}
+          onClose={() => setSchemaModal(null)}
         />
       )}
 

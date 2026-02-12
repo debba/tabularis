@@ -72,7 +72,7 @@ export const CreateForeignKeyModal = ({
             if (tbls.length > 0) setRefTable(tbls[0].name); // Default first table
         }).catch(e => setError(String(e)));
     }
-  }, [isOpen, connectionId, tableName]);
+  }, [isOpen, connectionId, tableName, activeSchema]);
 
   // Fetch ref columns when refTable changes
   useEffect(() => {
@@ -86,7 +86,7 @@ export const CreateForeignKeyModal = ({
             .catch(e => console.error(e))
             .finally(() => setFetchingRefCols(false));
       }
-  }, [refTable, isOpen, connectionId]);
+  }, [refTable, isOpen, connectionId, activeSchema]);
 
   // Auto-generate name based on selection
   useEffect(() => {
@@ -115,7 +115,11 @@ export const CreateForeignKeyModal = ({
       setLoading(true);
       setError('');
       try {
-          await invoke('execute_query', { connectionId, query: sqlPreview });
+          await invoke('execute_query', {
+            connectionId,
+            query: sqlPreview,
+            ...(activeSchema ? { schema: activeSchema } : {}),
+          });
           onSuccess();
           onClose();
       } catch (e) {

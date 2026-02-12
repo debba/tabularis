@@ -139,7 +139,7 @@ async fn test_postgres_integration_flow() {
         name TEXT,
         email TEXT
     )";
-    let res = postgres::execute_query(&params, create_sql, None, 1).await;
+    let res = postgres::execute_query(&params, create_sql, None, 1, None).await;
     assert!(
         res.is_ok(),
         "Failed to create table in Postgres: {:?}",
@@ -147,17 +147,17 @@ async fn test_postgres_integration_flow() {
     );
 
     // 3. Clean table
-    let _ = postgres::execute_query(&params, "TRUNCATE TABLE test_users", None, 1).await;
+    let _ = postgres::execute_query(&params, "TRUNCATE TABLE test_users", None, 1, None).await;
 
     // 4. Insert Data
     let insert_sql =
         "INSERT INTO test_users (name, email) VALUES ('Luigi Verdi', 'luigi@test.com')";
-    let res = postgres::execute_query(&params, insert_sql, None, 1).await;
+    let res = postgres::execute_query(&params, insert_sql, None, 1, None).await;
     assert!(res.is_ok(), "Failed to insert data in Postgres");
 
     // 5. Select Data
     let select_sql = "SELECT * FROM test_users WHERE email = 'luigi@test.com'";
-    let res = postgres::execute_query(&params, select_sql, None, 1).await;
+    let res = postgres::execute_query(&params, select_sql, None, 1, None).await;
     match res {
         Ok(data) => {
             assert_eq!(data.rows.len(), 1, "Expected 1 row");
@@ -173,5 +173,5 @@ async fn test_postgres_integration_flow() {
     }
 
     // 6. Cleanup
-    let _ = postgres::execute_query(&params, "DROP TABLE test_users", None, 1).await;
+    let _ = postgres::execute_query(&params, "DROP TABLE test_users", None, 1, None).await;
 }

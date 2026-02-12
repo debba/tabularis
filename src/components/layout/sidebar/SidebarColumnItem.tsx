@@ -6,6 +6,7 @@ import { Key, Columns, Edit, Copy, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { ContextMenu } from "../../ui/ContextMenu";
 import type { TableColumn } from "../../../types/schema";
+import { quoteIdentifier, quoteTableRef } from "../../../utils/identifiers";
 
 interface SidebarColumnItemProps {
   column: TableColumn;
@@ -15,6 +16,7 @@ interface SidebarColumnItemProps {
   onRefresh: () => void;
   onEdit: (column: TableColumn) => void;
   isView?: boolean;
+  schema?: string;
 }
 
 export const SidebarColumnItem = ({
@@ -25,6 +27,7 @@ export const SidebarColumnItem = ({
   onRefresh,
   onEdit,
   isView = false,
+  schema,
 }: SidebarColumnItemProps) => {
   const { t } = useTranslation();
   const [contextMenu, setContextMenu] = useState<{
@@ -49,12 +52,14 @@ export const SidebarColumnItem = ({
 
     if (confirmed) {
       try {
-        const q = driver === "mysql" || driver === "mariadb" ? "`" : '"';
-        const query = `ALTER TABLE ${q}${tableName}${q} DROP COLUMN ${q}${column.name}${q}`;
+        const quotedTable = quoteTableRef(tableName, driver, schema);
+        const quotedColumn = quoteIdentifier(column.name, driver);
+        const query = `ALTER TABLE ${quotedTable} DROP COLUMN ${quotedColumn}`;
 
         await invoke("execute_query", {
           connectionId,
           query,
+          ...(schema ? { schema } : {}),
         });
 
         onRefresh();

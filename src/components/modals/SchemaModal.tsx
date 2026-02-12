@@ -15,13 +15,15 @@ interface SchemaModalProps {
   isOpen: boolean;
   onClose: () => void;
   tableName: string;
+  schema?: string | null;
 }
 
-export const SchemaModal = ({ isOpen, onClose, tableName }: SchemaModalProps) => {
+export const SchemaModal = ({ isOpen, onClose, tableName, schema }: SchemaModalProps) => {
   const { t } = useTranslation();
   const { activeConnectionId, activeSchema } = useDatabase();
   const [columns, setColumns] = useState<TableColumn[]>([]);
   const [loading, setLoading] = useState(false);
+  const resolvedSchema = schema ?? activeSchema;
 
   useEffect(() => {
     if (!isOpen || !activeConnectionId || !tableName) return;
@@ -32,7 +34,7 @@ export const SchemaModal = ({ isOpen, onClose, tableName }: SchemaModalProps) =>
         const cols = await invoke<TableColumn[]>('get_columns', {
           connectionId: activeConnectionId,
           tableName,
-          ...(activeSchema ? { schema: activeSchema } : {}),
+          ...(resolvedSchema ? { schema: resolvedSchema } : {}),
         });
         setColumns(cols);
       } catch (err) {
@@ -43,7 +45,7 @@ export const SchemaModal = ({ isOpen, onClose, tableName }: SchemaModalProps) =>
     };
     
     void loadSchema();
-  }, [isOpen, activeConnectionId, tableName]);
+  }, [isOpen, activeConnectionId, tableName, resolvedSchema]);
 
   if (!isOpen) return null;
 

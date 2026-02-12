@@ -341,7 +341,7 @@ async fn handle_call_tool(
 
         let result = match conn.params.driver.as_str() {
             "mysql" => mysql::execute_query(&db_params, query, Some(100), 1).await,
-            "postgres" => postgres::execute_query(&db_params, query, Some(100), 1).await,
+            "postgres" => postgres::execute_query(&db_params, query, Some(100), 1, None).await,
             "sqlite" => sqlite::execute_query(&db_params, query, Some(100), 1).await,
             _ => Err("Unsupported driver".into()),
         }

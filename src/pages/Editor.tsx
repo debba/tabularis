@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { quoteIdentifier, quoteTableRef } from "../utils/identifiers";
+import { quoteTableRef } from "../utils/identifiers";
 import {
   generateTempId,
   initializeNewRow,
@@ -310,6 +310,7 @@ export const Editor = () => {
         const cols = await invoke<TableColumn[]>("get_columns", {
           connectionId: activeConnectionId,
           tableName: table,
+          ...(activeSchema ? { schema: activeSchema } : {}),
         });
         const pk = cols.find((c) => c.is_pk);
         const autoInc = cols
@@ -337,7 +338,7 @@ export const Editor = () => {
           updateTab(targetId, { pkColumn: null, autoIncrementColumns: [], defaultValueColumns: [], nullableColumns: [] });
       }
     },
-    [activeConnectionId, activeTabId, updateTab],
+    [activeConnectionId, activeTabId, updateTab, activeSchema],
   );
 
   const stopQuery = useCallback(async () => {
@@ -460,11 +461,13 @@ export const Editor = () => {
             ? settings.resultPageSize
             : 100;
 
+        const schema = targetTab?.schema ?? activeSchema;
         const res = await invoke<QueryResult>("execute_query", {
           connectionId: activeConnectionId,
           query: textToRun,
           limit: pageSize,
           page: pageNum,
+          ...(schema ? { schema } : {}),
         });
         const end = performance.now();
 
@@ -497,7 +500,7 @@ export const Editor = () => {
         });
       }
     },
-    [activeConnectionId, updateTab, settings.resultPageSize, fetchPkColumn, t, activeDriver],
+    [activeConnectionId, updateTab, settings.resultPageSize, fetchPkColumn, t, activeDriver, activeSchema],
   );
 
   const handleRunButton = useCallback(() => {
@@ -824,6 +827,7 @@ export const Editor = () => {
       const columns = await invoke<TableColumn[]>("get_columns", {
         connectionId: activeConnectionId,
         tableName: activeTab.activeTable,
+        ...(activeSchema ? { schema: activeSchema } : {}),
       });
 
       if (!columns || columns.length === 0) {
@@ -912,7 +916,7 @@ export const Editor = () => {
         kind: "error",
       });
     }
-  }, [activeConnectionId, activeTab, updateTab, t, settings.resultPageSize]);
+  }, [activeConnectionId, activeTab, updateTab, t, settings.resultPageSize, activeSchema]);
 
   const handleSubmitChanges = useCallback(async () => {
     if (
@@ -978,6 +982,7 @@ export const Editor = () => {
         const columns = await invoke<TableColumn[]>("get_columns", {
           connectionId: activeConnectionId,
           tableName: activeTable,
+          ...(activeSchema ? { schema: activeSchema } : {}),
         });
 
         const selectedDisplayIndices = new Set<number>();
@@ -1135,7 +1140,7 @@ export const Editor = () => {
         kind: "error",
       });
     }
-  }, [activeTab, activeConnectionId, updateActiveTab, runQuery, t, applyToAll]);
+  }, [activeTab, activeConnectionId, updateActiveTab, runQuery, t, applyToAll, activeSchema]);
 
   const handleParamsSubmit = useCallback(
     (values: Record<string, string>) => {

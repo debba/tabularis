@@ -20,7 +20,8 @@ export function getQuoteChar(driver: string | null | undefined): string {
  */
 export function quoteIdentifier(identifier: string, driver: string | null | undefined): string {
   const quote = getQuoteChar(driver);
-  return `${quote}${identifier}${quote}`;
+  const escaped = quote === "`" ? identifier.replace(/`/g, "``") : identifier.replace(/"/g, '""');
+  return `${quote}${escaped}${quote}`;
 }
 
 /**
@@ -33,9 +34,8 @@ export function quoteTableRef(
   driver: string | null | undefined,
   schema?: string | null,
 ): string {
-  const quote = getQuoteChar(driver);
   if (schema) {
-    return `${quote}${schema}${quote}.${quote}${table}${quote}`;
+    return `${quoteIdentifier(schema, driver)}.${quoteIdentifier(table, driver)}`;
   }
-  return `${quote}${table}${quote}`;
+  return quoteIdentifier(table, driver);
 }

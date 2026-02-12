@@ -49,7 +49,7 @@ export const CreateIndexModal = ({
             .catch(e => console.error(e))
             .finally(() => setFetchingCols(false));
     }
-  }, [isOpen, connectionId, tableName]);
+  }, [isOpen, connectionId, tableName, activeSchema]);
 
   const toggleColumn = (colName: string) => {
       if (selectedColumns.includes(colName)) {
@@ -81,7 +81,11 @@ export const CreateIndexModal = ({
       setLoading(true);
       setError('');
       try {
-          await invoke('execute_query', { connectionId, query: sqlPreview });
+          await invoke('execute_query', {
+            connectionId,
+            query: sqlPreview,
+            ...(activeSchema ? { schema: activeSchema } : {}),
+          });
           onSuccess();
           onClose();
       } catch (e) {

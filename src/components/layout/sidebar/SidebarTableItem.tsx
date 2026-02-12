@@ -220,6 +220,7 @@ export const SidebarTableItem = ({
                         driver={driver}
                         onRefresh={refreshMetadata}
                         onEdit={(c) => onEditColumn(table.name, c)}
+                        schema={schema}
                       />
                     ))}
                   </div>
