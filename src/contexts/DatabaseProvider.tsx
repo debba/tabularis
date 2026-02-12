@@ -195,6 +195,17 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
   }, [activeConnectionId, schemaDataMap, loadSchemaData, activeSchema]);
 
   const connect = async (connectionId: string) => {
+    // Disconnect from previous connection if exists
+    if (activeConnectionId && activeConnectionId !== connectionId) {
+      console.log(`[DatabaseProvider] Disconnecting from previous connection: ${activeConnectionId}`);
+      try {
+        await invoke('disconnect_connection', { connectionId: activeConnectionId });
+        console.log(`[DatabaseProvider] Successfully disconnected from: ${activeConnectionId}`);
+      } catch (error) {
+        console.error(`[DatabaseProvider] Failed to disconnect from ${activeConnectionId}:`, error);
+      }
+    }
+
     setActiveConnectionId(connectionId);
     setIsLoadingTables(true);
     setIsLoadingViews(true);
@@ -338,11 +349,23 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [activeConnectionId]);
 
-  const disconnect = () => {
+  const disconnect = async () => {
     if (activeConnectionId) {
+      console.log(`[DatabaseProvider] Disconnecting from connection: ${activeConnectionId}`);
+
+      // Clear autocomplete cache
       clearAutocompleteCache(activeConnectionId);
+
+      // Close the actual database connection
+      try {
+        await invoke('disconnect_connection', { connectionId: activeConnectionId });
+        console.log(`[DatabaseProvider] Successfully disconnected from: ${activeConnectionId}`);
+      } catch (error) {
+        console.error(`[DatabaseProvider] Failed to disconnect from ${activeConnectionId}:`, error);
+      }
     }
 
+    // Clear local state
     setActiveConnectionId(null);
     setActiveDriver(null);
     setActiveTable(null);

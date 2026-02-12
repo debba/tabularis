@@ -2210,3 +2210,22 @@ pub async fn get_view_columns<R: Runtime>(
 
     result
 }
+
+/// Disconnect from a database connection by closing its connection pool
+#[tauri::command]
+pub async fn disconnect_connection<R: Runtime>(
+    app: AppHandle<R>,
+    connection_id: String,
+) -> Result<(), String> {
+    log::info!("Disconnecting from connection: {}", connection_id);
+
+    let saved_conn = find_connection_by_id(&app, &connection_id)?;
+    let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
+
+    // Close the connection pool
+    crate::pool_manager::close_pool_with_id(&params, Some(&connection_id)).await;
+
+    log::info!("Successfully disconnected from connection: {}", connection_id);
+    Ok(())
+}

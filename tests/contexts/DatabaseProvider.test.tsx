@@ -52,6 +52,7 @@ describe('DatabaseProvider', () => {
       if (cmd === 'get_views') return Promise.resolve(mockViews);
       if (cmd === 'get_routines') return Promise.resolve(mockRoutines);
       if (cmd === 'set_window_title') return Promise.resolve(undefined);
+      if (cmd === 'disconnect_connection') return Promise.resolve(undefined);
       return Promise.reject(new Error(`Unexpected command: ${cmd}`));
     });
   });
@@ -121,6 +122,17 @@ describe('DatabaseProvider', () => {
   });
 
   it('should disconnect and reset state', async () => {
+    vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === 'get_connections') return Promise.resolve(mockConnections);
+      if (cmd === 'test_connection') return Promise.resolve('Connection successful!');
+      if (cmd === 'get_tables') return Promise.resolve(mockTables);
+      if (cmd === 'get_views') return Promise.resolve(mockViews);
+      if (cmd === 'get_routines') return Promise.resolve(mockRoutines);
+      if (cmd === 'set_window_title') return Promise.resolve(undefined);
+      if (cmd === 'disconnect_connection') return Promise.resolve(undefined);
+      return Promise.reject(new Error(`Unexpected command: ${cmd}`));
+    });
+
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(DatabaseProvider, null, children);
 
@@ -129,18 +141,89 @@ describe('DatabaseProvider', () => {
     await act(async () => {
       await result.current.connect('conn-123');
     });
-    
+
     await waitFor(() => expect(result.current.activeConnectionId).toBe('conn-123'));
 
-    act(() => {
-      result.current.disconnect();
+    await act(async () => {
+      await result.current.disconnect();
     });
 
+    // Should call disconnect_connection command
+    expect(invoke).toHaveBeenCalledWith('disconnect_connection', { connectionId: 'conn-123' });
+
+    // Should reset all state
     expect(result.current.activeConnectionId).toBeNull();
     expect(result.current.activeDriver).toBeNull();
     expect(result.current.activeTable).toBeNull();
     expect(result.current.tables).toHaveLength(0);
     expect(result.current.views).toHaveLength(0);
+  });
+
+  it('should disconnect previous connection when connecting to a new one', async () => {
+    vi.mocked(invoke).mockImplementation((cmd: string, args?: Record<string, unknown>) => {
+      if (cmd === 'get_connections') return Promise.resolve(mockConnections);
+      if (cmd === 'test_connection') return Promise.resolve('Connection successful!');
+      if (cmd === 'get_tables') return Promise.resolve(mockTables);
+      if (cmd === 'get_views') return Promise.resolve(mockViews);
+      if (cmd === 'get_routines') return Promise.resolve(mockRoutines);
+      if (cmd === 'set_window_title') return Promise.resolve(undefined);
+      if (cmd === 'disconnect_connection') return Promise.resolve(undefined);
+      return Promise.reject(new Error(`Unexpected command: ${cmd}`));
+    });
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(DatabaseProvider, null, children);
+
+    const { result } = renderHook(() => useDatabase(), { wrapper });
+
+    // Connect to first connection
+    await act(async () => {
+      await result.current.connect('conn-123');
+    });
+
+    await waitFor(() => expect(result.current.activeConnectionId).toBe('conn-123'));
+
+    // Reset mock call counts
+    vi.mocked(invoke).mockClear();
+
+    // Connect to second connection
+    const secondConnection = {
+      id: 'conn-456',
+      name: 'Second DB',
+      params: {
+        driver: 'postgres',
+        host: 'localhost',
+        database: 'seconddb',
+      },
+    };
+
+    vi.mocked(invoke).mockImplementation((cmd: string, args?: Record<string, unknown>) => {
+      if (cmd === 'get_connections') return Promise.resolve([...mockConnections, secondConnection]);
+      if (cmd === 'test_connection') return Promise.resolve('Connection successful!');
+      if (cmd === 'get_schemas') return Promise.resolve(['public']);
+      if (cmd === 'get_selected_schemas') return Promise.resolve(['public']);
+      if (cmd === 'get_schema_preference') return Promise.resolve('public');
+      if (cmd === 'get_tables') return Promise.resolve(mockTables);
+      if (cmd === 'get_views') return Promise.resolve(mockViews);
+      if (cmd === 'get_routines') return Promise.resolve(mockRoutines);
+      if (cmd === 'set_window_title') return Promise.resolve(undefined);
+      if (cmd === 'disconnect_connection') return Promise.resolve(undefined);
+      return Promise.reject(new Error(`Unexpected command: ${cmd}`));
+    });
+
+    await act(async () => {
+      await result.current.connect('conn-456');
+    });
+
+    // Should have called disconnect_connection for the previous connection
+    expect(invoke).toHaveBeenCalledWith('disconnect_connection', { connectionId: 'conn-123' });
+
+    // Should be connected to the new connection
+    await waitFor(() => {
+      expect(result.current.activeConnectionId).toBe('conn-456');
+      expect(result.current.activeConnectionName).toBe('Second DB');
+      expect(result.current.activeDatabaseName).toBe('seconddb');
+    });
   });
 
   it('should refresh tables', async () => {
@@ -164,6 +247,7 @@ describe('DatabaseProvider', () => {
       if (cmd === 'get_views') return Promise.resolve(mockViews);
       if (cmd === 'get_routines') return Promise.resolve(mockRoutines);
       if (cmd === 'set_window_title') return Promise.resolve(undefined);
+      if (cmd === 'disconnect_connection') return Promise.resolve(undefined);
       return Promise.reject(new Error(`Unexpected command: ${cmd}`));
     });
 
@@ -273,6 +357,7 @@ describe('DatabaseProvider', () => {
         if (cmd === 'get_views') return Promise.resolve(updatedViews);
         if (cmd === 'get_routines') return Promise.resolve(mockRoutines);
         if (cmd === 'set_window_title') return Promise.resolve(undefined);
+        if (cmd === 'disconnect_connection') return Promise.resolve(undefined);
         return Promise.reject(new Error(`Unexpected command: ${cmd}`));
       });
 
@@ -331,8 +416,8 @@ describe('DatabaseProvider', () => {
 
       await waitFor(() => expect(result.current.views).toHaveLength(2));
 
-      act(() => {
-        result.current.disconnect();
+      await act(async () => {
+        await result.current.disconnect();
       });
 
       expect(result.current.views).toHaveLength(0);
@@ -367,6 +452,7 @@ describe('DatabaseProvider', () => {
         if (cmd === 'get_schemas') return Promise.resolve(mockSchemas);
         if (cmd === 'get_selected_schemas') return Promise.resolve([]);
         if (cmd === 'set_window_title') return Promise.resolve(undefined);
+        if (cmd === 'disconnect_connection') return Promise.resolve(undefined);
         return Promise.resolve([]);
       });
 
@@ -396,6 +482,7 @@ describe('DatabaseProvider', () => {
         if (cmd === 'get_views') return Promise.resolve(mockPgViews);
         if (cmd === 'get_routines') return Promise.resolve(mockPgRoutines);
         if (cmd === 'set_window_title') return Promise.resolve(undefined);
+        if (cmd === 'disconnect_connection') return Promise.resolve(undefined);
         return Promise.resolve(undefined);
       });
 
@@ -518,8 +605,8 @@ describe('DatabaseProvider', () => {
         expect(result.current.selectedSchemas).toEqual(['public']);
       });
 
-      act(() => {
-        result.current.disconnect();
+      await act(async () => {
+        await result.current.disconnect();
       });
 
       expect(result.current.selectedSchemas).toEqual([]);

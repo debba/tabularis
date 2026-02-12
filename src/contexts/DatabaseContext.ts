@@ -46,7 +46,7 @@ export interface DatabaseContextType {
   isLoadingViews: boolean;
   isLoadingRoutines: boolean;
   connect: (connectionId: string) => Promise<void>;
-  disconnect: () => void;
+  disconnect: () => Promise<void>;
   setActiveTable: (table: string | null, schema?: string | null) => void;
   refreshTables: () => Promise<void>;
   refreshViews: () => Promise<void>;

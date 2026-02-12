@@ -74,6 +74,17 @@ export const Connections = () => {
     }
   };
 
+  const handleDisconnect = async () => {
+    setError(null);
+    try {
+      await disconnect();
+    } catch (e) {
+      console.error('Disconnect error:', e);
+      const errorMsg = typeof e === 'string' ? e : (e as Error).message || String(e);
+      setError(`${t('connections.failDisconnect')}\n\nError: ${errorMsg}`);
+    }
+  };
+
   const handleDelete = async (id: string) => {
       const confirmed = await ask(t('connections.confirmDelete'), { 
           title: t('connections.deleteTitle'),
@@ -193,8 +204,8 @@ export const Connections = () => {
 
                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-elevated/80 p-1 rounded-lg backdrop-blur-sm border border-white/30">
                     {isActive ? (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); disconnect(); }}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDisconnect(); }}
                         className="p-1.5 hover:bg-red-900/50 text-secondary hover:text-red-400 rounded"
                         title={t('connections.disconnect')}
                       >

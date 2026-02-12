@@ -114,6 +114,7 @@
     "confirmDelete": "Are you sure you want to delete this connection?",
     "deleteTitle": "Confirm Delete",
     "failConnect": "Failed to connect to {{name}}. Please check your settings or ensuring the database is running.",
+    "failDisconnect": "Failed to disconnect from database",
     "failDuplicate": "Failed to duplicate connection",
     "connecting": "Connecting..."
   },

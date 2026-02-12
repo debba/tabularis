@@ -113,6 +113,7 @@
     "confirmDelete": "¿Estás seguro de que deseas eliminar esta conexión?",
     "deleteTitle": "Confirmar eliminación",
     "failConnect": "Error al conectar a {{name}}. Verifica tu configuración o asegúrate de que la base de datos esté en ejecución.",
+    "failDisconnect": "No se pudo desconectar de la base de datos",
     "failDuplicate": "Error al duplicar la conexión",
     "connecting": "Conectando..."
   },
