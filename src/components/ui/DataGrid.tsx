@@ -23,9 +23,10 @@ import {
   type MergedRow,
   type ColumnDisplayInfo,
 } from "../../utils/dataGrid";
+import { isGeometricType, formatGeometricValue } from "../../utils/geometry";
 import { useDatabase } from "../../hooks/useDatabase";
 import { rowToTSV, rowsToTSV, getSelectedRows, copyTextToClipboard } from "../../utils/clipboard";
-import type { PendingInsertion } from "../../types/editor";
+import type { PendingInsertion, TableColumn } from "../../types/editor";
 
 interface DataGridProps {
   columns: string[];
@@ -35,6 +36,7 @@ interface DataGridProps {
   autoIncrementColumns?: string[];
   defaultValueColumns?: string[];
   nullableColumns?: string[];
+  columnMetadata?: TableColumn[];
   connectionId?: string | null;
   onRefresh?: () => void;
   pendingChanges?: Record<
@@ -66,6 +68,7 @@ export const DataGrid = React.memo(({
   autoIncrementColumns,
   defaultValueColumns,
   nullableColumns,
+  columnMetadata,
   connectionId,
   onRefresh,
   pendingChanges,
@@ -122,6 +125,12 @@ export const DataGrid = React.memo(({
     const pkIndex = columns.indexOf(pkColumn);
     return pkIndex >= 0 ? pkIndex : null;
   }, [columns, pkColumn]);
+
+  // Create column type map for O(1) lookup during cell rendering
+  const columnTypeMap = useMemo(() => {
+    if (!columnMetadata) return null;
+    return new Map(columnMetadata.map(col => [col.name, col.data_type]));
+  }, [columnMetadata]);
 
   // Merge existing rows with pending insertions
   const mergedRows = useMemo(() => {
@@ -210,7 +219,15 @@ export const DataGrid = React.memo(({
     if (!mergedRow) return;
     if (mergedRow.type !== "insertion" && !pkColumn) return;
 
-    setEditingCell({ rowIndex, colIndex, value });
+    // For geometric columns, show WKT format in editor instead of WKB hex
+    let editValue = value;
+    const colName = columns[colIndex];
+    const colType = columnTypeMap?.get(colName);
+    if (colType && isGeometricType(colType) && value !== null && value !== undefined) {
+      editValue = formatGeometricValue(value);
+    }
+
+    setEditingCell({ rowIndex, colIndex, value: editValue });
   };
 
   const isCommittingRef = useRef(false);
@@ -404,7 +421,9 @@ export const DataGrid = React.memo(({
           },
           cell: (info) => {
             const val = info.getValue();
-            const formatted = formatCellValue(val, t("dataGrid.null"));
+            const colName = info.column.id;
+            const colType = columnTypeMap?.get(colName);
+            const formatted = formatCellValue(val, t("dataGrid.null"), colType);
 
             // The <generated> placeholder logic for auto-increment columns is handled
             // in the main render loop where we have full context (isInsertion, etc).
@@ -422,7 +441,7 @@ export const DataGrid = React.memo(({
           },
         }),
       ),
-    [columns, columnHelper, t, sortClause, onSort],
+    [columns, columnHelper, t, sortClause, onSort, columnTypeMap],
   );
 
   const parentRef = useRef<HTMLDivElement>(null);

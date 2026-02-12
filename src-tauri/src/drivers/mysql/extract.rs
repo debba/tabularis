@@ -129,13 +129,23 @@ pub fn extract_value(row: &sqlx::mysql::MySqlRow, index: usize) -> serde_json::V
     // For GEOMETRY types (GEOMETRY, POINT, LINESTRING, POLYGON, etc.), extract as WKB binary and encode
     if col_type == "GEOMETRY" || col_type.contains("POINT") || col_type.contains("LINESTRING")
         || col_type.contains("POLYGON") || col_type.contains("COLLECTION") {
-        match row.try_get::<Vec<u8>, _>(index) {
-            Ok(v) => {
-                // Return WKB data as hexadecimal string (standard format for geometry display)
-                let hex_string = v.iter().map(|b| format!("{:02X}", b)).collect::<String>();
-                return serde_json::Value::String(format!("0x{}", hex_string));
+        // Use try_get_raw() to get the raw bytes since sqlx doesn't allow Vec<u8> for GEOMETRY
+        match row.try_get_raw(index) {
+            Ok(raw_value) => {
+                use sqlx::ValueRef;
+                if !raw_value.is_null() {
+                    // Decode the raw value to bytes
+                    match <Vec<u8> as sqlx::Decode<sqlx::MySql>>::decode(raw_value) {
+                        Ok(v) => {
+                            // Return WKB data as hexadecimal string (standard format for geometry display)
+                            let hex_string = v.iter().map(|b| format!("{:02X}", b)).collect::<String>();
+                            return serde_json::Value::String(format!("0x{}", hex_string));
+                        }
+                        Err(e) => eprintln!("[WARNING] Failed to decode geometry bytes for '{}': {}", col_name, e),
+                    }
+                }
             }
-            Err(e) => eprintln!("[DEBUG] ✗ {} as Vec<u8> (geometry): {}", col_name, e),
+            Err(e) => eprintln!("[WARNING] Failed to get raw geometry value for '{}': {}", col_name, e),
         }
     }
 

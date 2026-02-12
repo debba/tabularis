@@ -67,6 +67,7 @@ export interface Tab {
   autoIncrementColumns?: string[]; // Names of auto-increment columns
   defaultValueColumns?: string[]; // Names of columns with default values
   nullableColumns?: string[]; // Names of nullable columns
+  columnMetadata?: TableColumn[]; // Full column metadata (includes data_type for geometric types, etc.)
   isLoading?: boolean;
   connectionId: string;
   flowState?: FlowState;
