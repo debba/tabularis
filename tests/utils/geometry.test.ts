@@ -86,10 +86,14 @@ describe("geometry utils", () => {
 
   describe("wkbHexToWkt", () => {
     it("should convert WKB POINT to WKT", () => {
-      // WKB for POINT(1 2) - Little-endian
-      // 0101000000 = byte order (01) + type (01000000 = POINT)
-      // Then 8 bytes for X (1.0) and 8 bytes for Y (2.0)
-      const wkbPoint = "0x0101000000000000000000F03F0000000000000040";
+      // MySQL WKB format: SRID (4 bytes) + standard WKB
+      // SRID: 00000000 (SRID 0 in little-endian)
+      // Standard WKB for POINT(1 2):
+      //   - 01 = byte order (little-endian)
+      //   - 01000000 = geometry type (POINT)
+      //   - 000000000000F03F = X coordinate (1.0 as double)
+      //   - 0000000000000040 = Y coordinate (2.0 as double)
+      const wkbPoint = "0x000000000101000000000000000000F03F0000000000000040";
       const wkt = wkbHexToWkt(wkbPoint);
       expect(wkt).toContain("POINT");
       expect(wkt).toContain("1");
@@ -97,13 +101,15 @@ describe("geometry utils", () => {
     });
 
     it("should handle hex strings without 0x prefix", () => {
-      const wkbPoint = "0101000000000000000000F03F0000000000000040";
+      // MySQL format with SRID prefix
+      const wkbPoint = "000000000101000000000000000000F03F0000000000000040";
       const wkt = wkbHexToWkt(wkbPoint);
       expect(wkt).toContain("POINT");
     });
 
     it("should handle uppercase 0X prefix", () => {
-      const wkbPoint = "0X0101000000000000000000F03F0000000000000040";
+      // MySQL format with SRID prefix
+      const wkbPoint = "0X000000000101000000000000000000F03F0000000000000040";
       const wkt = wkbHexToWkt(wkbPoint);
       expect(wkt).toContain("POINT");
     });
@@ -114,9 +120,15 @@ describe("geometry utils", () => {
     });
 
     it("should convert WKB LINESTRING to WKT", () => {
-      // This is a simplified test - actual WKB for LINESTRING is more complex
-      // WKB LINESTRING with 2 points: (0,0) and (1,1)
-      const wkbLineString = "0x010200000002000000000000000000000000000000000000000000000000000000F03F000000000000F03F";
+      // MySQL format: SRID (4 bytes) + standard WKB
+      // SRID: 00000000
+      // Standard WKB LINESTRING with 2 points: (0,0) and (1,1)
+      //   - 01 = byte order (little-endian)
+      //   - 02000000 = geometry type (LINESTRING)
+      //   - 02000000 = number of points (2)
+      //   - 0000000000000000 + 0000000000000000 = point 1 (0, 0)
+      //   - 000000000000F03F + 000000000000F03F = point 2 (1, 1)
+      const wkbLineString = "0x00000000010200000002000000000000000000000000000000000000000000000000000000F03F000000000000F03F";
       const wkt = wkbHexToWkt(wkbLineString);
       expect(wkt).toContain("LINESTRING");
     });
@@ -135,7 +147,8 @@ describe("geometry utils", () => {
     });
 
     it("should convert WKB hex to WKT", () => {
-      const wkbPoint = "0x0101000000000000000000F03F0000000000000040";
+      // MySQL format with SRID prefix
+      const wkbPoint = "0x000000000101000000000000000000F03F0000000000000040";
       const result = formatGeometricValue(wkbPoint);
       expect(result).toContain("POINT");
     });
