@@ -1,14 +1,14 @@
-import { Geometry } from 'wkx';
+import { Geometry } from "wkx";
 // Use Node.js Buffer if available (tests), otherwise use polyfill (browser)
-import { Buffer as BufferPolyfill } from 'buffer';
-const BufferImpl = typeof Buffer !== 'undefined' ? Buffer : BufferPolyfill;
+import { Buffer as BufferPolyfill } from "buffer";
+const BufferImpl = typeof Buffer !== "undefined" ? Buffer : BufferPolyfill;
 
 /**
  * Checks if a value is a WKB (Well-Known Binary) hex string
  * WKB hex strings start with "0x" followed by hexadecimal characters
  */
 export function isWkbHexString(value: unknown): boolean {
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return false;
   }
 
@@ -29,18 +29,18 @@ export function isGeometricType(dataType: string): boolean {
 
   // Common geometric types across different databases
   const geometricTypes = [
-    'GEOMETRY',
-    'POINT',
-    'LINESTRING',
-    'POLYGON',
-    'MULTIPOINT',
-    'MULTILINESTRING',
-    'MULTIPOLYGON',
-    'GEOMETRYCOLLECTION',
-    'GEOGRAPHY', // PostgreSQL PostGIS
+    "GEOMETRY",
+    "POINT",
+    "LINESTRING",
+    "POLYGON",
+    "MULTIPOINT",
+    "MULTILINESTRING",
+    "MULTIPOLYGON",
+    "GEOMETRYCOLLECTION",
+    "GEOGRAPHY", // PostgreSQL PostGIS
   ];
 
-  return geometricTypes.some(type => normalizedType.includes(type));
+  return geometricTypes.some((type) => normalizedType.includes(type));
 }
 
 /**
@@ -51,9 +51,10 @@ export function isGeometricType(dataType: string): boolean {
  */
 export function wkbHexToWkt(hexString: string): string {
   // Remove "0x" prefix if present
-  let hex = hexString.startsWith('0x') || hexString.startsWith('0X')
-    ? hexString.substring(2)
-    : hexString;
+  let hex =
+    hexString.startsWith("0x") || hexString.startsWith("0X")
+      ? hexString.substring(2)
+      : hexString;
 
   // MySQL includes 4-byte SRID prefix before standard WKB
   // Check if this looks like MySQL format (starts with 00000000 or similar SRID)
@@ -65,7 +66,7 @@ export function wkbHexToWkt(hexString: string): string {
   }
 
   // Convert hex string to Buffer
-  const buffer = BufferImpl.from(hex, 'hex');
+  const buffer = BufferImpl.from(hex, "hex");
 
   // Parse WKB and convert to WKT
   const geometry = Geometry.parse(buffer);
@@ -80,13 +81,14 @@ export function wkbHexToWkt(hexString: string): string {
  */
 export function formatGeometricValue(value: unknown): string {
   if (value === null || value === undefined) {
-    return 'NULL';
+    return "NULL";
   }
 
   const stringValue = String(value);
 
   // If it's already in WKT format (contains geometric type names), return as-is
-  const wktPattern = /^(POINT|LINESTRING|POLYGON|MULTIPOINT|MULTILINESTRING|MULTIPOLYGON|GEOMETRYCOLLECTION)/i;
+  const wktPattern =
+    /^(POINT|LINESTRING|POLYGON|MULTIPOINT|MULTILINESTRING|MULTIPOLYGON|GEOMETRYCOLLECTION)/i;
   if (wktPattern.test(stringValue)) {
     return stringValue;
   }
@@ -96,7 +98,7 @@ export function formatGeometricValue(value: unknown): string {
     try {
       return wkbHexToWkt(stringValue);
     } catch (error) {
-      console.warn('Failed to parse WKB hex string:', stringValue, error);
+      console.warn("Failed to parse WKB hex string:", stringValue, error);
       // Fallback to original string if parsing fails
       return stringValue;
     }
