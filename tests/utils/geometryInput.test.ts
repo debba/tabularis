@@ -94,12 +94,12 @@ describe('wrapWktInFunction', () => {
 
 describe('getGeometryPlaceholder', () => {
   it('should return SQL placeholder for raw SQL mode', () => {
-    expect(getGeometryPlaceholder(true, 'GEOMETRY')).toContain('ST_GeomFromText');
-    expect(getGeometryPlaceholder(true, 'GEOMETRY')).toContain('4326');
+    expect(getGeometryPlaceholder(true)).toContain('ST_GeomFromText');
+    expect(getGeometryPlaceholder(true)).toContain('4326');
   });
 
   it('should return WKT placeholder for simple mode', () => {
-    expect(getGeometryPlaceholder(false, 'GEOMETRY')).toBe('POINT(30 40)');
+    expect(getGeometryPlaceholder(false)).toBe('POINT(30 40)');
   });
 });
 

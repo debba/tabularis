@@ -8,12 +8,12 @@ import process from 'process';
 
 // Make Buffer available globally for browser environment
 if (typeof window !== 'undefined') {
-  (window as any).Buffer = Buffer;
-  (window as any).process = process;
+  (window as typeof window & { Buffer: typeof Buffer; process: typeof process }).Buffer = Buffer;
+  (window as typeof window & { Buffer: typeof Buffer; process: typeof process }).process = process;
 }
 
 // Also set on globalThis for broader compatibility
 if (typeof globalThis !== 'undefined') {
-  (globalThis as any).Buffer = Buffer;
-  (globalThis as any).process = process;
+  (globalThis as typeof globalThis & { Buffer: typeof Buffer; process: typeof process }).Buffer = Buffer;
+  (globalThis as typeof globalThis & { Buffer: typeof Buffer; process: typeof process }).process = process;
 }

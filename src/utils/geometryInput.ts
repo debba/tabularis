@@ -59,7 +59,7 @@ export function wrapWktInFunction(wkt: string, srid?: number): string {
 /**
  * Gets appropriate placeholder text based on mode and data type
  */
-export function getGeometryPlaceholder(isRawSqlMode: boolean, _dataType?: string): string {
+export function getGeometryPlaceholder(isRawSqlMode: boolean): string {
   if (isRawSqlMode) {
     return "ST_GeomFromText('POINT(30 40)', 4326)";
   }

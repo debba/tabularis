@@ -4,8 +4,14 @@ import "@testing-library/jest-dom";
 import { FieldEditor } from "./FieldEditor";
 
 // Mock GeometryInput component
+interface MockGeometryInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
 vi.mock("./GeometryInput", () => ({
-  GeometryInput: ({ value, onChange, placeholder }: any) => (
+  GeometryInput: ({ value, onChange, placeholder }: MockGeometryInputProps) => (
     <input
       data-testid="geometry-input"
       value={value}

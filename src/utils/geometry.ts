@@ -61,8 +61,6 @@ export function wkbHexToWkt(hexString: string): string {
   // If we have more than 2 chars before the geometry type, it's likely SRID + WKB
   if (hex.length > 10) {
     // Skip first 8 hex chars (4 bytes) which represent the SRID in MySQL
-    const possibleSrid = hex.substring(0, 8);
-    // If it looks like a 4-byte integer (common for SRID), skip it
     hex = hex.substring(8);
   }
 
