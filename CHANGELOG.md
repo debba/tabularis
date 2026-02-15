@@ -1,3 +1,18 @@
+## [0.8.13](https://github.com/debba/tabularis/compare/v0.8.12...v0.8.13) (2026-02-15)
+
+
+### Features
+
+* **connections:** add disconnect command and provider handling ([622ab6c](https://github.com/debba/tabularis/commit/622ab6ca53f8b2b566c3fb0fdcadd096923dde9d))
+* **database:** test connection before loading schemas ([001ea15](https://github.com/debba/tabularis/commit/001ea158670b9b882efcde980106e103d40aaabe))
+* **drivers:** add data type registry and extraction modules ([c6e0d25](https://github.com/debba/tabularis/commit/c6e0d25adf66dc864fcb1b60631b8545090e6c79))
+* **geometry:** add geometry parsing and WKB->WKT formatting ([6c4aaa5](https://github.com/debba/tabularis/commit/6c4aaa57f857e1ca550a1a763912ebf944956eac))
+* **icons:** add Discord icon component and replace MessageSquare usages ([f453e1c](https://github.com/debba/tabularis/commit/f453e1cd4d6577033f56dfdd3d1a95c70c82048b))
+* **mysql,postgres:** support raw SQL function inputs for spatial data ([dbcb5f2](https://github.com/debba/tabularis/commit/dbcb5f2e1e21da0d21cdbb293bda17675ad37cb3))
+* **postgres,i18n:** add pg schema selection and Spanish locale ([d278718](https://github.com/debba/tabularis/commit/d27871806dcaa2ff3a70a387b055b91607bb6cbe))
+
+
+
 ## [0.8.12](https://github.com/debba/tabularis/compare/v0.8.11...v0.8.12) (2026-02-11)
 
 
