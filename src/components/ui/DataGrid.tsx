@@ -24,6 +24,8 @@ import {
   type ColumnDisplayInfo,
 } from "../../utils/dataGrid";
 import { isGeometricType, formatGeometricValue } from "../../utils/geometry";
+import { GeometryInput } from "./GeometryInput";
+import { RowEditorSidebar } from "./RowEditorSidebar";
 import { useDatabase } from "../../hooks/useDatabase";
 import { rowToTSV, rowsToTSV, getSelectedRows, copyTextToClipboard } from "../../utils/clipboard";
 import type { PendingInsertion, TableColumn } from "../../types/editor";
@@ -100,6 +102,13 @@ export const DataGrid = React.memo(({
     rowIndex: number;
     colIndex: number;
     value: unknown;
+    isRawSql?: boolean;
+  } | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarRowData, setSidebarRowData] = useState<{
+    data: Record<string, unknown>;
+    rowIndex: number;
+    focusField?: string;
   } | null>(null);
   const [internalSelectedRowIndices, setInternalSelectedRowIndices] = useState<
     Set<number>
@@ -561,15 +570,22 @@ export const DataGrid = React.memo(({
     }
   }, [contextMenu, onDiscardInsertion, onMarkForDeletion, pkColumn, pkIndexMap]);
 
-  const editSelectedRow = useCallback(() => {
-    if (!contextMenu || !contextMenu.mergedRow) return;
-
-    const rowIndex = contextMenu.mergedRow.displayIndex;
-    // Start editing the first column (index 0)
-    const firstColValue = contextMenu.row[0];
-    setEditingCell({ rowIndex, colIndex: 0, value: firstColValue });
+  const openSidebarEditor = useCallback(() => {
+    if (!contextMenu) return;
+    
+    // Convert row array to object with column names
+    const rowData: Record<string, unknown> = {};
+    columns.forEach((colName, index) => {
+      rowData[colName] = contextMenu.row[index];
+    });
+    
+    setSidebarRowData({
+      data: rowData,
+      rowIndex: contextMenu.rowIndex,
+    });
+    setSidebarOpen(true);
     setContextMenu(null);
-  }, [contextMenu]);
+  }, [contextMenu, columns]);
 
   // Unified handler for setting cell values from context menu actions
   const setCellValue = useCallback((value: unknown) => {
@@ -776,30 +792,80 @@ export const DataGrid = React.memo(({
                     });
 
                     return (
-                      <td
+                       <td
                         key={cell.id}
-                        onClick={(e) => handleRowClick(rowIndex, e)}
+                        onClick={(e) => {
+                          // Don't handle row click if clicking on a button
+                          const target = e.target as HTMLElement;
+                          if (target.closest('button')) {
+                            return;
+                          }
+                          handleRowClick(rowIndex, e);
+                        }}
                         onDoubleClick={() =>
                           !isPendingDelete &&
                           handleCellDoubleClick(rowIndex, colIndex, (isAutoIncrementPlaceholder || isDefaultValuePlaceholder) ? "" : displayValue)
                         }
                         onContextMenu={(e) => handleContextMenu(e, row.original, rowIndex, colIndex, colName)}
-                        className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 whitespace-nowrap font-mono truncate max-w-[300px] cursor-text ${stateClass}`}
+                        className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 whitespace-nowrap font-mono ${isEditing ? 'overflow-visible' : 'truncate'} max-w-[300px] cursor-text ${stateClass}`}
                         title={!isEditing ? String(displayValue) : ""}
+                        style={isEditing ? { position: 'relative', zIndex: 100 } : undefined}
                       >
                         {isEditing ? (
-                          <input
-                            ref={editInputRef}
-                            value={String(editingCell.value ?? "")}
-                            onChange={(e) =>
-                              setEditingCell((prev) =>
-                                prev ? { ...prev, value: e.target.value } : null,
-                              )
+                          (() => {
+                             const colType = columnTypeMap?.get(colName);
+                            if (colType && isGeometricType(colType)) {
+                              return (
+                                <GeometryInput
+                                  inputRef={editInputRef}
+                                  value={String(editingCell.value ?? "")}
+                                  dataType={colType}
+                                  onChange={(newValue, isRawSql) =>
+                                    setEditingCell((prev) =>
+                                      prev ? { ...prev, value: newValue, isRawSql } : null,
+                                    )
+                                  }
+                                  onBlur={handleEditCommit}
+                                  onKeyDown={handleKeyDown}
+                                  onSqlFunctionsClick={() => {
+                                    // Close inline editing
+                                    setEditingCell(null);
+                                    
+                                    // Open sidebar with the current row
+                                    const mergedRow = mergedRows[rowIndex];
+                                    if (mergedRow) {
+                                      const rowData: Record<string, unknown> = {};
+                                      columns.forEach((col, idx) => {
+                                        rowData[col] = mergedRow.rowData[idx];
+                                      });
+                                      
+                                      setSidebarRowData({
+                                        data: rowData,
+                                        rowIndex: rowIndex,
+                                        focusField: colName,
+                                      });
+                                      setSidebarOpen(true);
+                                    }
+                                  }}
+                                  className="w-full bg-base text-primary border-none outline-none p-0 m-0 font-mono"
+                                />
+                              );
                             }
-                            onBlur={handleEditCommit}
-                            onKeyDown={handleKeyDown}
-                            className="w-full bg-base text-primary border-none outline-none p-0 m-0 font-mono"
-                          />
+                            return (
+                              <input
+                                ref={editInputRef}
+                                value={String(editingCell.value ?? "")}
+                                onChange={(e) =>
+                                  setEditingCell((prev) =>
+                                    prev ? { ...prev, value: e.target.value } : null,
+                                  )
+                                }
+                                onBlur={handleEditCommit}
+                                onKeyDown={handleKeyDown}
+                                className="w-full bg-base text-primary border-none outline-none p-0 m-0 font-mono"
+                              />
+                            );
+                          })()
                         ) : hasPendingChange ? (
                           String(displayValue)
                         ) : (
@@ -879,9 +945,9 @@ export const DataGrid = React.memo(({
             action: copyCellValue,
           },
           {
-            label: t("dataGrid.editRow"),
+            label: t("contextMenu.openSidebar"),
             icon: Edit,
-            action: editSelectedRow,
+            action: openSidebarEditor,
           },
           {
             label: t("dataGrid.deleteRow"),
@@ -903,6 +969,53 @@ export const DataGrid = React.memo(({
             y={contextMenu.y}
             onClose={() => setContextMenu(null)}
             items={menuItems}
+          />
+        );
+      })()}
+
+      {/* Row Editor Sidebar */}
+      {sidebarOpen && sidebarRowData && (() => {
+        const mergedRow = mergedRows[sidebarRowData.rowIndex];
+        const isInsertion = mergedRow?.type === "insertion";
+
+        return (
+          <RowEditorSidebar
+            isOpen={sidebarOpen}
+            onClose={() => {
+              setSidebarOpen(false);
+              setSidebarRowData(null);
+            }}
+            rowData={sidebarRowData.data}
+            rowIndex={sidebarRowData.rowIndex}
+            isInsertion={isInsertion}
+            columns={columns.map((colName, index) => ({
+              name: colName,
+              type: columnMetadata?.[index]?.data_type,
+            }))}
+            autoIncrementColumns={autoIncrementColumns}
+            defaultValueColumns={defaultValueColumns}
+            nullableColumns={nullableColumns}
+            focusField={sidebarRowData.focusField}
+            onChange={(colName, value) => {
+              // Get the merged row to determine if it's an insertion or existing row
+              const mergedRow = mergedRows[sidebarRowData.rowIndex];
+              if (!mergedRow) return;
+
+              const isInsertion = mergedRow.type === "insertion";
+
+              // Apply change immediately
+              if (isInsertion && onPendingInsertionChange && mergedRow.tempId) {
+                // Handle insertion row updates
+                onPendingInsertionChange(mergedRow.tempId, colName, value);
+              } else if (!isInsertion && onPendingChange && pkColumn && pkIndexMap !== null) {
+                // Handle existing row updates
+                const rowData = mergedRow.rowData;
+                if (rowData) {
+                  const pkVal = rowData[pkIndexMap];
+                  onPendingChange(pkVal, colName, value);
+                }
+              }
+            }}
           />
         );
       })()}

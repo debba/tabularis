@@ -568,5 +568,14 @@
     "statementsExecuted": "{{count}} / {{total}} sentencias",
     "confirmImport": "¿Estás seguro de que deseas importar \"{{file}}\"?\nEsto podría sobrescribir los datos existentes.",
     "elapsedTime": "Tiempo transcurrido"
+  },
+  "geometryInput": {
+    "sqlMode": "Modo SQL",
+    "wktMode": "Modo WKT",
+    "sqlHelper": "Ingrese una función SQL completa (ej: ST_GeomFromText('POINT(30 40)', 4326))",
+    "wktHelper": "Ingrese formato WKT (ej: POINT(30 40))",
+    "sqlPlaceholder": "ST_GeomFromText('POINT(30 40)', 4326)",
+    "wktPlaceholder": "POINT(30 40)",
+    "toggleTooltip": "Funciones SQL"
   }
 }

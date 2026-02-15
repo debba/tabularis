@@ -589,5 +589,24 @@
     "statementsExecuted": "{{count}} / {{total}} statements",
     "confirmImport": "Are you sure you want to import \"{{file}}\"?\nThis may overwrite existing data.",
     "elapsedTime": "Elapsed time"
+  },
+  "geometryInput": {
+    "sqlMode": "SQL Mode",
+    "wktMode": "WKT Mode",
+    "sqlHelper": "Enter a complete SQL function (e.g., ST_GeomFromText('POINT(30 40)', 4326))",
+    "wktHelper": "Enter WKT format (e.g., POINT(30 40))",
+    "sqlPlaceholder": "ST_GeomFromText('POINT(30 40)', 4326)",
+    "wktPlaceholder": "POINT(30 40)",
+    "toggleTooltip": "SQL Functions"
+  },
+  "rowEditor": {
+    "title": "Edit Row",
+    "subtitle": "Row #{{row}}",
+    "save": "Save Changes",
+    "cancel": "Cancel",
+    "enterValue": "Enter value..."
+  },
+  "contextMenu": {
+    "openSidebar": "Open Sidebar Editor"
   }
 }
