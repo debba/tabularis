@@ -68,7 +68,8 @@ describe('dataGrid utils', () => {
 
     describe('with columnType parameter', () => {
       it('should format geometric WKB hex values as WKT when columnType is POINT', () => {
-        const wkbPoint = '0x0101000000000000000000F03F0000000000000040';
+        // MySQL format with SRID prefix (4 bytes) + standard WKB
+        const wkbPoint = '0x000000000101000000000000000000F03F0000000000000040';
         const result = formatCellValue(wkbPoint, 'NULL', 'POINT');
         expect(result).toContain('POINT');
         expect(result).not.toContain('0x');
