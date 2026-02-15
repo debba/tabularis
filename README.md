@@ -12,6 +12,8 @@
 
 A lightweight, developer-focused database management tool, built with Tauri and React.
 
+**Available in:** English, Italian, Spanish
+
 **Discord** - [Join our discord server](https://discord.gg/YrZPHAwMSG) and chat with the maintainers.
 
 <div align="center">
@@ -109,7 +111,7 @@ Join our [Discord server](https://discord.gg/YrZPHAwMSG) to chat with the mainta
 
 ### Connection Management
 
-- Support for **MySQL/MariaDB**, working on: **PostgreSQL** and **SQLite**.
+- Support for **MySQL/MariaDB**, working on: **PostgreSQL** (with multi-schema support) and **SQLite**.
 - Save, manage, and clone connection profiles with secure local persistence.
 - Manage **SSH Connections** from the connection manager.
 - Optional secure password storage in system **Keychain**.
@@ -118,6 +120,7 @@ Join our [Discord server](https://discord.gg/YrZPHAwMSG) to chat with the mainta
 ### Database Explorer
 
 - **Tree View:** Browse tables, columns, keys, foreign keys, indexes, views, and stored routines.
+- **Inline Editing:** Edit table and column properties directly from the sidebar.
 - **ER Diagram:** Interactive Entity-Relationship visualization (Pan, Zoom, Layout) with selective table diagram generation.
 - **Context Actions:** Show data, count rows, modify schema, duplicate/delete tables.
 - **Views Support:** Browse, inspect, and query database views with full metadata.
@@ -198,7 +201,7 @@ This approach ensures fast startup times while preserving your workspace layout 
 - `theme`: Theme ID (e.g., `"tabularis-dark"`, `"monokai"`).
 - `fontFamily`: Editor font family.
 - `fontSize`: Editor font size (px).
-- `language`: `"auto"`, `"en"`, `"it"`.
+- `language`: `"auto"`, `"en"` (English), `"it"` (Italian), `"es"` (Spanish).
 - `resultPageSize`: Default rows per page.
 - `aiEnabled`: Enable/Disable AI features.
 
