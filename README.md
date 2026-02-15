@@ -146,6 +146,7 @@ Join our [Discord server](https://discord.gg/YrZPHAwMSG) to chat with the mainta
 - **Copy Selected Rows:** Export selections straight to the clipboard.
 - **Export:** Save results as CSV or JSON.
 - **Smart Context:** Read-only mode for aggregates, edit mode for tables.
+- **Spatial Data Support:** Initial GEOMETRY support for MySQL with raw SQL function inputs for spatial data.
 
 ### Logging
 
