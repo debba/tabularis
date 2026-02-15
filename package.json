@@ -35,17 +35,21 @@
     "@tauri-apps/plugin-updater": "~2.10.0",
     "@types/dagre": "^0.7.53",
     "@xyflow/react": "^12.10.0",
+    "buffer": "^6.0.3",
     "clsx": "^2.1.1",
     "dagre": "^0.8.5",
     "i18next": "^25.8.0",
     "i18next-browser-languagedetector": "^8.2.0",
     "lucide-react": "^0.563.0",
     "monaco-editor": "^0.55.1",
+    "process": "^0.11.10",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-i18next": "^16.5.4",
     "react-router-dom": "^7.13.0",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "util": "^0.12.5",
+    "wkx": "^0.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

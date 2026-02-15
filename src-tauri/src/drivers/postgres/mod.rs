@@ -15,6 +15,36 @@ fn escape_identifier(name: &str) -> String {
     name.replace('"', "\"\"")
 }
 
+/// Checks if a string value looks like WKT (Well-Known Text) geometry format
+fn is_wkt_geometry(s: &str) -> bool {
+    let s_upper = s.trim().to_uppercase();
+    s_upper.starts_with("POINT(")
+        || s_upper.starts_with("LINESTRING(")
+        || s_upper.starts_with("POLYGON(")
+        || s_upper.starts_with("MULTIPOINT(")
+        || s_upper.starts_with("MULTILINESTRING(")
+        || s_upper.starts_with("MULTIPOLYGON(")
+        || s_upper.starts_with("GEOMETRYCOLLECTION(")
+        || s_upper.starts_with("GEOMETRY(")
+}
+
+/// Checks if a string value is a raw SQL function call (e.g., ST_GeomFromText(...))
+/// This is used to detect when user has entered a complete SQL function that should
+/// be inserted directly into the query without parameter binding
+fn is_raw_sql_function(s: &str) -> bool {
+    let trimmed = s.trim().to_uppercase();
+    // Check for common SQL spatial function patterns
+    // Functions starting with ST_ followed by parenthesis
+    if trimmed.starts_with("ST_") {
+        return trimmed.contains('(');
+    }
+    // Legacy function names
+    trimmed.starts_with("GEOMFROMTEXT(")
+        || trimmed.starts_with("GEOMFROMWKB(")
+        || trimmed.starts_with("POINTFROMTEXT(")
+        || trimmed.starts_with("POINTFROMWKB(")
+}
+
 pub async fn get_schemas(params: &ConnectionParams) -> Result<Vec<String>, String> {
     let pool = get_postgres_pool(params).await?;
     let rows = sqlx::query(
@@ -437,6 +467,15 @@ pub async fn update_record(
             // Check for special sentinel value to use DEFAULT
             if s == "__USE_DEFAULT__" {
                 qb.push("DEFAULT");
+            } else if is_raw_sql_function(&s) {
+                // If it's a raw SQL function (e.g., ST_GeomFromText('POINT(1 2)', 4326))
+                // insert it directly without parameter binding
+                qb.push(s);
+            } else if is_wkt_geometry(&s) {
+                // If it's WKT geometry format, wrap with ST_GeomFromText
+                qb.push("ST_GeomFromText(");
+                qb.push_bind(s);
+                qb.push(")");
             } else {
                 qb.push_bind(s);
             }
@@ -513,7 +552,18 @@ pub async fn insert_record(
                     }
                 }
                 serde_json::Value::String(s) => {
-                    separated.push_bind(s);
+                    if is_raw_sql_function(&s) {
+                        // If it's a raw SQL function (e.g., ST_GeomFromText('POINT(1 2)', 4326))
+                        // insert it directly without parameter binding
+                        separated.push_unseparated(&s);
+                    } else if is_wkt_geometry(&s) {
+                        // If it's WKT geometry format, wrap with ST_GeomFromText
+                        separated.push_unseparated("ST_GeomFromText(");
+                        separated.push_bind_unseparated(s);
+                        separated.push_unseparated(")");
+                    } else {
+                        separated.push_bind(s);
+                    }
                 }
                 serde_json::Value::Bool(b) => {
                     separated.push_bind(b);

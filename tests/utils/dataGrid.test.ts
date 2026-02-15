@@ -65,6 +65,59 @@ describe('dataGrid utils', () => {
       expect(formatCellValue({})).toBe('{}');
       expect(formatCellValue([])).toBe('[]');
     });
+
+    describe('with columnType parameter', () => {
+      it('should format geometric WKB hex values as WKT when columnType is POINT', () => {
+        // MySQL format with SRID prefix (4 bytes) + standard WKB
+        const wkbPoint = '0x000000000101000000000000000000F03F0000000000000040';
+        const result = formatCellValue(wkbPoint, 'NULL', 'POINT');
+        expect(result).toContain('POINT');
+        expect(result).not.toContain('0x');
+      });
+
+      it('should format geometric WKT values as-is when columnType is GEOMETRY', () => {
+        const wkt = 'POINT(1 2)';
+        const result = formatCellValue(wkt, 'NULL', 'GEOMETRY');
+        expect(result).toBe(wkt);
+      });
+
+      it('should format geometric NULL as NULL', () => {
+        const result = formatCellValue(null, 'NULL', 'POINT');
+        expect(result).toBe('NULL');
+      });
+
+      it('should not affect non-geometric types', () => {
+        expect(formatCellValue('hello', 'NULL', 'VARCHAR')).toBe('hello');
+        expect(formatCellValue(42, 'NULL', 'INT')).toBe('42');
+        expect(formatCellValue(true, 'NULL', 'BOOLEAN')).toBe('true');
+      });
+
+      it('should handle case-insensitive geometric types', () => {
+        const wkt = 'LINESTRING(0 0, 1 1)';
+        expect(formatCellValue(wkt, 'NULL', 'linestring')).toBe(wkt);
+        expect(formatCellValue(wkt, 'NULL', 'LINESTRING')).toBe(wkt);
+        expect(formatCellValue(wkt, 'NULL', 'LineString')).toBe(wkt);
+      });
+
+      it('should handle all geometric types (POLYGON, MULTIPOINT, etc.)', () => {
+        const polygon = 'POLYGON((0 0, 10 0, 10 10, 0 10, 0 0))';
+        expect(formatCellValue(polygon, 'NULL', 'POLYGON')).toBe(polygon);
+
+        const multipoint = 'MULTIPOINT((1 2), (3 4))';
+        expect(formatCellValue(multipoint, 'NULL', 'MULTIPOINT')).toBe(multipoint);
+      });
+
+      it('should work without columnType parameter (backward compatibility)', () => {
+        expect(formatCellValue('hello')).toBe('hello');
+        expect(formatCellValue(null)).toBe('NULL');
+        expect(formatCellValue(42)).toBe('42');
+      });
+
+      it('should handle undefined columnType gracefully', () => {
+        expect(formatCellValue('test', 'NULL', undefined)).toBe('test');
+        expect(formatCellValue(null, 'NULL', undefined)).toBe('NULL');
+      });
+    });
   });
 
   describe('getColumnSortState', () => {

@@ -588,5 +588,24 @@
     "statementsExecuted": "{{count}} / {{total}} istruzioni",
     "confirmImport": "Sei sicuro di voler importare \"{{file}}\"?\nQuesto potrebbe sovrascrivere i dati esistenti.",
     "elapsedTime": "Tempo trascorso"
+  },
+  "geometryInput": {
+    "sqlMode": "Modalità SQL",
+    "wktMode": "Modalità WKT",
+    "sqlHelper": "Inserisci una funzione SQL completa (es: ST_GeomFromText('POINT(30 40)', 4326))",
+    "wktHelper": "Inserisci formato WKT (es: POINT(30 40))",
+    "sqlPlaceholder": "ST_GeomFromText('POINT(30 40)', 4326)",
+    "wktPlaceholder": "POINT(30 40)",
+    "toggleTooltip": "Funzioni SQL"
+  },
+  "rowEditor": {
+    "title": "Modifica Riga",
+    "subtitle": "Riga #{{row}}",
+    "save": "Salva Modifiche",
+    "cancel": "Annulla",
+    "enterValue": "Inserisci valore..."
+  },
+  "contextMenu": {
+    "openSidebar": "Apri Barra Laterale"
   }
 }

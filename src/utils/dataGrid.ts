@@ -3,6 +3,8 @@
  * Extracted for testability
  */
 
+import { formatGeometricValue, isGeometricType } from './geometry';
+
 /** Sentinel value indicating that the database DEFAULT value should be used */
 export const USE_DEFAULT_SENTINEL = "__USE_DEFAULT__";
 
@@ -20,21 +22,31 @@ export interface MergedRow {
  * Formats a cell value for display in the DataGrid
  * @param value - The raw cell value
  * @param nullLabel - The label to show for null values (i18n)
+ * @param columnType - Optional column data type for type-specific formatting
  * @returns Formatted string representation
  */
-export function formatCellValue(value: unknown, nullLabel: string = "NULL"): string {
+export function formatCellValue(
+  value: unknown,
+  nullLabel: string = "NULL",
+  columnType?: string
+): string {
+  // Handle geometric types first (before null check to preserve geometric NULL handling)
+  if (columnType && isGeometricType(columnType)) {
+    return formatGeometricValue(value);
+  }
+
   if (value === null || value === undefined) {
     return nullLabel;
   }
-  
+
   if (typeof value === "boolean") {
     return value ? "true" : "false";
   }
-  
+
   if (typeof value === "object") {
     return JSON.stringify(value);
   }
-  
+
   return String(value);
 }
 

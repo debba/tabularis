@@ -329,13 +329,14 @@ export const Editor = () => {
             autoIncrementColumns: autoInc,
             defaultValueColumns: defaultVal,
             nullableColumns: nullable,
+            columnMetadata: cols,
           });
       } catch (e) {
         console.error("Failed to fetch PK:", e);
         // Even if PK fetch fails, set pkColumn to null to unblock the UI
         const targetId = tabId || activeTabId;
         if (targetId)
-          updateTab(targetId, { pkColumn: null, autoIncrementColumns: [], defaultValueColumns: [], nullableColumns: [] });
+          updateTab(targetId, { pkColumn: null, autoIncrementColumns: [], defaultValueColumns: [], nullableColumns: [], columnMetadata: [] });
       }
     },
     [activeConnectionId, activeTabId, updateTab, activeSchema],
@@ -906,6 +907,10 @@ export const Editor = () => {
           .filter((c) => c.is_nullable)
           .map((c) => c.name);
         updates.nullableColumns = nullable;
+      }
+
+      if (!activeTab.columnMetadata) {
+        updates.columnMetadata = columns;
       }
 
       updateTab(activeTabIdRef.current, updates);
@@ -2073,6 +2078,7 @@ export const Editor = () => {
                     autoIncrementColumns={activeTab.autoIncrementColumns}
                     defaultValueColumns={activeTab.defaultValueColumns}
                     nullableColumns={activeTab.nullableColumns}
+                    columnMetadata={activeTab.type === 'table' ? activeTab.columnMetadata : undefined}
                     connectionId={activeConnectionId}
                     onRefresh={handleRefresh}
                     pendingChanges={activeTab.pendingChanges}
