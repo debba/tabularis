@@ -48,6 +48,7 @@
     "modifyColumn": "Modify Column",
     "copyName": "Copy Name",
     "openInEditor": "Open in Editor",
+    "closePanel": "Close panel",
     "setAsActive": "Set as Active",
     "deleteTable": "Delete Table",
     "deleteTableConfirm": "Are you sure you want to delete table \"{{table}}\"?",

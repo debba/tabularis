@@ -41,9 +41,11 @@ export const Sidebar = () => {
 
   const {
     splitView,
+    isSplitVisible,
     selectedConnectionIds,
     toggleSelection,
     activateSplit,
+    hideSplitView,
     explorerConnectionId,
     setExplorerConnectionId,
   } = useConnectionLayoutContext();
@@ -59,10 +61,9 @@ export const Sidebar = () => {
 
   const handleSwitchOrSetExplorer = (connectionId: string) => {
     if (splitView) {
-      setExplorerConnectionId(connectionId);
-    } else {
-      handleSwitchToConnection(connectionId);
+      hideSplitView();
     }
+    handleSwitchToConnection(connectionId);
   };
 
   const handleDisconnectConnection = async (connectionId: string) => {
@@ -78,7 +79,7 @@ export const Sidebar = () => {
     navigate("/editor");
   };
 
-  const explorerConnId = splitView ? explorerConnectionId : activeConnectionId;
+  const explorerConnId = (splitView && isSplitVisible) ? explorerConnectionId : activeConnectionId;
   const shouldShowExplorer =
     !!explorerConnId &&
     location.pathname !== "/settings" &&

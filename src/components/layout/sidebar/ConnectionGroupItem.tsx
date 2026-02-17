@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Database, Unlink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useConnectionLayoutContext } from '../../../contexts/ConnectionLayoutContext';
@@ -12,7 +13,8 @@ interface Props {
 
 export const ConnectionGroupItem = ({ connections, mode }: Props) => {
   const { t } = useTranslation();
-  const { deactivateSplit } = useConnectionLayoutContext();
+  const navigate = useNavigate();
+  const { deactivateSplit, showSplitView } = useConnectionLayoutContext();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -32,6 +34,7 @@ export const ConnectionGroupItem = ({ connections, mode }: Props) => {
     <>
       <div className="relative group w-full flex justify-center mb-1">
         <button
+          onClick={() => { showSplitView(); navigate('/editor'); }}
           onContextMenu={handleContextMenu}
           className="flex items-center justify-center w-12 h-12 rounded-lg transition-all relative bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/40"
           title={connections.map(c => c.name).join(' / ')}

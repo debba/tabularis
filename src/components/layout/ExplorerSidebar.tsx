@@ -91,7 +91,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
   const navigate = useNavigate();
   const [schemaVersion, setSchemaVersion] = useState(0);
 
-  const { splitView, explorerConnectionId, setExplorerConnectionId } = useConnectionLayoutContext();
+  const { splitView, isSplitVisible, explorerConnectionId, setExplorerConnectionId } = useConnectionLayoutContext();
 
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -241,7 +241,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
         />
 
         {/* Tab switcher for split view */}
-        {splitView && (
+        {splitView && isSplitVisible && (
           <div className="flex items-center gap-1 px-3 py-1.5 border-b border-default">
             {splitView.connectionIds.map(connId => {
               const name = connectionDataMap[connId]?.connectionName ?? connId;
