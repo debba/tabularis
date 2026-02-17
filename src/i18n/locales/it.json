@@ -80,7 +80,13 @@
     "selectAll": "Seleziona Tutti",
     "deselectAll": "Deseleziona Tutti",
     "confirmSelection": "Conferma",
-    "editSchemas": "Modifica Schemi"
+    "editSchemas": "Modifica Schemi",
+    "selectConnection": "Seleziona Connessione",
+    "disconnect": "Disconnetti",
+    "switchConnection": "Cambia Connessione",
+    "noOtherConnections": "Nessun'altra connessione",
+    "openConnections": "Aperte",
+    "availableConnections": "Disponibili"
   },
   "mcp": {
     "title": "Integrazione Server MCP",
@@ -115,7 +121,8 @@
     "failConnect": "Impossibile connettersi a {{name}}. Verifica le impostazioni o assicurati che il database sia in esecuzione.",
     "failDisconnect": "Impossibile disconnettersi dal database",
     "failDuplicate": "Impossibile duplicare la connessione",
-    "connecting": "Connessione in corso..."
+    "connecting": "Connessione in corso...",
+    "open": "Aperta"
   },
   "settings": {
     "title": "Impostazioni",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { quoteIdentifier, quoteTableRef } from "../../utils/identifiers";
@@ -59,9 +59,11 @@ import { SidebarTableItem } from "./sidebar/SidebarTableItem";
 import { SidebarViewItem } from "./sidebar/SidebarViewItem";
 import { SidebarRoutineItem } from "./sidebar/SidebarRoutineItem";
 import { SidebarSchemaItem } from "./sidebar/SidebarSchemaItem";
+import { OpenConnectionItem } from "./sidebar/OpenConnectionItem";
 
 // Hooks & Types
 import { useSidebarResize } from "../../hooks/useSidebarResize";
+import { useConnectionManager } from "../../hooks/useConnectionManager";
 import type { TableColumn } from "../../types/schema";
 import type { ContextMenuData } from "../../types/sidebar";
 import type { RoutineInfo } from "../../contexts/DatabaseContext";
@@ -154,6 +156,27 @@ export const Sidebar = () => {
     viewName?: string;
     isNewView?: boolean;
   }>({ isOpen: false });
+
+  const {
+    openConnections,
+    handleDisconnect: disconnectConnection,
+    handleSwitch,
+  } = useConnectionManager();
+
+  const handleSwitchToConnection = (connectionId: string) => {
+    handleSwitch(connectionId);
+    if (location.pathname === "/") {
+      navigate("/editor");
+    }
+  };
+
+  const handleDisconnectConnection = async (connectionId: string) => {
+    const isLast = openConnections.length <= 1;
+    await disconnectConnection(connectionId);
+    if (isLast) {
+      navigate("/");
+    }
+  };
 
   // Resize Hook
   const { sidebarWidth, startResize } = useSidebarResize();
@@ -279,6 +302,20 @@ export const Sidebar = () => {
               icon={Terminal}
               label={t("sidebar.sqlEditor")}
             />
+          )}
+
+          {/* Open connections */}
+          {openConnections.length > 0 && (
+            <div className="w-full flex flex-col items-center mt-2 pt-2 border-t border-default">
+              {openConnections.map((conn) => (
+                <OpenConnectionItem
+                  key={conn.id}
+                  connection={conn}
+                  onSwitch={() => handleSwitchToConnection(conn.id)}
+                  onDisconnect={() => handleDisconnectConnection(conn.id)}
+                />
+              ))}
+            </div>
           )}
         </nav>
 

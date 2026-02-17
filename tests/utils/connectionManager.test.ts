@@ -1,0 +1,291 @@
+import { describe, it, expect } from 'vitest';
+import {
+  buildConnectionStatus,
+  partitionConnections,
+  getConnectionItemClass,
+  getStatusDotClass,
+  getConnectionCardClass,
+  getConnectionIconClass,
+  type ConnectionStatus,
+} from '../../src/utils/connectionManager';
+import type { SavedConnection, ConnectionData } from '../../src/contexts/DatabaseContext';
+
+// ─── Fixtures ────────────────────────────────────────────────────────────────
+
+const makeConn = (overrides?: Partial<SavedConnection['params']>): SavedConnection => ({
+  id: 'conn-1',
+  name: 'Test DB',
+  params: {
+    driver: 'postgres',
+    host: 'localhost',
+    database: 'mydb',
+    port: 5432,
+    ...overrides,
+  },
+});
+
+const makeData = (overrides?: Partial<ConnectionData>): ConnectionData => ({
+  driver: 'postgres',
+  connectionName: 'Test DB',
+  databaseName: 'mydb',
+  tables: [],
+  views: [],
+  routines: [],
+  isLoadingTables: false,
+  isLoadingViews: false,
+  isLoadingRoutines: false,
+  schemas: [],
+  isLoadingSchemas: false,
+  schemaDataMap: {},
+  activeSchema: null,
+  selectedSchemas: [],
+  needsSchemaSelection: false,
+  isConnecting: false,
+  isConnected: true,
+  ...overrides,
+});
+
+const makeStatus = (overrides?: Partial<ConnectionStatus>): ConnectionStatus => ({
+  id: 'conn-1',
+  name: 'Test DB',
+  driver: 'postgres',
+  database: 'mydb',
+  host: 'localhost',
+  sshEnabled: false,
+  isOpen: false,
+  isActive: false,
+  isConnecting: false,
+  isConnected: false,
+  ...overrides,
+});
+
+// ─── Tests ───────────────────────────────────────────────────────────────────
+
+describe('connectionManager', () => {
+  describe('buildConnectionStatus', () => {
+    it('should build status from a connected active connection', () => {
+      const conn = makeConn();
+      const data = makeData({ isConnected: true, isConnecting: false });
+      const result = buildConnectionStatus(conn, true, true, data);
+
+      expect(result).toEqual({
+        id: 'conn-1',
+        name: 'Test DB',
+        driver: 'postgres',
+        database: 'mydb',
+        host: 'localhost',
+        sshEnabled: false,
+        isOpen: true,
+        isActive: true,
+        isConnecting: false,
+        isConnected: true,
+        error: undefined,
+      });
+    });
+
+    it('should reflect isConnecting state', () => {
+      const conn = makeConn();
+      const data = makeData({ isConnecting: true, isConnected: false });
+      const result = buildConnectionStatus(conn, true, true, data);
+
+      expect(result.isConnecting).toBe(true);
+      expect(result.isConnected).toBe(false);
+    });
+
+    it('should reflect error from connection data', () => {
+      const conn = makeConn();
+      const data = makeData({ error: 'Connection refused' });
+      const result = buildConnectionStatus(conn, false, false, data);
+
+      expect(result.error).toBe('Connection refused');
+    });
+
+    it('should handle undefined connection data gracefully', () => {
+      const conn = makeConn();
+      const result = buildConnectionStatus(conn, false, false, undefined);
+
+      expect(result.isConnecting).toBe(false);
+      expect(result.isConnected).toBe(false);
+      expect(result.error).toBeUndefined();
+    });
+
+    it('should read ssh_enabled from connection params', () => {
+      const conn = makeConn({ ssh_enabled: true });
+      const result = buildConnectionStatus(conn, false, false, undefined);
+
+      expect(result.sshEnabled).toBe(true);
+    });
+
+    it('should default sshEnabled to false when ssh_enabled is undefined', () => {
+      const conn = makeConn();
+      const result = buildConnectionStatus(conn, false, false, undefined);
+
+      expect(result.sshEnabled).toBe(false);
+    });
+
+    it('should preserve host field', () => {
+      const conn = makeConn({ host: '192.168.1.1' });
+      const result = buildConnectionStatus(conn, false, false, undefined);
+
+      expect(result.host).toBe('192.168.1.1');
+    });
+
+    it('should handle sqlite connection without host', () => {
+      const conn = makeConn({ driver: 'sqlite', database: '/path/to/db.sqlite', host: undefined });
+      const result = buildConnectionStatus(conn, false, false, undefined);
+
+      expect(result.host).toBeUndefined();
+      expect(result.driver).toBe('sqlite');
+    });
+  });
+
+  describe('partitionConnections', () => {
+    it('should separate open and closed connections', () => {
+      const statuses: ConnectionStatus[] = [
+        makeStatus({ id: 'a', isOpen: true }),
+        makeStatus({ id: 'b', isOpen: false }),
+        makeStatus({ id: 'c', isOpen: true }),
+      ];
+
+      const { openConnections, closedConnections } = partitionConnections(statuses);
+
+      expect(openConnections).toHaveLength(2);
+      expect(closedConnections).toHaveLength(1);
+      expect(openConnections.map((c) => c.id)).toEqual(['a', 'c']);
+      expect(closedConnections.map((c) => c.id)).toEqual(['b']);
+    });
+
+    it('should return all open when all are open', () => {
+      const statuses = [
+        makeStatus({ id: 'a', isOpen: true }),
+        makeStatus({ id: 'b', isOpen: true }),
+      ];
+      const { openConnections, closedConnections } = partitionConnections(statuses);
+
+      expect(openConnections).toHaveLength(2);
+      expect(closedConnections).toHaveLength(0);
+    });
+
+    it('should return all closed when none are open', () => {
+      const statuses = [
+        makeStatus({ id: 'a', isOpen: false }),
+        makeStatus({ id: 'b', isOpen: false }),
+      ];
+      const { openConnections, closedConnections } = partitionConnections(statuses);
+
+      expect(openConnections).toHaveLength(0);
+      expect(closedConnections).toHaveLength(2);
+    });
+
+    it('should return empty arrays for empty input', () => {
+      const { openConnections, closedConnections } = partitionConnections([]);
+
+      expect(openConnections).toHaveLength(0);
+      expect(closedConnections).toHaveLength(0);
+    });
+  });
+
+  describe('getConnectionItemClass', () => {
+    it('should return active classes when isActive is true', () => {
+      const result = getConnectionItemClass(true);
+      expect(result).toContain('bg-blue-500/20');
+      expect(result).toContain('text-blue-400');
+      expect(result).toContain('ring-1');
+    });
+
+    it('should return inactive classes when isActive is false', () => {
+      const result = getConnectionItemClass(false);
+      expect(result).toContain('text-secondary');
+      expect(result).toContain('hover:bg-surface-secondary');
+    });
+
+    it('should not return active classes when isActive is false', () => {
+      const result = getConnectionItemClass(false);
+      expect(result).not.toContain('bg-blue-500/20');
+    });
+  });
+
+  describe('getStatusDotClass', () => {
+    it('should return red when there is an error', () => {
+      expect(getStatusDotClass(true, true)).toBe('bg-red-400');
+      expect(getStatusDotClass(false, true)).toBe('bg-red-400');
+    });
+
+    it('should return bright green for active connection without error', () => {
+      expect(getStatusDotClass(true, false)).toBe('bg-green-400');
+    });
+
+    it('should return dimmed green for inactive connection without error', () => {
+      expect(getStatusDotClass(false, false)).toBe('bg-green-400/70');
+    });
+
+    it('should prioritize error over active state', () => {
+      const result = getStatusDotClass(true, true);
+      expect(result).toBe('bg-red-400');
+    });
+  });
+
+  describe('getConnectionCardClass', () => {
+    it('should return pulse class when connecting', () => {
+      const result = getConnectionCardClass(false, false, true);
+      expect(result).toContain('animate-pulse');
+      expect(result).toContain('border-blue-400/30');
+    });
+
+    it('should return active class when active (not connecting)', () => {
+      const result = getConnectionCardClass(true, false, false);
+      expect(result).toContain('bg-blue-900/20');
+      expect(result).toContain('border-blue-500/50');
+    });
+
+    it('should return open class when open but not active', () => {
+      const result = getConnectionCardClass(false, true, false);
+      expect(result).toContain('bg-green-900/10');
+      expect(result).toContain('border-green-500/30');
+    });
+
+    it('should return default class when closed and inactive', () => {
+      const result = getConnectionCardClass(false, false, false);
+      expect(result).toContain('bg-elevated');
+      expect(result).toContain('border-default');
+    });
+
+    it('should prioritize connecting over active', () => {
+      const result = getConnectionCardClass(true, true, true);
+      expect(result).toContain('animate-pulse');
+      expect(result).not.toContain('bg-blue-900/20');
+    });
+
+    it('should prioritize active over open', () => {
+      const result = getConnectionCardClass(true, true, false);
+      expect(result).toContain('bg-blue-900/20');
+      expect(result).not.toContain('bg-green-900/10');
+    });
+  });
+
+  describe('getConnectionIconClass', () => {
+    it('should return white/blue for active connection', () => {
+      const result = getConnectionIconClass(true, false);
+      expect(result).toContain('bg-blue-600');
+      expect(result).toContain('text-white');
+    });
+
+    it('should return green tint for open but not active connection', () => {
+      const result = getConnectionIconClass(false, true);
+      expect(result).toContain('bg-green-900/30');
+      expect(result).toContain('text-green-400');
+    });
+
+    it('should return default grey for closed connection', () => {
+      const result = getConnectionIconClass(false, false);
+      expect(result).toContain('bg-surface-secondary');
+      expect(result).toContain('text-blue-400');
+    });
+
+    it('should prioritize active over open', () => {
+      const result = getConnectionIconClass(true, true);
+      expect(result).toContain('bg-blue-600');
+      expect(result).not.toContain('bg-green-900/30');
+    });
+  });
+});

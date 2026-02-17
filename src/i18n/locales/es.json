@@ -80,7 +80,13 @@
     "selectAll": "Seleccionar Todo",
     "deselectAll": "Deseleccionar Todo",
     "confirmSelection": "Confirmar",
-    "editSchemas": "Editar Esquemas"
+    "editSchemas": "Editar Esquemas",
+    "selectConnection": "Seleccionar Conexión",
+    "disconnect": "Desconectar",
+    "switchConnection": "Cambiar Conexión",
+    "noOtherConnections": "No hay otras conexiones",
+    "openConnections": "Abiertas",
+    "availableConnections": "Disponibles"
   },
   "mcp": {
     "title": "Integración del Servidor MCP",
@@ -115,7 +121,8 @@
     "failConnect": "Error al conectar a {{name}}. Verifica tu configuración o asegúrate de que la base de datos esté en ejecución.",
     "failDisconnect": "No se pudo desconectar de la base de datos",
     "failDuplicate": "Error al duplicar la conexión",
-    "connecting": "Conectando..."
+    "connecting": "Conectando...",
+    "open": "Abierta"
   },
   "settings": {
     "title": "Configuración",

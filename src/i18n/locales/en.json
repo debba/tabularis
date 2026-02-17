@@ -80,7 +80,13 @@
     "selectAll": "Select All",
     "deselectAll": "Deselect All",
     "confirmSelection": "Confirm",
-    "editSchemas": "Edit Schemas"
+    "editSchemas": "Edit Schemas",
+    "selectConnection": "Select Connection",
+    "disconnect": "Disconnect",
+    "switchConnection": "Switch Connection",
+    "noOtherConnections": "No other connections",
+    "openConnections": "Open",
+    "availableConnections": "Available"
   },
   "mcp": {
     "title": "MCP Server Integration",
@@ -116,7 +122,8 @@
     "failConnect": "Failed to connect to {{name}}. Please check your settings or ensuring the database is running.",
     "failDisconnect": "Failed to disconnect from database",
     "failDuplicate": "Failed to duplicate connection",
-    "connecting": "Connecting..."
+    "connecting": "Connecting...",
+    "open": "Open"
   },
   "settings": {
     "title": "Settings",

@@ -6,6 +6,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { ask } from '@tauri-apps/plugin-dialog';
 import { Database, Plus, Power, Edit, Trash2, Shield, AlertCircle, Copy, Loader2 } from 'lucide-react';
 import { useDatabase } from '../hooks/useDatabase';
+import { getConnectionCardClass, getConnectionIconClass } from '../utils/connectionManager';
 
 interface SavedConnection {
   id: string;
@@ -29,7 +30,7 @@ interface SavedConnection {
 export const Connections = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { connect, activeConnectionId, disconnect } = useDatabase();
+  const { connect, activeConnectionId, disconnect, isConnectionOpen, switchConnection } = useDatabase();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingConnection, setEditingConnection] = useState<SavedConnection | null>(null);
   const [connections, setConnections] = useState<SavedConnection[]>([]);
@@ -60,13 +61,20 @@ export const Connections = () => {
 
   const handleConnect = async (conn: SavedConnection) => {
     setError(null);
+
+    // If already open, just switch and navigate
+    if (isConnectionOpen(conn.id)) {
+      switchConnection(conn.id);
+      navigate('/editor');
+      return;
+    }
+
     setConnectingId(conn.id);
     try {
       await connect(conn.id);
       navigate('/editor');
     } catch (e) {
       console.error('Connection error:', e);
-      // Show actual error message from backend
       const errorMsg = typeof e === 'string' ? e : (e as Error).message || String(e);
       setError(`${t('connections.failConnect', { name: conn.name })}\n\nError: ${errorMsg}`);
     } finally {
@@ -155,27 +163,16 @@ export const Connections = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {connections.map(conn => {
             const isActive = activeConnectionId === conn.id;
+            const isOpen = isConnectionOpen(conn.id);
             return (
-              <div 
+              <div
                 key={conn.id}
                 onDoubleClick={() => handleConnect(conn)}
-                className={`
-                  p-4 border rounded-lg transition-all cursor-pointer group relative
-                  ${connectingId === conn.id
-                    ? 'bg-blue-900/10 border-blue-400/30 animate-pulse'
-                    : isActive 
-                    ? 'bg-blue-900/20 border-blue-500/50' 
-                    : 'bg-elevated border-default hover:border-strong'
-                  }
-                  ${connectingId === conn.id ? 'pointer-events-none' : ''}
-                `}
+                className={`p-4 border rounded-lg transition-all cursor-pointer group relative ${getConnectionCardClass(isActive, isOpen, connectingId === conn.id)} ${connectingId === conn.id ? 'pointer-events-none' : ''}`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-3">
-                    <div className={`
-                      w-10 h-10 rounded flex items-center justify-center relative
-                      ${isActive ? 'bg-blue-600 text-white' : 'bg-surface-secondary text-blue-400'}
-                    `}>
+                    <div className={`w-10 h-10 rounded flex items-center justify-center relative ${getConnectionIconClass(isActive, isOpen)}`}>
                       <Database size={20} />
                       {conn.params.ssh_enabled && (
                           <div className="absolute -bottom-1 -right-1 bg-elevated rounded-full p-0.5" title={t('connections.sshEnabled')}>
@@ -191,12 +188,17 @@ export const Connections = () => {
                       </p>
                     </div>
                   </div>
-                  {isActive && (
+                  {isActive ? (
                     <div className="flex items-center gap-1 text-xs text-green-400 font-medium bg-green-400/10 px-2 py-0.5 rounded">
                       <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                       {t('connections.active')}
                     </div>
-                  )}
+                  ) : isOpen ? (
+                    <div className="flex items-center gap-1 text-xs text-green-500/70 font-medium bg-green-400/5 px-2 py-0.5 rounded">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500/70" />
+                      {t('connections.open')}
+                    </div>
+                  ) : null}
                 </div>
                 
                 <div className="text-sm text-secondary mt-3 truncate pl-1 font-mono">

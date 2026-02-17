@@ -11,7 +11,7 @@ export interface ViewInfo {
 
 export interface RoutineInfo {
   name: string;
-  routine_type: string; // "PROCEDURE" | "FUNCTION"
+  routine_type: string;
   definition?: string;
 }
 
@@ -22,6 +22,11 @@ export interface SavedConnection {
     driver: string;
     host?: string;
     database: string;
+    port?: number;
+    username?: string;
+    password?: string;
+    ssh_enabled?: boolean;
+    ssh_connection_id?: string;
   };
 }
 
@@ -33,10 +38,33 @@ export interface SchemaData {
   isLoaded: boolean;
 }
 
+export interface ConnectionData {
+  driver: string;
+  connectionName: string;
+  databaseName: string;
+  tables: TableInfo[];
+  views: ViewInfo[];
+  routines: RoutineInfo[];
+  isLoadingTables: boolean;
+  isLoadingViews: boolean;
+  isLoadingRoutines: boolean;
+  schemas: string[];
+  isLoadingSchemas: boolean;
+  schemaDataMap: Record<string, SchemaData>;
+  activeSchema: string | null;
+  selectedSchemas: string[];
+  needsSchemaSelection: boolean;
+  isConnecting: boolean;
+  isConnected: boolean;
+  error?: string;
+}
+
 export interface DatabaseContextType {
   activeConnectionId: string | null;
-  activeDriver: string | null;
+  openConnectionIds: string[];
+  connectionDataMap: Record<string, ConnectionData>;
   activeTable: string | null;
+  activeDriver: string | null;
   activeConnectionName: string | null;
   activeDatabaseName: string | null;
   tables: TableInfo[];
@@ -45,23 +73,27 @@ export interface DatabaseContextType {
   isLoadingTables: boolean;
   isLoadingViews: boolean;
   isLoadingRoutines: boolean;
-  connect: (connectionId: string) => Promise<void>;
-  disconnect: () => Promise<void>;
-  setActiveTable: (table: string | null, schema?: string | null) => void;
-  refreshTables: () => Promise<void>;
-  refreshViews: () => Promise<void>;
-  refreshRoutines: () => Promise<void>;
-  // Schema support (PostgreSQL)
   schemas: string[];
   isLoadingSchemas: boolean;
   schemaDataMap: Record<string, SchemaData>;
   activeSchema: string | null;
+  selectedSchemas: string[];
+  needsSchemaSelection: boolean;
+  connections: SavedConnection[];
+  loadConnections: () => Promise<void>;
+  isLoadingConnections: boolean;
+  connect: (connectionId: string) => Promise<void>;
+  disconnect: (connectionId?: string) => Promise<void>;
+  switchConnection: (connectionId: string) => void;
+  setActiveTable: (table: string | null, schema?: string | null) => void;
+  refreshTables: () => Promise<void>;
+  refreshViews: () => Promise<void>;
+  refreshRoutines: () => Promise<void>;
   loadSchemaData: (schema: string) => Promise<void>;
   refreshSchemaData: (schema: string) => Promise<void>;
-  // Schema selection (PostgreSQL)
-  selectedSchemas: string[];
   setSelectedSchemas: (schemas: string[]) => Promise<void>;
-  needsSchemaSelection: boolean;
+  getConnectionData: (connectionId: string) => ConnectionData | undefined;
+  isConnectionOpen: (connectionId: string) => boolean;
 }
 
 export const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
