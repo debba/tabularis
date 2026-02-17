@@ -1,21 +1,36 @@
 import { useState } from "react";
-import { Database, Loader2, Shield, X, AlertCircle, Terminal, Check, Copy, Power } from "lucide-react";
+import { Database, Loader2, Shield, X, AlertCircle, Terminal, Check, Copy, Power, Columns2, Rows2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ConnectionStatus } from "../../../hooks/useConnectionManager";
 import { getConnectionItemClass, getStatusDotClass } from "../../../utils/connectionManager";
+import { canActivateSplit } from "../../../utils/connectionLayout";
 import { ContextMenu } from "../../ui/ContextMenu";
 
 interface Props {
   connection: ConnectionStatus;
+  isSelected: boolean;
   onSwitch: () => void;
   onOpenInEditor: () => void;
   onDisconnect: () => void;
+  onToggleSelect: (isCtrlHeld: boolean) => void;
+  selectedConnectionIds: Set<string>;
+  onActivateSplit: (mode: 'vertical' | 'horizontal') => void;
 }
 
-export const OpenConnectionItem = ({ connection, onSwitch, onOpenInEditor, onDisconnect }: Props) => {
+export const OpenConnectionItem = ({
+  connection,
+  isSelected,
+  onSwitch,
+  onOpenInEditor,
+  onDisconnect,
+  onToggleSelect,
+  selectedConnectionIds,
+  onActivateSplit,
+}: Props) => {
   const { t } = useTranslation();
   const { isActive, isConnecting, name, database, sshEnabled, error } = connection;
   const hasError = !!error;
+  const canSplit = canActivateSplit(selectedConnectionIds);
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -24,7 +39,32 @@ export const OpenConnectionItem = ({ connection, onSwitch, onOpenInEditor, onDis
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      onToggleSelect(true);
+    } else {
+      onSwitch();
+    }
+  };
+
+  const splitItems = canSplit
+    ? [
+        {
+          label: t('sidebar.splitVertical'),
+          icon: Columns2,
+          action: () => onActivateSplit('vertical'),
+        },
+        {
+          label: t('sidebar.splitHorizontal'),
+          icon: Rows2,
+          action: () => onActivateSplit('horizontal'),
+        },
+        { separator: true as const },
+      ]
+    : [];
+
   const menuItems = [
+    ...splitItems,
     {
       label: t("sidebar.openInEditor"),
       icon: Terminal,
@@ -55,9 +95,13 @@ export const OpenConnectionItem = ({ connection, onSwitch, onOpenInEditor, onDis
     <>
       <div className="relative group w-full flex justify-center mb-1">
         <button
-          onClick={onSwitch}
+          onClick={handleClick}
           onContextMenu={handleContextMenu}
-          className={`flex items-center justify-center w-12 h-12 rounded-lg transition-all relative ${getConnectionItemClass(isActive)}`}
+          className={`flex items-center justify-center w-12 h-12 rounded-lg transition-all relative ${
+            isSelected
+              ? 'ring-2 ring-blue-400 bg-blue-500/20 text-blue-400'
+              : getConnectionItemClass(isActive)
+          }`}
         >
           {isConnecting ? (
             <Loader2 size={20} className="animate-spin text-blue-400" />
@@ -85,6 +129,13 @@ export const OpenConnectionItem = ({ connection, onSwitch, onOpenInEditor, onDis
               <AlertCircle size={12} className="text-red-400" />
             </div>
           )}
+
+          {/* Selection indicator */}
+          {isSelected && (
+            <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
+              <Check size={8} className="text-white" />
+            </div>
+          )}
         </button>
 
         {/* Disconnect button */}
@@ -103,6 +154,9 @@ export const OpenConnectionItem = ({ connection, onSwitch, onOpenInEditor, onDis
         <div className="absolute left-14 top-1/2 -translate-y-1/2 bg-surface-secondary text-primary text-xs px-2 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-lg border border-default">
           <div className="font-medium">{name}</div>
           <div className="text-muted text-[10px]">{database}</div>
+          {isSelected && (
+            <div className="text-blue-400 text-[10px] mt-0.5">Selected (Ctrl+click to deselect)</div>
+          )}
           {hasError && <div className="text-red-400 text-[10px] mt-0.5 max-w-[180px] truncate">{error}</div>}
         </div>
       </div>

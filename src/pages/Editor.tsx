@@ -74,6 +74,7 @@ interface EditorState {
   queryName?: string;
   preventAutoRun?: boolean;
   schema?: string;
+  targetConnectionId?: string;
 }
 
 interface ExportProgress {
@@ -1303,6 +1304,8 @@ export const Editor = () => {
     const state = location.state as EditorState;
     if (activeConnectionId) {
       if (state?.initialQuery) {
+        if (state.targetConnectionId && state.targetConnectionId !== activeConnectionId) return;
+
         const queryKey = `${state.initialQuery}-${state.tableName}-${state.queryName}`;
 
         if (processingRef.current === queryKey) return;

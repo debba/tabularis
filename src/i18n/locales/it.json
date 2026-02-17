@@ -88,7 +88,11 @@
     "switchConnection": "Cambia Connessione",
     "noOtherConnections": "Nessun'altra connessione",
     "openConnections": "Aperte",
-    "availableConnections": "Disponibili"
+    "availableConnections": "Disponibili",
+    "splitVertical": "Dividi Verticale",
+    "splitHorizontal": "Dividi Orizzontale",
+    "separateConnections": "Separa Connessioni",
+    "splitGroup": "Gruppo Diviso"
   },
   "mcp": {
     "title": "Integrazione Server MCP",
