@@ -1670,31 +1670,6 @@ export const Editor = () => {
           </button>
         )}
 
-        {/* AI Assist Button */}
-        {!isTableTab &&
-          activeTab.type !== "query_builder" &&
-          settings.aiEnabled && (
-            <div className="flex items-center gap-1 ml-2">
-              <button
-                onClick={() => setIsAiModalOpen(true)}
-                disabled={!activeConnectionId}
-                className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/40 hover:bg-purple-900/60 text-purple-200 border border-purple-500/30 rounded text-sm font-medium transition-colors disabled:opacity-50"
-                title="Generate SQL with AI"
-              >
-                <Sparkles size={16} />
-                <span className="hidden sm:inline">AI Assist</span>
-              </button>
-              <button
-                onClick={() => setIsAiExplainModalOpen(true)}
-                disabled={!activeConnectionId || !activeTab.query?.trim()}
-                className="flex items-center gap-2 px-3 py-1.5 bg-blue-900/40 hover:bg-blue-900/60 text-blue-200 border border-blue-500/30 rounded text-sm font-medium transition-colors disabled:opacity-50"
-                title="Explain this Query"
-              >
-                <BookOpen size={16} />
-                <span className="hidden sm:inline">Explain</span>
-              </button>
-            </div>
-          )}
 
         <div className="relative ml-auto">
           <button
@@ -1765,12 +1740,36 @@ export const Editor = () => {
                 options={{
                   minimap: { enabled: false },
                   fontSize: 14,
-                  padding: { top: 16 },
+                  padding: { top: 16, bottom: 40 },
                   scrollBeyondLastLine: false,
                   automaticLayout: true,
                   wordWrap: "on",
                 }}
               />
+            )}
+
+            {/* AI buttons — discrete overlay bottom-right */}
+            {tab.type !== "query_builder" && settings.aiEnabled && (
+              <div className="absolute bottom-2 right-6 z-10 flex items-center gap-1">
+                <button
+                  onClick={() => setIsAiModalOpen(true)}
+                  disabled={!activeConnectionId}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted hover:text-purple-300 bg-elevated/80 hover:bg-purple-900/40 border border-default hover:border-purple-500/40 transition-all disabled:opacity-30 disabled:pointer-events-none backdrop-blur-sm"
+                  title="Generate SQL with AI"
+                >
+                  <Sparkles size={12} />
+                  AI
+                </button>
+                <button
+                  onClick={() => setIsAiExplainModalOpen(true)}
+                  disabled={!activeConnectionId || !tab.query?.trim()}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted hover:text-blue-300 bg-elevated/80 hover:bg-blue-900/40 border border-default hover:border-blue-500/40 transition-all disabled:opacity-30 disabled:pointer-events-none backdrop-blur-sm"
+                  title="Explain this Query"
+                >
+                  <BookOpen size={12} />
+                  Explain
+                </button>
+              </div>
             )}
           </div>
         );
