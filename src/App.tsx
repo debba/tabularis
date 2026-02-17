@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { MainLayout } from "./components/layout/MainLayout";
-import { ConnectionLayoutProvider } from "./contexts/ConnectionLayoutContext";
+import { ConnectionLayoutProvider } from "./contexts/ConnectionLayoutProvider";
 import { Connections } from "./pages/Connections";
 import { Editor } from "./pages/Editor";
 import { Settings } from "./pages/Settings";

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Database, Unlink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useConnectionLayoutContext } from '../../../contexts/ConnectionLayoutContext';
+import { useConnectionLayoutContext } from '../../../contexts/useConnectionLayoutContext';
 import { ContextMenu } from '../../ui/ContextMenu';
 import type { ConnectionStatus } from '../../../hooks/useConnectionManager';
 

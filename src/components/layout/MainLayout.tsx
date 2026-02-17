@@ -1,7 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { SplitPaneLayout } from './SplitPaneLayout';
-import { useConnectionLayoutContext } from '../../contexts/ConnectionLayoutContext';
+import { useConnectionLayoutContext } from '../../contexts/useConnectionLayoutContext';
 
 export const MainLayout = () => {
   const { splitView, isSplitVisible } = useConnectionLayoutContext();

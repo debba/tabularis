@@ -19,7 +19,7 @@ import { PanelDatabaseProvider } from "./PanelDatabaseProvider";
 // Hooks & Utils
 import { useSidebarResize } from "../../hooks/useSidebarResize";
 import { useConnectionManager } from "../../hooks/useConnectionManager";
-import { useConnectionLayoutContext } from "../../contexts/ConnectionLayoutContext";
+import { useConnectionLayoutContext } from "../../contexts/useConnectionLayoutContext";
 import { isConnectionGrouped } from "../../utils/connectionLayout";
 
 export const Sidebar = () => {

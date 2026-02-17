@@ -47,7 +47,7 @@ import { SidebarTableItem } from "./sidebar/SidebarTableItem";
 import { SidebarViewItem } from "./sidebar/SidebarViewItem";
 import { SidebarRoutineItem } from "./sidebar/SidebarRoutineItem";
 import { SidebarSchemaItem } from "./sidebar/SidebarSchemaItem";
-import { useConnectionLayoutContext } from "../../contexts/ConnectionLayoutContext";
+import { useConnectionLayoutContext } from "../../contexts/useConnectionLayoutContext";
 import type { TableColumn } from "../../types/schema";
 import type { ContextMenuData } from "../../types/sidebar";
 import type { RoutineInfo } from "../../contexts/DatabaseContext";
