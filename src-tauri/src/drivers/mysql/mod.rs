@@ -54,7 +54,7 @@ pub async fn get_tables(params: &ConnectionParams) -> Result<Vec<TableInfo>, Str
     log::debug!("MySQL: Fetching tables for database: {}", params.database);
     let pool = get_mysql_pool(params).await?;
     let rows = sqlx::query(
-        "SELECT table_name as name FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name ASC",
+        "SELECT table_name as name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' ORDER BY table_name ASC",
     )
     .fetch_all(&pool)
     .await
