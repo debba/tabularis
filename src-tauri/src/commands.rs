@@ -1531,12 +1531,12 @@ pub async fn list_databases<R: Runtime>(
         resolve_connection_params(&expanded_params)?
     };
 
-    println!(
-        "[List Databases] Resolved Params: Host={:?}, Port={:?}, Username={:?}, Password={:?}",
+    #[cfg(debug_assertions)]
+    log::debug!(
+        "[List Databases] Resolved Params: Host={:?}, Port={:?}, Username={:?}",
         resolved_params.host,
         resolved_params.port,
         resolved_params.username,
-        resolved_params.password
     );
 
     match resolved_params.driver.as_str() {

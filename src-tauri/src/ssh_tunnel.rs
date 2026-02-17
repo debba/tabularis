@@ -32,7 +32,10 @@ enum TunnelBackend {
 }
 
 #[derive(Clone)]
-struct RusshClientHandler;
+struct RusshClientHandler {
+    ssh_host: String,
+    ssh_port: u16,
+}
 
 #[async_trait]
 impl client::Handler for RusshClientHandler {
@@ -40,9 +43,35 @@ impl client::Handler for RusshClientHandler {
 
     async fn check_server_key(
         &mut self,
-        _server_public_key: &key::PublicKey,
+        server_public_key: &key::PublicKey,
     ) -> Result<bool, Self::Error> {
-        Ok(true)
+        match russh_keys::check_known_hosts(&self.ssh_host, self.ssh_port, server_public_key) {
+            Ok(true) => Ok(true),
+            Ok(false) => {
+                // Host not yet in known_hosts; add it (trust on first use)
+                if let Err(e) =
+                    russh_keys::learn_known_hosts(&self.ssh_host, self.ssh_port, server_public_key)
+                {
+                    eprintln!(
+                        "[SSH Tunnel] Warning: could not save host key to known_hosts: {}",
+                        e
+                    );
+                }
+                Ok(true)
+            }
+            Err(russh_keys::Error::KeyChanged { line }) => {
+                eprintln!(
+                    "[SSH Tunnel Error] Host key mismatch at known_hosts line {}; \
+                     possible MITM attack on {}:{}",
+                    line, self.ssh_host, self.ssh_port
+                );
+                Err(russh::Error::KeyChanged { line })
+            }
+            Err(e) => {
+                eprintln!("[SSH Tunnel Error] Host key check failed: {}", e);
+                Err(russh::Error::CouldNotReadKey)
+            }
+        }
     }
 }
 
@@ -157,7 +186,7 @@ impl SshTunnel {
         }
 
         args.push("-o".to_string());
-        args.push("StrictHostKeyChecking=no".to_string());
+        args.push("StrictHostKeyChecking=accept-new".to_string());
         args.push("-o".to_string());
         args.push("BatchMode=yes".to_string());
 
@@ -324,9 +353,16 @@ impl SshTunnel {
                 let config = Arc::new(client::Config::default());
                 let addr = format!("{}:{}", ssh_host, ssh_port);
 
-                let mut handle = client::connect(config, addr, RusshClientHandler)
-                    .await
-                    .map_err(|e| format!("Failed to connect to SSH server: {}", e))?;
+                let mut handle = client::connect(
+                    config,
+                    addr,
+                    RusshClientHandler {
+                        ssh_host: ssh_host.clone(),
+                        ssh_port,
+                    },
+                )
+                .await
+                .map_err(|e| format!("Failed to connect to SSH server: {}", e))?;
 
                 let authenticated = if let Some(key_path) =
                     ssh_key_file.as_deref().filter(|p| !p.trim().is_empty())
@@ -581,14 +617,21 @@ async fn test_ssh_connection_russh_async(
 ) -> Result<String, String> {
     let config = Arc::new(client::Config::default());
     let addr = format!("{}:{}", ssh_host, ssh_port);
-    let mut handle = client::connect(config, addr, RusshClientHandler)
-        .await
-        .map_err(|e| {
-            format!(
-                "Failed to connect to SSH server {}:{}: {}",
-                ssh_host, ssh_port, e
-            )
-        })?;
+    let mut handle = client::connect(
+        config,
+        addr,
+        RusshClientHandler {
+            ssh_host: ssh_host.to_string(),
+            ssh_port,
+        },
+    )
+    .await
+    .map_err(|e| {
+        format!(
+            "Failed to connect to SSH server {}:{}: {}",
+            ssh_host, ssh_port, e
+        )
+    })?;
 
     let authenticated = if let Some(key_path) = ssh_key_file.filter(|p| !p.trim().is_empty()) {
         println!("[SSH Test] Authenticating with key file: {}", key_path);
