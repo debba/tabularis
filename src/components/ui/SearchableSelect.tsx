@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Search, ChevronDown, X } from "lucide-react";
 import clsx from "clsx";
 
@@ -27,8 +28,21 @@ export const SearchableSelect = ({
 }: SearchableSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const updatePosition = useCallback(() => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  }, []);
 
   // Close when clicking outside
   useEffect(() => {
@@ -47,11 +61,24 @@ export const SearchableSelect = ({
     };
   }, []);
 
+  // Update position on scroll/resize
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      const handleScroll = () => updatePosition();
+      window.addEventListener("scroll", handleScroll, true);
+      window.addEventListener("resize", handleScroll);
+      return () => {
+        window.removeEventListener("scroll", handleScroll, true);
+        window.removeEventListener("resize", handleScroll);
+      };
+    }
+  }, [isOpen, updatePosition]);
+
   // Focus search input when opening
   useEffect(() => {
     if (isOpen && searchInputRef.current) {
-        // Small timeout to allow render
-        setTimeout(() => searchInputRef.current?.focus(), 50);
+      setTimeout(() => searchInputRef.current?.focus(), 50);
     }
   }, [isOpen]);
 
@@ -65,85 +92,118 @@ export const SearchableSelect = ({
     setSearchQuery("");
   };
 
+  const handleToggle = () => {
+    if (!disabled) {
+      if (!isOpen) {
+        updatePosition();
+      }
+      setIsOpen(!isOpen);
+    }
+  };
+
+  const dropdown = isOpen && !disabled && (
+    <div
+      className="fixed z-[200] bg-elevated border border-strong rounded-lg shadow-xl max-h-60 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+      style={{
+        top: dropdownPosition.top,
+        left: dropdownPosition.left,
+        width: dropdownPosition.width,
+      }}
+    >
+      <div className="p-2 border-b border-default bg-elevated">
+        <div className="flex items-center gap-2 bg-base border border-strong rounded px-2 py-1.5 focus-within:border-blue-500 transition-colors">
+          <Search size={14} className="text-muted shrink-0" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder={searchPlaceholder}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-transparent border-none text-sm text-primary focus:outline-none placeholder:text-muted"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && filteredOptions.length > 0) {
+                handleSelect(filteredOptions[0]);
+              }
+              if (e.key === "Escape") {
+                setIsOpen(false);
+              }
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="text-muted hover:text-primary"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="overflow-y-auto flex-1 p-1 scrollbar-thin scrollbar-thumb-surface-tertiary scrollbar-track-transparent">
+        {filteredOptions.length === 0 ? (
+          <div className="p-3 text-sm text-muted text-center italic">
+            {noResultsLabel}
+          </div>
+        ) : (
+          filteredOptions.map((option) => (
+            <button
+              key={option}
+              onClick={() => handleSelect(option)}
+              className={clsx(
+                "w-full text-left px-3 py-2 text-sm rounded transition-colors truncate",
+                value === option
+                  ? "bg-blue-600/10 text-blue-400 font-medium"
+                  : "text-primary hover:bg-surface-secondary"
+              )}
+              title={option}
+            >
+              {option}
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className={clsx("relative", className)} ref={containerRef}>
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleToggle}
         disabled={disabled}
         className={clsx(
           "w-full bg-base border rounded px-3 py-2 text-primary flex items-center justify-between transition-colors",
           disabled
             ? "opacity-50 cursor-not-allowed border-default"
-            : hasError 
-                ? "border-red-500 hover:border-red-400" 
-                : "border-strong hover:border-blue-500 cursor-pointer",
-          isOpen && !disabled && !hasError ? "border-blue-500 ring-1 ring-blue-500" : ""
+            : hasError
+              ? "border-red-500 hover:border-red-400"
+              : "border-strong hover:border-blue-500 cursor-pointer",
+          isOpen && !disabled && !hasError
+            ? "border-blue-500 ring-1 ring-blue-500"
+            : ""
         )}
       >
-        <span className={clsx("truncate", !value && "text-muted", hasError && "text-red-400")}>
+        <span
+          className={clsx(
+            "truncate",
+            !value && "text-muted",
+            hasError && "text-red-400"
+          )}
+        >
           {value || placeholder}
         </span>
-        <ChevronDown size={16} className={clsx("shrink-0 ml-2", hasError ? "text-red-400" : "text-secondary")} />
+        <ChevronDown
+          size={16}
+          className={clsx(
+            "shrink-0 ml-2",
+            hasError ? "text-red-400" : "text-secondary"
+          )}
+        />
       </button>
 
-      {isOpen && !disabled && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-elevated border border-strong rounded-lg shadow-xl max-h-60 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-          <div className="p-2 border-b border-default bg-elevated">
-            <div className="flex items-center gap-2 bg-base border border-strong rounded px-2 py-1.5 focus-within:border-blue-500 transition-colors">
-              <Search size={14} className="text-muted shrink-0" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder={searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent border-none text-sm text-primary focus:outline-none placeholder:text-muted"
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' && filteredOptions.length > 0) {
-                        handleSelect(filteredOptions[0]);
-                    }
-                    if (e.key === 'Escape') {
-                        setIsOpen(false);
-                    }
-                }}
-              />
-              {searchQuery && (
-                <button 
-                    onClick={() => setSearchQuery("")}
-                    className="text-muted hover:text-primary"
-                >
-                    <X size={14} />
-                </button>
-              )}
-            </div>
-          </div>
-          
-          <div className="overflow-y-auto flex-1 p-1 scrollbar-thin scrollbar-thumb-surface-tertiary scrollbar-track-transparent">
-            {filteredOptions.length === 0 ? (
-              <div className="p-3 text-sm text-muted text-center italic">
-                {noResultsLabel}
-              </div>
-            ) : (
-              filteredOptions.map((option) => (
-                <button
-                  key={option}
-                  onClick={() => handleSelect(option)}
-                  className={clsx(
-                    "w-full text-left px-3 py-2 text-sm rounded transition-colors truncate",
-                    value === option
-                      ? "bg-blue-600/10 text-blue-400 font-medium"
-                      : "text-primary hover:bg-surface-secondary"
-                  )}
-                  title={option}
-                >
-                  {option}
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+      {dropdown && createPortal(dropdown, document.body)}
     </div>
   );
 };
