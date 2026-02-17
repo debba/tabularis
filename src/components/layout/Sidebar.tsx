@@ -6,7 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { DISCORD_URL } from "../../config/links";
 import {
   Database,
-  Terminal,
+  Plug2,
   Settings,
   Plus,
   FileCode,
@@ -292,17 +292,10 @@ export const Sidebar = () => {
         <nav className="flex-1 w-full flex flex-col items-center">
           <NavItem
             to="/"
-            icon={Database}
+            icon={Plug2}
             label={t("sidebar.connections")}
             isConnected={!!activeConnectionId}
           />
-          {activeConnectionId && (
-            <NavItem
-              to="/editor"
-              icon={Terminal}
-              label={t("sidebar.sqlEditor")}
-            />
-          )}
 
           {/* Open connections */}
           {openConnections.length > 0 && (
