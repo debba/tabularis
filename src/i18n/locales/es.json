@@ -47,6 +47,8 @@
     "failDeleteIndex": "Error al eliminar el índice: ",
     "modifyColumn": "Modificar Columna",
     "copyName": "Copiar Nombre",
+    "openInEditor": "Abrir en el Editor",
+    "setAsActive": "Establecer como Activa",
     "deleteTable": "Eliminar Tabla",
     "deleteTableConfirm": "¿Estás seguro de que deseas eliminar la tabla \"{{table}}\"?",
     "failDeleteTable": "Error al eliminar la tabla: ",

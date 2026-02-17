@@ -47,6 +47,8 @@
     "failDeleteIndex": "Failed to delete index: ",
     "modifyColumn": "Modify Column",
     "copyName": "Copy Name",
+    "openInEditor": "Open in Editor",
+    "setAsActive": "Set as Active",
     "deleteTable": "Delete Table",
     "deleteTableConfirm": "Are you sure you want to delete table \"{{table}}\"?",
     "failDeleteTable": "Failed to delete table: ",

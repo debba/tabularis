@@ -178,6 +178,11 @@ export const Sidebar = () => {
     }
   };
 
+  const handleOpenInEditor = (connectionId: string) => {
+    handleSwitch(connectionId);
+    navigate("/editor");
+  };
+
   // Resize Hook
   const { sidebarWidth, startResize } = useSidebarResize();
 
@@ -305,6 +310,7 @@ export const Sidebar = () => {
                   key={conn.id}
                   connection={conn}
                   onSwitch={() => handleSwitchToConnection(conn.id)}
+                  onOpenInEditor={() => handleOpenInEditor(conn.id)}
                   onDisconnect={() => handleDisconnectConnection(conn.id)}
                 />
               ))}
