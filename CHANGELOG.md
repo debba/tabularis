@@ -1,3 +1,27 @@
+## [0.8.14](https://github.com/debba/tabularis/compare/v0.8.13...v0.8.14) (2026-02-17)
+
+
+### Bug Fixes
+
+* **commands:** clear connection_id for temporary information_schema pool ([30f870e](https://github.com/debba/tabularis/commit/30f870e05263d57721f1c6dda01c243a70facc68))
+* **connections:** disconnect active connection before deleting ([461b027](https://github.com/debba/tabularis/commit/461b0276a094ff56146e52286904626b2b0e6175))
+* **mysql:** exclude views from get_tables query ([146f4af](https://github.com/debba/tabularis/commit/146f4afbc3fcd46d109edb2c79c594d31616a828))
+* **ssh:** verify host keys, use accept-new, secure logging ([d8ab538](https://github.com/debba/tabularis/commit/d8ab538ee684c8fb1146e98d81f810aad88287ae))
+
+
+### Features
+
+* add split view, open editor, AI overlay; improve connection state ([bd98bea](https://github.com/debba/tabularis/commit/bd98beaea6db749a182c97b6465164198a296223))
+* **connection:** add connection manager utils, hook, and UI components ([e58456b](https://github.com/debba/tabularis/commit/e58456bdcff0006fd0e7170c521012357e7f9bba))
+* **editor:** relocate AI assist buttons to overlay and adjust padding ([0f346d8](https://github.com/debba/tabularis/commit/0f346d8af690f680b212f549342773e9b496c2af))
+* **layout:** add split view layout with connection grouping ([903286f](https://github.com/debba/tabularis/commit/903286fbbee36862eaf26a42355fbf731fc99c5d))
+* **layout:** add split view visibility control and panel close button ([b35e059](https://github.com/debba/tabularis/commit/b35e059163acbf32dfe8b2c12f50ab80fdcc8461))
+* **layout:** replace connections icon and remove editor link ([23a7d8d](https://github.com/debba/tabularis/commit/23a7d8da1d1a489af3dfa20a9ea2189e4b72b629))
+* **searchable-select:** render dropdown via portal with positioning ([396f384](https://github.com/debba/tabularis/commit/396f3844640d9e8741aaf9b72e628402fd3c634c))
+* **sidebar:** add context menu to open connection in editor ([72614b7](https://github.com/debba/tabularis/commit/72614b791b48a21852f893cba2f44faf2ae2bb0e))
+
+
+
 ## [0.8.13](https://github.com/debba/tabularis/compare/v0.8.12...v0.8.13) (2026-02-15)
 
 
