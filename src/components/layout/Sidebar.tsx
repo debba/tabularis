@@ -46,8 +46,7 @@ export const Sidebar = () => {
     toggleSelection,
     activateSplit,
     hideSplitView,
-    explorerConnectionId,
-    setExplorerConnectionId,
+    explorerConnectionId
   } = useConnectionLayoutContext();
 
   const { sidebarWidth, startResize } = useSidebarResize();
