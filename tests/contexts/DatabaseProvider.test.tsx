@@ -159,7 +159,7 @@ describe('DatabaseProvider', () => {
     expect(result.current.views).toHaveLength(0);
   });
 
-  it('should disconnect previous connection when connecting to a new one', async () => {
+  it('should keep previous connection open when connecting to a new one', async () => {
     vi.mocked(invoke).mockImplementation((cmd: string, args?: Record<string, unknown>) => {
       if (cmd === 'get_connections') return Promise.resolve(mockConnections);
       if (cmd === 'test_connection') return Promise.resolve('Connection successful!');
@@ -215,8 +215,8 @@ describe('DatabaseProvider', () => {
       await result.current.connect('conn-456');
     });
 
-    // Should have called disconnect_connection for the previous connection
-    expect(invoke).toHaveBeenCalledWith('disconnect_connection', { connectionId: 'conn-123' });
+    // Should NOT have disconnected the previous connection (multiple connections supported)
+    expect(invoke).not.toHaveBeenCalledWith('disconnect_connection', { connectionId: 'conn-123' });
 
     // Should be connected to the new connection
     await waitFor(() => {

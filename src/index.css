@@ -404,11 +404,11 @@ select option:active {
 
 /* Monaco selection visibility */
 .monaco-editor .selected-text {
-  background-color: var(--surface-active) !important;
+  background-color: color-mix(in srgb, var(--surface-active) 32%, transparent) !important;
 }
 
 .monaco-editor .view-overlays .selected-text {
-  background-color: var(--surface-active) !important;
+  background-color: color-mix(in srgb, var(--surface-active) 32%, transparent) !important;
 }
 
 /* Sidebar slide-in animation */

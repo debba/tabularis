@@ -114,6 +114,7 @@ Join our [Discord server](https://discord.gg/YrZPHAwMSG) to chat with the mainta
 
 - Support for **MySQL/MariaDB**, working on: **PostgreSQL** (with multi-schema support) and **SQLite**.
 - Save, manage, and clone connection profiles with secure local persistence.
+- **Open in Editor:** Right-click any connection in the sidebar to open it directly in the editor via context menu.
 - Manage **SSH Connections** from the connection manager.
 - Optional secure password storage in system **Keychain**.
 - **SSH Tunneling** with automatic readiness detection.
@@ -133,8 +134,10 @@ Join our [Discord server](https://discord.gg/YrZPHAwMSG) to chat with the mainta
 
 - **Monaco Editor:** Syntax highlighting and auto-completion.
 - **Tabbed Interface:** Isolated connections per tab.
+- **Split View:** Open multiple database connections side-by-side in a resizable split-pane layout.
 - **Execution:** Run full scripts, selections, or specific statements.
 - **Saved Queries:** Persist frequently used SQL.
+- **AI Assist Overlay:** AI assistance buttons accessible as a floating overlay directly in the editor.
 
 ### Visual Query Builder
 

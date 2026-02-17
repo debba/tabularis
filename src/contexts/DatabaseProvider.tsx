@@ -268,14 +268,10 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
   }, [activeConnectionId, connectionDataMap, updateConnectionData, loadSchemaData]);
 
   const connect = async (connectionId: string) => {
-    const allConnections = await invoke<SavedConnection[]>('get_connections');
-    const conn = allConnections.find(c => c.id === connectionId);
-    if (!conn) {
-      throw new Error('Connection not found');
-    }
+    // Capture previous state so we can restore it on failure
+    const prevActiveConnectionId = activeConnectionId;
 
-    const driver = conn.params.driver;
-
+    // Set loading state synchronously before any await so UI reflects loading immediately
     if (!openConnectionIds.includes(connectionId)) {
       setOpenConnectionIds(prev => [...prev, connectionId]);
     }
@@ -283,9 +279,12 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     setConnectionDataMap(prev => ({
       ...prev,
       [connectionId]: {
-        ...createEmptyConnectionData(driver, conn.name, conn.params.database),
+        ...createEmptyConnectionData(),
         isConnecting: true,
         isConnected: false,
+        isLoadingTables: true,
+        isLoadingViews: true,
+        isLoadingRoutines: true,
       },
     }));
 
@@ -293,6 +292,20 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     setActiveTable(null);
 
     try {
+      const allConnections = await invoke<SavedConnection[]>('get_connections');
+      const conn = allConnections.find(c => c.id === connectionId);
+      if (!conn) {
+        throw new Error('Connection not found');
+      }
+
+      const driver = conn.params.driver;
+
+      updateConnectionData(connectionId, {
+        driver,
+        connectionName: conn.name,
+        databaseName: conn.params.database,
+      });
+
       try {
         await invoke<string>('test_connection', {
           request: {
@@ -302,10 +315,13 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
         });
       } catch (testError) {
         const errorMsg = typeof testError === 'string' ? testError : (testError as Error).message || String(testError);
-        updateConnectionData(connectionId, { 
-          isConnecting: false, 
+        updateConnectionData(connectionId, {
+          isConnecting: false,
           isConnected: false,
-          error: errorMsg 
+          isLoadingTables: false,
+          isLoadingViews: false,
+          isLoadingRoutines: false,
+          error: errorMsg
         });
         setOpenConnectionIds(prev => prev.filter(id => id !== connectionId));
         throw new Error(errorMsg);
@@ -358,6 +374,9 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
                 },
               },
               isLoadingSchemas: false,
+              isLoadingTables: false,
+              isLoadingViews: false,
+              isLoadingRoutines: false,
               isConnecting: false,
               isConnected: true,
             });
@@ -366,14 +385,20 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
               selectedSchemas: [],
               needsSchemaSelection: true,
               isLoadingSchemas: false,
+              isLoadingTables: false,
+              isLoadingViews: false,
+              isLoadingRoutines: false,
               isConnecting: false,
               isConnected: true,
             });
           }
         } catch (e) {
           console.error('Failed to fetch schemas:', e);
-          updateConnectionData(connectionId, { 
-            isLoadingSchemas: false, 
+          updateConnectionData(connectionId, {
+            isLoadingSchemas: false,
+            isLoadingTables: false,
+            isLoadingViews: false,
+            isLoadingRoutines: false,
             isConnecting: false,
             isConnected: true,
           });
@@ -389,18 +414,22 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
           tables: tablesResult,
           views: viewsResult,
           routines: routinesResult,
+          isLoadingTables: false,
+          isLoadingViews: false,
+          isLoadingRoutines: false,
           isConnecting: false,
           isConnected: true,
         });
       }
     } catch (error) {
       console.error('Failed to connect:', error);
-      updateConnectionData(connectionId, { 
-        isConnecting: false, 
-        isConnected: false,
-        error: String(error)
+      setConnectionDataMap(prev => {
+        const newMap = { ...prev };
+        delete newMap[connectionId];
+        return newMap;
       });
       setOpenConnectionIds(prev => prev.filter(id => id !== connectionId));
+      setActiveConnectionId(prevActiveConnectionId);
       throw error;
     }
   };
