@@ -93,6 +93,9 @@ export const Connections = () => {
       
       if (confirmed) {
           try {
+              if (activeConnectionId === id) {
+                  await disconnect();
+              }
               await invoke('delete_connection', { id });
               loadConnections();
           } catch (e) {
