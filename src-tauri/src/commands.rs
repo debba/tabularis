@@ -1543,6 +1543,9 @@ pub async fn list_databases<R: Runtime>(
         "mysql" => {
             let mut params = resolved_params.clone();
             params.database = "information_schema".to_string();
+            // Clear connection_id so this temporary information_schema pool is not cached
+            // under the same key as the actual connection pool.
+            params.connection_id = None;
             mysql::get_databases(&params).await
         }
         "postgres" => {
