@@ -36,7 +36,7 @@ fn build_mysql_url(params: &ConnectionParams) -> String {
     let user = encode(params.username.as_deref().unwrap_or_default());
     let pass = encode(params.password.as_deref().unwrap_or_default());
     format!(
-        "mysql://{}:{}@{}:{}/{}",
+        "mysql://{}:{}@{}:{}/{}?maxAllowedPacket=1073741824&socketTimeout=600000&connectTimeout=60000",
         user,
         pass,
         params.host.as_deref().unwrap_or("localhost"),
