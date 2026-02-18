@@ -3,7 +3,8 @@
  * Extracted for testability
  */
 
-import { formatGeometricValue, isGeometricType } from './geometry';
+import { formatGeometricValue, isGeometricType } from "./geometry";
+import { formatBlobValue, isBlobType } from "./blob";
 
 /** Sentinel value indicating that the database DEFAULT value should be used */
 export const USE_DEFAULT_SENTINEL = "__USE_DEFAULT__";
@@ -28,11 +29,19 @@ export interface MergedRow {
 export function formatCellValue(
   value: unknown,
   nullLabel: string = "NULL",
-  columnType?: string
+  columnType?: string,
 ): string {
   // Handle geometric types first (before null check to preserve geometric NULL handling)
   if (columnType && isGeometricType(columnType)) {
     return formatGeometricValue(value);
+  }
+
+  // Handle BLOB types - show metadata instead of raw data
+  if (columnType && isBlobType(columnType)) {
+    if (value === null || value === undefined) {
+      return nullLabel;
+    }
+    return formatBlobValue(value, columnType);
   }
 
   if (value === null || value === undefined) {
@@ -57,22 +66,22 @@ export function formatCellValue(
  * @returns The sort direction for this column: "asc", "desc", or null
  */
 export function getColumnSortState(
-  columnName: string, 
-  sortClause: string | undefined
+  columnName: string,
+  sortClause: string | undefined,
 ): SortDirection {
   if (!sortClause) return null;
-  
+
   // Normalize for case-insensitive comparison
   const normalizedClause = sortClause.toLowerCase();
   const normalizedCol = columnName.toLowerCase();
-  
+
   // Check if column appears in sort clause
   // Handle patterns like: "name ASC", "name asc", "table.name ASC", etc.
   const patterns = [
     new RegExp(`\\b${escapeRegExp(normalizedCol)}\\s+(asc|desc)\\b`),
     new RegExp(`\\b${escapeRegExp(normalizedCol)}\\b`),
   ];
-  
+
   for (const pattern of patterns) {
     const match = normalizedClause.match(pattern);
     if (match) {
@@ -84,7 +93,7 @@ export function getColumnSortState(
       return "asc";
     }
   }
-  
+
   return null;
 }
 
@@ -95,12 +104,12 @@ export function getColumnSortState(
  * @returns Array of indices from start to end (inclusive)
  */
 export function calculateSelectionRange(
-  startIndex: number, 
-  endIndex: number
+  startIndex: number,
+  endIndex: number,
 ): number[] {
   const start = Math.min(startIndex, endIndex);
   const end = Math.max(startIndex, endIndex);
-  
+
   const range: number[] = [];
   for (let i = start; i <= end; i++) {
     range.push(i);
@@ -186,12 +195,17 @@ export function resolveExistingCellDisplay(
   cellValue: unknown,
   pkVal: string | null,
   pkColumn: string | null | undefined,
-  pendingChanges: Record<string, { pkOriginalValue: unknown; changes: Record<string, unknown> }> | undefined,
+  pendingChanges:
+    | Record<
+        string,
+        { pkOriginalValue: unknown; changes: Record<string, unknown> }
+      >
+    | undefined,
   columnInfo: ColumnDisplayInfo,
 ): ResolvedCellDisplay {
   const pendingVal =
     pkColumn && pkVal && pendingChanges?.[pkVal]?.changes?.[columnInfo.colName];
-  const hasPendingChange = (pkColumn && pkVal) ? (pendingVal !== undefined) : false;
+  const hasPendingChange = pkColumn && pkVal ? pendingVal !== undefined : false;
   let displayValue = hasPendingChange ? pendingVal : cellValue;
   const isModified =
     hasPendingChange && String(pendingVal) !== String(cellValue);

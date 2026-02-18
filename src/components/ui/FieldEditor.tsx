@@ -2,7 +2,9 @@ import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Sparkles, Ban, FileDigit } from "lucide-react";
 import { GeometryInput } from "./GeometryInput";
+import { BlobInput } from "./BlobInput";
 import { isGeometricType, formatGeometricValue } from "../../utils/geometry";
+import { isBlobType } from "../../utils/blob";
 import { USE_DEFAULT_SENTINEL } from "../../utils/dataGrid";
 
 export interface FieldEditorProps {
@@ -16,6 +18,12 @@ export interface FieldEditorProps {
   isAutoIncrement?: boolean;
   hasDefault?: boolean;
   isNullable?: boolean;
+  // Connection context forwarded to BlobInput for downloading truncated BLOBs
+  connectionId?: string | null;
+  tableName?: string | null;
+  pkCol?: string | null;
+  pkVal?: unknown;
+  schema?: string | null;
 }
 
 /**
@@ -23,6 +31,7 @@ export interface FieldEditorProps {
  * Automatically selects the appropriate input type based on field type
  */
 export const FieldEditor: React.FC<FieldEditorProps> = ({
+  name,
   type,
   value,
   onChange,
@@ -32,9 +41,15 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
   isAutoIncrement = false,
   hasDefault = false,
   isNullable = false,
+  connectionId,
+  tableName,
+  pkCol,
+  pkVal,
+  schema,
 }) => {
   const { t } = useTranslation();
   const isGeometric = type && isGeometricType(type);
+  const isBlob = type && isBlobType(type);
 
   const defaultPlaceholder = placeholder || t("rowEditor.enterValue");
 
@@ -49,7 +64,22 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
     return String(value ?? "");
   }, [isGeometric, value]);
 
-  const inputElement = isGeometric ? (
+  const inputElement = isBlob ? (
+    <div className={`${className}`}>
+      <BlobInput
+        value={value}
+        dataType={type}
+        onChange={(newValue) => onChange(newValue)}
+        placeholder={defaultPlaceholder}
+        connectionId={connectionId}
+        tableName={tableName}
+        pkCol={pkCol}
+        pkVal={pkVal}
+        colName={name}
+        schema={schema}
+      />
+    </div>
+  ) : isGeometric ? (
     <div className={`bg-base border border-strong rounded-lg p-3 ${className}`}>
       <GeometryInput
         value={displayValue}
@@ -75,7 +105,7 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
   return (
     <div className="space-y-2">
       {inputElement}
-      
+
       {/* Quick Action Buttons */}
       <div className="flex gap-2 flex-wrap">
         {isAutoIncrement && isInsertion && (

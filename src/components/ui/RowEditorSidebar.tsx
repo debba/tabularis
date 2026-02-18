@@ -16,6 +16,11 @@ interface RowEditorSidebarProps {
   nullableColumns?: string[];
   onChange: (colName: string, value: unknown) => void;
   focusField?: string; // Field to focus when opening
+  // Connection context for BLOB download support
+  connectionId?: string | null;
+  tableName?: string | null;
+  pkColumn?: string | null;
+  schema?: string | null;
 }
 
 export const RowEditorSidebar: React.FC<RowEditorSidebarProps> = ({
@@ -30,6 +35,10 @@ export const RowEditorSidebar: React.FC<RowEditorSidebarProps> = ({
   nullableColumns,
   onChange,
   focusField,
+  connectionId,
+  tableName,
+  pkColumn,
+  schema,
 }) => {
   const { t } = useTranslation();
   const { editedData, updateField } = useRowEditor({
@@ -97,7 +106,7 @@ export const RowEditorSidebar: React.FC<RowEditorSidebarProps> = ({
                   fieldRefs.current[column.name] = el;
                 }}
               >
-                <label className="block text-xs uppercase font-bold text-muted">
+                <label className="block text-xs font-bold text-muted">
                   {column.name}
                   {column.type && (
                     <span className="ml-2 normal-case font-normal">
@@ -116,6 +125,11 @@ export const RowEditorSidebar: React.FC<RowEditorSidebarProps> = ({
                   isAutoIncrement={autoIncrementColumns?.includes(column.name)}
                   hasDefault={defaultValueColumns?.includes(column.name)}
                   isNullable={nullableColumns?.includes(column.name)}
+                  connectionId={connectionId}
+                  tableName={tableName}
+                  pkCol={pkColumn}
+                  pkVal={pkColumn ? rowData[pkColumn] : undefined}
+                  schema={schema}
                 />
               </div>
             );

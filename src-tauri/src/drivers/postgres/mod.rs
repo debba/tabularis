@@ -406,6 +406,42 @@ pub async fn get_indexes(
         .collect())
 }
 
+pub async fn save_blob_column_to_file(
+    params: &ConnectionParams,
+    table: &str,
+    col_name: &str,
+    pk_col: &str,
+    pk_val: serde_json::Value,
+    schema: &str,
+    file_path: &str,
+) -> Result<(), String> {
+    let pool = get_postgres_pool(params).await?;
+
+    let query = format!(
+        "SELECT \"{}\" FROM \"{}\".\"{}\" WHERE \"{}\" = $1",
+        escape_identifier(col_name),
+        escape_identifier(schema),
+        escape_identifier(table),
+        escape_identifier(pk_col)
+    );
+
+    let row = match pk_val {
+        serde_json::Value::Number(n) => {
+            if n.is_i64() {
+                sqlx::query(&query).bind(n.as_i64()).fetch_one(&pool).await
+            } else {
+                sqlx::query(&query).bind(n.as_f64()).fetch_one(&pool).await
+            }
+        }
+        serde_json::Value::String(s) => sqlx::query(&query).bind(s).fetch_one(&pool).await,
+        _ => return Err("Unsupported PK type".into()),
+    }
+    .map_err(|e| e.to_string())?;
+
+    let bytes: Vec<u8> = row.try_get(0).map_err(|e| e.to_string())?;
+    std::fs::write(file_path, bytes).map_err(|e| e.to_string())
+}
+
 pub async fn delete_record(
     params: &ConnectionParams,
     table: &str,

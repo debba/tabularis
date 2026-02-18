@@ -3,6 +3,10 @@ use rust_decimal::Decimal;
 use sqlx::Row;
 use uuid::Uuid;
 
+/// Maximum size in bytes for BLOB data to extract
+/// BLOBs larger than this will be truncated and metadata will be included
+const MAX_BLOB_PREVIEW_SIZE: usize = 512; // Only extract first 512 bytes for MIME detection
+
 /// Extract value from MySQL row - supports all MySQL types including unsigned integers and geometry
 pub fn extract_value(row: &sqlx::mysql::MySqlRow, index: usize) -> serde_json::Value {
     use sqlx::{Column, TypeInfo, ValueRef};
@@ -77,16 +81,31 @@ pub fn extract_value(row: &sqlx::mysql::MySqlRow, index: usize) -> serde_json::V
         // First try as Vec<u8> (native binary format)
         match row.try_get::<Vec<u8>, _>(index) {
             Ok(v) => {
-                // Try to decode as UTF-8 string first (many BLOBs contain text/JSON)
-                if let Ok(s) = String::from_utf8(v.clone()) {
-                    return serde_json::Value::String(s);
+                let blob_size = v.len();
+
+                // For small BLOBs, process normally
+                if blob_size <= MAX_BLOB_PREVIEW_SIZE {
+                    // Try to decode as UTF-8 string first (many BLOBs contain text/JSON)
+                    if let Ok(s) = String::from_utf8(v.clone()) {
+                        return serde_json::Value::String(s);
+                    }
+
+                    // If not valid UTF-8, encode as base64
+                    return serde_json::Value::String(base64::Engine::encode(
+                        &base64::engine::general_purpose::STANDARD,
+                        v,
+                    ));
                 }
 
-                // If not valid UTF-8, encode as base64
-                return serde_json::Value::String(base64::Engine::encode(
+                // For large BLOBs, only extract preview for MIME detection
+                // Format: "BLOB:<size_in_bytes>:<base64_preview>"
+                let preview_bytes = &v[..MAX_BLOB_PREVIEW_SIZE];
+                let preview_base64 = base64::Engine::encode(
                     &base64::engine::general_purpose::STANDARD,
-                    v,
-                ));
+                    preview_bytes,
+                );
+
+                return serde_json::Value::String(format!("BLOB:{}:{}", blob_size, preview_base64));
             }
             Err(e) => eprintln!("[DEBUG] ✗ {} as Vec<u8>: {}", col_name, e),
         }
@@ -127,8 +146,12 @@ pub fn extract_value(row: &sqlx::mysql::MySqlRow, index: usize) -> serde_json::V
     }
 
     // For GEOMETRY types (GEOMETRY, POINT, LINESTRING, POLYGON, etc.), extract as WKB binary and encode
-    if col_type == "GEOMETRY" || col_type.contains("POINT") || col_type.contains("LINESTRING")
-        || col_type.contains("POLYGON") || col_type.contains("COLLECTION") {
+    if col_type == "GEOMETRY"
+        || col_type.contains("POINT")
+        || col_type.contains("LINESTRING")
+        || col_type.contains("POLYGON")
+        || col_type.contains("COLLECTION")
+    {
         // Use try_get_raw() to get the raw bytes since sqlx doesn't allow Vec<u8> for GEOMETRY
         match row.try_get_raw(index) {
             Ok(raw_value) => {
@@ -138,14 +161,21 @@ pub fn extract_value(row: &sqlx::mysql::MySqlRow, index: usize) -> serde_json::V
                     match <Vec<u8> as sqlx::Decode<sqlx::MySql>>::decode(raw_value) {
                         Ok(v) => {
                             // Return WKB data as hexadecimal string (standard format for geometry display)
-                            let hex_string = v.iter().map(|b| format!("{:02X}", b)).collect::<String>();
+                            let hex_string =
+                                v.iter().map(|b| format!("{:02X}", b)).collect::<String>();
                             return serde_json::Value::String(format!("0x{}", hex_string));
                         }
-                        Err(e) => eprintln!("[WARNING] Failed to decode geometry bytes for '{}': {}", col_name, e),
+                        Err(e) => eprintln!(
+                            "[WARNING] Failed to decode geometry bytes for '{}': {}",
+                            col_name, e
+                        ),
                     }
                 }
             }
-            Err(e) => eprintln!("[WARNING] Failed to get raw geometry value for '{}': {}", col_name, e),
+            Err(e) => eprintln!(
+                "[WARNING] Failed to get raw geometry value for '{}': {}",
+                col_name, e
+            ),
         }
     }
 

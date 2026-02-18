@@ -591,5 +591,28 @@
     "sqlPlaceholder": "ST_GeomFromText('POINT(30 40)', 4326)",
     "wktPlaceholder": "POINT(30 40)",
     "toggleTooltip": "Funciones SQL"
+  },
+  "rowEditor": {
+    "title": "Editar Fila",
+    "subtitle": "Fila #{{row}}",
+    "save": "Guardar Cambios",
+    "cancel": "Cancelar",
+    "enterValue": "Ingresar valor..."
+  },
+  "contextMenu": {
+    "openSidebar": "Abrir Barra Lateral"
+  },
+  "blobInput": {
+    "mimeType": "Tipo MIME",
+    "size": "Tamaño",
+    "type": "Tipo de Datos",
+    "noData": "Sin datos BLOB",
+    "uploadFile": "Subir Archivo",
+    "download": "Descargar",
+    "delete": "Eliminar",
+    "truncatedWarning": "Solo vista previa - datos completos no cargados",
+    "cannotDownloadTruncated": "No se puede descargar: solo están disponibles los datos de vista previa. El BLOB completo no se cargó para evitar el bloqueo de la interfaz.",
+    "downloadDisabledTruncated": "Descarga no disponible - solo vista previa cargada",
+    "downloading": "Descargando..."
   }
 }

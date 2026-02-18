@@ -162,6 +162,7 @@ pub fn run() {
             commands::delete_record,
             commands::update_record,
             commands::insert_record,
+            commands::save_blob_to_file,
             commands::execute_query,
             commands::cancel_query,
             commands::get_views,

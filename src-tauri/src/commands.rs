@@ -1692,6 +1692,30 @@ pub async fn update_record<R: Runtime>(
 }
 
 #[tauri::command]
+pub async fn save_blob_to_file<R: Runtime>(
+    app: AppHandle<R>,
+    connection_id: String,
+    table: String,
+    col_name: String,
+    pk_col: String,
+    pk_val: serde_json::Value,
+    file_path: String,
+    schema: Option<String>,
+) -> Result<(), String> {
+    let saved_conn = find_connection_by_id(&app, &connection_id)?;
+    let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
+    match saved_conn.params.driver.as_str() {
+        "mysql" => mysql::save_blob_column_to_file(&params, &table, &col_name, &pk_col, pk_val, &file_path).await,
+        "postgres" => {
+            postgres::save_blob_column_to_file(&params, &table, &col_name, &pk_col, pk_val, schema.as_deref().unwrap_or("public"), &file_path).await
+        }
+        "sqlite" => sqlite::save_blob_column_to_file(&params, &table, &col_name, &pk_col, pk_val, &file_path).await,
+        _ => Err("Unsupported driver".into()),
+    }
+}
+
+#[tauri::command]
 pub async fn insert_record<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
