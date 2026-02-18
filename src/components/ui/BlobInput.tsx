@@ -50,6 +50,7 @@ export const BlobInput: React.FC<BlobInputProps> = ({
   const { t } = useTranslation();
   const [isDownloading, setIsDownloading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const metadata: BlobMetadata | null = extractBlobMetadata(value);
   const hasValue = value !== null && value !== undefined && value !== "";
@@ -69,6 +70,8 @@ export const BlobInput: React.FC<BlobInputProps> = ({
     const filePath = await open({ multiple: false, directory: false });
     if (!filePath) return;
 
+    // Clear any previous errors
+    setError(null);
     setIsUploading(true);
     
     try {
@@ -77,8 +80,11 @@ export const BlobInput: React.FC<BlobInputProps> = ({
       // The actual file will be read only when saving to the database
       const fileRef = await invoke<string>("load_blob_from_file", { filePath });
       onChange(fileRef);
-    } catch (error) {
-      console.error("Failed to load file:", error);
+    } catch (err) {
+      console.error("Failed to load file:", err);
+      // Extract error message from Tauri error object
+      const errorMessage = typeof err === 'string' ? err : (err as any)?.message || String(err);
+      setError(errorMessage);
     } finally {
       setIsUploading(false);
     }
@@ -237,26 +243,48 @@ export const BlobInput: React.FC<BlobInputProps> = ({
               </span>
             </div>
           )}
+          
+          {/* Error message footer */}
+          {error && (
+            <div className="flex items-center gap-1.5 px-3 py-2 bg-red-500/5 border-t border-red-500/20">
+              <AlertTriangle size={11} className="text-red-500 flex-shrink-0" />
+              <span className="text-xs text-red-500/80">
+                {error}
+              </span>
+            </div>
+          )}
         </div>
       ) : (
         /* Empty state — whole card is clickable to upload */
-        <button
-          type="button"
-          onClick={handleFileUpload}
-          disabled={isUploading}
-          className="w-full flex flex-col items-center gap-2.5 px-4 py-6 bg-surface-secondary border border-dashed border-default rounded-lg text-muted hover:text-secondary hover:border-strong hover:bg-surface-tertiary transition-colors disabled:cursor-not-allowed disabled:hover:text-muted disabled:hover:border-default disabled:hover:bg-surface-secondary"
-        >
-          <div className="p-2.5 rounded-full bg-surface-tertiary">
-            {isUploading ? (
-              <Loader2 size={15} className="animate-spin" />
-            ) : (
-              <Upload size={15} />
-            )}
-          </div>
-          <span className="text-sm">
-            {isUploading ? t("blobInput.uploading") : (placeholder || t("blobInput.noData"))}
-          </span>
-        </button>
+        <div className="w-full">
+          <button
+            type="button"
+            onClick={handleFileUpload}
+            disabled={isUploading}
+            className="w-full flex flex-col items-center gap-2.5 px-4 py-6 bg-surface-secondary border border-dashed border-default rounded-lg text-muted hover:text-secondary hover:border-strong hover:bg-surface-tertiary transition-colors disabled:cursor-not-allowed disabled:hover:text-muted disabled:hover:border-default disabled:hover:bg-surface-secondary"
+          >
+            <div className="p-2.5 rounded-full bg-surface-tertiary">
+              {isUploading ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <Upload size={15} />
+              )}
+            </div>
+            <span className="text-sm">
+              {isUploading ? t("blobInput.uploading") : (placeholder || t("blobInput.noData"))}
+            </span>
+          </button>
+          
+          {/* Error message for empty state */}
+          {error && (
+            <div className="mt-2 flex items-start gap-1.5 px-3 py-2 bg-red-500/5 border border-red-500/20 rounded-lg">
+              <AlertTriangle size={13} className="text-red-500 flex-shrink-0 mt-0.5" />
+              <span className="text-xs text-red-500/90 leading-relaxed">
+                {error}
+              </span>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

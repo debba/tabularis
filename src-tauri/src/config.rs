@@ -28,14 +28,15 @@ pub struct AppConfig {
     pub er_diagram_default_layout: Option<String>,
     pub schema_preferences: Option<HashMap<String, String>>,
     pub selected_schemas: Option<HashMap<String, Vec<String>>>,
+    pub max_blob_size: Option<u64>,
 }
 
-pub fn get_config_dir(app: &AppHandle) -> Option<PathBuf> {
+pub fn get_config_dir<R: tauri::Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
     app.path().app_config_dir().ok()
 }
 
 // Internal load
-pub fn load_config_internal(app: &AppHandle) -> AppConfig {
+pub fn load_config_internal<R: tauri::Runtime>(app: &AppHandle<R>) -> AppConfig {
     if let Some(config_dir) = get_config_dir(app) {
         let config_path = config_dir.join("config.json");
         if config_path.exists() {
@@ -120,6 +121,9 @@ pub fn save_config(app: AppHandle, config: AppConfig) -> Result<(), String> {
         if config.selected_schemas.is_some() {
             existing_config.selected_schemas = config.selected_schemas;
         }
+        if config.max_blob_size.is_some() {
+            existing_config.max_blob_size = config.max_blob_size;
+        }
 
         let content = serde_json::to_string_pretty(&existing_config).map_err(|e| e.to_string())?;
         fs::write(config_path, content).map_err(|e| e.to_string())?;
@@ -132,11 +136,17 @@ pub fn save_config(app: AppHandle, config: AppConfig) -> Result<(), String> {
 #[tauri::command]
 pub fn get_schema_preference(app: AppHandle, connection_id: String) -> Option<String> {
     let config = load_config_internal(&app);
-    config.schema_preferences.and_then(|prefs| prefs.get(&connection_id).cloned())
+    config
+        .schema_preferences
+        .and_then(|prefs| prefs.get(&connection_id).cloned())
 }
 
 #[tauri::command]
-pub fn set_schema_preference(app: AppHandle, connection_id: String, schema: String) -> Result<(), String> {
+pub fn set_schema_preference(
+    app: AppHandle,
+    connection_id: String,
+    schema: String,
+) -> Result<(), String> {
     if let Some(config_dir) = get_config_dir(&app) {
         if !config_dir.exists() {
             fs::create_dir_all(&config_dir).map_err(|e| e.to_string())?;
@@ -196,6 +206,14 @@ pub fn set_ai_key(provider: String, key: String) -> Result<(), String> {
 #[tauri::command]
 pub fn delete_ai_key(provider: String) -> Result<(), String> {
     keychain_utils::delete_ai_key(&provider)
+}
+
+/// Get the configured maximum BLOB size in bytes, or DEFAULT_MAX_BLOB_SIZE if not set
+pub fn get_max_blob_size<R: tauri::Runtime>(app: &AppHandle<R>) -> u64 {
+    let config = load_config_internal(app);
+    config
+        .max_blob_size
+        .unwrap_or(crate::drivers::common::DEFAULT_MAX_BLOB_SIZE)
 }
 
 pub fn get_ai_api_key(provider: &str) -> Result<String, String> {
@@ -383,7 +401,10 @@ mod tests {
     fn selected_schemas_serialization_round_trip() {
         let mut config = AppConfig::default();
         let mut map = HashMap::new();
-        map.insert("conn-1".to_string(), vec!["public".to_string(), "analytics".to_string()]);
+        map.insert(
+            "conn-1".to_string(),
+            vec!["public".to_string(), "analytics".to_string()],
+        );
         config.selected_schemas = Some(map);
 
         let json = serde_json::to_string(&config).unwrap();
@@ -411,7 +432,10 @@ mod tests {
         let mut config = AppConfig::default();
         let mut map = HashMap::new();
         map.insert("conn-1".to_string(), vec!["public".to_string()]);
-        map.insert("conn-2".to_string(), vec!["staging".to_string(), "prod".to_string()]);
+        map.insert(
+            "conn-2".to_string(),
+            vec!["staging".to_string(), "prod".to_string()],
+        );
         config.selected_schemas = Some(map);
 
         let json = serde_json::to_string(&config).unwrap();
@@ -419,7 +443,10 @@ mod tests {
 
         let schemas = deserialized.selected_schemas.unwrap();
         assert_eq!(schemas.get("conn-1").unwrap(), &vec!["public".to_string()]);
-        assert_eq!(schemas.get("conn-2").unwrap(), &vec!["staging".to_string(), "prod".to_string()]);
+        assert_eq!(
+            schemas.get("conn-2").unwrap(),
+            &vec!["staging".to_string(), "prod".to_string()]
+        );
     }
 
     #[test]

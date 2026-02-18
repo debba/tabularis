@@ -412,6 +412,7 @@ pub async fn update_record(
     pk_val: serde_json::Value,
     col_name: &str,
     new_val: serde_json::Value,
+    max_blob_size: u64,
 ) -> Result<u64, String> {
     let pool = get_mysql_pool(params).await?;
 
@@ -429,7 +430,7 @@ pub async fn update_record(
             // Check for special sentinel value to use DEFAULT
             if s == "__USE_DEFAULT__" {
                 qb.push("DEFAULT");
-            } else if let Some(bytes) = crate::drivers::common::decode_blob_wire_format(&s) {
+            } else if let Some(bytes) = crate::drivers::common::decode_blob_wire_format(&s, max_blob_size) {
                 // Blob wire format: decode to raw bytes so the DB stores binary data,
                 // not the internal wire format string.
                 qb.push_bind(bytes);
@@ -480,6 +481,7 @@ pub async fn insert_record(
     params: &ConnectionParams,
     table: &str,
     data: std::collections::HashMap<String, serde_json::Value>,
+    max_blob_size: u64,
 ) -> Result<u64, String> {
     let pool = get_mysql_pool(params).await?;
 
@@ -512,7 +514,7 @@ pub async fn insert_record(
                     }
                 }
                 serde_json::Value::String(s) => {
-                    if let Some(bytes) = crate::drivers::common::decode_blob_wire_format(&s) {
+                    if let Some(bytes) = crate::drivers::common::decode_blob_wire_format(&s, max_blob_size) {
                         // Blob wire format: decode to raw bytes so the DB stores binary data,
                         // not the internal wire format string.
                         separated.push_bind(bytes);

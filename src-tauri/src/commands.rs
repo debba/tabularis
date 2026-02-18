@@ -1679,13 +1679,14 @@ pub async fn update_record<R: Runtime>(
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
+    let max_blob_size = crate::config::get_max_blob_size(&app);
     match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val).await,
+        "mysql" => mysql::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val, max_blob_size).await,
         "postgres" => {
-            postgres::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val, schema.as_deref().unwrap_or("public")).await
+            postgres::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val, schema.as_deref().unwrap_or("public"), max_blob_size).await
         }
         "sqlite" => {
-            sqlite::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val).await
+            sqlite::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val, max_blob_size).await
         }
         _ => Err("Unsupported driver".into()),
     }
@@ -1732,8 +1733,14 @@ pub fn detect_blob_mime(base64_data: String) -> Result<String, String> {
 /// The file content will be read directly from disk when needed (e.g., during INSERT/UPDATE).
 /// Returns a special "BLOB_FILE_REF" format that includes file path, size, and MIME type.
 #[tauri::command]
-pub async fn load_blob_from_file(file_path: String) -> Result<String, String> {
+pub async fn load_blob_from_file<R: Runtime>(
+    app: AppHandle<R>,
+    file_path: String,
+) -> Result<String, String> {
     use std::io::Read;
+    
+    // Read max_blob_size from configuration
+    let max_blob_size = crate::config::get_max_blob_size(&app);
     
     tokio::task::spawn_blocking(move || -> Result<String, String> {
         let mut file = std::fs::File::open(&file_path)
@@ -1743,6 +1750,17 @@ pub async fn load_blob_from_file(file_path: String) -> Result<String, String> {
         let metadata = file.metadata()
             .map_err(|e| format!("Failed to get file metadata: {}", e))?;
         let file_size = metadata.len();
+        
+        // Validate file size against maximum allowed
+        if file_size > max_blob_size {
+            return Err(format!(
+                "File size ({} bytes / {:.2}MB) exceeds maximum allowed size ({} bytes / {}MB). Please choose a smaller file.",
+                file_size,
+                file_size as f64 / (1024.0 * 1024.0),
+                max_blob_size,
+                max_blob_size / (1024 * 1024)
+            ));
+        }
         
         // Read first chunk for MIME detection (only 8KB)
         let header_size = std::cmp::min(8192, file_size as usize);
@@ -1818,10 +1836,11 @@ pub async fn insert_record<R: Runtime>(
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
+    let max_blob_size = crate::config::get_max_blob_size(&app);
     match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::insert_record(&params, &table, data).await,
-        "postgres" => postgres::insert_record(&params, &table, data, schema.as_deref().unwrap_or("public")).await,
-        "sqlite" => sqlite::insert_record(&params, &table, data).await,
+        "mysql" => mysql::insert_record(&params, &table, data, max_blob_size).await,
+        "postgres" => postgres::insert_record(&params, &table, data, schema.as_deref().unwrap_or("public"), max_blob_size).await,
+        "sqlite" => sqlite::insert_record(&params, &table, data, max_blob_size).await,
         _ => Err("Unsupported driver".into()),
     }
 }

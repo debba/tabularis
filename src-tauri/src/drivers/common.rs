@@ -4,6 +4,12 @@
 /// smaller blobs are encoded in full.
 pub const MAX_BLOB_PREVIEW_SIZE: usize = 4096;
 
+/// Default maximum size in bytes for a BLOB file that can be uploaded/loaded into memory.
+/// Files larger than this limit will be rejected to prevent memory exhaustion.
+/// Default limit: 100MB (104,857,600 bytes)
+/// Can be overridden via config.json with "maxBlobSize" field.
+pub const DEFAULT_MAX_BLOB_SIZE: u64 = 100 * 1024 * 1024;
+
 /// Encodes a blob byte slice into the canonical wire format used by all drivers.
 /// Format: "BLOB:<total_size_bytes>:<mime_type>:<base64_data>"
 pub fn encode_blob(data: &[u8]) -> String {
@@ -42,7 +48,8 @@ pub fn encode_blob_full(data: &[u8]) -> String {
 /// Resolves a BLOB_FILE_REF to actual bytes by reading from disk.
 /// Format: "BLOB_FILE_REF:<size>:<mime>:<filepath>"
 /// Returns the raw file bytes, or an error if the file cannot be read.
-pub fn resolve_blob_file_ref(value: &str) -> Result<Vec<u8>, String> {
+/// Enforces max_size limit to prevent memory exhaustion.
+pub fn resolve_blob_file_ref(value: &str, max_size: u64) -> Result<Vec<u8>, String> {
     let rest = value
         .strip_prefix("BLOB_FILE_REF:")
         .ok_or_else(|| "Not a BLOB_FILE_REF".to_string())?;
@@ -53,7 +60,22 @@ pub fn resolve_blob_file_ref(value: &str) -> Result<Vec<u8>, String> {
         return Err("Invalid BLOB_FILE_REF format".to_string());
     }
 
+    let size_str = parts[0];
     let file_path = parts[2];
+
+    // Parse and validate file size
+    let file_size: u64 = size_str
+        .parse()
+        .map_err(|_| "Invalid file size in BLOB_FILE_REF".to_string())?;
+
+    if file_size > max_size {
+        return Err(format!(
+            "File size ({} bytes) exceeds maximum allowed size ({} bytes / {}MB). Please choose a smaller file.",
+            file_size,
+            max_size,
+            max_size / (1024 * 1024)
+        ));
+    }
 
     // Read file from disk
     std::fs::read(file_path).map_err(|e| format!("Failed to read BLOB file: {}", e))
@@ -69,10 +91,10 @@ pub fn resolve_blob_file_ref(value: &str) -> Result<Vec<u8>, String> {
 /// This is used by all write paths (update_record / insert_record) so that the
 /// database always receives raw binary data instead of the internal wire format
 /// string, ensuring interoperability with other SQL editors.
-pub fn decode_blob_wire_format(value: &str) -> Option<Vec<u8>> {
+pub fn decode_blob_wire_format(value: &str, max_size: u64) -> Option<Vec<u8>> {
     // Handle BLOB_FILE_REF first
     if value.starts_with("BLOB_FILE_REF:") {
-        return resolve_blob_file_ref(value).ok();
+        return resolve_blob_file_ref(value, max_size).ok();
     }
 
     // Format: "BLOB:<digits>:<mime_type>:<base64_data>"
@@ -107,16 +129,17 @@ mod tests {
         // Encode some known bytes, then verify decode round-trips correctly
         let original = b"hello blob";
         let encoded = encode_blob(original);
-        let decoded = decode_blob_wire_format(&encoded).expect("should decode valid wire format");
+        let decoded = decode_blob_wire_format(&encoded, DEFAULT_MAX_BLOB_SIZE)
+            .expect("should decode valid wire format");
         assert_eq!(decoded, original);
     }
 
     #[test]
     fn test_decode_blob_wire_format_not_wire_format() {
-        assert!(decode_blob_wire_format("plain string").is_none());
-        assert!(decode_blob_wire_format("BLOB_NOT_VALID").is_none());
-        assert!(decode_blob_wire_format("").is_none());
-        assert!(decode_blob_wire_format("__USE_DEFAULT__").is_none());
+        assert!(decode_blob_wire_format("plain string", DEFAULT_MAX_BLOB_SIZE).is_none());
+        assert!(decode_blob_wire_format("BLOB_NOT_VALID", DEFAULT_MAX_BLOB_SIZE).is_none());
+        assert!(decode_blob_wire_format("", DEFAULT_MAX_BLOB_SIZE).is_none());
+        assert!(decode_blob_wire_format("__USE_DEFAULT__", DEFAULT_MAX_BLOB_SIZE).is_none());
     }
 
     #[test]
@@ -125,7 +148,8 @@ mod tests {
         // bytes should equal the preview portion (first MAX_BLOB_PREVIEW_SIZE bytes)
         let data: Vec<u8> = (0u8..=255u8).cycle().take(8192).collect();
         let wire = encode_blob(&data);
-        let decoded = decode_blob_wire_format(&wire).expect("should decode truncated wire format");
+        let decoded = decode_blob_wire_format(&wire, DEFAULT_MAX_BLOB_SIZE)
+            .expect("should decode truncated wire format");
         assert_eq!(decoded, &data[..MAX_BLOB_PREVIEW_SIZE]);
     }
 
@@ -134,7 +158,8 @@ mod tests {
         // MIME types with plus signs (e.g. image/svg+xml) must be handled correctly
         let svg = b"<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>";
         let wire = encode_blob(svg);
-        let decoded = decode_blob_wire_format(&wire).expect("should decode svg wire format");
+        let decoded = decode_blob_wire_format(&wire, DEFAULT_MAX_BLOB_SIZE)
+            .expect("should decode svg wire format");
         assert_eq!(decoded, svg);
     }
 
@@ -161,7 +186,8 @@ mod tests {
         // 8KB of data — encode_blob would truncate, encode_blob_full must not
         let data: Vec<u8> = (0u8..=255u8).cycle().take(8192).collect();
         let wire = encode_blob_full(&data);
-        let decoded = decode_blob_wire_format(&wire).expect("should decode full wire format");
+        let decoded = decode_blob_wire_format(&wire, DEFAULT_MAX_BLOB_SIZE)
+            .expect("should decode full wire format");
         assert_eq!(decoded.len(), 8192);
         assert_eq!(decoded, data);
     }
@@ -184,7 +210,8 @@ mod tests {
         assert!(wire.starts_with(&format!("BLOB:{}:", data.len())));
 
         // Round-trip through decode must yield identical bytes
-        let decoded = decode_blob_wire_format(&wire).expect("should decode 50KB wire format");
+        let decoded = decode_blob_wire_format(&wire, DEFAULT_MAX_BLOB_SIZE)
+            .expect("should decode 50KB wire format");
         assert_eq!(decoded, data);
     }
 }
