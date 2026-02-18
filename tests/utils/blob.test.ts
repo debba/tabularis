@@ -1,11 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   isBlobType,
-  detectMimeTypeFromBase64,
-  formatBlobSize,
-  getBase64Size,
   extractBlobMetadata,
   formatBlobValue,
+  mimeToExtension,
 } from "../../src/utils/blob";
 
 describe("blob utilities", () => {
@@ -45,134 +43,61 @@ describe("blob utilities", () => {
     });
   });
 
-  describe("detectMimeTypeFromBase64", () => {
-    it("should detect PNG images", () => {
-      // PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
-      const pngBase64 = btoa("\x89PNG\r\n\x1a\n");
-      expect(detectMimeTypeFromBase64(pngBase64)).toBe("image/png");
-    });
-
-    it("should detect JPEG images", () => {
-      // JPEG magic bytes: FF D8 FF
-      const jpegBase64 = btoa("\xFF\xD8\xFF\xE0");
-      expect(detectMimeTypeFromBase64(jpegBase64)).toBe("image/jpeg");
-    });
-
-    it("should detect GIF images", () => {
-      // GIF magic bytes: 47 49 46 38
-      const gifBase64 = btoa("GIF89a");
-      expect(detectMimeTypeFromBase64(gifBase64)).toBe("image/gif");
-    });
-
-    it("should detect PDF files", () => {
-      // PDF magic bytes: 25 50 44 46
-      const pdfBase64 = btoa("%PDF-1.4");
-      expect(detectMimeTypeFromBase64(pdfBase64)).toBe("application/pdf");
-    });
-
-    it("should detect ZIP files", () => {
-      // ZIP magic bytes: 50 4B 03 04
-      const zipBase64 = btoa("PK\x03\x04");
-      expect(detectMimeTypeFromBase64(zipBase64)).toBe("application/zip");
-    });
-
-    it("should return octet-stream for unknown types", () => {
-      const unknownBase64 = btoa("UNKNOWN_FORMAT");
-      expect(detectMimeTypeFromBase64(unknownBase64)).toBe(
-        "application/octet-stream",
-      );
-    });
-
-    it("should handle invalid base64 gracefully", () => {
-      expect(detectMimeTypeFromBase64("not-valid-base64!!!")).toBe(
-        "application/octet-stream",
-      );
-    });
-  });
-
-  describe("formatBlobSize", () => {
-    it("should format bytes", () => {
-      expect(formatBlobSize(0)).toBe("0 B");
-      expect(formatBlobSize(500)).toBe("500 B");
-      expect(formatBlobSize(1023)).toBe("1023 B");
-    });
-
-    it("should format kilobytes", () => {
-      expect(formatBlobSize(1024)).toBe("1.00 KB");
-      expect(formatBlobSize(1536)).toBe("1.50 KB");
-      expect(formatBlobSize(10240)).toBe("10.00 KB");
-    });
-
-    it("should format megabytes", () => {
-      expect(formatBlobSize(1048576)).toBe("1.00 MB");
-      expect(formatBlobSize(1572864)).toBe("1.50 MB");
-      expect(formatBlobSize(10485760)).toBe("10.00 MB");
-    });
-
-    it("should format gigabytes", () => {
-      expect(formatBlobSize(1073741824)).toBe("1.00 GB");
-      expect(formatBlobSize(2147483648)).toBe("2.00 GB");
-    });
-
-    it("should format terabytes", () => {
-      expect(formatBlobSize(1099511627776)).toBe("1.00 TB");
-    });
-  });
-
-  describe("getBase64Size", () => {
-    it("should calculate size for base64 strings without padding", () => {
-      // "Hello" in base64 is "SGVsbG8=" (8 chars)
-      // Original size: 5 bytes
-      const base64 = "SGVsbG8=";
-      expect(getBase64Size(base64)).toBe(5);
-    });
-
-    it("should calculate size for base64 strings with padding", () => {
-      // "Hi" in base64 is "SGk=" (4 chars)
-      // Original size: 2 bytes
-      const base64 = "SGk=";
-      expect(getBase64Size(base64)).toBe(2);
-    });
-
-    it("should handle empty strings", () => {
-      expect(getBase64Size("")).toBe(0);
-    });
-  });
-
   describe("extractBlobMetadata", () => {
-    it("should extract metadata from base64 PNG data", () => {
-      const pngBase64 = btoa("\x89PNG\r\n\x1a\n" + "A".repeat(100));
-      const metadata = extractBlobMetadata(pngBase64);
+    // Helper: build a canonical wire format string as the backend would produce
+    function makeBlobWire(
+      totalSize: number,
+      mimeType: string,
+      data: string,
+    ): string {
+      return `BLOB:${totalSize}:${mimeType}:${data}`;
+    }
+
+    it("should extract metadata from the backend wire format (PNG, small blob)", () => {
+      const rawData = "\x89PNG\r\n\x1a\n" + "A".repeat(100);
+      const b64 = btoa(rawData);
+      // The backend encodes raw bytes; compute the decoded byte count from base64
+      // to match what the backend would set as <size>
+      const decodedByteSize = Math.floor((b64.replace(/=/g, "").length * 3) / 4);
+      const wire = makeBlobWire(decodedByteSize, "image/png", b64);
+      const metadata = extractBlobMetadata(wire);
 
       expect(metadata).not.toBeNull();
       expect(metadata?.mimeType).toBe("image/png");
       expect(metadata?.isBase64).toBe(true);
-      expect(metadata?.size).toBeGreaterThan(0);
+      expect(metadata?.isTruncated).toBe(false);
       expect(metadata?.formattedSize).toContain("B");
-      expect(metadata?.isTruncated).toBe(false);
     });
 
-    it("should extract metadata from base64 JPEG data", () => {
-      const jpegBase64 = btoa("\xFF\xD8\xFF\xE0" + "B".repeat(200));
-      const metadata = extractBlobMetadata(jpegBase64);
+    it("should extract metadata from the backend wire format (PDF)", () => {
+      const b64 = btoa("%PDF-1.7" + "A".repeat(100));
+      const wire = makeBlobWire(b64.length, "application/pdf", b64);
+      const metadata = extractBlobMetadata(wire);
 
       expect(metadata).not.toBeNull();
-      expect(metadata?.mimeType).toBe("image/jpeg");
-      expect(metadata?.isBase64).toBe(true);
-      expect(metadata?.isTruncated).toBe(false);
+      expect(metadata?.mimeType).toBe("application/pdf");
     });
 
-    it("should handle truncated BLOB format from backend", () => {
-      const previewBase64 = btoa("\x89PNG\r\n\x1a\n" + "A".repeat(100));
-      const truncatedBlob = `BLOB:5242880:${previewBase64}`; // 5MB size
-      const metadata = extractBlobMetadata(truncatedBlob);
+    it("should mark large blobs as truncated", () => {
+      const previewB64 = btoa("\x89PNG\r\n\x1a\n" + "A".repeat(100));
+      // Report 5 MB total but only send a small preview
+      const wire = makeBlobWire(5_242_880, "image/png", previewB64);
+      const metadata = extractBlobMetadata(wire);
 
       expect(metadata).not.toBeNull();
-      expect(metadata?.size).toBe(5242880);
+      expect(metadata?.size).toBe(5_242_880);
       expect(metadata?.formattedSize).toBe("5.00 MB");
       expect(metadata?.mimeType).toBe("image/png");
       expect(metadata?.isBase64).toBe(true);
       expect(metadata?.isTruncated).toBe(true);
+    });
+
+    it("should not mark small blobs as truncated when size matches data", () => {
+      const b64 = btoa("hello world");
+      const wire = makeBlobWire(11, "text/plain", b64);
+      const metadata = extractBlobMetadata(wire);
+
+      expect(metadata?.isTruncated).toBe(false);
     });
 
     it("should handle null values", () => {
@@ -180,8 +105,8 @@ describe("blob utilities", () => {
       expect(extractBlobMetadata(undefined)).toBeNull();
     });
 
-    it("should handle non-base64 strings", () => {
-      const plainText = "This is not base64!@#$%";
+    it("should handle plain-text blobs (UTF-8 decoded by backend)", () => {
+      const plainText = "Hello, world!";
       const metadata = extractBlobMetadata(plainText);
 
       expect(metadata).not.toBeNull();
@@ -193,12 +118,12 @@ describe("blob utilities", () => {
 
   describe("formatBlobValue", () => {
     it("should format BLOB values with metadata", () => {
-      const pngBase64 = btoa("\x89PNG\r\n\x1a\n" + "A".repeat(100));
-      const formatted = formatBlobValue(pngBase64, "BLOB");
+      const b64 = btoa("\x89PNG\r\n\x1a\n" + "A".repeat(100));
+      const wire = `BLOB:${b64.length}:image/png:${b64}`;
+      const formatted = formatBlobValue(wire, "BLOB");
 
       expect(formatted).toContain("image/png");
-      expect(formatted).toContain("B"); // Should contain size unit
-      expect(formatted).toMatch(/\(.*\)/); // Should contain size in parentheses
+      expect(formatted).toMatch(/\(.*\)/);
     });
 
     it("should handle null BLOB values", () => {
@@ -212,20 +137,55 @@ describe("blob utilities", () => {
     });
 
     it("should work with different BLOB type names", () => {
-      const data = btoa("test");
+      const b64 = btoa("test");
+      const wire = `BLOB:4:application/octet-stream:${b64}`;
 
-      expect(formatBlobValue(data, "BLOB")).toContain(
-        "application/octet-stream",
-      );
-      expect(formatBlobValue(data, "TINYBLOB")).toContain(
-        "application/octet-stream",
-      );
-      expect(formatBlobValue(data, "MEDIUMBLOB")).toContain(
-        "application/octet-stream",
-      );
-      expect(formatBlobValue(data, "LONGBLOB")).toContain(
-        "application/octet-stream",
-      );
+      expect(formatBlobValue(wire, "BLOB")).toContain("application/octet-stream");
+      expect(formatBlobValue(wire, "TINYBLOB")).toContain("application/octet-stream");
+      expect(formatBlobValue(wire, "MEDIUMBLOB")).toContain("application/octet-stream");
+      expect(formatBlobValue(wire, "LONGBLOB")).toContain("application/octet-stream");
+    });
+  });
+
+  describe("mimeToExtension", () => {
+    it("should map common image types", () => {
+      expect(mimeToExtension("image/png")).toBe("png");
+      expect(mimeToExtension("image/jpeg")).toBe("jpg");
+      expect(mimeToExtension("image/gif")).toBe("gif");
+      expect(mimeToExtension("image/webp")).toBe("webp");
+      expect(mimeToExtension("image/x-icon")).toBe("ico");
+    });
+
+    it("should map document types", () => {
+      expect(mimeToExtension("application/pdf")).toBe("pdf");
+      expect(mimeToExtension("application/msword")).toBe("doc");
+      expect(mimeToExtension("application/vnd.openxmlformats-officedocument.wordprocessingml.document")).toBe("docx");
+    });
+
+    it("should map archive types", () => {
+      expect(mimeToExtension("application/zip")).toBe("zip");
+      expect(mimeToExtension("application/gzip")).toBe("gz");
+      expect(mimeToExtension("application/x-7z-compressed")).toBe("7z");
+      expect(mimeToExtension("application/vnd.rar")).toBe("rar");
+      expect(mimeToExtension("application/x-bzip2")).toBe("bz2");
+      expect(mimeToExtension("application/x-xz")).toBe("xz");
+    });
+
+    it("should map audio/video types", () => {
+      expect(mimeToExtension("video/mp4")).toBe("mp4");
+      expect(mimeToExtension("video/webm")).toBe("webm");
+      expect(mimeToExtension("video/quicktime")).toBe("mov");
+      expect(mimeToExtension("video/avi")).toBe("avi");
+      expect(mimeToExtension("audio/mpeg")).toBe("mp3");
+      expect(mimeToExtension("audio/mp4")).toBe("m4a");
+      expect(mimeToExtension("audio/flac")).toBe("flac");
+    });
+
+    it("should fall back gracefully for unknown types", () => {
+      expect(mimeToExtension("application/octet-stream")).toBe("bin");
+      expect(mimeToExtension("image/avif")).toBe("avif");
+      // Unknown type falls back to subtype
+      expect(mimeToExtension("text/something-custom")).toBe("somethingcustom");
     });
   });
 });

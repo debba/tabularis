@@ -34,6 +34,7 @@ russh-keys = "0.43"
 async-trait = "0.1"
 urlencoding = "2.1.3"
 base64 = "0.22.1"
+infer = "0.16"
 futures = "0.3.31"
 keyring = { version = "3.6.3", features = ["apple-native", "windows-native", "linux-native-sync-persistent", "crypto-rust"] }
 tauri-plugin-opener = "2"

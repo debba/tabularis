@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Download,
@@ -9,9 +9,9 @@ import {
   Loader2,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { save } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
-import { extractBlobMetadata, type BlobMetadata } from "../../utils/blob";
+import { extractBlobMetadata, mimeToExtension, type BlobMetadata } from "../../utils/blob";
 
 export interface BlobInputProps {
   value: unknown;
@@ -48,8 +48,8 @@ export const BlobInput: React.FC<BlobInputProps> = ({
   schema,
 }) => {
   const { t } = useTranslation();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const metadata: BlobMetadata | null = extractBlobMetadata(value);
   const hasValue = value !== null && value !== undefined && value !== "";
@@ -63,33 +63,25 @@ export const BlobInput: React.FC<BlobInputProps> = ({
     pkVal !== undefined &&
     colName;
 
-  const isDownloadDisabled = isDownloading || (metadata?.isTruncated && !canFetchFull);
+  const isDownloadDisabled = isDownloading || isUploading || (metadata?.isTruncated && !canFetchFull);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileUpload = async () => {
+    const filePath = await open({ multiple: false, directory: false });
+    if (!filePath) return;
 
+    setIsUploading(true);
+    
     try {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64String = event.target?.result as string;
-        const base64Data = base64String.split(",")[1];
-        onChange(base64Data);
-      };
-      reader.readAsDataURL(file);
+      // Get file reference (not the content!) - this is instant and non-blocking
+      // Format returned: "BLOB_FILE_REF:<size>:<mime>:<filepath>"
+      // The actual file will be read only when saving to the database
+      const fileRef = await invoke<string>("load_blob_from_file", { filePath });
+      onChange(fileRef);
     } catch (error) {
-      console.error("Failed to upload file:", error);
+      console.error("Failed to load file:", error);
+    } finally {
+      setIsUploading(false);
     }
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const getExtension = (mimeType: string): string => {
-    const ext = mimeType.split("/")[1];
-    if (!ext || ext === "octet-stream") return "bin";
-    return ext;
   };
 
   const handleDownload = async () => {
@@ -98,7 +90,7 @@ export const BlobInput: React.FC<BlobInputProps> = ({
     if (metadata.isTruncated) {
       if (!canFetchFull) return;
 
-      const extension = getExtension(metadata.mimeType);
+      const extension = mimeToExtension(metadata.mimeType);
       const filePath = await save({
         defaultPath: `download.${extension}`,
         filters: [{ name: dataType || "BLOB", extensions: [extension] }],
@@ -125,17 +117,36 @@ export const BlobInput: React.FC<BlobInputProps> = ({
     }
 
     try {
-      const extension = getExtension(metadata.mimeType);
+      const extension = mimeToExtension(metadata.mimeType);
       const filePath = await save({
         defaultPath: `download.${extension}`,
         filters: [{ name: dataType || "BLOB", extensions: [extension] }],
       });
       if (!filePath) return;
 
-      const binaryString = atob(String(value));
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+      // Extract the base64 payload from the canonical wire format
+      // "BLOB:<size>:<mime>:<base64data>"
+      // Use indexOf instead of regex to avoid allocating a copy of the full payload.
+      const stringValue = String(value);
+      let base64Payload = stringValue;
+      if (stringValue.startsWith("BLOB:")) {
+        const firstColon = 5;
+        const secondColon = stringValue.indexOf(":", firstColon);
+        const thirdColon = stringValue.indexOf(":", secondColon + 1);
+        if (thirdColon !== -1) {
+          base64Payload = stringValue.substring(thirdColon + 1);
+        }
+      }
+
+      let bytes: Uint8Array;
+      if (metadata.isBase64) {
+        const binaryString = atob(base64Payload);
+        bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+      } else {
+        bytes = new TextEncoder().encode(base64Payload);
       }
       await writeFile(filePath, bytes);
     } catch (error) {
@@ -171,11 +182,16 @@ export const BlobInput: React.FC<BlobInputProps> = ({
             <div className="flex items-center gap-0.5 border-l border-default pl-2 flex-shrink-0">
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                title={t("blobInput.uploadFile")}
-                className="p-1.5 rounded text-muted hover:text-secondary hover:bg-surface-tertiary transition-colors"
+                onClick={handleFileUpload}
+                disabled={isUploading}
+                title={isUploading ? t("blobInput.uploading") : t("blobInput.uploadFile")}
+                className="p-1.5 rounded text-muted hover:text-secondary hover:bg-surface-tertiary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                <Upload size={14} />
+                {isUploading ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Upload size={14} />
+                )}
               </button>
 
               <button
@@ -203,8 +219,9 @@ export const BlobInput: React.FC<BlobInputProps> = ({
               <button
                 type="button"
                 onClick={() => onChange(null)}
+                disabled={isUploading}
                 title={t("blobInput.delete")}
-                className="p-1.5 rounded text-muted hover:text-red-400 hover:bg-red-900/10 transition-colors"
+                className="p-1.5 rounded text-muted hover:text-red-400 hover:bg-red-900/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <Trash2 size={14} />
               </button>
@@ -225,25 +242,22 @@ export const BlobInput: React.FC<BlobInputProps> = ({
         /* Empty state — whole card is clickable to upload */
         <button
           type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full flex flex-col items-center gap-2.5 px-4 py-6 bg-surface-secondary border border-dashed border-default rounded-lg text-muted hover:text-secondary hover:border-strong hover:bg-surface-tertiary transition-colors"
+          onClick={handleFileUpload}
+          disabled={isUploading}
+          className="w-full flex flex-col items-center gap-2.5 px-4 py-6 bg-surface-secondary border border-dashed border-default rounded-lg text-muted hover:text-secondary hover:border-strong hover:bg-surface-tertiary transition-colors disabled:cursor-not-allowed disabled:hover:text-muted disabled:hover:border-default disabled:hover:bg-surface-secondary"
         >
           <div className="p-2.5 rounded-full bg-surface-tertiary">
-            <Upload size={15} />
+            {isUploading ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Upload size={15} />
+            )}
           </div>
           <span className="text-sm">
-            {placeholder || t("blobInput.noData")}
+            {isUploading ? t("blobInput.uploading") : (placeholder || t("blobInput.noData"))}
           </span>
         </button>
       )}
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        onChange={handleFileUpload}
-        accept="*/*"
-      />
     </div>
   );
 };

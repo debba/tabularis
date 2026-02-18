@@ -1715,6 +1715,98 @@ pub async fn save_blob_to_file<R: Runtime>(
     }
 }
 
+/// Detects the MIME type of base64-encoded binary data using magic-byte analysis
+/// and returns the canonical blob wire format: "BLOB:<size>:<mime>:<base64>".
+/// Called by the frontend after the user selects a file to upload.
+#[tauri::command]
+pub fn detect_blob_mime(base64_data: String) -> Result<String, String> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&base64_data)
+        .map_err(|e| format!("Invalid base64: {}", e))?;
+    Ok(crate::drivers::common::encode_blob_full(&bytes))
+}
+
+/// Prepares a file for BLOB upload by returning only metadata and a file reference.
+/// The actual file content is NOT transferred over IPC, avoiding massive string allocations.
+/// The file content will be read directly from disk when needed (e.g., during INSERT/UPDATE).
+/// Returns a special "BLOB_FILE_REF" format that includes file path, size, and MIME type.
+#[tauri::command]
+pub async fn load_blob_from_file(file_path: String) -> Result<String, String> {
+    use std::io::Read;
+    
+    tokio::task::spawn_blocking(move || -> Result<String, String> {
+        let mut file = std::fs::File::open(&file_path)
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+        
+        // Get file size
+        let metadata = file.metadata()
+            .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+        let file_size = metadata.len();
+        
+        // Read first chunk for MIME detection (only 8KB)
+        let header_size = std::cmp::min(8192, file_size as usize);
+        let mut header = vec![0u8; header_size];
+        file.read_exact(&mut header)
+            .map_err(|e| format!("Failed to read file header: {}", e))?;
+        
+        // Detect MIME type
+        let mime = infer::get(&header)
+            .map(|k| k.mime_type())
+            .unwrap_or("application/octet-stream");
+        
+        // Return a file reference instead of actual content
+        // Format: "BLOB_FILE_REF:<size>:<mime>:<filepath>"
+        Ok(format!("BLOB_FILE_REF:{}:{}:{}", file_size, mime, file_path))
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
+}
+
+/// Detects the MIME type from a small base64-encoded header (first ~8KB).
+/// Returns only the MIME type string — the frontend constructs the wire format
+/// locally, avoiding a full round-trip of the entire file over IPC.
+#[tauri::command]
+pub fn detect_mime_type(header_base64: String) -> Result<String, String> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&header_base64)
+        .map_err(|e| format!("Invalid base64: {}", e))?;
+    let mime = infer::get(&bytes)
+        .map(|k| k.mime_type())
+        .unwrap_or("application/octet-stream");
+    Ok(mime.to_string())
+}
+
+/// Gets file statistics (size and MIME type) without reading the entire file.
+/// Used after streaming upload to construct the final wire format.
+#[tauri::command]
+pub fn get_file_stats(file_path: String) -> Result<serde_json::Value, String> {
+    use std::io::Read;
+    
+    let mut file = std::fs::File::open(&file_path)
+        .map_err(|e| format!("Failed to open file: {}", e))?;
+    
+    let metadata = file.metadata()
+        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+    let file_size = metadata.len();
+    
+    // Read first chunk for MIME detection
+    let header_size = std::cmp::min(8192, file_size as usize);
+    let mut header = vec![0u8; header_size];
+    file.read_exact(&mut header)
+        .map_err(|e| format!("Failed to read file header: {}", e))?;
+    
+    let mime = infer::get(&header)
+        .map(|k| k.mime_type())
+        .unwrap_or("application/octet-stream");
+    
+    Ok(serde_json::json!({
+        "size": file_size,
+        "mime": mime,
+    }))
+}
+
 #[tauri::command]
 pub async fn insert_record<R: Runtime>(
     app: AppHandle<R>,

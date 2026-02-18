@@ -603,16 +603,14 @@
     "openSidebar": "Abrir Barra Lateral"
   },
   "blobInput": {
-    "mimeType": "Tipo MIME",
-    "size": "Tamaño",
-    "type": "Tipo de Datos",
     "noData": "Sin datos BLOB",
     "uploadFile": "Subir Archivo",
     "download": "Descargar",
     "delete": "Eliminar",
     "truncatedWarning": "Solo vista previa - datos completos no cargados",
-    "cannotDownloadTruncated": "No se puede descargar: solo están disponibles los datos de vista previa. El BLOB completo no se cargó para evitar el bloqueo de la interfaz.",
     "downloadDisabledTruncated": "Descarga no disponible - solo vista previa cargada",
-    "downloading": "Descargando..."
+    "downloading": "Descargando...",
+    "uploading": "Subiendo...",
+    "openSidebar": "Abrir en el editor"
   }
 }

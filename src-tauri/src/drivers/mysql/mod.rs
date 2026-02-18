@@ -429,6 +429,10 @@ pub async fn update_record(
             // Check for special sentinel value to use DEFAULT
             if s == "__USE_DEFAULT__" {
                 qb.push("DEFAULT");
+            } else if let Some(bytes) = crate::drivers::common::decode_blob_wire_format(&s) {
+                // Blob wire format: decode to raw bytes so the DB stores binary data,
+                // not the internal wire format string.
+                qb.push_bind(bytes);
             } else if is_raw_sql_function(&s) {
                 // If it's a raw SQL function (e.g., ST_GeomFromText('POINT(1 2)', 4326))
                 // insert it directly without parameter binding
@@ -508,7 +512,11 @@ pub async fn insert_record(
                     }
                 }
                 serde_json::Value::String(s) => {
-                    if is_raw_sql_function(&s) {
+                    if let Some(bytes) = crate::drivers::common::decode_blob_wire_format(&s) {
+                        // Blob wire format: decode to raw bytes so the DB stores binary data,
+                        // not the internal wire format string.
+                        separated.push_bind(bytes);
+                    } else if is_raw_sql_function(&s) {
                         // If it's a raw SQL function (e.g., ST_GeomFromText('POINT(1 2)', 4326))
                         // insert it directly without parameter binding
                         separated.push_unseparated(&s);

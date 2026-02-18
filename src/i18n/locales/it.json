@@ -623,16 +623,14 @@
     "openSidebar": "Apri Barra Laterale"
   },
   "blobInput": {
-    "mimeType": "Tipo MIME",
-    "size": "Dimensione",
-    "type": "Tipo di Dati",
     "noData": "Nessun dato BLOB",
     "uploadFile": "Carica File",
     "download": "Scarica",
     "delete": "Elimina",
     "truncatedWarning": "Solo anteprima - dati completi non caricati",
-    "cannotDownloadTruncated": "Impossibile scaricare: sono disponibili solo i dati di anteprima. Il BLOB completo non è stato caricato per evitare il blocco dell'interfaccia.",
     "downloadDisabledTruncated": "Download non disponibile - caricata solo anteprima",
-    "downloading": "Download in corso..."
+    "downloading": "Download in corso...",
+    "uploading": "Caricamento in corso...",
+    "openSidebar": "Apri nell'editor"
   }
 }

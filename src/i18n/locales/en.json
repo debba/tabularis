@@ -623,16 +623,14 @@
     "openSidebar": "Open Sidebar Editor"
   },
   "blobInput": {
-    "mimeType": "MIME Type",
-    "size": "Size",
-    "type": "Data Type",
     "noData": "No BLOB data",
     "uploadFile": "Upload File",
     "download": "Download",
     "delete": "Delete",
     "truncatedWarning": "Preview only - full data not loaded",
-    "cannotDownloadTruncated": "Cannot download: only preview data is available. The full BLOB was not loaded to prevent UI freezing.",
     "downloadDisabledTruncated": "Download unavailable - only preview loaded",
-    "downloading": "Downloading..."
+    "downloading": "Downloading...",
+    "uploading": "Uploading...",
+    "openSidebar": "Open in editor"
   }
 }

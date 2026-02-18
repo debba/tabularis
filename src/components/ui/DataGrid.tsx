@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
-import { ArrowUp, ArrowDown, ArrowUpDown, Copy, Undo, Trash2, Edit, Sparkles, Ban, FileDigit } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, Copy, Undo, Trash2, Edit, Sparkles, Ban, FileDigit, ExternalLink } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { message } from "@tauri-apps/plugin-dialog";
 import {
@@ -24,6 +24,7 @@ import {
   type ColumnDisplayInfo,
 } from "../../utils/dataGrid";
 import { isGeometricType, formatGeometricValue } from "../../utils/geometry";
+import { isBlobType } from "../../utils/blob";
 import { GeometryInput } from "./GeometryInput";
 import { RowEditorSidebar } from "./RowEditorSidebar";
 import { useDatabase } from "../../hooks/useDatabase";
@@ -228,10 +229,22 @@ export const DataGrid = React.memo(({
     if (!mergedRow) return;
     if (mergedRow.type !== "insertion" && !pkColumn) return;
 
-    // For geometric columns, show WKT format in editor instead of WKB hex
-    let editValue = value;
     const colName = columns[colIndex];
     const colType = columnTypeMap?.get(colName);
+
+    // For BLOB columns, open sidebar directly instead of inline editing
+    if (colType && isBlobType(colType)) {
+      const rowData: Record<string, unknown> = {};
+      columns.forEach((col, idx) => {
+        rowData[col] = mergedRow.rowData[idx];
+      });
+      setSidebarRowData({ data: rowData, rowIndex, focusField: colName });
+      setSidebarOpen(true);
+      return;
+    }
+
+    // For geometric columns, show WKT format in editor instead of WKB hex
+    let editValue = value;
     if (colType && isGeometricType(colType) && value !== null && value !== undefined) {
       editValue = formatGeometricValue(value);
     }
@@ -868,12 +881,37 @@ export const DataGrid = React.memo(({
                           })()
                         ) : hasPendingChange ? (
                           String(displayValue)
-                        ) : (
-                          flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )
-                        )}
+                        ) : (() => {
+                          const colType = columnTypeMap?.get(colName);
+                          if (colType && isBlobType(colType) && !isPendingDelete) {
+                            return (
+                              <span className="flex items-center gap-1 group/blobcell w-full">
+                                <span className="truncate flex-1">
+                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const mergedRow = mergedRows[rowIndex];
+                                    if (mergedRow) {
+                                      const rowData: Record<string, unknown> = {};
+                                      columns.forEach((col, idx) => {
+                                        rowData[col] = mergedRow.rowData[idx];
+                                      });
+                                      setSidebarRowData({ data: rowData, rowIndex, focusField: colName });
+                                      setSidebarOpen(true);
+                                    }
+                                  }}
+                                  className="opacity-0 group-hover/blobcell:opacity-100 transition-opacity p-0.5 rounded text-muted hover:text-secondary hover:bg-surface-tertiary flex-shrink-0"
+                                  title={t("blobInput.openSidebar")}
+                                >
+                                  <ExternalLink size={11} />
+                                </button>
+                              </span>
+                            );
+                          }
+                          return flexRender(cell.column.columnDef.cell, cell.getContext());
+                        })()}
                       </td>
                     );
                   })}

@@ -3,9 +3,7 @@ use rust_decimal::Decimal;
 use sqlx::Row;
 use uuid::Uuid;
 
-/// Maximum size in bytes for BLOB data to extract
-/// BLOBs larger than this will be truncated and metadata will be included
-const MAX_BLOB_PREVIEW_SIZE: usize = 512; // Only extract first 512 bytes for MIME detection
+use crate::drivers::common::encode_blob;
 
 /// Extract value from MySQL row - supports all MySQL types including unsigned integers and geometry
 pub fn extract_value(row: &sqlx::mysql::MySqlRow, index: usize) -> serde_json::Value {
@@ -76,44 +74,20 @@ pub fn extract_value(row: &sqlx::mysql::MySqlRow, index: usize) -> serde_json::V
         }
     }
 
-    // For BLOB/BINARY types, try to extract as text first, then as binary
+    // For BLOB/BINARY types, always encode via the shared helper so every
+    // driver returns the canonical wire format ("BLOB:<size>:<mime>:<base64>").
     if col_type.contains("BLOB") || col_type.contains("BINARY") {
-        // First try as Vec<u8> (native binary format)
         match row.try_get::<Vec<u8>, _>(index) {
             Ok(v) => {
-                let blob_size = v.len();
-
-                // For small BLOBs, process normally
-                if blob_size <= MAX_BLOB_PREVIEW_SIZE {
-                    // Try to decode as UTF-8 string first (many BLOBs contain text/JSON)
-                    if let Ok(s) = String::from_utf8(v.clone()) {
-                        return serde_json::Value::String(s);
-                    }
-
-                    // If not valid UTF-8, encode as base64
-                    return serde_json::Value::String(base64::Engine::encode(
-                        &base64::engine::general_purpose::STANDARD,
-                        v,
-                    ));
-                }
-
-                // For large BLOBs, only extract preview for MIME detection
-                // Format: "BLOB:<size_in_bytes>:<base64_preview>"
-                let preview_bytes = &v[..MAX_BLOB_PREVIEW_SIZE];
-                let preview_base64 = base64::Engine::encode(
-                    &base64::engine::general_purpose::STANDARD,
-                    preview_bytes,
-                );
-
-                return serde_json::Value::String(format!("BLOB:{}:{}", blob_size, preview_base64));
+                return serde_json::Value::String(encode_blob(&v));
             }
             Err(e) => eprintln!("[DEBUG] ✗ {} as Vec<u8>: {}", col_name, e),
         }
 
-        // Try as string directly (for text-based binary data)
+        // Fallback: some MySQL drivers may return text-based binary data as String
         match row.try_get::<String, _>(index) {
             Ok(v) => {
-                return serde_json::Value::String(v);
+                return serde_json::Value::String(encode_blob(v.as_bytes()));
             }
             Err(e) => eprintln!("[DEBUG] ✗ {} as String: {}", col_name, e),
         }
@@ -252,10 +226,7 @@ pub fn extract_value(row: &sqlx::mysql::MySqlRow, index: usize) -> serde_json::V
 
     // Binary data
     if let Ok(v) = row.try_get::<Vec<u8>, _>(index) {
-        return serde_json::Value::String(base64::Engine::encode(
-            &base64::engine::general_purpose::STANDARD,
-            v,
-        ));
+        return serde_json::Value::String(encode_blob(&v));
     }
 
     // Fallback

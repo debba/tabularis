@@ -334,6 +334,10 @@ pub async fn update_record(
             // Check for special sentinel value to use DEFAULT
             if s == "__USE_DEFAULT__" {
                 qb.push("DEFAULT");
+            } else if let Some(bytes) = crate::drivers::common::decode_blob_wire_format(&s) {
+                // Blob wire format: decode to raw bytes so the DB stores binary data,
+                // not the internal wire format string.
+                qb.push_bind(bytes);
             } else {
                 qb.push_bind(s);
             }
@@ -404,7 +408,12 @@ pub async fn insert_record(
                     }
                 }
                 serde_json::Value::String(s) => {
-                    separated.push_bind(s);
+                    if let Some(bytes) = crate::drivers::common::decode_blob_wire_format(&s) {
+                        // Blob wire format: decode to raw bytes so the DB stores binary data.
+                        separated.push_bind(bytes);
+                    } else {
+                        separated.push_bind(s);
+                    }
                 }
                 serde_json::Value::Bool(b) => {
                     separated.push_bind(b);

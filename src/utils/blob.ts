@@ -1,11 +1,13 @@
 /**
- * Utility functions for handling BLOB data types
- * Provides functionality to detect and format binary data safely
+ * Utility functions for handling BLOB data types.
+ * MIME detection is performed exclusively on the backend via the `infer` crate.
+ * All blob values arrive from the backend in the canonical wire format:
+ *   "BLOB:<total_size_bytes>:<mime_type>:<base64_data>"
  */
 
 /**
- * Checks if a data type is a BLOB/binary type
- * Supports MySQL, PostgreSQL, and SQLite binary types
+ * Checks if a data type is a BLOB/binary type.
+ * Supports MySQL, PostgreSQL, and SQLite binary types.
  */
 export function isBlobType(dataType: string): boolean {
   if (!dataType) {
@@ -14,7 +16,6 @@ export function isBlobType(dataType: string): boolean {
 
   const normalizedType = dataType.toUpperCase();
 
-  // Binary types across different databases
   const binaryTypes = [
     "BLOB",
     "TINYBLOB",
@@ -29,134 +30,9 @@ export function isBlobType(dataType: string): boolean {
 }
 
 /**
- * Detects the MIME type from base64-encoded data by reading the magic bytes
- * @param base64Data - The base64-encoded binary data
- * @returns MIME type string (e.g., "image/png", "application/pdf") or "application/octet-stream" as fallback
+ * Formats a byte size into a human-readable string.
  */
-export function detectMimeTypeFromBase64(base64Data: string): string {
-  try {
-    // Decode the first few bytes to check magic numbers
-    const binaryString = atob(base64Data.substring(0, 32));
-    const bytes: number[] = [];
-
-    for (let i = 0; i < Math.min(binaryString.length, 12); i++) {
-      bytes.push(binaryString.charCodeAt(i));
-    }
-
-    // Check magic numbers for common file types
-    // PNG: 89 50 4E 47 0D 0A 1A 0A
-    if (
-      bytes[0] === 0x89 &&
-      bytes[1] === 0x50 &&
-      bytes[2] === 0x4e &&
-      bytes[3] === 0x47
-    ) {
-      return "image/png";
-    }
-
-    // JPEG: FF D8 FF
-    if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-      return "image/jpeg";
-    }
-
-    // GIF: 47 49 46 38
-    if (
-      bytes[0] === 0x47 &&
-      bytes[1] === 0x49 &&
-      bytes[2] === 0x46 &&
-      bytes[3] === 0x38
-    ) {
-      return "image/gif";
-    }
-
-    // PDF: 25 50 44 46
-    if (
-      bytes[0] === 0x25 &&
-      bytes[1] === 0x50 &&
-      bytes[2] === 0x44 &&
-      bytes[3] === 0x46
-    ) {
-      return "application/pdf";
-    }
-
-    // ZIP: 50 4B 03 04 or 50 4B 05 06
-    if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
-      if (bytes[2] === 0x03 && bytes[3] === 0x04) {
-        return "application/zip";
-      }
-      if (bytes[2] === 0x05 && bytes[3] === 0x06) {
-        return "application/zip";
-      }
-    }
-
-    // WebP: 52 49 46 46 ... 57 45 42 50
-    if (
-      bytes[0] === 0x52 &&
-      bytes[1] === 0x49 &&
-      bytes[2] === 0x46 &&
-      bytes[3] === 0x46 &&
-      bytes[8] === 0x57 &&
-      bytes[9] === 0x45 &&
-      bytes[10] === 0x42 &&
-      bytes[11] === 0x50
-    ) {
-      return "image/webp";
-    }
-
-    // BMP: 42 4D
-    if (bytes[0] === 0x42 && bytes[1] === 0x4d) {
-      return "image/bmp";
-    }
-
-    // TIFF: 49 49 2A 00 or 4D 4D 00 2A
-    if (
-      (bytes[0] === 0x49 &&
-        bytes[1] === 0x49 &&
-        bytes[2] === 0x2a &&
-        bytes[3] === 0x00) ||
-      (bytes[0] === 0x4d &&
-        bytes[1] === 0x4d &&
-        bytes[2] === 0x00 &&
-        bytes[3] === 0x2a)
-    ) {
-      return "image/tiff";
-    }
-
-    // MP4: starts with specific bytes at offset 4
-    if (bytes.length >= 12) {
-      const ftyp =
-        bytes[4] === 0x66 &&
-        bytes[5] === 0x74 &&
-        bytes[6] === 0x79 &&
-        bytes[7] === 0x70;
-      if (ftyp) {
-        return "video/mp4";
-      }
-    }
-
-    // Check if it looks like JSON (starts with { or [)
-    if (bytes[0] === 0x7b || bytes[0] === 0x5b) {
-      return "application/json";
-    }
-
-    // Check if it looks like XML (starts with <)
-    if (bytes[0] === 0x3c) {
-      return "application/xml";
-    }
-
-    return "application/octet-stream";
-  } catch (error) {
-    console.warn("Failed to detect MIME type:", error);
-    return "application/octet-stream";
-  }
-}
-
-/**
- * Formats a byte size into a human-readable string
- * @param bytes - Size in bytes
- * @returns Formatted string (e.g., "1.54 MB", "627.12 KB")
- */
-export function formatBlobSize(bytes: number): string {
+function formatBlobSize(bytes: number): string {
   if (bytes === 0) return "0 B";
 
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -165,34 +41,13 @@ export function formatBlobSize(bytes: number): string {
 
   const size = bytes / Math.pow(k, i);
 
-  // For bytes, show no decimals
   if (i === 0) {
     return `${size} ${units[i]}`;
   }
 
-  // For other units, show 2 decimal places
   return `${size.toFixed(2)} ${units[i]}`;
 }
 
-/**
- * Calculates the size of base64-encoded data in bytes
- * @param base64Data - The base64 string
- * @returns Size in bytes
- */
-export function getBase64Size(base64Data: string): number {
-  // Remove padding characters
-  const withoutPadding = base64Data.replace(/=/g, "");
-
-  // Base64 encoding uses 4 characters to represent 3 bytes
-  // So: original_bytes = (base64_length * 3) / 4
-  return Math.floor((withoutPadding.length * 3) / 4);
-}
-
-/**
- * Extracts BLOB metadata from binary data
- * @param value - The BLOB value (base64 string, raw string, or BLOB:<size>:<preview> format)
- * @returns Object containing MIME type and size information
- */
 export interface BlobMetadata {
   mimeType: string;
   size: number;
@@ -201,6 +56,18 @@ export interface BlobMetadata {
   isTruncated?: boolean;
 }
 
+/**
+ * Extracts BLOB metadata from a value produced by the backend.
+ *
+ * Expected wire formats: 
+ *   - "BLOB:<size_bytes>:<mime_type>:<base64_data>"
+ *   - "BLOB_FILE_REF:<size>:<mime>:<filepath>"
+ *
+ * Returns null for null/undefined values.
+ * Returns a text/plain metadata object for plain-text strings that are not
+ * in the BLOB wire format (e.g. BLOBs that contained valid UTF-8 text and
+ * were returned as-is by the backend).
+ */
 export function extractBlobMetadata(value: unknown): BlobMetadata | null {
   if (value === null || value === undefined) {
     return null;
@@ -208,42 +75,49 @@ export function extractBlobMetadata(value: unknown): BlobMetadata | null {
 
   const stringValue = String(value);
 
-  // Check if it's the truncated BLOB format from backend: "BLOB:<size>:<base64_preview>"
-  const truncatedBlobMatch = stringValue.match(/^BLOB:(\d+):(.+)$/);
-  if (truncatedBlobMatch) {
-    const size = parseInt(truncatedBlobMatch[1], 10);
-    const previewBase64 = truncatedBlobMatch[2];
-    const mimeType = detectMimeTypeFromBase64(previewBase64);
+  // Handle BLOB_FILE_REF format: "BLOB_FILE_REF:<size>:<mime>:<filepath>"
+  if (stringValue.startsWith("BLOB_FILE_REF:")) {
+    const firstColon = 14; // right after "BLOB_FILE_REF:"
+    const secondColon = stringValue.indexOf(":", firstColon);
+    const thirdColon = stringValue.indexOf(":", secondColon + 1);
+    if (secondColon !== -1 && thirdColon !== -1) {
+      const size = parseInt(stringValue.substring(firstColon, secondColon), 10);
+      const mimeType = stringValue.substring(secondColon + 1, thirdColon);
 
-    return {
-      mimeType,
-      size,
-      formattedSize: formatBlobSize(size),
-      isBase64: true,
-      isTruncated: true,
-    };
+      return {
+        mimeType,
+        size,
+        formattedSize: formatBlobSize(size),
+        isBase64: false, // It's a file reference, not base64
+        isTruncated: false, // File refs are never truncated
+      };
+    }
   }
 
-  // Check if it's a base64 string (common format from backend)
-  // Base64 strings only contain A-Z, a-z, 0-9, +, /, and = for padding
-  const isBase64 =
-    /^[A-Za-z0-9+/]+=*$/.test(stringValue) && stringValue.length > 0;
+  // Canonical wire format: "BLOB:<size>:<mime_type>:<base64_data>"
+  // Parse by colon positions instead of regex to avoid allocating a copy of
+  // the (potentially huge) base64 payload — only the length is needed here.
+  if (stringValue.startsWith("BLOB:")) {
+    const firstColon = 5; // right after "BLOB:"
+    const secondColon = stringValue.indexOf(":", firstColon);
+    const thirdColon = stringValue.indexOf(":", secondColon + 1);
+    if (secondColon !== -1 && thirdColon !== -1) {
+      const size = parseInt(stringValue.substring(firstColon, secondColon), 10);
+      const mimeType = stringValue.substring(secondColon + 1, thirdColon);
+      const base64Length = stringValue.length - thirdColon - 1;
+      const isTruncated = size > (base64Length * 3) / 4;
 
-  if (isBase64) {
-    const size = getBase64Size(stringValue);
-    const mimeType = detectMimeTypeFromBase64(stringValue);
-
-    return {
-      mimeType,
-      size,
-      formattedSize: formatBlobSize(size),
-      isBase64: true,
-      isTruncated: false,
-    };
+      return {
+        mimeType,
+        size,
+        formattedSize: formatBlobSize(size),
+        isBase64: true,
+        isTruncated,
+      };
+    }
   }
 
-  // For non-base64 strings, estimate size from string length
-  // This is an approximation - actual byte size may vary with encoding
+  // Plain-text blob (backend returned UTF-8 decoded content directly)
   const size = new Blob([stringValue]).size;
 
   return {
@@ -256,11 +130,64 @@ export function extractBlobMetadata(value: unknown): BlobMetadata | null {
 }
 
 /**
- * Formats a BLOB value for display in the DataGrid
- * Shows MIME type and size instead of raw data
- * @param value - The BLOB value
- * @param dataType - The column data type
- * @returns Formatted string like "image/png (1.54 MB)"
+ * Maps a MIME type string to a file extension.
+ */
+export function mimeToExtension(mimeType: string): string {
+  const map: Record<string, string> = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/gif": "gif",
+    "image/webp": "webp",
+    "image/bmp": "bmp",
+    "image/tiff": "tiff",
+    "image/svg+xml": "svg",
+    "image/avif": "avif",
+    "image/x-icon": "ico",
+    "application/pdf": "pdf",
+    "application/zip": "zip",
+    "application/gzip": "gz",
+    "application/x-tar": "tar",
+    "application/x-7z-compressed": "7z",
+    "application/vnd.rar": "rar",
+    "application/x-rar-compressed": "rar",
+    "application/x-bzip2": "bz2",
+    "application/x-xz": "xz",
+    "application/json": "json",
+    "application/xml": "xml",
+    "application/octet-stream": "bin",
+    "application/x-sqlite3": "sqlite",
+    "application/msword": "doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.ms-excel": "xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/vnd.ms-powerpoint": "ppt",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+    "video/mp4": "mp4",
+    "video/webm": "webm",
+    "video/ogg": "ogv",
+    "video/x-matroska": "mkv",
+    "video/quicktime": "mov",
+    "video/avi": "avi",
+    "audio/mpeg": "mp3",
+    "audio/mp4": "m4a",
+    "audio/ogg": "ogg",
+    "audio/wav": "wav",
+    "audio/flac": "flac",
+    "audio/aac": "aac",
+    "text/plain": "txt",
+    "text/html": "html",
+    "text/csv": "csv",
+    "font/woff": "woff",
+    "font/woff2": "woff2",
+    "font/ttf": "ttf",
+    "font/otf": "otf",
+  };
+  return map[mimeType] ?? mimeType.split("/")[1]?.replace(/[^a-z0-9]/g, "") ?? "bin";
+}
+
+/**
+ * Formats a BLOB value for display in the DataGrid.
+ * Shows MIME type and size instead of raw data.
  */
 export function formatBlobValue(value: unknown, dataType: string): string {
   if (!isBlobType(dataType)) {
