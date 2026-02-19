@@ -186,6 +186,26 @@ export function mimeToExtension(mimeType: string): string {
 }
 
 /**
+ * Extracts a data URL for image preview from a BLOB wire format value.
+ * Returns null if the value is not an image or not in base64 wire format.
+ */
+export function extractImageDataUrl(value: unknown): string | null {
+  const metadata = extractBlobMetadata(value);
+  if (!metadata || !metadata.isBase64 || !metadata.mimeType.startsWith("image/")) {
+    return null;
+  }
+  const stringValue = String(value);
+  if (!stringValue.startsWith("BLOB:")) return null;
+  const firstColon = 5;
+  const secondColon = stringValue.indexOf(":", firstColon);
+  const thirdColon = stringValue.indexOf(":", secondColon + 1);
+  if (thirdColon === -1) return null;
+  const base64Payload = stringValue.substring(thirdColon + 1);
+  if (!base64Payload) return null;
+  return `data:${metadata.mimeType};base64,${base64Payload}`;
+}
+
+/**
  * Formats a BLOB value for display in the DataGrid.
  * Shows MIME type and size instead of raw data.
  */
