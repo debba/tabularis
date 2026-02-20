@@ -291,7 +291,6 @@ npm run tauri build
 - [ ] [Query History](https://github.com/debba/tabularis/issues/18)
 - [ ] [Better SQLite Support](https://github.com/debba/tabularis/issues/17)
 - [ ] [Better PostgreSQL Support](https://github.com/debba/tabularis/issues/16)
-
 ## License
 
 Apache License 2.0
