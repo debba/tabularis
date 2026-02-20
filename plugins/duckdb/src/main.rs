@@ -1,10 +1,23 @@
 use duckdb::{types::Value, Connection, Result};
 use serde_json::{json, Value as JsonValue};
+use std::collections::HashMap;
 use std::io::{self, BufRead, Write};
+
+fn get_or_create_connection<'a>(
+    connections: &'a mut HashMap<String, Connection>,
+    db_path: &str,
+) -> Result<&'a mut Connection, String> {
+    if !connections.contains_key(db_path) {
+        let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+        connections.insert(db_path.to_string(), conn);
+    }
+    Ok(connections.get_mut(db_path).unwrap())
+}
 
 fn main() {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
+    let mut connections: HashMap<String, Connection> = HashMap::new();
 
     for line in stdin.lock().lines() {
         let line = match line {
@@ -42,23 +55,24 @@ fn main() {
             .get("params")
             .and_then(|p| p.get("database"))
             .and_then(|d| d.as_str())
-            .unwrap_or(":memory:");
+            .unwrap_or(":memory:")
+            .to_string();
 
-        let conn_result = Connection::open(db_path);
-        if let Err(e) = conn_result {
-            send_error(
-                &mut stdout,
-                id,
-                -32000,
-                &format!("Failed to connect to DuckDB: {}", e),
-            );
-            continue;
-        }
-        let conn = conn_result.unwrap();
+        let conn = match get_or_create_connection(&mut connections, &db_path) {
+            Ok(c) => c,
+            Err(e) => {
+                send_error(
+                    &mut stdout,
+                    id,
+                    -32000,
+                    &format!("Failed to connect to DuckDB: {}", e),
+                );
+                continue;
+            }
+        };
 
         match method {
             "test_connection" => {
-                // Connection was already opened above — if we reach here it succeeded
                 send_success(&mut stdout, id, json!(true));
             }
             "get_databases" => {
@@ -67,20 +81,20 @@ fn main() {
             "get_schemas" => {
                 send_success(&mut stdout, id, json!(["main"]));
             }
-            "get_tables" => match get_tables(&conn) {
+            "get_tables" => match get_tables(conn) {
                 Ok(tables) => send_success(&mut stdout, id, tables),
                 Err(e) => send_error(&mut stdout, id, -32001, &e),
             },
             "get_columns" => {
                 let table_name = params.get("table").and_then(|t| t.as_str()).unwrap_or("");
-                match get_columns(&conn, table_name) {
+                match get_columns(conn, table_name) {
                     Ok(cols) => send_success(&mut stdout, id, cols),
                     Err(e) => send_error(&mut stdout, id, -32002, &e),
                 }
             }
             "execute_query" => {
                 let query = params.get("query").and_then(|q| q.as_str()).unwrap_or("");
-                match execute_query(&conn, query) {
+                match execute_query(conn, query) {
                     Ok(res) => send_success(&mut stdout, id, res),
                     Err(e) => send_error(&mut stdout, id, -32003, &e),
                 }
@@ -128,8 +142,13 @@ fn send_error(stdout: &mut io::Stdout, id: JsonValue, code: i32, message: &str) 
 }
 
 fn get_tables(conn: &Connection) -> Result<JsonValue, String> {
-    let mut stmt = conn.prepare("SELECT table_name, 'main' as schema_name, '' as comment FROM information_schema.tables WHERE table_schema='main' AND table_type='BASE TABLE'")
-        .map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT table_name, 'main' AS schema_name, '' AS comment \
+         FROM information_schema.tables \
+         WHERE table_schema = 'main' AND table_type = 'BASE TABLE' \
+         ORDER BY table_name",
+    )
+    .map_err(|e| e.to_string())?;
 
     let table_iter = stmt
         .query_map([], |row| {
@@ -149,44 +168,70 @@ fn get_tables(conn: &Connection) -> Result<JsonValue, String> {
     Ok(json!(tables))
 }
 
+fn get_primary_keys(conn: &Connection, table_name: &str) -> std::collections::HashSet<String> {
+    let mut set = std::collections::HashSet::new();
+    let Ok(mut stmt) = conn.prepare(
+        "SELECT unnest(constraint_column_names) AS column_name \
+         FROM duckdb_constraints() \
+         WHERE table_name = ? AND constraint_type = 'PRIMARY KEY' AND schema_name = 'main'",
+    ) else {
+        return set;
+    };
+    let Ok(iter) = stmt.query_map([table_name], |row| row.get::<_, String>(0)) else {
+        return set;
+    };
+    for col in iter.flatten() {
+        set.insert(col);
+    }
+    set
+}
+
 fn get_columns(conn: &Connection, table_name: &str) -> Result<JsonValue, String> {
-    let mut stmt = conn.prepare("SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name = ?")
+    let pk_cols = get_primary_keys(conn, table_name);
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT column_name, data_type, is_nullable, column_default \
+             FROM information_schema.columns \
+             WHERE table_name = ? AND table_schema = 'main' \
+             ORDER BY ordinal_position",
+        )
         .map_err(|e| e.to_string())?;
 
     let col_iter = stmt
         .query_map([table_name], |row| {
+            let col_name: String = row.get(0)?;
             let is_nullable: String = row.get(2)?;
-            Ok(json!({
-                "name": row.get::<_, String>(0)?,
-                "data_type": row.get::<_, String>(1)?,
-                "is_nullable": is_nullable == "YES",
-                "default_value": row.get::<_, Option<String>>(3)?,
-                "is_primary": false,
-            }))
+            Ok((
+                col_name,
+                row.get::<_, String>(1)?,
+                is_nullable,
+                row.get::<_, Option<String>>(3)?,
+            ))
         })
         .map_err(|e| e.to_string())?;
 
     let mut columns = Vec::new();
     for c in col_iter {
-        columns.push(c.map_err(|e| e.to_string())?);
+        let (col_name, data_type, is_nullable, default_value) =
+            c.map_err(|e| e.to_string())?;
+        let is_primary = pk_cols.contains(&col_name);
+        columns.push(json!({
+            "name": col_name,
+            "data_type": data_type,
+            "is_nullable": is_nullable == "YES",
+            "default_value": default_value,
+            "is_primary": is_primary,
+        }));
     }
 
     Ok(json!(columns))
 }
 
 fn execute_query(conn: &Connection, query: &str) -> Result<JsonValue, String> {
-    // Detect if query is a SELECT-like statement by trying to prepare and inspect
-    // We use conn.execute() for DML (returns affected rows) and stmt.query() for SELECT
-    let trimmed = query.trim_start().to_ascii_uppercase();
-    let is_select = trimmed.starts_with("SELECT")
-        || trimmed.starts_with("WITH")
-        || trimmed.starts_with("SHOW")
-        || trimmed.starts_with("DESCRIBE")
-        || trimmed.starts_with("EXPLAIN")
-        || trimmed.starts_with("PRAGMA");
+    let mut stmt = conn.prepare(query).map_err(|e| e.to_string())?;
 
-    if is_select {
-        let mut stmt = conn.prepare(query).map_err(|e| e.to_string())?;
+    if stmt.column_count() > 0 {
         let mut rows = stmt.query([]).map_err(|e| e.to_string())?;
 
         let col_count = rows.as_ref().map(|s| s.column_count()).unwrap_or(0);
@@ -214,7 +259,7 @@ fn execute_query(conn: &Connection, query: &str) -> Result<JsonValue, String> {
             "pagination": null
         }))
     } else {
-        let affected = conn.execute(query, []).map_err(|e| e.to_string())?;
+        let affected = stmt.execute([]).map_err(|e| e.to_string())?;
         Ok(json!({
             "columns": [],
             "rows": [],
@@ -241,7 +286,7 @@ fn duckdb_value_to_json(val: Value) -> JsonValue {
         Value::Float(v) => json!(v),
         Value::Double(v) => json!(v),
         Value::Decimal(v) => json!(v.to_string()),
-        Value::Timestamp(_, t) => json!(t), // Could format nicely
+        Value::Timestamp(_, t) => json!(t),
         Value::Text(v) => json!(v),
         Value::Blob(v) => json!(format!("Blob({} bytes)", v.len())),
         Value::Date32(v) => json!(v),
@@ -266,7 +311,6 @@ fn duckdb_value_to_json(val: Value) -> JsonValue {
         Value::Map(map) => {
             let mut obj = serde_json::Map::new();
             for (k, v) in map.iter() {
-                // JSON keys must be strings
                 let key_str = match duckdb_value_to_json(k.clone()) {
                     JsonValue::String(s) => s,
                     other => other.to_string(),
