@@ -5,6 +5,9 @@ import {
   extractImageDataUrl,
   formatBlobValue,
   mimeToExtension,
+  parseBlobFileRef,
+  extractBase64Payload,
+  blobPayloadToBytes,
 } from "../../src/utils/blob";
 
 describe("blob utilities", () => {
@@ -215,6 +218,95 @@ describe("blob utilities", () => {
         const dataUrl = extractImageDataUrl(wire);
         expect(dataUrl).toBe(`data:${mime};base64,${b64}`);
       }
+    });
+  });
+
+  describe("parseBlobFileRef", () => {
+    it("should parse a valid BLOB_FILE_REF string", () => {
+      const wire = "BLOB_FILE_REF:1024:image/png:/path/to/file.png";
+      const result = parseBlobFileRef(wire);
+      expect(result).not.toBeNull();
+      expect(result?.size).toBe(1024);
+      expect(result?.mimeType).toBe("image/png");
+      expect(result?.filePath).toBe("/path/to/file.png");
+    });
+
+    it("should handle file paths containing colons (e.g. Windows paths)", () => {
+      const wire = "BLOB_FILE_REF:512:image/jpeg:C:/Users/test/photo.jpg";
+      const result = parseBlobFileRef(wire);
+      expect(result).not.toBeNull();
+      expect(result?.mimeType).toBe("image/jpeg");
+      expect(result?.filePath).toBe("C:/Users/test/photo.jpg");
+    });
+
+    it("should return null for non-file-ref strings", () => {
+      const b64 = btoa("data");
+      expect(parseBlobFileRef(`BLOB:4:image/png:${b64}`)).toBeNull();
+      expect(parseBlobFileRef("hello world")).toBeNull();
+      expect(parseBlobFileRef("")).toBeNull();
+    });
+
+    it("should return null for malformed file ref strings", () => {
+      expect(parseBlobFileRef("BLOB_FILE_REF:missing-colons")).toBeNull();
+    });
+
+    it("should return null for null and undefined", () => {
+      expect(parseBlobFileRef(null)).toBeNull();
+      expect(parseBlobFileRef(undefined)).toBeNull();
+    });
+  });
+
+  describe("extractBase64Payload", () => {
+    it("should extract the base64 portion from a BLOB wire format string", () => {
+      const b64 = btoa("hello world");
+      const wire = `BLOB:11:text/plain:${b64}`;
+      expect(extractBase64Payload(wire)).toBe(b64);
+    });
+
+    it("should return the string as-is for non-BLOB wire formats", () => {
+      expect(extractBase64Payload("plain text")).toBe("plain text");
+      expect(extractBase64Payload("BLOB_FILE_REF:1:image/png:/path")).toBe(
+        "BLOB_FILE_REF:1:image/png:/path",
+      );
+    });
+
+    it("should return the string as-is for malformed BLOB format", () => {
+      expect(extractBase64Payload("BLOB:malformed")).toBe("BLOB:malformed");
+    });
+
+    it("should return an empty string for null and undefined", () => {
+      expect(extractBase64Payload(null)).toBe("");
+      expect(extractBase64Payload(undefined)).toBe("");
+    });
+  });
+
+  describe("blobPayloadToBytes", () => {
+    it("should decode a base64 payload to the original bytes", () => {
+      const original = "hello world";
+      const b64 = btoa(original);
+      const bytes = blobPayloadToBytes(b64, true);
+      expect(bytes).toBeInstanceOf(Uint8Array);
+      expect(new TextDecoder().decode(bytes)).toBe(original);
+    });
+
+    it("should encode a plain-text payload as UTF-8 bytes", () => {
+      const text = "hello world";
+      const bytes = blobPayloadToBytes(text, false);
+      expect(new TextDecoder().decode(bytes)).toBe(text);
+    });
+
+    it("should handle an empty payload", () => {
+      expect(Array.from(blobPayloadToBytes("", true))).toEqual([]);
+      expect(Array.from(blobPayloadToBytes("", false))).toEqual([]);
+    });
+
+    it("should correctly roundtrip through extractBase64Payload", () => {
+      const original = "binary-like data \x00\x01\x02";
+      const b64 = btoa(original);
+      const wire = `BLOB:${original.length}:application/octet-stream:${b64}`;
+      const payload = extractBase64Payload(wire);
+      const bytes = blobPayloadToBytes(payload, true);
+      expect(new TextDecoder("latin1").decode(bytes)).toBe(original);
     });
   });
 

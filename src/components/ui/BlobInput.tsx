@@ -16,6 +16,9 @@ import {
   extractBlobMetadata,
   extractImageDataUrl,
   mimeToExtension,
+  parseBlobFileRef,
+  extractBase64Payload,
+  blobPayloadToBytes,
   type BlobMetadata,
 } from "../../utils/blob";
 
@@ -79,36 +82,34 @@ export const BlobInput: React.FC<BlobInputProps> = ({
   }, [value, hasValue]);
 
   // For BLOB_FILE_REF images (after upload), ask the backend to read the file
-  // and return a data: URL. Parsing is done from the raw string to avoid
-  // depending on the non-memoized `metadata` object (which would cause an
-  // infinite re-render loop).
+  // and return a data: URL. The file path is derived synchronously via useMemo
+  // so the effect only runs when the file ref actually changes.
+  const imageFileRefPath = useMemo<string | null>(() => {
+    const parsed = parseBlobFileRef(value);
+    if (!parsed?.mimeType.startsWith("image/")) return null;
+    return parsed.filePath;
+  }, [value]);
+
   const [fileRefPreviewUrl, setFileRefPreviewUrl] = useState<string | null>(
     null,
   );
   useEffect(() => {
-    const stringValue = String(value ?? "");
-    if (!stringValue.startsWith("BLOB_FILE_REF:")) {
+    if (!imageFileRefPath) {
       setFileRefPreviewUrl(null);
       return;
     }
-    // Parse: "BLOB_FILE_REF:<size>:<mime>:<filepath>"
-    const firstColon = 14;
-    const secondColon = stringValue.indexOf(":", firstColon);
-    const thirdColon = stringValue.indexOf(":", secondColon + 1);
-    if (thirdColon === -1) {
-      setFileRefPreviewUrl(null);
-      return;
-    }
-    const mimeType = stringValue.substring(secondColon + 1, thirdColon);
-    if (!mimeType.startsWith("image/")) {
-      setFileRefPreviewUrl(null);
-      return;
-    }
-    const filePath = stringValue.substring(thirdColon + 1);
-    invoke<string>("read_file_as_data_url", { filePath })
-      .then((dataUrl) => setFileRefPreviewUrl(dataUrl))
-      .catch(() => setFileRefPreviewUrl(null));
-  }, [value]);
+    let cancelled = false;
+    invoke<string>("read_file_as_data_url", { filePath: imageFileRefPath })
+      .then((dataUrl) => {
+        if (!cancelled) setFileRefPreviewUrl(dataUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setFileRefPreviewUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageFileRefPath]);
 
   // For truncated images already in the DB, fetch the full blob and build a data: URL.
   // Same approach as handleDownload but in-memory instead of writing to disk.
@@ -118,6 +119,7 @@ export const BlobInput: React.FC<BlobInputProps> = ({
       setDbPreviewUrl(null);
       return;
     }
+    let cancelled = false;
     invoke<string>("fetch_blob_as_data_url", {
       connectionId,
       table: tableName,
@@ -126,10 +128,16 @@ export const BlobInput: React.FC<BlobInputProps> = ({
       pkVal,
       ...(schema ? { schema } : {}),
     })
-      .then((dataUrl) => setDbPreviewUrl(dataUrl))
-      .catch(() => setDbPreviewUrl(null));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, isImage, canFetchFull]);
+      .then((dataUrl) => {
+        if (!cancelled) setDbPreviewUrl(dataUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setDbPreviewUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isImage, canFetchFull, connectionId, tableName, colName, pkCol, pkVal, schema]);
 
   const effectiveImageDataUrl =
     imageDataUrl ?? fileRefPreviewUrl ?? dbPreviewUrl;
@@ -155,7 +163,11 @@ export const BlobInput: React.FC<BlobInputProps> = ({
       console.error("Failed to load file:", err);
       // Extract error message from Tauri error object
       const errorMessage =
-        typeof err === "string" ? err : (err as any)?.message || String(err);
+        typeof err === "string"
+          ? err
+          : err instanceof Error
+            ? err.message
+            : String(err);
       setError(errorMessage);
     } finally {
       setIsUploading(false);
@@ -202,30 +214,8 @@ export const BlobInput: React.FC<BlobInputProps> = ({
       });
       if (!filePath) return;
 
-      // Extract the base64 payload from the canonical wire format
-      // "BLOB:<size>:<mime>:<base64data>"
-      // Use indexOf instead of regex to avoid allocating a copy of the full payload.
-      const stringValue = String(value);
-      let base64Payload = stringValue;
-      if (stringValue.startsWith("BLOB:")) {
-        const firstColon = 5;
-        const secondColon = stringValue.indexOf(":", firstColon);
-        const thirdColon = stringValue.indexOf(":", secondColon + 1);
-        if (thirdColon !== -1) {
-          base64Payload = stringValue.substring(thirdColon + 1);
-        }
-      }
-
-      let bytes: Uint8Array;
-      if (metadata.isBase64) {
-        const binaryString = atob(base64Payload);
-        bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-      } else {
-        bytes = new TextEncoder().encode(base64Payload);
-      }
+      const base64Payload = extractBase64Payload(value);
+      const bytes = blobPayloadToBytes(base64Payload, metadata.isBase64);
       await writeFile(filePath, bytes);
     } catch (error) {
       console.error("Failed to download file:", error);

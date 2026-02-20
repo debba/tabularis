@@ -130,6 +130,30 @@ export function extractBlobMetadata(value: unknown): BlobMetadata | null {
 }
 
 /**
+ * Parses a BLOB_FILE_REF wire format string.
+ * Expected format: "BLOB_FILE_REF:<size>:<mime>:<filepath>"
+ * Returns null if the value is not in this format or is malformed.
+ */
+export function parseBlobFileRef(
+  value: unknown,
+): { size: number; mimeType: string; filePath: string } | null {
+  const stringValue = String(value ?? "");
+  if (!stringValue.startsWith("BLOB_FILE_REF:")) {
+    return null;
+  }
+  const firstColon = 14; // right after "BLOB_FILE_REF:"
+  const secondColon = stringValue.indexOf(":", firstColon);
+  const thirdColon = stringValue.indexOf(":", secondColon + 1);
+  if (secondColon === -1 || thirdColon === -1) {
+    return null;
+  }
+  const size = parseInt(stringValue.substring(firstColon, secondColon), 10);
+  const mimeType = stringValue.substring(secondColon + 1, thirdColon);
+  const filePath = stringValue.substring(thirdColon + 1);
+  return { size, mimeType, filePath };
+}
+
+/**
  * Maps a MIME type string to a file extension.
  */
 export function mimeToExtension(mimeType: string): string {
@@ -212,6 +236,42 @@ export function extractImageDataUrl(value: unknown): string | null {
   const base64Payload = stringValue.substring(thirdColon + 1);
   if (!base64Payload) return null;
   return `data:${metadata.mimeType};base64,${base64Payload}`;
+}
+
+/**
+ * Extracts the raw base64 payload from a BLOB wire format string.
+ * For "BLOB:<size>:<mime>:<base64>" returns the base64 portion.
+ * For any other format returns the string value as-is.
+ */
+export function extractBase64Payload(value: unknown): string {
+  const stringValue = String(value ?? "");
+  if (!stringValue.startsWith("BLOB:")) {
+    return stringValue;
+  }
+  const firstColon = 5;
+  const secondColon = stringValue.indexOf(":", firstColon);
+  const thirdColon =
+    secondColon !== -1 ? stringValue.indexOf(":", secondColon + 1) : -1;
+  if (secondColon === -1 || thirdColon === -1) {
+    return stringValue;
+  }
+  return stringValue.substring(thirdColon + 1);
+}
+
+/**
+ * Converts a blob payload to raw bytes.
+ * If isBase64 is true, decodes from base64; otherwise encodes as UTF-8.
+ */
+export function blobPayloadToBytes(payload: string, isBase64: boolean): Uint8Array {
+  if (isBase64) {
+    const binaryString = atob(payload);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  }
+  return new TextEncoder().encode(payload);
 }
 
 /**
