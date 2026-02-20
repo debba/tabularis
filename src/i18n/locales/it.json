@@ -631,7 +631,6 @@
     "downloadDisabledTruncated": "Download non disponibile - caricata solo anteprima",
     "downloading": "Download in corso...",
     "uploading": "Caricamento in corso...",
-    "openSidebar": "Apri nell'editor",
-    "imagePreview": "Anteprima immagine"
+    "openSidebar": "Apri nell'editor"
   }
 }
