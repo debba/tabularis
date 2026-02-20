@@ -28,7 +28,6 @@ export interface BlobInputProps {
   onChange: (value: unknown) => void;
   placeholder?: string;
   className?: string;
-  // Connection context for downloading truncated BLOBs
   connectionId?: string | null;
   tableName?: string | null;
   pkCol?: string | null;
