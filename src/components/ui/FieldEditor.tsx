@@ -141,14 +141,16 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
             {t("dataGrid.setDefault")}
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => onChange(" ")}
-          className="px-2 py-1 text-xs bg-surface-secondary text-secondary rounded border border-default hover:bg-surface-tertiary transition-colors"
-          title={t("dataGrid.setEmpty")}
-        >
-          {t("dataGrid.setEmpty")}
-        </button>
+        {!isBlob && (
+          <button
+            type="button"
+            onClick={() => onChange(" ")}
+            className="px-2 py-1 text-xs bg-surface-secondary text-secondary rounded border border-default hover:bg-surface-tertiary transition-colors"
+            title={t("dataGrid.setEmpty")}
+          >
+            {t("dataGrid.setEmpty")}
+          </button>
+        )}
       </div>
     </div>
   );
