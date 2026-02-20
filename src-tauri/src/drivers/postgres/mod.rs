@@ -2,12 +2,12 @@ pub mod types;
 
 pub mod extract;
 
-use extract::extract_value;
 use crate::models::{
     ConnectionParams, ForeignKey, Index, Pagination, QueryResult, RoutineInfo, RoutineParameter,
     TableColumn, TableInfo, ViewInfo,
 };
 use crate::pool_manager::get_postgres_pool;
+use extract::extract_value;
 use sqlx::{Column, Row};
 
 // Helper function to escape double quotes in identifiers for PostgreSQL
@@ -442,6 +442,41 @@ pub async fn save_blob_column_to_file(
     std::fs::write(file_path, bytes).map_err(|e| e.to_string())
 }
 
+pub async fn fetch_blob_column_as_data_url(
+    params: &ConnectionParams,
+    table: &str,
+    col_name: &str,
+    pk_col: &str,
+    pk_val: serde_json::Value,
+    schema: &str,
+) -> Result<String, String> {
+    let pool = get_postgres_pool(params).await?;
+
+    let query = format!(
+        "SELECT \"{}\" FROM \"{}\".\"{}\" WHERE \"{}\" = $1",
+        escape_identifier(col_name),
+        escape_identifier(schema),
+        escape_identifier(table),
+        escape_identifier(pk_col)
+    );
+
+    let row = match pk_val {
+        serde_json::Value::Number(n) => {
+            if n.is_i64() {
+                sqlx::query(&query).bind(n.as_i64()).fetch_one(&pool).await
+            } else {
+                sqlx::query(&query).bind(n.as_f64()).fetch_one(&pool).await
+            }
+        }
+        serde_json::Value::String(s) => sqlx::query(&query).bind(s).fetch_one(&pool).await,
+        _ => return Err("Unsupported PK type".into()),
+    }
+    .map_err(|e| e.to_string())?;
+
+    let bytes: Vec<u8> = row.try_get(0).map_err(|e| e.to_string())?;
+    Ok(crate::drivers::common::encode_blob_full(&bytes))
+}
+
 pub async fn delete_record(
     params: &ConnectionParams,
     table: &str,
@@ -504,7 +539,9 @@ pub async fn update_record(
             // Check for special sentinel value to use DEFAULT
             if s == "__USE_DEFAULT__" {
                 qb.push("DEFAULT");
-            } else if let Some(bytes) = crate::drivers::common::decode_blob_wire_format(&s, max_blob_size) {
+            } else if let Some(bytes) =
+                crate::drivers::common::decode_blob_wire_format(&s, max_blob_size)
+            {
                 // Blob wire format: decode to raw bytes so the DB stores binary data,
                 // not the internal wire format string.
                 qb.push_bind(bytes);
@@ -594,7 +631,9 @@ pub async fn insert_record(
                     }
                 }
                 serde_json::Value::String(s) => {
-                    if let Some(bytes) = crate::drivers::common::decode_blob_wire_format(&s, max_blob_size) {
+                    if let Some(bytes) =
+                        crate::drivers::common::decode_blob_wire_format(&s, max_blob_size)
+                    {
                         // Blob wire format: decode to raw bytes so the DB stores binary data,
                         // not the internal wire format string.
                         separated.push_bind(bytes);
@@ -649,7 +688,11 @@ fn remove_order_by(query: &str) -> String {
     }
 }
 
-pub async fn get_table_ddl(params: &ConnectionParams, table_name: &str, schema: &str) -> Result<String, String> {
+pub async fn get_table_ddl(
+    params: &ConnectionParams,
+    table_name: &str,
+    schema: &str,
+) -> Result<String, String> {
     let cols = get_columns(params, table_name, schema).await?;
     if cols.is_empty() {
         return Err(format!("Table {} not found or empty", table_name));
@@ -694,10 +737,7 @@ pub async fn execute_query(
     let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
 
     if let Some(schema) = schema {
-        let search_path = format!(
-            "SET search_path TO \"{}\"",
-            escape_identifier(schema)
-        );
+        let search_path = format!("SET search_path TO \"{}\"", escape_identifier(schema));
         sqlx::query(&search_path)
             .execute(&mut *conn)
             .await
@@ -831,7 +871,11 @@ pub async fn get_view_definition(
     schema: &str,
 ) -> Result<String, String> {
     let pool = get_postgres_pool(params).await?;
-    let qualified = format!("\"{}\".\"{}\"", escape_identifier(schema), escape_identifier(view_name));
+    let qualified = format!(
+        "\"{}\".\"{}\"",
+        escape_identifier(schema),
+        escape_identifier(view_name)
+    );
     let query = "SELECT pg_get_viewdef($1::regclass, true) as definition";
     let row = sqlx::query(query)
         .bind(&qualified)
@@ -886,7 +930,11 @@ pub async fn alter_view(
     Ok(())
 }
 
-pub async fn drop_view(params: &ConnectionParams, view_name: &str, schema: &str) -> Result<(), String> {
+pub async fn drop_view(
+    params: &ConnectionParams,
+    view_name: &str,
+    schema: &str,
+) -> Result<(), String> {
     let pool = get_postgres_pool(params).await?;
     let query = format!(
         "DROP VIEW IF EXISTS \"{}\".\"{}\"",
@@ -967,7 +1015,10 @@ pub async fn get_view_columns(
         .collect())
 }
 
-pub async fn get_routines(params: &ConnectionParams, schema: &str) -> Result<Vec<RoutineInfo>, String> {
+pub async fn get_routines(
+    params: &ConnectionParams,
+    schema: &str,
+) -> Result<Vec<RoutineInfo>, String> {
     let pool = get_postgres_pool(params).await?;
     let query = r#"
             SELECT proname, prokind
@@ -1094,4 +1145,3 @@ pub async fn get_routine_definition(
     let definition: String = row.try_get("definition").unwrap_or_default();
     Ok(definition)
 }
-

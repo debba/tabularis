@@ -278,7 +278,14 @@ pub async fn get_routine_parameters<R: Runtime>(
 
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_routine_parameters(&params, &routine_name).await,
-        "postgres" => postgres::get_routine_parameters(&params, &routine_name, schema.as_deref().unwrap_or("public")).await,
+        "postgres" => {
+            postgres::get_routine_parameters(
+                &params,
+                &routine_name,
+                schema.as_deref().unwrap_or("public"),
+            )
+            .await
+        }
         "sqlite" => sqlite::get_routine_parameters(&params, &routine_name).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -305,7 +312,15 @@ pub async fn get_routine_definition<R: Runtime>(
 
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_routine_definition(&params, &routine_name, &routine_type).await,
-        "postgres" => postgres::get_routine_definition(&params, &routine_name, &routine_type, schema.as_deref().unwrap_or("public")).await,
+        "postgres" => {
+            postgres::get_routine_definition(
+                &params,
+                &routine_name,
+                &routine_type,
+                schema.as_deref().unwrap_or("public"),
+            )
+            .await
+        }
         "sqlite" => sqlite::get_routine_definition(&params, &routine_name, &routine_type).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -1603,7 +1618,9 @@ pub async fn get_columns<R: Runtime>(
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_columns(&params, &table_name).await,
-        "postgres" => postgres::get_columns(&params, &table_name, schema.as_deref().unwrap_or("public")).await,
+        "postgres" => {
+            postgres::get_columns(&params, &table_name, schema.as_deref().unwrap_or("public")).await
+        }
         "sqlite" => sqlite::get_columns(&params, &table_name).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -1621,7 +1638,10 @@ pub async fn get_foreign_keys<R: Runtime>(
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_foreign_keys(&params, &table_name).await,
-        "postgres" => postgres::get_foreign_keys(&params, &table_name, schema.as_deref().unwrap_or("public")).await,
+        "postgres" => {
+            postgres::get_foreign_keys(&params, &table_name, schema.as_deref().unwrap_or("public"))
+                .await
+        }
         "sqlite" => sqlite::get_foreign_keys(&params, &table_name).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -1639,7 +1659,9 @@ pub async fn get_indexes<R: Runtime>(
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_indexes(&params, &table_name).await,
-        "postgres" => postgres::get_indexes(&params, &table_name, schema.as_deref().unwrap_or("public")).await,
+        "postgres" => {
+            postgres::get_indexes(&params, &table_name, schema.as_deref().unwrap_or("public")).await
+        }
         "sqlite" => sqlite::get_indexes(&params, &table_name).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -1659,7 +1681,16 @@ pub async fn delete_record<R: Runtime>(
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::delete_record(&params, &table, &pk_col, pk_val).await,
-        "postgres" => postgres::delete_record(&params, &table, &pk_col, pk_val, schema.as_deref().unwrap_or("public")).await,
+        "postgres" => {
+            postgres::delete_record(
+                &params,
+                &table,
+                &pk_col,
+                pk_val,
+                schema.as_deref().unwrap_or("public"),
+            )
+            .await
+        }
         "sqlite" => sqlite::delete_record(&params, &table, &pk_col, pk_val).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -1681,12 +1712,42 @@ pub async fn update_record<R: Runtime>(
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     let max_blob_size = crate::config::get_max_blob_size(&app);
     match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val, max_blob_size).await,
+        "mysql" => {
+            mysql::update_record(
+                &params,
+                &table,
+                &pk_col,
+                pk_val,
+                &col_name,
+                new_val,
+                max_blob_size,
+            )
+            .await
+        }
         "postgres" => {
-            postgres::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val, schema.as_deref().unwrap_or("public"), max_blob_size).await
+            postgres::update_record(
+                &params,
+                &table,
+                &pk_col,
+                pk_val,
+                &col_name,
+                new_val,
+                schema.as_deref().unwrap_or("public"),
+                max_blob_size,
+            )
+            .await
         }
         "sqlite" => {
-            sqlite::update_record(&params, &table, &pk_col, pk_val, &col_name, new_val, max_blob_size).await
+            sqlite::update_record(
+                &params,
+                &table,
+                &pk_col,
+                pk_val,
+                &col_name,
+                new_val,
+                max_blob_size,
+            )
+            .await
         }
         _ => Err("Unsupported driver".into()),
     }
@@ -1707,13 +1768,84 @@ pub async fn save_blob_to_file<R: Runtime>(
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::save_blob_column_to_file(&params, &table, &col_name, &pk_col, pk_val, &file_path).await,
-        "postgres" => {
-            postgres::save_blob_column_to_file(&params, &table, &col_name, &pk_col, pk_val, schema.as_deref().unwrap_or("public"), &file_path).await
+        "mysql" => {
+            mysql::save_blob_column_to_file(&params, &table, &col_name, &pk_col, pk_val, &file_path)
+                .await
         }
-        "sqlite" => sqlite::save_blob_column_to_file(&params, &table, &col_name, &pk_col, pk_val, &file_path).await,
+        "postgres" => {
+            postgres::save_blob_column_to_file(
+                &params,
+                &table,
+                &col_name,
+                &pk_col,
+                pk_val,
+                schema.as_deref().unwrap_or("public"),
+                &file_path,
+            )
+            .await
+        }
+        "sqlite" => {
+            sqlite::save_blob_column_to_file(
+                &params, &table, &col_name, &pk_col, pk_val, &file_path,
+            )
+            .await
+        }
         _ => Err("Unsupported driver".into()),
     }
+}
+
+/// Fetches a BLOB column from the database and returns it as a data: URL for image preview.
+/// Same query logic as save_blob_to_file but returns the data in-memory instead of writing to disk.
+#[tauri::command]
+pub async fn fetch_blob_as_data_url<R: Runtime>(
+    app: AppHandle<R>,
+    connection_id: String,
+    table: String,
+    col_name: String,
+    pk_col: String,
+    pk_val: serde_json::Value,
+    schema: Option<String>,
+) -> Result<String, String> {
+    let saved_conn = find_connection_by_id(&app, &connection_id)?;
+    let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
+    let wire = match saved_conn.params.driver.as_str() {
+        "mysql" => {
+            mysql::fetch_blob_column_as_data_url(&params, &table, &col_name, &pk_col, pk_val)
+                .await?
+        }
+        "postgres" => {
+            postgres::fetch_blob_column_as_data_url(
+                &params,
+                &table,
+                &col_name,
+                &pk_col,
+                pk_val,
+                schema.as_deref().unwrap_or("public"),
+            )
+            .await?
+        }
+        "sqlite" => {
+            sqlite::fetch_blob_column_as_data_url(&params, &table, &col_name, &pk_col, pk_val)
+                .await?
+        }
+        _ => return Err("Unsupported driver".into()),
+    };
+    // Convert the BLOB wire format to a data: URL
+    // wire format: "BLOB:<size>:<mime>:<base64>"
+    if !wire.starts_with("BLOB:") {
+        return Err("Invalid BLOB wire format".into());
+    }
+    let after_prefix = &wire[5..]; // skip "BLOB:"
+    let size_end = after_prefix.find(':').ok_or("Invalid BLOB wire format")?;
+    let after_size = &after_prefix[size_end + 1..];
+    let mime_end = after_size.find(':').ok_or("Invalid BLOB wire format")?;
+    let mime = &after_size[..mime_end];
+    if !mime.starts_with("image/") {
+        return Err(format!("Not an image: {}", mime));
+    }
+    let base64_payload = &after_size[mime_end + 1..];
+    Ok(format!("data:{};base64,{}", mime, base64_payload))
 }
 
 /// Detects the MIME type of base64-encoded binary data using magic-byte analysis
@@ -1738,19 +1870,19 @@ pub async fn load_blob_from_file<R: Runtime>(
     file_path: String,
 ) -> Result<String, String> {
     use std::io::Read;
-    
+
     // Read max_blob_size from configuration
     let max_blob_size = crate::config::get_max_blob_size(&app);
-    
+
     tokio::task::spawn_blocking(move || -> Result<String, String> {
         let mut file = std::fs::File::open(&file_path)
             .map_err(|e| format!("Failed to open file: {}", e))?;
-        
+
         // Get file size
         let metadata = file.metadata()
             .map_err(|e| format!("Failed to get file metadata: {}", e))?;
         let file_size = metadata.len();
-        
+
         // Validate file size against maximum allowed
         if file_size > max_blob_size {
             return Err(format!(
@@ -1761,18 +1893,18 @@ pub async fn load_blob_from_file<R: Runtime>(
                 max_blob_size / (1024 * 1024)
             ));
         }
-        
+
         // Read first chunk for MIME detection (only 8KB)
         let header_size = std::cmp::min(8192, file_size as usize);
         let mut header = vec![0u8; header_size];
         file.read_exact(&mut header)
             .map_err(|e| format!("Failed to read file header: {}", e))?;
-        
+
         // Detect MIME type
         let mime = infer::get(&header)
             .map(|k| k.mime_type())
             .unwrap_or("application/octet-stream");
-        
+
         // Return a file reference instead of actual content
         // Format: "BLOB_FILE_REF:<size>:<mime>:<filepath>"
         Ok(format!("BLOB_FILE_REF:{}:{}:{}", file_size, mime, file_path))
@@ -1801,28 +1933,67 @@ pub fn detect_mime_type(header_base64: String) -> Result<String, String> {
 #[tauri::command]
 pub fn get_file_stats(file_path: String) -> Result<serde_json::Value, String> {
     use std::io::Read;
-    
-    let mut file = std::fs::File::open(&file_path)
-        .map_err(|e| format!("Failed to open file: {}", e))?;
-    
-    let metadata = file.metadata()
+
+    let mut file =
+        std::fs::File::open(&file_path).map_err(|e| format!("Failed to open file: {}", e))?;
+
+    let metadata = file
+        .metadata()
         .map_err(|e| format!("Failed to get file metadata: {}", e))?;
     let file_size = metadata.len();
-    
+
     // Read first chunk for MIME detection
     let header_size = std::cmp::min(8192, file_size as usize);
     let mut header = vec![0u8; header_size];
     file.read_exact(&mut header)
         .map_err(|e| format!("Failed to read file header: {}", e))?;
-    
+
     let mime = infer::get(&header)
         .map(|k| k.mime_type())
         .unwrap_or("application/octet-stream");
-    
+
     Ok(serde_json::json!({
         "size": file_size,
         "mime": mime,
     }))
+}
+
+/// Reads a file from disk and returns it as a base64-encoded data URL.
+/// Used for image preview of BLOB_FILE_REF values without requiring frontend FS permissions.
+/// Only available for image files; returns an error for non-image MIME types.
+#[tauri::command]
+pub async fn read_file_as_data_url(file_path: String) -> Result<String, String> {
+    use base64::Engine;
+    use std::io::Read;
+
+    tokio::task::spawn_blocking(move || -> Result<String, String> {
+        let mut file =
+            std::fs::File::open(&file_path).map_err(|e| format!("Failed to open file: {}", e))?;
+
+        let metadata = file
+            .metadata()
+            .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+        let file_size = metadata.len() as usize;
+
+        // Read full file
+        let mut bytes = Vec::with_capacity(file_size);
+        file.read_to_end(&mut bytes)
+            .map_err(|e| format!("Failed to read file: {}", e))?;
+
+        // Detect MIME type from header
+        let mime = infer::get(&bytes)
+            .map(|k| k.mime_type())
+            .unwrap_or("application/octet-stream");
+
+        if !mime.starts_with("image/") {
+            return Err(format!("Not an image file: {}", mime));
+        }
+
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+        Ok(format!("data:{};base64,{}", mime, b64))
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 #[tauri::command]
@@ -1839,7 +2010,16 @@ pub async fn insert_record<R: Runtime>(
     let max_blob_size = crate::config::get_max_blob_size(&app);
     match saved_conn.params.driver.as_str() {
         "mysql" => mysql::insert_record(&params, &table, data, max_blob_size).await,
-        "postgres" => postgres::insert_record(&params, &table, data, schema.as_deref().unwrap_or("public"), max_blob_size).await,
+        "postgres" => {
+            postgres::insert_record(
+                &params,
+                &table,
+                data,
+                schema.as_deref().unwrap_or("public"),
+                max_blob_size,
+            )
+            .await
+        }
         "sqlite" => sqlite::insert_record(&params, &table, data, max_blob_size).await,
         _ => Err("Unsupported driver".into()),
     }
@@ -1879,8 +2059,8 @@ pub async fn execute_query<R: Runtime>(
     let sanitized_query = query
         .trim()
         .trim_end_matches(';')
-        .replace('\u{2018}', "'")  // Left single quotation mark
-        .replace('\u{2019}', "'")  // Right single quotation mark
+        .replace('\u{2018}', "'") // Left single quotation mark
+        .replace('\u{2019}', "'") // Right single quotation mark
         .replace('\u{201C}', "\"") // Left double quotation mark
         .replace('\u{201D}', "\"") // Right double quotation mark
         .to_string();
@@ -2014,8 +2194,14 @@ pub async fn open_er_diagram_window(
     use tauri::{WebviewUrl, WebviewWindowBuilder};
     use urlencoding::encode;
 
-    let schema_suffix = schema.as_deref().map(|s| format!("/{}", s)).unwrap_or_default();
-    let title = format!("tabularis - {} ({}{})", database_name, connection_name, schema_suffix);
+    let schema_suffix = schema
+        .as_deref()
+        .map(|s| format!("/{}", s))
+        .unwrap_or_default();
+    let title = format!(
+        "tabularis - {} ({}{})",
+        database_name, connection_name, schema_suffix
+    );
     let mut url = format!(
         "/schema-diagram?connectionId={}&connectionName={}&databaseName={}",
         encode(&connection_id),
@@ -2206,7 +2392,14 @@ pub async fn get_view_definition<R: Runtime>(
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_view_definition(&params, &view_name).await,
-        "postgres" => postgres::get_view_definition(&params, &view_name, schema.as_deref().unwrap_or("public")).await,
+        "postgres" => {
+            postgres::get_view_definition(
+                &params,
+                &view_name,
+                schema.as_deref().unwrap_or("public"),
+            )
+            .await
+        }
         "sqlite" => sqlite::get_view_definition(&params, &view_name).await,
         _ => Err("Unsupported driver".into()),
     };
@@ -2239,7 +2432,15 @@ pub async fn create_view<R: Runtime>(
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::create_view(&params, &view_name, &definition).await,
-        "postgres" => postgres::create_view(&params, &view_name, &definition, schema.as_deref().unwrap_or("public")).await,
+        "postgres" => {
+            postgres::create_view(
+                &params,
+                &view_name,
+                &definition,
+                schema.as_deref().unwrap_or("public"),
+            )
+            .await
+        }
         "sqlite" => sqlite::create_view(&params, &view_name, &definition).await,
         _ => Err("Unsupported driver".into()),
     };
@@ -2272,7 +2473,15 @@ pub async fn alter_view<R: Runtime>(
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::alter_view(&params, &view_name, &definition).await,
-        "postgres" => postgres::alter_view(&params, &view_name, &definition, schema.as_deref().unwrap_or("public")).await,
+        "postgres" => {
+            postgres::alter_view(
+                &params,
+                &view_name,
+                &definition,
+                schema.as_deref().unwrap_or("public"),
+            )
+            .await
+        }
         "sqlite" => sqlite::alter_view(&params, &view_name, &definition).await,
         _ => Err("Unsupported driver".into()),
     };
@@ -2304,7 +2513,9 @@ pub async fn drop_view<R: Runtime>(
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::drop_view(&params, &view_name).await,
-        "postgres" => postgres::drop_view(&params, &view_name, schema.as_deref().unwrap_or("public")).await,
+        "postgres" => {
+            postgres::drop_view(&params, &view_name, schema.as_deref().unwrap_or("public")).await
+        }
         "sqlite" => sqlite::drop_view(&params, &view_name).await,
         _ => Err("Unsupported driver".into()),
     };
@@ -2336,7 +2547,10 @@ pub async fn get_view_columns<R: Runtime>(
 
     let result = match saved_conn.params.driver.as_str() {
         "mysql" => mysql::get_view_columns(&params, &view_name).await,
-        "postgres" => postgres::get_view_columns(&params, &view_name, schema.as_deref().unwrap_or("public")).await,
+        "postgres" => {
+            postgres::get_view_columns(&params, &view_name, schema.as_deref().unwrap_or("public"))
+                .await
+        }
         "sqlite" => sqlite::get_view_columns(&params, &view_name).await,
         _ => Err("Unsupported driver".into()),
     };
@@ -2364,7 +2578,10 @@ pub async fn disconnect_connection<R: Runtime>(
     // Close the connection pool
     crate::pool_manager::close_pool_with_id(&params, Some(&connection_id)).await;
 
-    log::info!("Successfully disconnected from connection: {}", connection_id);
+    log::info!(
+        "Successfully disconnected from connection: {}",
+        connection_id
+    );
     Ok(())
 }
 
@@ -2384,8 +2601,5 @@ pub fn get_data_types(driver: String) -> crate::models::DataTypeRegistry {
         }
     };
 
-    crate::models::DataTypeRegistry {
-        driver,
-        types,
-    }
+    crate::models::DataTypeRegistry { driver, types }
 }

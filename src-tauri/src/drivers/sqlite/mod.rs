@@ -1,12 +1,12 @@
-pub mod types;
 pub mod extract;
+pub mod types;
 
-use extract::extract_value;
 use crate::models::{
     ConnectionParams, ForeignKey, Index, Pagination, QueryResult, RoutineInfo, RoutineParameter,
     TableColumn, TableInfo, ViewInfo,
 };
 use crate::pool_manager::get_sqlite_pool;
+use extract::extract_value;
 use sqlx::{Column, Row};
 
 // Helper function to escape double quotes in identifiers for SQLite
@@ -266,7 +266,10 @@ pub async fn save_blob_column_to_file(
 ) -> Result<(), String> {
     let pool = get_sqlite_pool(params).await?;
 
-    let query = format!("SELECT \"{}\" FROM \"{}\" WHERE \"{}\" = ?", col_name, table, pk_col);
+    let query = format!(
+        "SELECT \"{}\" FROM \"{}\" WHERE \"{}\" = ?",
+        col_name, table, pk_col
+    );
 
     let row = match pk_val {
         serde_json::Value::Number(n) => {
@@ -283,6 +286,37 @@ pub async fn save_blob_column_to_file(
 
     let bytes: Vec<u8> = row.try_get(0).map_err(|e| e.to_string())?;
     std::fs::write(file_path, bytes).map_err(|e| e.to_string())
+}
+
+pub async fn fetch_blob_column_as_data_url(
+    params: &ConnectionParams,
+    table: &str,
+    col_name: &str,
+    pk_col: &str,
+    pk_val: serde_json::Value,
+) -> Result<String, String> {
+    let pool = get_sqlite_pool(params).await?;
+
+    let query = format!(
+        "SELECT \"{}\" FROM \"{}\" WHERE \"{}\" = ?",
+        col_name, table, pk_col
+    );
+
+    let row = match pk_val {
+        serde_json::Value::Number(n) => {
+            if n.is_i64() {
+                sqlx::query(&query).bind(n.as_i64()).fetch_one(&pool).await
+            } else {
+                sqlx::query(&query).bind(n.as_f64()).fetch_one(&pool).await
+            }
+        }
+        serde_json::Value::String(s) => sqlx::query(&query).bind(s).fetch_one(&pool).await,
+        _ => return Err("Unsupported PK type".into()),
+    }
+    .map_err(|e| e.to_string())?;
+
+    let bytes: Vec<u8> = row.try_get(0).map_err(|e| e.to_string())?;
+    Ok(crate::drivers::common::encode_blob_full(&bytes))
 }
 
 pub async fn delete_record(
@@ -335,7 +369,9 @@ pub async fn update_record(
             // Check for special sentinel value to use DEFAULT
             if s == "__USE_DEFAULT__" {
                 qb.push("DEFAULT");
-            } else if let Some(bytes) = crate::drivers::common::decode_blob_wire_format(&s, max_blob_size) {
+            } else if let Some(bytes) =
+                crate::drivers::common::decode_blob_wire_format(&s, max_blob_size)
+            {
                 // Blob wire format: decode to raw bytes so the DB stores binary data,
                 // not the internal wire format string.
                 qb.push_bind(bytes);
@@ -410,7 +446,9 @@ pub async fn insert_record(
                     }
                 }
                 serde_json::Value::String(s) => {
-                    if let Some(bytes) = crate::drivers::common::decode_blob_wire_format(&s, max_blob_size) {
+                    if let Some(bytes) =
+                        crate::drivers::common::decode_blob_wire_format(&s, max_blob_size)
+                    {
                         // Blob wire format: decode to raw bytes so the DB stores binary data.
                         separated.push_bind(bytes);
                     } else {

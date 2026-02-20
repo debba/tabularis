@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Download,
   Upload,
   FileIcon,
+  ImageIcon,
   Trash2,
   AlertTriangle,
   Loader2,
@@ -11,7 +12,12 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
-import { extractBlobMetadata, mimeToExtension, type BlobMetadata } from "../../utils/blob";
+import {
+  extractBlobMetadata,
+  extractImageDataUrl,
+  mimeToExtension,
+  type BlobMetadata,
+} from "../../utils/blob";
 
 export interface BlobInputProps {
   value: unknown;
@@ -55,6 +61,8 @@ export const BlobInput: React.FC<BlobInputProps> = ({
   const metadata: BlobMetadata | null = extractBlobMetadata(value);
   const hasValue = value !== null && value !== undefined && value !== "";
 
+  const isImage = metadata?.mimeType.startsWith("image/") ?? false;
+
   const canFetchFull =
     metadata?.isTruncated &&
     connectionId &&
@@ -64,7 +72,70 @@ export const BlobInput: React.FC<BlobInputProps> = ({
     pkVal !== undefined &&
     colName;
 
-  const isDownloadDisabled = isDownloading || isUploading || (metadata?.isTruncated && !canFetchFull);
+  // Build a data URL for image preview from the BLOB wire format (non-file-ref, non-truncated)
+  const imageDataUrl = useMemo(() => {
+    if (!hasValue) return null;
+    return extractImageDataUrl(value);
+  }, [value, hasValue]);
+
+  // For BLOB_FILE_REF images (after upload), ask the backend to read the file
+  // and return a data: URL. Parsing is done from the raw string to avoid
+  // depending on the non-memoized `metadata` object (which would cause an
+  // infinite re-render loop).
+  const [fileRefPreviewUrl, setFileRefPreviewUrl] = useState<string | null>(
+    null,
+  );
+  useEffect(() => {
+    const stringValue = String(value ?? "");
+    if (!stringValue.startsWith("BLOB_FILE_REF:")) {
+      setFileRefPreviewUrl(null);
+      return;
+    }
+    // Parse: "BLOB_FILE_REF:<size>:<mime>:<filepath>"
+    const firstColon = 14;
+    const secondColon = stringValue.indexOf(":", firstColon);
+    const thirdColon = stringValue.indexOf(":", secondColon + 1);
+    if (thirdColon === -1) {
+      setFileRefPreviewUrl(null);
+      return;
+    }
+    const mimeType = stringValue.substring(secondColon + 1, thirdColon);
+    if (!mimeType.startsWith("image/")) {
+      setFileRefPreviewUrl(null);
+      return;
+    }
+    const filePath = stringValue.substring(thirdColon + 1);
+    invoke<string>("read_file_as_data_url", { filePath })
+      .then((dataUrl) => setFileRefPreviewUrl(dataUrl))
+      .catch(() => setFileRefPreviewUrl(null));
+  }, [value]);
+
+  // For truncated images already in the DB, fetch the full blob and build a data: URL.
+  // Same approach as handleDownload but in-memory instead of writing to disk.
+  const [dbPreviewUrl, setDbPreviewUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isImage || !canFetchFull) {
+      setDbPreviewUrl(null);
+      return;
+    }
+    invoke<string>("fetch_blob_as_data_url", {
+      connectionId,
+      table: tableName,
+      colName,
+      pkCol,
+      pkVal,
+      ...(schema ? { schema } : {}),
+    })
+      .then((dataUrl) => setDbPreviewUrl(dataUrl))
+      .catch(() => setDbPreviewUrl(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, isImage, canFetchFull]);
+
+  const effectiveImageDataUrl =
+    imageDataUrl ?? fileRefPreviewUrl ?? dbPreviewUrl;
+
+  const isDownloadDisabled =
+    isDownloading || isUploading || (metadata?.isTruncated && !canFetchFull);
 
   const handleFileUpload = async () => {
     const filePath = await open({ multiple: false, directory: false });
@@ -73,7 +144,7 @@ export const BlobInput: React.FC<BlobInputProps> = ({
     // Clear any previous errors
     setError(null);
     setIsUploading(true);
-    
+
     try {
       // Get file reference (not the content!) - this is instant and non-blocking
       // Format returned: "BLOB_FILE_REF:<size>:<mime>:<filepath>"
@@ -83,7 +154,8 @@ export const BlobInput: React.FC<BlobInputProps> = ({
     } catch (err) {
       console.error("Failed to load file:", err);
       // Extract error message from Tauri error object
-      const errorMessage = typeof err === 'string' ? err : (err as any)?.message || String(err);
+      const errorMessage =
+        typeof err === "string" ? err : (err as any)?.message || String(err);
       setError(errorMessage);
     } finally {
       setIsUploading(false);
@@ -164,11 +236,27 @@ export const BlobInput: React.FC<BlobInputProps> = ({
     <div className={className}>
       {hasValue && metadata ? (
         <div className="bg-surface-secondary border border-default rounded-lg overflow-hidden">
+          {/* Image preview banner */}
+          {effectiveImageDataUrl && (
+            <div className="flex items-center justify-center bg-black/20 border-b border-default p-2 max-h-48 overflow-hidden">
+              <img
+                src={effectiveImageDataUrl}
+                alt={t("blobInput.imagePreview")}
+                className="max-h-44 max-w-full object-contain rounded"
+                draggable={false}
+              />
+            </div>
+          )}
+
           {/* Main row: icon + info + actions */}
           <div className="flex items-center gap-3 px-3 py-3">
             {/* Icon with background */}
             <div className="p-2 rounded-md bg-surface-tertiary flex-shrink-0">
-              <FileIcon className="text-secondary" size={15} />
+              {isImage ? (
+                <ImageIcon className="text-secondary" size={15} />
+              ) : (
+                <FileIcon className="text-secondary" size={15} />
+              )}
             </div>
 
             {/* File info */}
@@ -190,7 +278,11 @@ export const BlobInput: React.FC<BlobInputProps> = ({
                 type="button"
                 onClick={handleFileUpload}
                 disabled={isUploading}
-                title={isUploading ? t("blobInput.uploading") : t("blobInput.uploadFile")}
+                title={
+                  isUploading
+                    ? t("blobInput.uploading")
+                    : t("blobInput.uploadFile")
+                }
                 className="p-1.5 rounded text-muted hover:text-secondary hover:bg-surface-tertiary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 {isUploading ? (
@@ -208,8 +300,8 @@ export const BlobInput: React.FC<BlobInputProps> = ({
                   isDownloading
                     ? t("blobInput.downloading")
                     : isDownloadDisabled
-                    ? t("blobInput.downloadDisabledTruncated")
-                    : t("blobInput.download")
+                      ? t("blobInput.downloadDisabledTruncated")
+                      : t("blobInput.download")
                 }
                 className="p-1.5 rounded text-muted hover:text-secondary hover:bg-surface-tertiary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
@@ -237,20 +329,21 @@ export const BlobInput: React.FC<BlobInputProps> = ({
           {/* Truncated warning — footer */}
           {metadata.isTruncated && (
             <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/5 border-t border-amber-500/20">
-              <AlertTriangle size={11} className="text-amber-500 flex-shrink-0" />
+              <AlertTriangle
+                size={11}
+                className="text-amber-500 flex-shrink-0"
+              />
               <span className="text-xs text-amber-500/80">
                 {t("blobInput.truncatedWarning")}
               </span>
             </div>
           )}
-          
+
           {/* Error message footer */}
           {error && (
             <div className="flex items-center gap-1.5 px-3 py-2 bg-red-500/5 border-t border-red-500/20">
               <AlertTriangle size={11} className="text-red-500 flex-shrink-0" />
-              <span className="text-xs text-red-500/80">
-                {error}
-              </span>
+              <span className="text-xs text-red-500/80">{error}</span>
             </div>
           )}
         </div>
@@ -271,14 +364,19 @@ export const BlobInput: React.FC<BlobInputProps> = ({
               )}
             </div>
             <span className="text-sm">
-              {isUploading ? t("blobInput.uploading") : (placeholder || t("blobInput.noData"))}
+              {isUploading
+                ? t("blobInput.uploading")
+                : placeholder || t("blobInput.noData")}
             </span>
           </button>
-          
+
           {/* Error message for empty state */}
           {error && (
             <div className="mt-2 flex items-start gap-1.5 px-3 py-2 bg-red-500/5 border border-red-500/20 rounded-lg">
-              <AlertTriangle size={13} className="text-red-500 flex-shrink-0 mt-0.5" />
+              <AlertTriangle
+                size={13}
+                className="text-red-500 flex-shrink-0 mt-0.5"
+              />
               <span className="text-xs text-red-500/90 leading-relaxed">
                 {error}
               </span>

@@ -611,6 +611,7 @@
     "downloadDisabledTruncated": "Descarga no disponible - solo vista previa cargada",
     "downloading": "Descargando...",
     "uploading": "Subiendo...",
-    "openSidebar": "Abrir en el editor"
+    "openSidebar": "Abrir en el editor",
+    "imagePreview": "Vista previa de imagen"
   }
 }

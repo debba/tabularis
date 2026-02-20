@@ -631,6 +631,7 @@
     "downloadDisabledTruncated": "Download unavailable - only preview loaded",
     "downloading": "Downloading...",
     "uploading": "Uploading...",
-    "openSidebar": "Open in editor"
+    "openSidebar": "Open in editor",
+    "imagePreview": "Image preview"
   }
 }

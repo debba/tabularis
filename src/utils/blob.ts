@@ -59,7 +59,7 @@ export interface BlobMetadata {
 /**
  * Extracts BLOB metadata from a value produced by the backend.
  *
- * Expected wire formats: 
+ * Expected wire formats:
  *   - "BLOB:<size_bytes>:<mime_type>:<base64_data>"
  *   - "BLOB_FILE_REF:<size>:<mime>:<filepath>"
  *
@@ -157,11 +157,13 @@ export function mimeToExtension(mimeType: string): string {
     "application/octet-stream": "bin",
     "application/x-sqlite3": "sqlite",
     "application/msword": "doc",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+      "docx",
     "application/vnd.ms-excel": "xls",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
     "application/vnd.ms-powerpoint": "ppt",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+      "pptx",
     "video/mp4": "mp4",
     "video/webm": "webm",
     "video/ogg": "ogv",
@@ -182,7 +184,34 @@ export function mimeToExtension(mimeType: string): string {
     "font/ttf": "ttf",
     "font/otf": "otf",
   };
-  return map[mimeType] ?? mimeType.split("/")[1]?.replace(/[^a-z0-9]/g, "") ?? "bin";
+  return (
+    map[mimeType] ?? mimeType.split("/")[1]?.replace(/[^a-z0-9]/g, "") ?? "bin"
+  );
+}
+
+/**
+ * Extracts a data URL for image preview from a BLOB wire format value.
+ * Returns null if the value is not an image or not in base64 wire format.
+ */
+export function extractImageDataUrl(value: unknown): string | null {
+  const metadata = extractBlobMetadata(value);
+  if (
+    !metadata ||
+    !metadata.isBase64 ||
+    !metadata.mimeType.startsWith("image/") ||
+    metadata.isTruncated
+  ) {
+    return null;
+  }
+  const stringValue = String(value);
+  if (!stringValue.startsWith("BLOB:")) return null;
+  const firstColon = 5;
+  const secondColon = stringValue.indexOf(":", firstColon);
+  const thirdColon = stringValue.indexOf(":", secondColon + 1);
+  if (thirdColon === -1) return null;
+  const base64Payload = stringValue.substring(thirdColon + 1);
+  if (!base64Payload) return null;
+  return `data:${metadata.mimeType};base64,${base64Payload}`;
 }
 
 /**
