@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   isBlobType,
   extractBlobMetadata,
+  extractImageDataUrl,
   formatBlobValue,
   mimeToExtension,
 } from "../../src/utils/blob";
@@ -144,6 +145,56 @@ describe("blob utilities", () => {
       expect(formatBlobValue(wire, "TINYBLOB")).toContain("application/octet-stream");
       expect(formatBlobValue(wire, "MEDIUMBLOB")).toContain("application/octet-stream");
       expect(formatBlobValue(wire, "LONGBLOB")).toContain("application/octet-stream");
+    });
+  });
+
+  describe("extractImageDataUrl", () => {
+    function makeBlobWire(
+      totalSize: number,
+      mimeType: string,
+      data: string,
+    ): string {
+      return `BLOB:${totalSize}:${mimeType}:${data}`;
+    }
+
+    it("should return a data URL for image blobs", () => {
+      const b64 = btoa("fake-png-data");
+      const wire = makeBlobWire(b64.length, "image/png", b64);
+      const dataUrl = extractImageDataUrl(wire);
+
+      expect(dataUrl).not.toBeNull();
+      expect(dataUrl).toBe(`data:image/png;base64,${b64}`);
+    });
+
+    it("should return null for non-image blobs", () => {
+      const b64 = btoa("pdf-data");
+      const wire = makeBlobWire(b64.length, "application/pdf", b64);
+
+      expect(extractImageDataUrl(wire)).toBeNull();
+    });
+
+    it("should return null for null/undefined values", () => {
+      expect(extractImageDataUrl(null)).toBeNull();
+      expect(extractImageDataUrl(undefined)).toBeNull();
+    });
+
+    it("should return null for plain text (non-wire-format) values", () => {
+      expect(extractImageDataUrl("just a string")).toBeNull();
+    });
+
+    it("should return null for truncated image blobs (file ref)", () => {
+      const wire = "BLOB_FILE_REF:5242880:image/png:/tmp/blob.png";
+      expect(extractImageDataUrl(wire)).toBeNull();
+    });
+
+    it("should work with various image MIME types", () => {
+      const types = ["image/jpeg", "image/gif", "image/webp", "image/bmp"];
+      for (const mime of types) {
+        const b64 = btoa("test");
+        const wire = makeBlobWire(b64.length, mime, b64);
+        const dataUrl = extractImageDataUrl(wire);
+        expect(dataUrl).toBe(`data:${mime};base64,${b64}`);
+      }
     });
   });
 

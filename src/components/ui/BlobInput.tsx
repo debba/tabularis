@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Download,
   Upload,
   FileIcon,
+  ImageIcon,
   Trash2,
   AlertTriangle,
   Loader2,
@@ -11,7 +12,7 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
-import { extractBlobMetadata, mimeToExtension, type BlobMetadata } from "../../utils/blob";
+import { extractBlobMetadata, extractImageDataUrl, mimeToExtension, type BlobMetadata } from "../../utils/blob";
 
 export interface BlobInputProps {
   value: unknown;
@@ -54,6 +55,14 @@ export const BlobInput: React.FC<BlobInputProps> = ({
 
   const metadata: BlobMetadata | null = extractBlobMetadata(value);
   const hasValue = value !== null && value !== undefined && value !== "";
+
+  const isImage = metadata?.mimeType.startsWith("image/") ?? false;
+
+  // Build a data URL for image preview from the BLOB wire format
+  const imageDataUrl = useMemo(() => {
+    if (!hasValue) return null;
+    return extractImageDataUrl(value);
+  }, [value, hasValue]);
 
   const canFetchFull =
     metadata?.isTruncated &&
@@ -164,11 +173,27 @@ export const BlobInput: React.FC<BlobInputProps> = ({
     <div className={className}>
       {hasValue && metadata ? (
         <div className="bg-surface-secondary border border-default rounded-lg overflow-hidden">
+          {/* Image preview banner */}
+          {imageDataUrl && (
+            <div className="flex items-center justify-center bg-black/20 border-b border-default p-2 max-h-48 overflow-hidden">
+              <img
+                src={imageDataUrl}
+                alt={t("blobInput.imagePreview")}
+                className="max-h-44 max-w-full object-contain rounded"
+                draggable={false}
+              />
+            </div>
+          )}
+
           {/* Main row: icon + info + actions */}
           <div className="flex items-center gap-3 px-3 py-3">
             {/* Icon with background */}
             <div className="p-2 rounded-md bg-surface-tertiary flex-shrink-0">
-              <FileIcon className="text-secondary" size={15} />
+              {isImage ? (
+                <ImageIcon className="text-secondary" size={15} />
+              ) : (
+                <FileIcon className="text-secondary" size={15} />
+              )}
             </div>
 
             {/* File info */}
