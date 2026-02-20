@@ -1,0 +1,34 @@
+{
+  "id": "duckdb",
+  "name": "DuckDB",
+  "version": "0.1.0",
+  "description": "DuckDB local database",
+  "default_port": null,
+  "executable": "tabularis-duckdb-plugin",
+  "capabilities": {
+    "schemas": false,
+    "views": true,
+    "routines": false,
+    "file_based": true
+  },
+  "data_types": [
+    {
+      "name": "INTEGER",
+      "category": "numeric",
+      "requires_length": false,
+      "requires_precision": false
+    },
+    {
+      "name": "VARCHAR",
+      "category": "string",
+      "requires_length": true,
+      "requires_precision": false
+    },
+    {
+      "name": "BOOLEAN",
+      "category": "boolean",
+      "requires_length": false,
+      "requires_precision": false
+    }
+  ]
+}
