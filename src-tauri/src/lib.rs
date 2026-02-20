@@ -19,6 +19,7 @@ pub mod ssh_tunnel;
 pub mod theme_commands;
 pub mod theme_models;
 pub mod updater;
+pub mod plugins;
 pub mod drivers {
     pub mod common;
     pub mod driver_trait;
@@ -133,6 +134,9 @@ pub fn run() {
                 drivers::registry::register_driver(drivers::mysql::MysqlDriver::new()).await;
                 drivers::registry::register_driver(drivers::postgres::PostgresDriver::new()).await;
                 drivers::registry::register_driver(drivers::sqlite::SqliteDriver::new()).await;
+
+                // Load external plugins
+                crate::plugins::manager::load_plugins().await;
             });
 
             // Open devtools automatically in debug mode

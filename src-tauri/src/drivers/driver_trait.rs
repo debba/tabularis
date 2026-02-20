@@ -2,6 +2,9 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use sqlx::any::AnyConnectOptions;
+use sqlx::{AnyConnection, Connection};
+use std::str::FromStr;
 
 use crate::models::{
     ConnectionParams, DataTypeInfo, ForeignKey, Index, QueryResult, RoutineInfo,
@@ -54,6 +57,18 @@ pub trait DatabaseDriver: Send + Sync {
 
     /// Builds the connection URL string for this driver.
     fn build_connection_url(&self, params: &ConnectionParams) -> Result<String, String>;
+
+    /// Tests connectivity. Default implementation uses `build_connection_url` + sqlx.
+    /// Plugin drivers that manage their own connections should override this.
+    async fn test_connection(&self, params: &ConnectionParams) -> Result<(), String> {
+        let url = self.build_connection_url(params)?;
+        let options = AnyConnectOptions::from_str(&url).map_err(|e| e.to_string())?;
+        let mut conn: AnyConnection = AnyConnection::connect_with(&options)
+            .await
+            .map_err(|e: sqlx::Error| e.to_string())?;
+        conn.ping().await.map_err(|e: sqlx::Error| e.to_string())?;
+        Ok(())
+    }
 
     // --- Database / schema discovery ----------------------------------------
 
@@ -199,6 +214,33 @@ pub trait DatabaseDriver: Send + Sync {
         pk_val: serde_json::Value,
         schema: Option<&str>,
     ) -> Result<u64, String>;
+
+    // --- BLOB helpers (optional, built-in drivers only) ---------------------
+
+    async fn save_blob_to_file(
+        &self,
+        _params: &ConnectionParams,
+        _table: &str,
+        _col_name: &str,
+        _pk_col: &str,
+        _pk_val: serde_json::Value,
+        _schema: Option<&str>,
+        _file_path: &str,
+    ) -> Result<(), String> {
+        Err("BLOB file export not supported by this driver".into())
+    }
+
+    async fn fetch_blob_as_data_url(
+        &self,
+        _params: &ConnectionParams,
+        _table: &str,
+        _col_name: &str,
+        _pk_col: &str,
+        _pk_val: serde_json::Value,
+        _schema: Option<&str>,
+    ) -> Result<String, String> {
+        Err("BLOB preview not supported by this driver".into())
+    }
 
     // --- ER diagram (batch) -------------------------------------------------
 

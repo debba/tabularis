@@ -1281,6 +1281,14 @@ impl DatabaseDriver for PostgresDriver {
         delete_record(params, table, pk_col, pk_val, self.resolve_schema(schema)).await
     }
 
+    async fn save_blob_to_file(&self, params: &crate::models::ConnectionParams, table: &str, col_name: &str, pk_col: &str, pk_val: serde_json::Value, schema: Option<&str>, file_path: &str) -> Result<(), String> {
+        save_blob_column_to_file(params, table, col_name, pk_col, pk_val, self.resolve_schema(schema), file_path).await
+    }
+
+    async fn fetch_blob_as_data_url(&self, params: &crate::models::ConnectionParams, table: &str, col_name: &str, pk_col: &str, pk_val: serde_json::Value, schema: Option<&str>) -> Result<String, String> {
+        fetch_blob_column_as_data_url(params, table, col_name, pk_col, pk_val, self.resolve_schema(schema)).await
+    }
+
     async fn get_all_columns_batch(&self, params: &crate::models::ConnectionParams, schema: Option<&str>) -> Result<HashMap<String, Vec<crate::models::TableColumn>>, String> {
         get_all_columns_batch(params, self.resolve_schema(schema)).await
     }

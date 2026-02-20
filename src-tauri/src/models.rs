@@ -92,12 +92,12 @@ pub struct TestConnectionRequest {
     pub connection_id: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TableInfo {
     pub name: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TableColumn {
     pub name: String,
     pub data_type: String,
@@ -108,7 +108,7 @@ pub struct TableColumn {
     pub default_value: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ForeignKey {
     pub name: String,
     pub column_name: String,
@@ -118,7 +118,7 @@ pub struct ForeignKey {
     pub on_update: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Index {
     pub name: String,
     pub column_name: String,
@@ -134,7 +134,7 @@ pub struct Pagination {
     pub total_rows: u64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct QueryResult {
     pub columns: Vec<String>,
     pub rows: Vec<Vec<serde_json::Value>>,
@@ -144,21 +144,21 @@ pub struct QueryResult {
     pub pagination: Option<Pagination>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TableSchema {
     pub name: String,
     pub columns: Vec<TableColumn>,
     pub foreign_keys: Vec<ForeignKey>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RoutineInfo {
     pub name: String,
     pub routine_type: String, // "PROCEDURE" | "FUNCTION"
     pub definition: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RoutineParameter {
     pub name: String,
     pub data_type: String,
@@ -166,13 +166,13 @@ pub struct RoutineParameter {
     pub ordinal_position: i32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ViewInfo {
     pub name: String,
     pub definition: Option<String>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DataTypeInfo {
     pub name: String,
     pub category: String, // "numeric", "string", "date", "binary", "json", "spatial", "other"
@@ -181,7 +181,7 @@ pub struct DataTypeInfo {
     pub default_length: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DataTypeRegistry {
     pub driver: String,
     pub types: Vec<DataTypeInfo>,
