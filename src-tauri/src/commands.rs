@@ -20,6 +20,15 @@ use crate::models::{
 use crate::ssh_tunnel::{get_tunnels, SshTunnel};
 
 // Constants
+/// Resolve the driver from the registry or return a descriptive error.
+async fn driver_for(
+    id: &str,
+) -> Result<std::sync::Arc<dyn crate::drivers::driver_trait::DatabaseDriver>, String> {
+    crate::drivers::registry::get_driver(id)
+        .await
+        .ok_or_else(|| format!("Unsupported driver: {}", id))
+}
+
 const DEFAULT_MYSQL_PORT: u16 = 3306;
 const DEFAULT_POSTGRES_PORT: u16 = 5432;
 
@@ -231,12 +240,8 @@ pub async fn get_schemas<R: Runtime>(
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
-    match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::get_schemas(&params).await,
-        "postgres" => postgres::get_schemas(&params).await,
-        "sqlite" => sqlite::get_schemas(&params).await,
-        _ => Err("Unsupported driver".into()),
-    }
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    drv.get_schemas(&params).await
 }
 
 #[tauri::command]
@@ -251,12 +256,8 @@ pub async fn get_routines<R: Runtime>(
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
-    match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::get_routines(&params).await,
-        "postgres" => postgres::get_routines(&params, schema.as_deref().unwrap_or("public")).await,
-        "sqlite" => sqlite::get_routines(&params).await,
-        _ => Err("Unsupported driver".into()),
-    }
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    drv.get_routines(&params, schema.as_deref()).await
 }
 
 #[tauri::command]
@@ -276,19 +277,8 @@ pub async fn get_routine_parameters<R: Runtime>(
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
-    match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::get_routine_parameters(&params, &routine_name).await,
-        "postgres" => {
-            postgres::get_routine_parameters(
-                &params,
-                &routine_name,
-                schema.as_deref().unwrap_or("public"),
-            )
-            .await
-        }
-        "sqlite" => sqlite::get_routine_parameters(&params, &routine_name).await,
-        _ => Err("Unsupported driver".into()),
-    }
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    drv.get_routine_parameters(&params, &routine_name, schema.as_deref()).await
 }
 
 #[tauri::command]
@@ -310,20 +300,8 @@ pub async fn get_routine_definition<R: Runtime>(
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
-    match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::get_routine_definition(&params, &routine_name, &routine_type).await,
-        "postgres" => {
-            postgres::get_routine_definition(
-                &params,
-                &routine_name,
-                &routine_type,
-                schema.as_deref().unwrap_or("public"),
-            )
-            .await
-        }
-        "sqlite" => sqlite::get_routine_definition(&params, &routine_name, &routine_type).await,
-        _ => Err("Unsupported driver".into()),
-    }
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    drv.get_routine_definition(&params, &routine_name, &routine_type, schema.as_deref()).await
 }
 
 #[tauri::command]
@@ -335,63 +313,8 @@ pub async fn get_schema_snapshot<R: Runtime>(
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
-    let driver = saved_conn.params.driver.clone();
-    let pg_schema = schema.as_deref().unwrap_or("public");
-
-    // 1. Get Tables
-    let tables = match driver.as_str() {
-        "mysql" => mysql::get_tables(&params).await,
-        "postgres" => postgres::get_tables(&params, pg_schema).await,
-        "sqlite" => sqlite::get_tables(&params).await,
-        _ => Err("Unsupported driver".into()),
-    }?;
-
-    // 2. Fetch ALL columns and foreign keys in batch (2 queries instead of N*2)
-    let result = match driver.as_str() {
-        "mysql" => {
-            let mut columns_map = mysql::get_all_columns_batch(&params).await?;
-            let mut fks_map = mysql::get_all_foreign_keys_batch(&params).await?;
-
-            tables
-                .into_iter()
-                .map(|table| crate::models::TableSchema {
-                    name: table.name.clone(),
-                    columns: columns_map.remove(&table.name).unwrap_or_default(),
-                    foreign_keys: fks_map.remove(&table.name).unwrap_or_default(),
-                })
-                .collect()
-        }
-        "postgres" => {
-            let mut columns_map = postgres::get_all_columns_batch(&params, pg_schema).await?;
-            let mut fks_map = postgres::get_all_foreign_keys_batch(&params, pg_schema).await?;
-
-            tables
-                .into_iter()
-                .map(|table| crate::models::TableSchema {
-                    name: table.name.clone(),
-                    columns: columns_map.remove(&table.name).unwrap_or_default(),
-                    foreign_keys: fks_map.remove(&table.name).unwrap_or_default(),
-                })
-                .collect()
-        }
-        "sqlite" => {
-            let table_names: Vec<String> = tables.iter().map(|t| t.name.clone()).collect();
-            let mut columns_map = sqlite::get_all_columns_batch(&params, &table_names).await?;
-            let mut fks_map = sqlite::get_all_foreign_keys_batch(&params, &table_names).await?;
-
-            tables
-                .into_iter()
-                .map(|table| crate::models::TableSchema {
-                    name: table.name.clone(),
-                    columns: columns_map.remove(&table.name).unwrap_or_default(),
-                    foreign_keys: fks_map.remove(&table.name).unwrap_or_default(),
-                })
-                .collect()
-        }
-        _ => return Err("Unsupported driver".into()),
-    };
-
-    Ok(result)
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    drv.get_schema_snapshot(&params, schema.as_deref()).await
 }
 
 #[tauri::command]
@@ -1043,7 +966,7 @@ pub async fn test_connection<R: Runtime>(
         resolved_params.port
     );
 
-    let url = build_connection_url(&resolved_params)?;
+    let url = build_connection_url(&resolved_params).await?;
     log::debug!("Connection URL: {}", url);
 
     let options = AnyConnectOptions::from_str(&url).map_err(|e| e.to_string())?;
@@ -1162,8 +1085,8 @@ mod tests {
             }
         }
 
-        #[test]
-        fn test_mysql_url_basic() {
+        #[tokio::test]
+        async fn test_mysql_url_basic() {
             let params = create_params(
                 "mysql",
                 "localhost",
@@ -1172,12 +1095,12 @@ mod tests {
                 Some("secret"),
                 "testdb",
             );
-            let url = build_connection_url(&params).unwrap();
+            let url = build_connection_url(&params).await.unwrap();
             assert_eq!(url, "mysql://root:secret@localhost:3306/testdb");
         }
 
-        #[test]
-        fn test_postgres_url_basic() {
+        #[tokio::test]
+        async fn test_postgres_url_basic() {
             let params = create_params(
                 "postgres",
                 "localhost",
@@ -1186,19 +1109,19 @@ mod tests {
                 Some("secret"),
                 "testdb",
             );
-            let url = build_connection_url(&params).unwrap();
+            let url = build_connection_url(&params).await.unwrap();
             assert_eq!(url, "postgres://postgres:secret@localhost:5432/testdb");
         }
 
-        #[test]
-        fn test_sqlite_url() {
+        #[tokio::test]
+        async fn test_sqlite_url() {
             let params = create_params("sqlite", "", None, "", None, "/path/to/db.sqlite");
-            let url = build_connection_url(&params).unwrap();
+            let url = build_connection_url(&params).await.unwrap();
             assert_eq!(url, "sqlite:///path/to/db.sqlite");
         }
 
-        #[test]
-        fn test_url_encoding_special_chars() {
+        #[tokio::test]
+        async fn test_url_encoding_special_chars() {
             let params = create_params(
                 "mysql",
                 "localhost",
@@ -1207,41 +1130,41 @@ mod tests {
                 Some("pass#word"),
                 "mydb",
             );
-            let url = build_connection_url(&params).unwrap();
+            let url = build_connection_url(&params).await.unwrap();
             assert!(url.contains("user%40domain"));
             assert!(url.contains("pass%23word"));
         }
 
-        #[test]
-        fn test_default_ports() {
+        #[tokio::test]
+        async fn test_default_ports() {
             let mysql_params = create_params("mysql", "localhost", None, "root", None, "testdb");
             let pg_params =
                 create_params("postgres", "localhost", None, "postgres", None, "testdb");
 
-            let mysql_url = build_connection_url(&mysql_params).unwrap();
-            let pg_url = build_connection_url(&pg_params).unwrap();
+            let mysql_url = build_connection_url(&mysql_params).await.unwrap();
+            let pg_url = build_connection_url(&pg_params).await.unwrap();
 
             assert!(mysql_url.contains(":3306/"));
             assert!(pg_url.contains(":5432/"));
         }
 
-        #[test]
-        fn test_no_password() {
+        #[tokio::test]
+        async fn test_no_password() {
             let params = create_params("mysql", "localhost", Some(3306), "root", None, "testdb");
-            let url = build_connection_url(&params).unwrap();
+            let url = build_connection_url(&params).await.unwrap();
             assert_eq!(url, "mysql://root:@localhost:3306/testdb");
         }
 
-        #[test]
-        fn test_unsupported_driver() {
+        #[tokio::test]
+        async fn test_unsupported_driver() {
             let params = create_params("mongodb", "localhost", Some(27017), "user", None, "testdb");
-            let result = build_connection_url(&params);
+            let result = build_connection_url(&params).await;
             assert!(result.is_err());
             assert_eq!(result.unwrap_err(), "Unsupported driver");
         }
 
-        #[test]
-        fn test_remote_host() {
+        #[tokio::test]
+        async fn test_remote_host() {
             let params = create_params(
                 "postgres",
                 "db.example.com",
@@ -1250,7 +1173,7 @@ mod tests {
                 Some("pass"),
                 "production",
             );
-            let url = build_connection_url(&params).unwrap();
+            let url = build_connection_url(&params).await.unwrap();
             assert!(url.contains("db.example.com"));
             assert!(!url.contains("localhost"));
         }
@@ -1439,16 +1362,16 @@ mod tests {
             }
         }
 
-        #[test]
-        fn test_non_ssh_params_unchanged() {
+        #[tokio::test]
+        async fn test_non_ssh_params_unchanged() {
             let params = base_params();
             let result = resolve_connection_params(&params).unwrap();
             assert_eq!(result.host, Some("localhost".to_string()));
             assert_eq!(result.port, Some(3306));
         }
 
-        #[test]
-        fn test_ssh_params_require_host() {
+        #[tokio::test]
+        async fn test_ssh_params_require_host() {
             let mut params = create_ssh_params("jump.server", 22, "admin", "db.internal", 3306);
             params.ssh_host = None;
             let result = resolve_connection_params(&params);
@@ -1456,8 +1379,8 @@ mod tests {
             assert!(result.unwrap_err().contains("SSH Host"));
         }
 
-        #[test]
-        fn test_ssh_params_require_user() {
+        #[tokio::test]
+        async fn test_ssh_params_require_user() {
             let mut params = create_ssh_params("jump.server", 22, "admin", "db.internal", 3306);
             params.ssh_user = None;
             let result = resolve_connection_params(&params);
@@ -1469,54 +1392,54 @@ mod tests {
     mod url_encoding_edge_cases {
         use super::*;
 
-        #[test]
-        fn test_unicode_username() {
+        #[tokio::test]
+        async fn test_unicode_username() {
             let mut params = base_params();
             params.username = Some("用户".to_string());
-            let url = build_connection_url(&params).unwrap();
+            let url = build_connection_url(&params).await.unwrap();
             // URL should contain percent-encoded UTF-8
             assert!(url.contains("%E7%94%A8%E6%88%B7"));
         }
 
-        #[test]
-        fn test_password_with_colon() {
+        #[tokio::test]
+        async fn test_password_with_colon() {
             let mut params = base_params();
             params.password = Some("pass:word".to_string());
-            let url = build_connection_url(&params).unwrap();
+            let url = build_connection_url(&params).await.unwrap();
             assert!(url.contains("pass%3Aword"));
         }
 
-        #[test]
-        fn test_password_with_at_sign() {
+        #[tokio::test]
+        async fn test_password_with_at_sign() {
             let mut params = base_params();
             params.password = Some("pass@word".to_string());
-            let url = build_connection_url(&params).unwrap();
+            let url = build_connection_url(&params).await.unwrap();
             assert!(url.contains("pass%40word"));
         }
 
-        #[test]
-        fn test_password_with_slash() {
+        #[tokio::test]
+        async fn test_password_with_slash() {
             let mut params = base_params();
             params.password = Some("pass/word".to_string());
-            let url = build_connection_url(&params).unwrap();
+            let url = build_connection_url(&params).await.unwrap();
             assert!(url.contains("pass%2Fword"));
         }
 
-        #[test]
-        fn test_empty_username_and_password() {
+        #[tokio::test]
+        async fn test_empty_username_and_password() {
             let mut params = base_params();
             params.username = None;
             params.password = None;
-            let url = build_connection_url(&params).unwrap();
+            let url = build_connection_url(&params).await.unwrap();
             assert!(url.contains(":@localhost"));
         }
 
-        #[test]
-        fn test_host_with_port_in_url() {
+        #[tokio::test]
+        async fn test_host_with_port_in_url() {
             let mut params = base_params();
             params.host = Some("192.168.1.100".to_string());
             params.port = Some(33060);
-            let url = build_connection_url(&params).unwrap();
+            let url = build_connection_url(&params).await.unwrap();
             assert!(url.contains("192.168.1.100:33060"));
         }
     }
@@ -1616,14 +1539,8 @@ pub async fn get_columns<R: Runtime>(
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
-    match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::get_columns(&params, &table_name).await,
-        "postgres" => {
-            postgres::get_columns(&params, &table_name, schema.as_deref().unwrap_or("public")).await
-        }
-        "sqlite" => sqlite::get_columns(&params, &table_name).await,
-        _ => Err("Unsupported driver".into()),
-    }
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    drv.get_columns(&params, &table_name, schema.as_deref()).await
 }
 
 #[tauri::command]
@@ -1636,15 +1553,8 @@ pub async fn get_foreign_keys<R: Runtime>(
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
-    match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::get_foreign_keys(&params, &table_name).await,
-        "postgres" => {
-            postgres::get_foreign_keys(&params, &table_name, schema.as_deref().unwrap_or("public"))
-                .await
-        }
-        "sqlite" => sqlite::get_foreign_keys(&params, &table_name).await,
-        _ => Err("Unsupported driver".into()),
-    }
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    drv.get_foreign_keys(&params, &table_name, schema.as_deref()).await
 }
 
 #[tauri::command]
@@ -1657,14 +1567,8 @@ pub async fn get_indexes<R: Runtime>(
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
-    match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::get_indexes(&params, &table_name).await,
-        "postgres" => {
-            postgres::get_indexes(&params, &table_name, schema.as_deref().unwrap_or("public")).await
-        }
-        "sqlite" => sqlite::get_indexes(&params, &table_name).await,
-        _ => Err("Unsupported driver".into()),
-    }
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    drv.get_indexes(&params, &table_name, schema.as_deref()).await
 }
 
 #[tauri::command]
@@ -1679,21 +1583,8 @@ pub async fn delete_record<R: Runtime>(
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
-    match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::delete_record(&params, &table, &pk_col, pk_val).await,
-        "postgres" => {
-            postgres::delete_record(
-                &params,
-                &table,
-                &pk_col,
-                pk_val,
-                schema.as_deref().unwrap_or("public"),
-            )
-            .await
-        }
-        "sqlite" => sqlite::delete_record(&params, &table, &pk_col, pk_val).await,
-        _ => Err("Unsupported driver".into()),
-    }
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    drv.delete_record(&params, &table, &pk_col, pk_val, schema.as_deref()).await
 }
 
 #[tauri::command]
@@ -2008,21 +1899,8 @@ pub async fn insert_record<R: Runtime>(
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
     let max_blob_size = crate::config::get_max_blob_size(&app);
-    match saved_conn.params.driver.as_str() {
-        "mysql" => mysql::insert_record(&params, &table, data, max_blob_size).await,
-        "postgres" => {
-            postgres::insert_record(
-                &params,
-                &table,
-                data,
-                schema.as_deref().unwrap_or("public"),
-                max_blob_size,
-            )
-            .await
-        }
-        "sqlite" => sqlite::insert_record(&params, &table, data, max_blob_size).await,
-        _ => Err("Unsupported driver".into()),
-    }
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    drv.insert_record(&params, &table, data, schema.as_deref(), max_blob_size).await
 }
 
 #[tauri::command]
@@ -2070,26 +1948,9 @@ pub async fn execute_query<R: Runtime>(
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
     // 2. Spawn Cancellable Task
+    let drv = driver_for(&saved_conn.params.driver).await?;
     let task = tokio::spawn(async move {
-        match saved_conn.params.driver.as_str() {
-            "mysql" => {
-                mysql::execute_query(&params, &sanitized_query, limit, page.unwrap_or(1)).await
-            }
-            "postgres" => {
-                postgres::execute_query(
-                    &params,
-                    &sanitized_query,
-                    limit,
-                    page.unwrap_or(1),
-                    schema.as_deref(),
-                )
-                .await
-            }
-            "sqlite" => {
-                sqlite::execute_query(&params, &sanitized_query, limit, page.unwrap_or(1)).await
-            }
-            _ => Err("Unsupported driver".into()),
-        }
+        drv.execute_query(&params, &sanitized_query, limit, page.unwrap_or(1), schema.as_deref()).await
     });
 
     // 3. Register Abort Handle
@@ -2228,9 +2089,7 @@ pub async fn open_er_diagram_window(
 }
 
 /// Builds a connection URL for a database driver.
-/// This is a pure function that can be tested without a database connection.
-#[inline]
-pub fn build_connection_url(params: &ConnectionParams) -> Result<String, String> {
+pub async fn build_connection_url(params: &ConnectionParams) -> Result<String, String> {
     let user = encode(params.username.as_deref().unwrap_or_default());
     let pass = encode(params.password.as_deref().unwrap_or_default());
     let host = params.host.as_deref().unwrap_or("localhost");
@@ -2602,4 +2461,10 @@ pub fn get_data_types(driver: String) -> crate::models::DataTypeRegistry {
     };
 
     crate::models::DataTypeRegistry { driver, types }
+}
+
+
+#[tauri::command]
+pub async fn get_registered_drivers() -> Vec<crate::drivers::driver_trait::PluginManifest> {
+    crate::drivers::registry::list_drivers().await
 }

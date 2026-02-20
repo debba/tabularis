@@ -1,0 +1,222 @@
+use std::collections::HashMap;
+
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
+
+use crate::models::{
+    ConnectionParams, DataTypeInfo, ForeignKey, Index, QueryResult, RoutineInfo,
+    RoutineParameter, TableColumn, TableInfo, TableSchema, ViewInfo,
+};
+
+/// Capabilities advertised by a driver.
+/// The frontend uses these flags to decide which UI sections to show.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DriverCapabilities {
+    /// Supports multiple named schemas (e.g. PostgreSQL).
+    pub schemas: bool,
+    /// Supports views.
+    pub views: bool,
+    /// Supports stored procedures and functions.
+    pub routines: bool,
+    /// File-based database (e.g. SQLite); no host/port required.
+    pub file_based: bool,
+}
+
+/// Metadata describing a registered driver plugin.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PluginManifest {
+    /// Unique identifier used in `ConnectionParams.driver` (e.g. `"mysql"`).
+    pub id: String,
+    /// Human-readable name shown in the UI (e.g. `"MySQL"`).
+    pub name: String,
+    /// Semver string of this driver implementation (e.g. `"1.0.0"`).
+    pub version: String,
+    /// Short description shown in the UI.
+    pub description: String,
+    /// Default TCP port, `None` for file-based drivers.
+    pub default_port: Option<u16>,
+    pub capabilities: DriverCapabilities,
+}
+
+/// The complete interface every database driver plugin must implement.
+///
+/// The `schema` parameter is `Option<&str>` throughout. Drivers that do not
+/// use schemas (MySQL, SQLite) simply ignore it. Drivers that do (PostgreSQL)
+/// fall back to `"public"` when it is `None`.
+#[async_trait]
+pub trait DatabaseDriver: Send + Sync {
+    // --- Metadata -----------------------------------------------------------
+
+    fn manifest(&self) -> &PluginManifest;
+
+    /// Returns the list of data types supported by this driver.
+    fn get_data_types(&self) -> Vec<DataTypeInfo>;
+
+    /// Builds the connection URL string for this driver.
+    fn build_connection_url(&self, params: &ConnectionParams) -> Result<String, String>;
+
+    // --- Database / schema discovery ----------------------------------------
+
+    async fn get_databases(&self, params: &ConnectionParams) -> Result<Vec<String>, String>;
+    async fn get_schemas(&self, params: &ConnectionParams) -> Result<Vec<String>, String>;
+
+    // --- Schema inspection ---------------------------------------------------
+
+    async fn get_tables(
+        &self,
+        params: &ConnectionParams,
+        schema: Option<&str>,
+    ) -> Result<Vec<TableInfo>, String>;
+
+    async fn get_columns(
+        &self,
+        params: &ConnectionParams,
+        table: &str,
+        schema: Option<&str>,
+    ) -> Result<Vec<TableColumn>, String>;
+
+    async fn get_foreign_keys(
+        &self,
+        params: &ConnectionParams,
+        table: &str,
+        schema: Option<&str>,
+    ) -> Result<Vec<ForeignKey>, String>;
+
+    async fn get_indexes(
+        &self,
+        params: &ConnectionParams,
+        table: &str,
+        schema: Option<&str>,
+    ) -> Result<Vec<Index>, String>;
+
+    // --- Views --------------------------------------------------------------
+
+    async fn get_views(
+        &self,
+        params: &ConnectionParams,
+        schema: Option<&str>,
+    ) -> Result<Vec<ViewInfo>, String>;
+
+    async fn get_view_definition(
+        &self,
+        params: &ConnectionParams,
+        view_name: &str,
+        schema: Option<&str>,
+    ) -> Result<String, String>;
+
+    async fn get_view_columns(
+        &self,
+        params: &ConnectionParams,
+        view_name: &str,
+        schema: Option<&str>,
+    ) -> Result<Vec<TableColumn>, String>;
+
+    async fn create_view(
+        &self,
+        params: &ConnectionParams,
+        view_name: &str,
+        definition: &str,
+        schema: Option<&str>,
+    ) -> Result<(), String>;
+
+    async fn alter_view(
+        &self,
+        params: &ConnectionParams,
+        view_name: &str,
+        definition: &str,
+        schema: Option<&str>,
+    ) -> Result<(), String>;
+
+    async fn drop_view(
+        &self,
+        params: &ConnectionParams,
+        view_name: &str,
+        schema: Option<&str>,
+    ) -> Result<(), String>;
+
+    // --- Routines -----------------------------------------------------------
+
+    async fn get_routines(
+        &self,
+        params: &ConnectionParams,
+        schema: Option<&str>,
+    ) -> Result<Vec<RoutineInfo>, String>;
+
+    async fn get_routine_parameters(
+        &self,
+        params: &ConnectionParams,
+        routine_name: &str,
+        schema: Option<&str>,
+    ) -> Result<Vec<RoutineParameter>, String>;
+
+    async fn get_routine_definition(
+        &self,
+        params: &ConnectionParams,
+        routine_name: &str,
+        routine_type: &str,
+        schema: Option<&str>,
+    ) -> Result<String, String>;
+
+    // --- Query execution ----------------------------------------------------
+
+    async fn execute_query(
+        &self,
+        params: &ConnectionParams,
+        query: &str,
+        limit: Option<u32>,
+        page: u32,
+        schema: Option<&str>,
+    ) -> Result<QueryResult, String>;
+
+    // --- CRUD ---------------------------------------------------------------
+
+    async fn insert_record(
+        &self,
+        params: &ConnectionParams,
+        table: &str,
+        data: HashMap<String, serde_json::Value>,
+        schema: Option<&str>,
+        max_blob_size: u64,
+    ) -> Result<u64, String>;
+
+    async fn update_record(
+        &self,
+        params: &ConnectionParams,
+        table: &str,
+        pk_col: &str,
+        pk_val: serde_json::Value,
+        col_name: &str,
+        new_val: serde_json::Value,
+        schema: Option<&str>,
+        max_blob_size: u64,
+    ) -> Result<u64, String>;
+
+    async fn delete_record(
+        &self,
+        params: &ConnectionParams,
+        table: &str,
+        pk_col: &str,
+        pk_val: serde_json::Value,
+        schema: Option<&str>,
+    ) -> Result<u64, String>;
+
+    // --- ER diagram (batch) -------------------------------------------------
+
+    async fn get_schema_snapshot(
+        &self,
+        params: &ConnectionParams,
+        schema: Option<&str>,
+    ) -> Result<Vec<TableSchema>, String>;
+
+    async fn get_all_columns_batch(
+        &self,
+        params: &ConnectionParams,
+        schema: Option<&str>,
+    ) -> Result<HashMap<String, Vec<TableColumn>>, String>;
+
+    async fn get_all_foreign_keys_batch(
+        &self,
+        params: &ConnectionParams,
+        schema: Option<&str>,
+    ) -> Result<HashMap<String, Vec<ForeignKey>>, String>;
+}

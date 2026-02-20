@@ -9,7 +9,7 @@ import {
   Heart,
   Info,
   Code2,
-  Settings as SettingsIcon,
+  Database, Settings as SettingsIcon,
   Languages,
   Sparkles,
   Power,
@@ -37,6 +37,8 @@ import { APP_VERSION } from "../version";
 import { message, ask, save } from "@tauri-apps/plugin-dialog";
 import { AVAILABLE_FONTS, ROADMAP } from "../utils/settings";
 import { getProviderLabel } from "../utils/settingsUI";
+import { useDrivers } from "../hooks/useDrivers";
+import type { PluginManifest } from "../types/plugins";
 import { SearchableSelect } from "../components/ui/SearchableSelect";
 import { useUpdate } from "../hooks/useUpdate";
 
@@ -55,6 +57,7 @@ interface LogEntry {
 const LogsTab = () => {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
+  
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [levelFilter, setLevelFilter] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
@@ -351,12 +354,13 @@ export const Settings = () => {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const { checkForUpdates, isChecking, updateInfo, error: updateError, isUpToDate } = useUpdate();
-  const [activeTab, setActiveTab] = useState<"general" | "appearance" | "localization" | "ai" | "updates" | "logs" | "info">(
+  const [activeTab, setActiveTab] = useState<"general" | "appearance" | "localization" | "ai" | "updates" | "logs" | "info" | "plugins">(
     "general",
   );
   const [aiKeyStatus, setAiKeyStatus] = useState<Record<string, AiKeyStatus>>({});
   const [availableModels, setAvailableModels] = useState<Record<string, string[]>>({});
   const [keyInput, setKeyInput] = useState("");
+  const { allDrivers } = useDrivers();
   const [systemPrompt, setSystemPrompt] = useState("");
   const [explainPrompt, setExplainPrompt] = useState("");
   
@@ -589,6 +593,18 @@ export const Settings = () => {
         >
           <ScrollText size={16} />
           {t("settings.logs")}
+        </button>
+        <button
+          onClick={() => setActiveTab("plugins")}
+          className={clsx(
+            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
+            activeTab === "plugins"
+              ? "bg-surface-secondary text-primary"
+              : "text-muted hover:text-primary hover:bg-surface-secondary/50",
+          )}
+        >
+          <Database size={16} />
+          Plugins
         </button>
         <button
           onClick={() => setActiveTab("info")}
@@ -1356,7 +1372,60 @@ export const Settings = () => {
           {activeTab === "logs" && <LogsTab />}
 
           {/* Info Tab */}
-          {activeTab === "info" && (
+          {activeTab === "plugins" && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold text-primary mb-4">Plugins</h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-primary mb-1">
+                    Database Drivers
+                  </label>
+                  <p className="text-xs text-muted mb-4">
+                    Enable or disable third-party database drivers.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    {allDrivers.map((driver: PluginManifest) => {
+                      const isBuiltin = ["mysql", "postgres", "sqlite"].includes(driver.id);
+                      const activeExt = settings.activeExternalDrivers || [];
+                      const isEnabled = isBuiltin || activeExt.includes(driver.id);
+                      
+                      return (
+                        <div key={driver.id} className={`flex items-center justify-between p-3 rounded-lg border border-surface-tertiary bg-surface-secondary ${isBuiltin ? "opacity-80" : ""}`}>
+                          <div>
+                            <div className="text-sm font-medium text-primary flex items-center gap-2">
+                                {driver.name}
+                                {isBuiltin && <span className="text-[10px] bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded uppercase">Built-in</span>}
+                            </div>
+                            <div className="text-xs text-secondary">{driver.description} (v{driver.version})</div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (isBuiltin) return;
+                              if (isEnabled) {
+                                updateSetting("activeExternalDrivers", activeExt.filter(id => id !== driver.id));
+                              } else {
+                                updateSetting("activeExternalDrivers", [...activeExt, driver.id]);
+                              }
+                            }}
+                            disabled={isBuiltin}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${isEnabled ? "bg-blue-600" : "bg-surface-tertiary"} ${isBuiltin ? "opacity-50 cursor-not-allowed" : ""}`}
+                          >
+                            <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isEnabled ? "translate-x-4" : "translate-x-0"}`} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "info" && (
             <div className="space-y-8">
               {/* Header / Hero */}
               <div className="bg-gradient-to-br from-blue-900/20 to-elevated border border-blue-500/20 rounded-2xl p-8 text-center relative overflow-hidden">

@@ -1145,3 +1145,159 @@ pub async fn get_routine_definition(
     let definition: String = row.try_get("definition").unwrap_or_default();
     Ok(definition)
 }
+
+// ============================================================
+// Plugin wrapper
+// ============================================================
+
+use crate::drivers::driver_trait::{DatabaseDriver, DriverCapabilities, PluginManifest};
+use async_trait::async_trait;
+use std::collections::HashMap;
+
+pub struct PostgresDriver {
+    manifest: PluginManifest,
+}
+
+impl PostgresDriver {
+    pub fn new() -> Self {
+        Self {
+            manifest: PluginManifest {
+                id: "postgres".to_string(),
+                name: "PostgreSQL".to_string(),
+                version: "1.0.0".to_string(),
+                description: "PostgreSQL databases".to_string(),
+                default_port: Some(5432),
+                capabilities: DriverCapabilities {
+                    schemas: true,
+                    views: true,
+                    routines: true,
+                    file_based: false,
+                },
+            },
+        }
+    }
+
+    fn resolve_schema<'a>(&self, schema: Option<&'a str>) -> &'a str {
+        schema.unwrap_or("public")
+    }
+}
+
+#[async_trait]
+impl DatabaseDriver for PostgresDriver {
+    fn manifest(&self) -> &PluginManifest { &self.manifest }
+
+    fn get_data_types(&self) -> Vec<crate::models::DataTypeInfo> {
+        types::get_data_types()
+    }
+
+    fn build_connection_url(&self, params: &crate::models::ConnectionParams) -> Result<String, String> {
+        use urlencoding::encode;
+        let user = encode(params.username.as_deref().unwrap_or_default());
+        let pass = encode(params.password.as_deref().unwrap_or_default());
+        Ok(format!(
+            "postgres://{}:{}@{}:{}/{}",
+            user, pass,
+            params.host.as_deref().unwrap_or("localhost"),
+            params.port.unwrap_or(5432),
+            params.database
+        ))
+    }
+
+    async fn get_databases(&self, params: &crate::models::ConnectionParams) -> Result<Vec<String>, String> {
+        let mut p = params.clone();
+        p.database = "postgres".to_string();
+        get_databases(&p).await
+    }
+
+    async fn get_schemas(&self, params: &crate::models::ConnectionParams) -> Result<Vec<String>, String> {
+        get_schemas(params).await
+    }
+
+    async fn get_tables(&self, params: &crate::models::ConnectionParams, schema: Option<&str>) -> Result<Vec<crate::models::TableInfo>, String> {
+        get_tables(params, self.resolve_schema(schema)).await
+    }
+
+    async fn get_columns(&self, params: &crate::models::ConnectionParams, table: &str, schema: Option<&str>) -> Result<Vec<crate::models::TableColumn>, String> {
+        get_columns(params, table, self.resolve_schema(schema)).await
+    }
+
+    async fn get_foreign_keys(&self, params: &crate::models::ConnectionParams, table: &str, schema: Option<&str>) -> Result<Vec<crate::models::ForeignKey>, String> {
+        get_foreign_keys(params, table, self.resolve_schema(schema)).await
+    }
+
+    async fn get_indexes(&self, params: &crate::models::ConnectionParams, table: &str, schema: Option<&str>) -> Result<Vec<crate::models::Index>, String> {
+        get_indexes(params, table, self.resolve_schema(schema)).await
+    }
+
+    async fn get_views(&self, params: &crate::models::ConnectionParams, schema: Option<&str>) -> Result<Vec<crate::models::ViewInfo>, String> {
+        get_views(params, self.resolve_schema(schema)).await
+    }
+
+    async fn get_view_definition(&self, params: &crate::models::ConnectionParams, view_name: &str, schema: Option<&str>) -> Result<String, String> {
+        get_view_definition(params, view_name, self.resolve_schema(schema)).await
+    }
+
+    async fn get_view_columns(&self, params: &crate::models::ConnectionParams, view_name: &str, schema: Option<&str>) -> Result<Vec<crate::models::TableColumn>, String> {
+        get_view_columns(params, view_name, self.resolve_schema(schema)).await
+    }
+
+    async fn create_view(&self, params: &crate::models::ConnectionParams, view_name: &str, definition: &str, schema: Option<&str>) -> Result<(), String> {
+        create_view(params, view_name, definition, self.resolve_schema(schema)).await
+    }
+
+    async fn alter_view(&self, params: &crate::models::ConnectionParams, view_name: &str, definition: &str, schema: Option<&str>) -> Result<(), String> {
+        alter_view(params, view_name, definition, self.resolve_schema(schema)).await
+    }
+
+    async fn drop_view(&self, params: &crate::models::ConnectionParams, view_name: &str, schema: Option<&str>) -> Result<(), String> {
+        drop_view(params, view_name, self.resolve_schema(schema)).await
+    }
+
+    async fn get_routines(&self, params: &crate::models::ConnectionParams, schema: Option<&str>) -> Result<Vec<crate::models::RoutineInfo>, String> {
+        get_routines(params, self.resolve_schema(schema)).await
+    }
+
+    async fn get_routine_parameters(&self, params: &crate::models::ConnectionParams, routine_name: &str, schema: Option<&str>) -> Result<Vec<crate::models::RoutineParameter>, String> {
+        get_routine_parameters(params, routine_name, self.resolve_schema(schema)).await
+    }
+
+    async fn get_routine_definition(&self, params: &crate::models::ConnectionParams, routine_name: &str, routine_type: &str, schema: Option<&str>) -> Result<String, String> {
+        get_routine_definition(params, routine_name, routine_type, self.resolve_schema(schema)).await
+    }
+
+    async fn execute_query(&self, params: &crate::models::ConnectionParams, query: &str, limit: Option<u32>, page: u32, schema: Option<&str>) -> Result<crate::models::QueryResult, String> {
+        execute_query(params, query, limit, page, schema).await
+    }
+
+    async fn insert_record(&self, params: &crate::models::ConnectionParams, table: &str, data: std::collections::HashMap<String, serde_json::Value>, schema: Option<&str>, max_blob_size: u64) -> Result<u64, String> {
+        insert_record(params, table, data, self.resolve_schema(schema), max_blob_size).await
+    }
+
+    async fn update_record(&self, params: &crate::models::ConnectionParams, table: &str, pk_col: &str, pk_val: serde_json::Value, col_name: &str, new_val: serde_json::Value, schema: Option<&str>, max_blob_size: u64) -> Result<u64, String> {
+        update_record(params, table, pk_col, pk_val, col_name, new_val, self.resolve_schema(schema), max_blob_size).await
+    }
+
+    async fn delete_record(&self, params: &crate::models::ConnectionParams, table: &str, pk_col: &str, pk_val: serde_json::Value, schema: Option<&str>) -> Result<u64, String> {
+        delete_record(params, table, pk_col, pk_val, self.resolve_schema(schema)).await
+    }
+
+    async fn get_all_columns_batch(&self, params: &crate::models::ConnectionParams, schema: Option<&str>) -> Result<HashMap<String, Vec<crate::models::TableColumn>>, String> {
+        get_all_columns_batch(params, self.resolve_schema(schema)).await
+    }
+
+    async fn get_all_foreign_keys_batch(&self, params: &crate::models::ConnectionParams, schema: Option<&str>) -> Result<HashMap<String, Vec<crate::models::ForeignKey>>, String> {
+        get_all_foreign_keys_batch(params, self.resolve_schema(schema)).await
+    }
+
+    async fn get_schema_snapshot(&self, params: &crate::models::ConnectionParams, schema: Option<&str>) -> Result<Vec<crate::models::TableSchema>, String> {
+        let pg_schema = self.resolve_schema(schema);
+        let tables = get_tables(params, pg_schema).await?;
+        let mut columns_map = get_all_columns_batch(params, pg_schema).await?;
+        let mut fks_map = get_all_foreign_keys_batch(params, pg_schema).await?;
+        Ok(tables.into_iter().map(|t| crate::models::TableSchema {
+            name: t.name.clone(),
+            columns: columns_map.remove(&t.name).unwrap_or_default(),
+            foreign_keys: fks_map.remove(&t.name).unwrap_or_default(),
+        }).collect())
+    }
+}

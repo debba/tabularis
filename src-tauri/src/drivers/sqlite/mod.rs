@@ -831,3 +831,148 @@ mod tests {
         crate::pool_manager::close_pool(&params).await;
     }
 }
+
+// ============================================================
+// Plugin wrapper
+// ============================================================
+
+use crate::drivers::driver_trait::{DatabaseDriver, DriverCapabilities, PluginManifest};
+use async_trait::async_trait;
+use std::collections::HashMap;
+
+pub struct SqliteDriver {
+    manifest: PluginManifest,
+}
+
+impl SqliteDriver {
+    pub fn new() -> Self {
+        Self {
+            manifest: PluginManifest {
+                id: "sqlite".to_string(),
+                name: "SQLite".to_string(),
+                version: "1.0.0".to_string(),
+                description: "SQLite file-based databases".to_string(),
+                default_port: None,
+                capabilities: DriverCapabilities {
+                    schemas: false,
+                    views: true,
+                    routines: false,
+                    file_based: true,
+                },
+            },
+        }
+    }
+}
+
+#[async_trait]
+impl DatabaseDriver for SqliteDriver {
+    fn manifest(&self) -> &PluginManifest { &self.manifest }
+
+    fn get_data_types(&self) -> Vec<crate::models::DataTypeInfo> {
+        types::get_data_types()
+    }
+
+    fn build_connection_url(&self, params: &crate::models::ConnectionParams) -> Result<String, String> {
+        Ok(format!("sqlite://{}", params.database))
+    }
+
+    async fn get_databases(&self, params: &crate::models::ConnectionParams) -> Result<Vec<String>, String> {
+        get_databases(params).await
+    }
+
+    async fn get_schemas(&self, params: &crate::models::ConnectionParams) -> Result<Vec<String>, String> {
+        get_schemas(params).await
+    }
+
+    async fn get_tables(&self, params: &crate::models::ConnectionParams, _schema: Option<&str>) -> Result<Vec<crate::models::TableInfo>, String> {
+        get_tables(params).await
+    }
+
+    async fn get_columns(&self, params: &crate::models::ConnectionParams, table: &str, _schema: Option<&str>) -> Result<Vec<crate::models::TableColumn>, String> {
+        get_columns(params, table).await
+    }
+
+    async fn get_foreign_keys(&self, params: &crate::models::ConnectionParams, table: &str, _schema: Option<&str>) -> Result<Vec<crate::models::ForeignKey>, String> {
+        get_foreign_keys(params, table).await
+    }
+
+    async fn get_indexes(&self, params: &crate::models::ConnectionParams, table: &str, _schema: Option<&str>) -> Result<Vec<crate::models::Index>, String> {
+        get_indexes(params, table).await
+    }
+
+    async fn get_views(&self, params: &crate::models::ConnectionParams, _schema: Option<&str>) -> Result<Vec<crate::models::ViewInfo>, String> {
+        get_views(params).await
+    }
+
+    async fn get_view_definition(&self, params: &crate::models::ConnectionParams, view_name: &str, _schema: Option<&str>) -> Result<String, String> {
+        get_view_definition(params, view_name).await
+    }
+
+    async fn get_view_columns(&self, params: &crate::models::ConnectionParams, view_name: &str, _schema: Option<&str>) -> Result<Vec<crate::models::TableColumn>, String> {
+        get_view_columns(params, view_name).await
+    }
+
+    async fn create_view(&self, params: &crate::models::ConnectionParams, view_name: &str, definition: &str, _schema: Option<&str>) -> Result<(), String> {
+        create_view(params, view_name, definition).await
+    }
+
+    async fn alter_view(&self, params: &crate::models::ConnectionParams, view_name: &str, definition: &str, _schema: Option<&str>) -> Result<(), String> {
+        alter_view(params, view_name, definition).await
+    }
+
+    async fn drop_view(&self, params: &crate::models::ConnectionParams, view_name: &str, _schema: Option<&str>) -> Result<(), String> {
+        drop_view(params, view_name).await
+    }
+
+    async fn get_routines(&self, params: &crate::models::ConnectionParams, _schema: Option<&str>) -> Result<Vec<crate::models::RoutineInfo>, String> {
+        get_routines(params).await
+    }
+
+    async fn get_routine_parameters(&self, params: &crate::models::ConnectionParams, routine_name: &str, _schema: Option<&str>) -> Result<Vec<crate::models::RoutineParameter>, String> {
+        get_routine_parameters(params, routine_name).await
+    }
+
+    async fn get_routine_definition(&self, params: &crate::models::ConnectionParams, routine_name: &str, routine_type: &str, _schema: Option<&str>) -> Result<String, String> {
+        get_routine_definition(params, routine_name, routine_type).await
+    }
+
+    async fn execute_query(&self, params: &crate::models::ConnectionParams, query: &str, limit: Option<u32>, page: u32, _schema: Option<&str>) -> Result<crate::models::QueryResult, String> {
+        execute_query(params, query, limit, page).await
+    }
+
+    async fn insert_record(&self, params: &crate::models::ConnectionParams, table: &str, data: std::collections::HashMap<String, serde_json::Value>, _schema: Option<&str>, max_blob_size: u64) -> Result<u64, String> {
+        insert_record(params, table, data, max_blob_size).await
+    }
+
+    async fn update_record(&self, params: &crate::models::ConnectionParams, table: &str, pk_col: &str, pk_val: serde_json::Value, col_name: &str, new_val: serde_json::Value, _schema: Option<&str>, max_blob_size: u64) -> Result<u64, String> {
+        update_record(params, table, pk_col, pk_val, col_name, new_val, max_blob_size).await
+    }
+
+    async fn delete_record(&self, params: &crate::models::ConnectionParams, table: &str, pk_col: &str, pk_val: serde_json::Value, _schema: Option<&str>) -> Result<u64, String> {
+        delete_record(params, table, pk_col, pk_val).await
+    }
+
+    async fn get_all_columns_batch(&self, params: &crate::models::ConnectionParams, _schema: Option<&str>) -> Result<HashMap<String, Vec<crate::models::TableColumn>>, String> {
+        let tables = get_tables(params).await?;
+        let names: Vec<String> = tables.into_iter().map(|t| t.name).collect();
+        get_all_columns_batch(params, &names).await
+    }
+
+    async fn get_all_foreign_keys_batch(&self, params: &crate::models::ConnectionParams, _schema: Option<&str>) -> Result<HashMap<String, Vec<crate::models::ForeignKey>>, String> {
+        let tables = get_tables(params).await?;
+        let names: Vec<String> = tables.into_iter().map(|t| t.name).collect();
+        get_all_foreign_keys_batch(params, &names).await
+    }
+
+    async fn get_schema_snapshot(&self, params: &crate::models::ConnectionParams, _schema: Option<&str>) -> Result<Vec<crate::models::TableSchema>, String> {
+        let tables = get_tables(params).await?;
+        let names: Vec<String> = tables.iter().map(|t| t.name.clone()).collect();
+        let mut columns_map = get_all_columns_batch(params, &names).await?;
+        let mut fks_map = get_all_foreign_keys_batch(params, &names).await?;
+        Ok(tables.into_iter().map(|t| crate::models::TableSchema {
+            name: t.name.clone(),
+            columns: columns_map.remove(&t.name).unwrap_or_default(),
+            foreign_keys: fks_map.remove(&t.name).unwrap_or_default(),
+        }).collect())
+    }
+}

@@ -3,7 +3,10 @@
  * Extracted from Connections.tsx for testability
  */
 
-export type DatabaseDriver = "postgres" | "mysql" | "sqlite";
+export type DatabaseDriver = string;
+
+export const BUILTIN_DRIVER_IDS = ["postgres", "mysql", "sqlite"] as const;
+export type BuiltinDriverId = (typeof BUILTIN_DRIVER_IDS)[number];
 
 export interface SshConnection {
   id: string;
