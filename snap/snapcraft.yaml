@@ -1,0 +1,35 @@
+name: tabularis
+base: core22
+version: '0.0.0'
+summary: A lightweight, developer-focused database management tool
+description: |
+  Tabularis is a lightweight, developer-focused database management tool
+  supporting MySQL, PostgreSQL, and SQLite. Features include SSH tunneling,
+  visual schema explorer, AI-powered SQL assistance, and system keychain
+  integration.
+
+grade: stable
+confinement: strict
+
+architectures:
+  - build-on: amd64
+    build-for: amd64
+
+parts:
+  tabularis:
+    plugin: dump
+    source: tabularis.deb
+    source-type: deb
+    stage-packages:
+      - libwebkit2gtk-4.1-0
+      - libayatana-appindicator3-1
+
+apps:
+  tabularis:
+    command: usr/bin/tabularis
+    extensions: [gnome]
+    plugs:
+      - home
+      - network
+      - opengl
+      - password-manager-service

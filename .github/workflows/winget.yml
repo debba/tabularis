@@ -1,0 +1,16 @@
+name: Publish to Winget
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  winget-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Submit to Winget
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: Debba.Tabularis
+          installers-regex: '_x64-setup\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}
