@@ -1472,9 +1472,20 @@ export const Editor = () => {
     if (!isRunDropdownOpen) {
       // Monaco Editor: split queries from editor
       if (activeTab?.type !== "query_builder" && editorRef.current) {
-        const text = editorRef.current.getValue();
-        const queries = splitQueries(text);
-        setSelectableQueries(queries);
+        const editor = editorRef.current;
+        const selection = editor.getSelection();
+        const selectedText = selection
+          ? editor.getModel()?.getValueInRange(selection)
+          : undefined;
+
+        if (selectedText && selection && !selection.isEmpty()) {
+          const queries = splitQueries(selectedText);
+          setSelectableQueries(queries);
+        } else {
+          const text = editor.getValue();
+          const queries = splitQueries(text);
+          setSelectableQueries(queries);
+        }
       }
     }
     setIsRunDropdownOpen((prev) => !prev);
