@@ -229,11 +229,19 @@ fn get_columns(conn: &Connection, table_name: &str) -> Result<JsonValue, String>
 }
 
 fn execute_query(conn: &Connection, query: &str) -> Result<JsonValue, String> {
-    let mut stmt = conn.prepare(query).map_err(|e| e.to_string())?;
+    let upper = query.trim_start().to_uppercase();
+    let is_select = upper.starts_with("SELECT")
+        || upper.starts_with("WITH")
+        || upper.starts_with("SHOW")
+        || upper.starts_with("DESCRIBE")
+        || upper.starts_with("EXPLAIN")
+        || upper.starts_with("FROM");
 
-    if stmt.column_count() > 0 {
+    if is_select {
+        let mut stmt = conn.prepare(query).map_err(|e| e.to_string())?;
         let mut rows = stmt.query([]).map_err(|e| e.to_string())?;
 
+        // column_count/column_names are safe after query() has executed the statement
         let col_count = rows.as_ref().map(|s| s.column_count()).unwrap_or(0);
         let column_names: Vec<String> = rows
             .as_ref()
@@ -259,6 +267,7 @@ fn execute_query(conn: &Connection, query: &str) -> Result<JsonValue, String> {
             "pagination": null
         }))
     } else {
+        let mut stmt = conn.prepare(query).map_err(|e| e.to_string())?;
         let affected = stmt.execute([]).map_err(|e| e.to_string())?;
         Ok(json!({
             "columns": [],
