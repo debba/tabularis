@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Save, Loader2, AlertTriangle } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
@@ -95,31 +95,60 @@ export const CreateForeignKeyModal = ({
       }
   }, [localColumn, refTable, tableName]);
 
-  const sqlPreview = useMemo(() => {
-      if (!fkName || !localColumn || !refTable || !refColumn) return '-- ' + t('createFk.sqlPreview');
-      
-      const q = (driver === 'mysql' || driver === 'mariadb') ? '`' : '"';
-      
-      // ALTER TABLE child ADD CONSTRAINT fk_name FOREIGN KEY (col) REFERENCES parent (col) ON DELETE ... ON UPDATE ...
-      return `ALTER TABLE ${q}${tableName}${q} ADD CONSTRAINT ${q}${fkName}${q} FOREIGN KEY (${q}${localColumn}${q}) REFERENCES ${q}${refTable}${q} (${q}${refColumn}${q}) ON DELETE ${onDelete} ON UPDATE ${onUpdate};`;
-  }, [fkName, localColumn, refTable, refColumn, onDelete, onUpdate, tableName, driver, t]);
+  const [sqlPreview, setSqlPreview] = useState('-- ...');
+
+  const generatePreview = useCallback(async () => {
+    if (!fkName || !localColumn || !refTable || !refColumn) {
+      setSqlPreview('-- ' + t('createFk.sqlPreview'));
+      return;
+    }
+    try {
+      const stmts = await invoke<string[]>('get_create_foreign_key_sql', {
+        connectionId,
+        table: tableName,
+        fkName,
+        column: localColumn,
+        refTable,
+        refColumn,
+        onDelete,
+        onUpdate,
+        ...(activeSchema ? { schema: activeSchema } : {}),
+      });
+      setSqlPreview(stmts.map(s => s + ';').join('\n'));
+    } catch (e) {
+      setSqlPreview('-- ' + String(e));
+    }
+  }, [fkName, localColumn, refTable, refColumn, onDelete, onUpdate, connectionId, tableName, activeSchema, t]);
+
+  useEffect(() => {
+    const timer = setTimeout(generatePreview, 300);
+    return () => clearTimeout(timer);
+  }, [generatePreview]);
 
   const handleCreate = async () => {
       if (!fkName.trim()) { setError(t('createFk.nameRequired')); return; }
-      
-      if (driver === 'sqlite') {
-          setError(t('sidebar.sqliteFkError'));
-          return;
-      }
 
       setLoading(true);
       setError('');
       try {
-          await invoke('execute_query', {
+          const stmts = await invoke<string[]>('get_create_foreign_key_sql', {
             connectionId,
-            query: sqlPreview,
+            table: tableName,
+            fkName,
+            column: localColumn,
+            refTable,
+            refColumn,
+            onDelete,
+            onUpdate,
             ...(activeSchema ? { schema: activeSchema } : {}),
           });
+          for (const sql of stmts) {
+            await invoke('execute_query', {
+              connectionId,
+              query: sql,
+              ...(activeSchema ? { schema: activeSchema } : {}),
+            });
+          }
           onSuccess();
           onClose();
       } catch (e) {

@@ -636,17 +636,17 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                           onAddIndex={(t_name) =>
                             setCreateIndexModal({ isOpen: true, tableName: t_name })
                           }
-                          onDropIndex={async (_t_name, name) => {
+                          onDropIndex={async (t_name, name) => {
                             if (
                               await ask(
                                 t("sidebar.deleteIndexConfirm", { name }),
                                 { title: t("sidebar.deleteIndex"), kind: "warning" },
                               )
                             ) {
-                              const q = `DROP INDEX ${quoteTableRef(name, activeDriver, schemaName)}`;
-                              await invoke("execute_query", {
+                              await invoke("drop_index_action", {
                                 connectionId: activeConnectionId,
-                                query: q,
+                                table: t_name,
+                                indexName: name,
                                 ...(schemaName ? { schema: schemaName } : {}),
                               }).catch(console.error);
                               setSchemaVersion((v) => v + 1);
@@ -662,10 +662,10 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                                 { title: t("sidebar.deleteFk"), kind: "warning" },
                               )
                             ) {
-                              const q = `ALTER TABLE ${quoteTableRef(t_name, activeDriver, schemaName)} DROP CONSTRAINT ${quoteIdentifier(name, activeDriver)}`;
-                              await invoke("execute_query", {
+                              await invoke("drop_foreign_key_action", {
                                 connectionId: activeConnectionId,
-                                query: q,
+                                table: t_name,
+                                fkName: name,
                                 ...(schemaName ? { schema: schemaName } : {}),
                               }).catch(console.error);
                               setSchemaVersion((v) => v + 1);
@@ -754,13 +754,10 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                                   { title: t("sidebar.deleteIndex"), kind: "warning" },
                                 )
                               ) {
-                                const q =
-                                  activeDriver === "mysql" || activeDriver === "mariadb"
-                                    ? `DROP INDEX ${quoteIdentifier(name, activeDriver)} ON ${quoteTableRef(t_name, activeDriver)}`
-                                    : `DROP INDEX ${quoteIdentifier(name, activeDriver)}`;
-                                await invoke("execute_query", {
+                                await invoke("drop_index_action", {
                                   connectionId: activeConnectionId,
-                                  query: q,
+                                  table: t_name,
+                                  indexName: name,
                                 }).catch(console.error);
                                 setSchemaVersion((v) => v + 1);
                               }
@@ -775,17 +772,10 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                                   { title: t("sidebar.deleteFk"), kind: "warning" },
                                 )
                               ) {
-                                if (activeDriver === "sqlite") {
-                                  await message(t("sidebar.sqliteFkError"), { kind: "error" });
-                                  return;
-                                }
-                                const q =
-                                  activeDriver === "mysql" || activeDriver === "mariadb"
-                                    ? `ALTER TABLE ${quoteTableRef(t_name, activeDriver)} DROP FOREIGN KEY ${quoteIdentifier(name, activeDriver)}`
-                                    : `ALTER TABLE ${quoteTableRef(t_name, activeDriver)} DROP CONSTRAINT ${quoteIdentifier(name, activeDriver)}`;
-                                await invoke("execute_query", {
+                                await invoke("drop_foreign_key_action", {
                                   connectionId: activeConnectionId,
-                                  query: q,
+                                  table: t_name,
+                                  fkName: name,
                                 }).catch(console.error);
                                 setSchemaVersion((v) => v + 1);
                               }
@@ -1047,13 +1037,10 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                             )
                           ) {
                             try {
-                              const q =
-                                activeDriver === "mysql" || activeDriver === "mariadb"
-                                  ? `DROP INDEX ${quoteIdentifier(contextMenu.id, activeDriver)} ON ${quoteTableRef(t_name, activeDriver, ctxSchema)}`
-                                  : `DROP INDEX ${quoteTableRef(contextMenu.id, activeDriver, ctxSchema)}`;
-                              await invoke("execute_query", {
+                              await invoke("drop_index_action", {
                                 connectionId: activeConnectionId,
-                                query: q,
+                                table: t_name,
+                                indexName: contextMenu.id,
                                 ...(ctxSchema ? { schema: ctxSchema } : {}),
                               });
                               setSchemaVersion((v) => v + 1);
@@ -1089,19 +1076,17 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                                 { title: t("sidebar.deleteFk"), kind: "warning" },
                               )
                             ) {
-                              if (activeDriver === "sqlite") {
-                                await message(t("sidebar.sqliteFkError"), { kind: "error" });
-                                return;
+                              try {
+                                await invoke("drop_foreign_key_action", {
+                                  connectionId: activeConnectionId,
+                                  table: t_name,
+                                  fkName: contextMenu.id,
+                                  ...(ctxSchema ? { schema: ctxSchema } : {}),
+                                });
+                                setSchemaVersion((v) => v + 1);
+                              } catch (e) {
+                                await message(String(e), { kind: "error" });
                               }
-                              const q =
-                                activeDriver === "mysql" || activeDriver === "mariadb"
-                                  ? `ALTER TABLE ${quoteTableRef(t_name, activeDriver, ctxSchema)} DROP FOREIGN KEY ${quoteIdentifier(contextMenu.id, activeDriver)}`
-                                  : `ALTER TABLE ${quoteTableRef(t_name, activeDriver, ctxSchema)} DROP CONSTRAINT ${quoteIdentifier(contextMenu.id, activeDriver)}`;
-                              await invoke("execute_query", {
-                                connectionId: activeConnectionId,
-                                query: q,
-                                ...(ctxSchema ? { schema: ctxSchema } : {}),
-                              }).catch(console.error);
                             }
                           }
                         },

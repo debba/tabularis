@@ -3,6 +3,7 @@ export interface DriverCapabilities {
   views: boolean;
   routines: boolean;
   file_based: boolean;
+  identifier_quote: string;
 }
 
 export interface PluginManifest {

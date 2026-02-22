@@ -11,8 +11,8 @@ use tokio::sync::{mpsc, oneshot};
 
 use crate::drivers::driver_trait::{DatabaseDriver, PluginManifest};
 use crate::models::{
-    ConnectionParams, DataTypeInfo, ForeignKey, Index, QueryResult, RoutineInfo, RoutineParameter,
-    TableColumn, TableInfo, TableSchema, ViewInfo,
+    ColumnDefinition, ConnectionParams, DataTypeInfo, ForeignKey, Index, QueryResult, RoutineInfo,
+    RoutineParameter, TableColumn, TableInfo, TableSchema, ViewInfo,
 };
 use crate::plugins::rpc::{JsonRpcRequest, JsonRpcResponse};
 
@@ -244,6 +244,41 @@ impl DatabaseDriver for RpcDriver {
     async fn delete_record(&self, params: &ConnectionParams, table: &str, pk_col: &str, pk_val: serde_json::Value, schema: Option<&str>) -> Result<u64, String> {
         let res = self.process.call("delete_record", json!({ "params": params, "table": table, "pk_col": pk_col, "pk_val": pk_val, "schema": schema })).await?;
         serde_json::from_value(res).map_err(|e| e.to_string())
+    }
+
+    async fn get_create_table_sql(&self, table_name: &str, columns: Vec<ColumnDefinition>, schema: Option<&str>) -> Result<Vec<String>, String> {
+        let res = self.process.call("get_create_table_sql", json!({ "table_name": table_name, "columns": columns, "schema": schema })).await?;
+        serde_json::from_value(res).map_err(|e| e.to_string())
+    }
+
+    async fn get_add_column_sql(&self, table: &str, column: ColumnDefinition, schema: Option<&str>) -> Result<Vec<String>, String> {
+        let res = self.process.call("get_add_column_sql", json!({ "table": table, "column": column, "schema": schema })).await?;
+        serde_json::from_value(res).map_err(|e| e.to_string())
+    }
+
+    async fn get_alter_column_sql(&self, table: &str, old_column: ColumnDefinition, new_column: ColumnDefinition, schema: Option<&str>) -> Result<Vec<String>, String> {
+        let res = self.process.call("get_alter_column_sql", json!({ "table": table, "old_column": old_column, "new_column": new_column, "schema": schema })).await?;
+        serde_json::from_value(res).map_err(|e| e.to_string())
+    }
+
+    async fn get_create_index_sql(&self, table: &str, index_name: &str, columns: Vec<String>, is_unique: bool, schema: Option<&str>) -> Result<Vec<String>, String> {
+        let res = self.process.call("get_create_index_sql", json!({ "table": table, "index_name": index_name, "columns": columns, "is_unique": is_unique, "schema": schema })).await?;
+        serde_json::from_value(res).map_err(|e| e.to_string())
+    }
+
+    async fn get_create_foreign_key_sql(&self, table: &str, fk_name: &str, column: &str, ref_table: &str, ref_column: &str, on_delete: Option<&str>, on_update: Option<&str>, schema: Option<&str>) -> Result<Vec<String>, String> {
+        let res = self.process.call("get_create_foreign_key_sql", json!({ "table": table, "fk_name": fk_name, "column": column, "ref_table": ref_table, "ref_column": ref_column, "on_delete": on_delete, "on_update": on_update, "schema": schema })).await?;
+        serde_json::from_value(res).map_err(|e| e.to_string())
+    }
+
+    async fn drop_index(&self, params: &ConnectionParams, table: &str, index_name: &str, schema: Option<&str>) -> Result<(), String> {
+        self.process.call("drop_index", json!({ "params": params, "table": table, "index_name": index_name, "schema": schema })).await?;
+        Ok(())
+    }
+
+    async fn drop_foreign_key(&self, params: &ConnectionParams, table: &str, fk_name: &str, schema: Option<&str>) -> Result<(), String> {
+        self.process.call("drop_foreign_key", json!({ "params": params, "table": table, "fk_name": fk_name, "schema": schema })).await?;
+        Ok(())
     }
 
     async fn get_schema_snapshot(&self, params: &ConnectionParams, schema: Option<&str>) -> Result<Vec<TableSchema>, String> {

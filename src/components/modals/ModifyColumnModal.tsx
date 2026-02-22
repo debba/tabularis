@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { X, Save, Loader2, AlertTriangle } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
@@ -33,6 +33,27 @@ interface ModifyColumnModalProps {
   } | null;
 }
 
+interface ColumnDefinition {
+  name: string;
+  data_type: string;
+  is_nullable: boolean;
+  is_pk: boolean;
+  is_auto_increment: boolean;
+  default_value: string | null;
+}
+
+function buildColumnDefinition(form: ColumnDef): ColumnDefinition {
+  const typeDef = `${form.type}${form.length ? `(${form.length})` : ""}`;
+  return {
+    name: form.name,
+    data_type: typeDef,
+    is_nullable: form.isNullable,
+    is_pk: form.isPk,
+    is_auto_increment: form.isAutoInc,
+    default_value: form.defaultValue || null,
+  };
+}
+
 export const ModifyColumnModal = ({
   isOpen,
   onClose,
@@ -55,11 +76,11 @@ export const ModifyColumnModal = ({
   // Parse initial type/length from column.data_type if possible
   // e.g. "varchar(255)" -> type="VARCHAR", length="255"
   const parseType = (fullType: string) => {
-    const match = fullType.match(/^([a-zA-Z0-9_]+)(?:\((.+)\))?$/);
+    const match = fullType.match(/^([a-zA-Z0-9_ ]+)(?:\((.+)\))?$/);
     if (match) {
-      return { type: match[1].toUpperCase(), length: match[2] || "" };
+      return { type: match[1].toUpperCase().trim(), length: match[2] || "" };
     }
-    return { type: fullType.toUpperCase(), length: "" };
+    return { type: fullType.toUpperCase().trim(), length: "" };
   };
 
   const initial = useMemo(() => {
@@ -70,7 +91,7 @@ export const ModifyColumnModal = ({
         type,
         length,
         isNullable: column.is_nullable,
-        defaultValue: "", // We don't have this info easily from get_columns yet
+        defaultValue: "",
         isPk: column.is_pk || false,
         isAutoInc: column.is_auto_increment || false,
       };
@@ -89,127 +110,62 @@ export const ModifyColumnModal = ({
   const [form, setForm] = useState<ColumnDef>(initial);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [sqlPreview, setSqlPreview] = useState("-- ...");
 
   // Reset form when modal opens/changes
   useEffect(() => {
     setForm(initial);
     setError("");
+    setSqlPreview("-- ...");
   }, [initial, isOpen]);
 
-  const sqlPreview = useMemo(() => {
-    if (!form.name) return "-- " + t("modifyColumn.nameRequired");
+  // Generate SQL preview via backend
+  const generatePreview = useCallback(async () => {
+    if (!form.name) {
+      setSqlPreview("-- " + t("modifyColumn.nameRequired"));
+      return;
+    }
 
-    const q = driver === "mysql" || driver === "mariadb" ? "`" : '"';
-    const typeDef = `${form.type}${form.length ? `(${form.length})` : ""}`;
-    const nullableDef = form.isNullable
-      ? driver === "mysql"
-        ? "NULL"
-        : ""
-      : "NOT NULL"; // MySQL explicit NULL is ok, Postgres default is NULL
-    const defaultDef = form.defaultValue
-      ? `DEFAULT ${!isNaN(Number(form.defaultValue)) ? form.defaultValue : `'${form.defaultValue}'`}`
-      : "";
-
-    // Constraints logic
-    let constraintsDef = "";
-
-    // ADD COLUMN logic
-    if (!isEdit) {
-      if (driver === "mysql" || driver === "mariadb") {
-        if (form.isPk) constraintsDef += " PRIMARY KEY";
-        if (form.isAutoInc) constraintsDef += " AUTO_INCREMENT";
-      } else if (driver === "sqlite") {
-        if (form.isPk) {
-          constraintsDef += " PRIMARY KEY";
-          if (form.isAutoInc) constraintsDef += " AUTOINCREMENT";
-        }
-      } else if (driver === "postgres") {
-        if (form.isPk) constraintsDef += " PRIMARY KEY";
-        // Postgres AUTO_INCREMENT is handled via type (SERIAL/BIGSERIAL) usually, or GENERATED.
-        // Logic below handles type change for SERIAL.
+    try {
+      let stmts: string[];
+      if (isEdit) {
+        const oldCol = buildColumnDefinition({
+          name: column!.name,
+          type: parseType(column!.data_type).type,
+          length: parseType(column!.data_type).length,
+          isNullable: column!.is_nullable,
+          defaultValue: "",
+          isPk: column!.is_pk,
+          isAutoInc: column!.is_auto_increment,
+        });
+        const newCol = buildColumnDefinition(form);
+        stmts = await invoke<string[]>("get_alter_column_sql", {
+          connectionId,
+          table: tableName,
+          oldColumn: oldCol,
+          newColumn: newCol,
+          ...(activeSchema ? { schema: activeSchema } : {}),
+        });
+      } else {
+        const col = buildColumnDefinition(form);
+        stmts = await invoke<string[]>("get_add_column_sql", {
+          connectionId,
+          table: tableName,
+          column: col,
+          ...(activeSchema ? { schema: activeSchema } : {}),
+        });
       }
+      setSqlPreview(stmts.map((s) => s + ";").join("\n"));
+    } catch (e) {
+      setSqlPreview("-- " + String(e));
     }
+  }, [form, isEdit, column, connectionId, tableName, activeSchema, t]);
 
-    // Type override for Postgres AutoInc
-    let finalType = typeDef;
-    if (driver === "postgres" && form.isAutoInc && !isEdit) {
-      if (form.type === "INTEGER") finalType = "SERIAL";
-      if (form.type === "BIGINT") finalType = "BIGSERIAL";
-    }
-
-    // Combine definitions
-
-    if (!isEdit) {
-      // ADD COLUMN
-      // Note: SQLite ADD COLUMN does not support PRIMARY KEY or UNIQUE constraints usually (unless simple).
-      // Postgres ADD COLUMN allows PRIMARY KEY.
-      return `ALTER TABLE ${q}${tableName}${q} ADD COLUMN ${q}${form.name}${q} ${finalType} ${nullableDef} ${defaultDef}${constraintsDef};`;
-    } else {
-      // MODIFY COLUMN
-      if (driver === "mysql" || driver === "mariadb") {
-        // MySQL: ALTER TABLE t CHANGE old new def [constraints]
-        // Re-build full definition including constraints
-        let mysqlConstraints = "";
-        if (form.isAutoInc) mysqlConstraints += " AUTO_INCREMENT";
-        // Note: PRIMARY KEY in MySQL MODIFY/CHANGE is tricky if it already exists.
-        // Usually you use ADD PRIMARY KEY or DROP PRIMARY KEY.
-        // But if it's a single column PK change, sometimes it works?
-        // Safer to warn or just omit PK from CHANGE and let user manage keys separately?
-        // For now, let's omit PK in CHANGE unless we are sure.
-        // But AUTO_INCREMENT requires Key.
-
-        // If name is same, use MODIFY COLUMN to avoid repetition and potential confusion
-        if (column?.name === form.name) {
-          return `ALTER TABLE ${q}${tableName}${q} MODIFY COLUMN ${q}${form.name}${q} ${finalType} ${nullableDef} ${defaultDef}${mysqlConstraints};`;
-        } else {
-          return `ALTER TABLE ${q}${tableName}${q} CHANGE ${q}${column?.name}${q} ${q}${form.name}${q} ${finalType} ${nullableDef} ${defaultDef}${mysqlConstraints};`;
-        }
-      } else if (driver === "postgres") {
-        // Postgres
-        const statements = [];
-
-        // Rename
-        if (column?.name !== form.name) {
-          statements.push(
-            `ALTER TABLE ${q}${tableName}${q} RENAME COLUMN ${q}${column?.name}${q} TO ${q}${form.name}${q};`,
-          );
-        }
-
-        // Type
-        const { type: oldType } = parseType(column?.data_type || "");
-        if (
-          oldType !== form.type ||
-          parseType(column?.data_type || "").length !== form.length
-        ) {
-          statements.push(
-            `ALTER TABLE ${q}${tableName}${q} ALTER COLUMN ${q}${form.name}${q} TYPE ${finalType} USING ${q}${form.name}${q}::${form.type};`,
-          );
-        }
-
-        // Nullable
-        if (column?.is_nullable !== form.isNullable) {
-          statements.push(
-            `ALTER TABLE ${q}${tableName}${q} ALTER COLUMN ${q}${form.name}${q} ${form.isNullable ? "DROP" : "SET"} NOT NULL;`,
-          );
-        }
-
-        // Default
-        if (form.defaultValue) {
-          statements.push(
-            `ALTER TABLE ${q}${tableName}${q} ALTER COLUMN ${q}${form.name}${q} SET ${defaultDef};`,
-          );
-        }
-
-        // PK / AutoInc not supported well in MODIFY for Postgres here (requires sequence manipulation / constraint management)
-
-        if (statements.length === 0) return "-- " + t("modifyColumn.noChanges");
-        return statements.join("\n");
-      } else if (driver === "sqlite") {
-        return "-- SQLite modification is limited. Rename only supported via RENAME COLUMN.\n-- Full modification requires table recreation.";
-      }
-    }
-    return "-- " + t("modifyColumn.unsupported");
-  }, [form, driver, isEdit, tableName, column, t]);
+  // Debounced preview generation
+  useEffect(() => {
+    const timer = setTimeout(generatePreview, 300);
+    return () => clearTimeout(timer);
+  }, [generatePreview]);
 
   const handleSubmit = async () => {
     if (!form.name.trim()) {
@@ -220,42 +176,41 @@ export const ModifyColumnModal = ({
     setError("");
 
     try {
-      if (driver === "sqlite" && isEdit && form.name !== column?.name) {
-        // Special case for SQLite Rename
-        const q = '"';
-        await invoke("execute_query", {
+      let stmts: string[];
+      if (isEdit) {
+        const oldCol = buildColumnDefinition({
+          name: column!.name,
+          type: parseType(column!.data_type).type,
+          length: parseType(column!.data_type).length,
+          isNullable: column!.is_nullable,
+          defaultValue: "",
+          isPk: column!.is_pk,
+          isAutoInc: column!.is_auto_increment,
+        });
+        const newCol = buildColumnDefinition(form);
+        stmts = await invoke<string[]>("get_alter_column_sql", {
           connectionId,
-          query: `ALTER TABLE ${q}${tableName}${q} RENAME COLUMN ${q}${column?.name}${q} TO ${q}${form.name}${q}`,
+          table: tableName,
+          oldColumn: oldCol,
+          newColumn: newCol,
           ...(activeSchema ? { schema: activeSchema } : {}),
         });
-      } else if (driver === "sqlite" && isEdit) {
-        throw new Error(t("modifyColumn.sqliteWarn"));
       } else {
-        // Run the generated SQL
-        // Postgres might generate multiple statements joined by \n
-        // The backend execute_query might handle one at a time or script?
-        // Usually execute_query runs one statement. If we have multiple for Postgres, we need to split or run them sequentially.
-        // My backend currently executes strictly one statement usually unless split.
-        // Let's assume splitQueries logic on frontend or sequential calls.
+        const col = buildColumnDefinition(form);
+        stmts = await invoke<string[]>("get_add_column_sql", {
+          connectionId,
+          table: tableName,
+          column: col,
+          ...(activeSchema ? { schema: activeSchema } : {}),
+        });
+      }
 
-        if (driver === "postgres" && isEdit) {
-          const statements = sqlPreview
-            .split("\n")
-            .filter((s) => s.trim() && !s.startsWith("--"));
-          for (const sql of statements) {
-            await invoke("execute_query", {
-              connectionId,
-              query: sql,
-              ...(activeSchema ? { schema: activeSchema } : {}),
-            });
-          }
-        } else {
-          await invoke("execute_query", {
-            connectionId,
-            query: sqlPreview,
-            ...(activeSchema ? { schema: activeSchema } : {}),
-          });
-        }
+      for (const sql of stmts) {
+        await invoke("execute_query", {
+          connectionId,
+          query: sql,
+          ...(activeSchema ? { schema: activeSchema } : {}),
+        });
       }
 
       onSuccess();

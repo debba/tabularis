@@ -996,6 +996,7 @@ impl MysqlDriver {
                     views: true,
                     routines: true,
                     file_based: false,
+                    identifier_quote: "`".into(),
                 },
             },
         }
@@ -1109,6 +1110,189 @@ impl DatabaseDriver for MysqlDriver {
 
     async fn fetch_blob_as_data_url(&self, params: &crate::models::ConnectionParams, table: &str, col_name: &str, pk_col: &str, pk_val: serde_json::Value, _schema: Option<&str>) -> Result<String, String> {
         fetch_blob_column_as_data_url(params, table, col_name, pk_col, pk_val).await
+    }
+
+    async fn get_create_table_sql(
+        &self,
+        table_name: &str,
+        columns: Vec<crate::models::ColumnDefinition>,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let mut col_defs = Vec::new();
+        let mut pk_cols = Vec::new();
+        for col in &columns {
+            let mut def = format!("`{}` {}", escape_identifier(&col.name), col.data_type);
+            if !col.is_nullable {
+                def.push_str(" NOT NULL");
+            }
+            if col.is_auto_increment {
+                def.push_str(" AUTO_INCREMENT");
+            }
+            if let Some(default) = &col.default_value {
+                def.push_str(&format!(" DEFAULT {}", default));
+            }
+            col_defs.push(def);
+            if col.is_pk {
+                pk_cols.push(format!("`{}`", escape_identifier(&col.name)));
+            }
+        }
+        if !pk_cols.is_empty() {
+            col_defs.push(format!("PRIMARY KEY ({})", pk_cols.join(", ")));
+        }
+        Ok(vec![format!(
+            "CREATE TABLE `{}` (\n  {}\n)",
+            escape_identifier(table_name),
+            col_defs.join(",\n  ")
+        )])
+    }
+
+    async fn get_add_column_sql(
+        &self,
+        table: &str,
+        column: crate::models::ColumnDefinition,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let mut def = format!(
+            "ALTER TABLE `{}` ADD COLUMN `{}` {}",
+            escape_identifier(table),
+            escape_identifier(&column.name),
+            column.data_type
+        );
+        if !column.is_nullable {
+            def.push_str(" NOT NULL");
+        } else {
+            def.push_str(" NULL");
+        }
+        if column.is_auto_increment {
+            def.push_str(" AUTO_INCREMENT");
+        }
+        if let Some(default) = &column.default_value {
+            def.push_str(&format!(" DEFAULT {}", default));
+        }
+        if column.is_pk {
+            def.push_str(" PRIMARY KEY");
+        }
+        Ok(vec![def])
+    }
+
+    async fn get_alter_column_sql(
+        &self,
+        table: &str,
+        old_column: crate::models::ColumnDefinition,
+        new_column: crate::models::ColumnDefinition,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let mut def = String::new();
+        if old_column.name != new_column.name {
+            def.push_str(&format!(
+                "ALTER TABLE `{}` CHANGE `{}` `{}` {}",
+                escape_identifier(table),
+                escape_identifier(&old_column.name),
+                escape_identifier(&new_column.name),
+                new_column.data_type
+            ));
+        } else {
+            def.push_str(&format!(
+                "ALTER TABLE `{}` MODIFY COLUMN `{}` {}",
+                escape_identifier(table),
+                escape_identifier(&new_column.name),
+                new_column.data_type
+            ));
+        }
+        if !new_column.is_nullable {
+            def.push_str(" NOT NULL");
+        } else {
+            def.push_str(" NULL");
+        }
+        if new_column.is_auto_increment {
+            def.push_str(" AUTO_INCREMENT");
+        }
+        if let Some(default) = &new_column.default_value {
+            def.push_str(&format!(" DEFAULT {}", default));
+        }
+        Ok(vec![def])
+    }
+
+    async fn get_create_index_sql(
+        &self,
+        table: &str,
+        index_name: &str,
+        columns: Vec<String>,
+        is_unique: bool,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let unique = if is_unique { "UNIQUE " } else { "" };
+        let cols: Vec<String> = columns
+            .iter()
+            .map(|c| format!("`{}`", escape_identifier(c)))
+            .collect();
+        Ok(vec![format!(
+            "CREATE {}INDEX `{}` ON `{}` ({})",
+            unique,
+            escape_identifier(index_name),
+            escape_identifier(table),
+            cols.join(", ")
+        )])
+    }
+
+    async fn get_create_foreign_key_sql(
+        &self,
+        table: &str,
+        fk_name: &str,
+        column: &str,
+        ref_table: &str,
+        ref_column: &str,
+        on_delete: Option<&str>,
+        on_update: Option<&str>,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let mut sql = format!(
+            "ALTER TABLE `{}` ADD CONSTRAINT `{}` FOREIGN KEY (`{}`) REFERENCES `{}` (`{}`)",
+            escape_identifier(table),
+            escape_identifier(fk_name),
+            escape_identifier(column),
+            escape_identifier(ref_table),
+            escape_identifier(ref_column)
+        );
+        if let Some(action) = on_delete {
+            sql.push_str(&format!(" ON DELETE {}", action));
+        }
+        if let Some(action) = on_update {
+            sql.push_str(&format!(" ON UPDATE {}", action));
+        }
+        Ok(vec![sql])
+    }
+
+    async fn drop_index(
+        &self,
+        params: &crate::models::ConnectionParams,
+        table: &str,
+        index_name: &str,
+        _schema: Option<&str>,
+    ) -> Result<(), String> {
+        let sql = format!(
+            "DROP INDEX `{}` ON `{}`",
+            escape_identifier(index_name),
+            escape_identifier(table)
+        );
+        execute_query(params, &sql, None, 1).await?;
+        Ok(())
+    }
+
+    async fn drop_foreign_key(
+        &self,
+        params: &crate::models::ConnectionParams,
+        table: &str,
+        fk_name: &str,
+        _schema: Option<&str>,
+    ) -> Result<(), String> {
+        let sql = format!(
+            "ALTER TABLE `{}` DROP FOREIGN KEY `{}`",
+            escape_identifier(table),
+            escape_identifier(fk_name)
+        );
+        execute_query(params, &sql, None, 1).await?;
+        Ok(())
     }
 
     async fn get_all_columns_batch(&self, params: &crate::models::ConnectionParams, _schema: Option<&str>) -> Result<HashMap<String, Vec<crate::models::TableColumn>>, String> {

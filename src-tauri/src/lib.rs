@@ -221,6 +221,14 @@ pub fn run() {
             ai::explain_ai_query,
             ai::get_ai_models,
             commands::get_schema_snapshot,
+            // DDL generation
+            commands::get_create_table_sql,
+            commands::get_add_column_sql,
+            commands::get_alter_column_sql,
+            commands::get_create_index_sql,
+            commands::get_create_foreign_key_sql,
+            commands::drop_index_action,
+            commands::drop_foreign_key_action,
             // Routines
             commands::get_routines,
             commands::get_routine_parameters,

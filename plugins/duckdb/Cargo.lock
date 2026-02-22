@@ -1794,6 +1794,7 @@ dependencies = [
 name = "tabularis-duckdb-plugin"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "duckdb",
  "log",
  "serde",

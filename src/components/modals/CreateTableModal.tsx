@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Plus, Trash2, Save, Code, Loader2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
@@ -44,67 +44,44 @@ export const CreateTableModal = ({ isOpen, onClose, onSuccess }: CreateTableModa
     [dataTypes],
   );
 
-  const sqlPreview = useMemo(() => {
-    if (!tableName.trim()) return '-- ' + t('createTable.nameRequired');
-    if (columns.length === 0) return '-- ' + t('createTable.colRequired');
+  const [sqlPreview, setSqlPreview] = useState('-- ...');
 
-    let sql = `CREATE TABLE ${currentDriver === 'postgres' ? `"${tableName}"` : `\`${tableName}\``} (\n`;
-    
-    const colDefs = columns.map(col => {
-      let def = `  ${currentDriver === 'postgres' ? `"${col.name}"` : `\`${col.name}\``}`;
-      
-      // Type mapping / logic
-      let type = col.type;
-      
-      // Driver specific adjustments
-      if (currentDriver === 'postgres') {
-        if (col.isAutoInc && (type === 'INTEGER' || type === 'BIGINT')) {
-          type = type === 'BIGINT' ? 'BIGSERIAL' : 'SERIAL';
-        }
-      } else if (currentDriver === 'sqlite') {
-        if (col.isPk && col.isAutoInc) {
-          type = 'INTEGER'; // SQLite requirement for auto_increment
-        }
-      }
-
-      // Length
-      if (col.length && (type.includes('CHAR') || type === 'VARCHAR')) {
-        type += `(${col.length})`;
-      }
-
-      def += ` ${type}`;
-
-      // Constraints
-      if (currentDriver === 'sqlite' && col.isPk) {
-         def += ' PRIMARY KEY';
-         if (col.isAutoInc) def += ' AUTOINCREMENT';
-      } else {
-         if (!col.isNullable) def += ' NOT NULL';
-         
-         if (currentDriver === 'mysql' && col.isAutoInc) def += ' AUTO_INCREMENT';
-         
-         if (col.defaultValue) {
-            const isNum = !isNaN(Number(col.defaultValue));
-            def += ` DEFAULT ${isNum ? col.defaultValue : `'${col.defaultValue}'`}`;
-         }
-      }
-
-      return def;
-    });
-
-    sql += colDefs.join(',\n');
-
-    // Primary Keys (Non-SQLite or Composite or Standard)
-    if (currentDriver !== 'sqlite') {
-      const pks = columns.filter(c => c.isPk).map(c => currentDriver === 'postgres' ? `"${c.name}"` : `\`${c.name}\``);
-      if (pks.length > 0) {
-        sql += `,\n  PRIMARY KEY (${pks.join(', ')})`;
-      }
+  const generatePreview = useCallback(async () => {
+    if (!tableName.trim()) {
+      setSqlPreview('-- ' + t('createTable.nameRequired'));
+      return;
+    }
+    if (columns.length === 0) {
+      setSqlPreview('-- ' + t('createTable.colRequired'));
+      return;
     }
 
-    sql += '\n);';
-    return sql;
-  }, [tableName, columns, currentDriver, t]);
+    try {
+      const colDefs = columns.map(col => ({
+        name: col.name,
+        data_type: col.length ? `${col.type}(${col.length})` : col.type,
+        is_nullable: col.isNullable,
+        is_pk: col.isPk,
+        is_auto_increment: col.isAutoInc,
+        default_value: col.defaultValue || null,
+      }));
+
+      const stmts = await invoke<string[]>('get_create_table_sql', {
+        connectionId: activeConnectionId,
+        tableName,
+        columns: colDefs,
+        ...(activeSchema ? { schema: activeSchema } : {}),
+      });
+      setSqlPreview(stmts.map(s => s + ';').join('\n'));
+    } catch (e) {
+      setSqlPreview('-- ' + String(e));
+    }
+  }, [tableName, columns, activeConnectionId, activeSchema, t]);
+
+  useEffect(() => {
+    const timer = setTimeout(generatePreview, 300);
+    return () => clearTimeout(timer);
+  }, [generatePreview]);
 
   const handleAddColumn = () => {
     setColumns([...columns, {
@@ -139,11 +116,30 @@ export const CreateTableModal = ({ isOpen, onClose, onSuccess }: CreateTableModa
     setError('');
 
     try {
-        await invoke('execute_query', {
-            connectionId: activeConnectionId,
-            query: sqlPreview,
-            ...(activeSchema ? { schema: activeSchema } : {}),
+        const colDefs = columns.map(col => ({
+          name: col.name,
+          data_type: col.length ? `${col.type}(${col.length})` : col.type,
+          is_nullable: col.isNullable,
+          is_pk: col.isPk,
+          is_auto_increment: col.isAutoInc,
+          default_value: col.defaultValue || null,
+        }));
+
+        const stmts = await invoke<string[]>('get_create_table_sql', {
+          connectionId: activeConnectionId,
+          tableName,
+          columns: colDefs,
+          ...(activeSchema ? { schema: activeSchema } : {}),
         });
+
+        for (const sql of stmts) {
+          await invoke('execute_query', {
+            connectionId: activeConnectionId,
+            query: sql,
+            ...(activeSchema ? { schema: activeSchema } : {}),
+          });
+        }
+
         onSuccess();
         onClose();
         // Reset state

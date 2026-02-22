@@ -173,6 +173,16 @@ pub struct ViewInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ColumnDefinition {
+    pub name: String,
+    pub data_type: String,
+    pub is_nullable: bool,
+    pub is_pk: bool,
+    pub is_auto_increment: bool,
+    pub default_value: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DataTypeInfo {
     pub name: String,
     pub category: String, // "numeric", "string", "date", "binary", "json", "spatial", "other"

@@ -7,7 +7,7 @@ use sqlx::{AnyConnection, Connection};
 use std::str::FromStr;
 
 use crate::models::{
-    ConnectionParams, DataTypeInfo, ForeignKey, Index, QueryResult, RoutineInfo,
+    ColumnDefinition, ConnectionParams, DataTypeInfo, ForeignKey, Index, QueryResult, RoutineInfo,
     RoutineParameter, TableColumn, TableInfo, TableSchema, ViewInfo,
 };
 
@@ -23,6 +23,13 @@ pub struct DriverCapabilities {
     pub routines: bool,
     /// File-based database (e.g. SQLite); no host/port required.
     pub file_based: bool,
+    /// Character used to quote identifiers (e.g. `"` for PostgreSQL, `` ` `` for MySQL).
+    #[serde(default = "default_double_quote")]
+    pub identifier_quote: String,
+}
+
+fn default_double_quote() -> String {
+    "\"".to_string()
 }
 
 /// Metadata describing a registered driver plugin.
@@ -240,6 +247,81 @@ pub trait DatabaseDriver: Send + Sync {
         _schema: Option<&str>,
     ) -> Result<String, String> {
         Err("BLOB preview not supported by this driver".into())
+    }
+
+    // --- DDL generation (SQL preview) ----------------------------------------
+
+    async fn get_create_table_sql(
+        &self,
+        _table_name: &str,
+        _columns: Vec<ColumnDefinition>,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        Err("DDL generation not supported".into())
+    }
+
+    async fn get_add_column_sql(
+        &self,
+        _table: &str,
+        _column: ColumnDefinition,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        Err("DDL generation not supported".into())
+    }
+
+    async fn get_alter_column_sql(
+        &self,
+        _table: &str,
+        _old_column: ColumnDefinition,
+        _new_column: ColumnDefinition,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        Err("DDL generation not supported".into())
+    }
+
+    async fn get_create_index_sql(
+        &self,
+        _table: &str,
+        _index_name: &str,
+        _columns: Vec<String>,
+        _is_unique: bool,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        Err("DDL generation not supported".into())
+    }
+
+    async fn get_create_foreign_key_sql(
+        &self,
+        _table: &str,
+        _fk_name: &str,
+        _column: &str,
+        _ref_table: &str,
+        _ref_column: &str,
+        _on_delete: Option<&str>,
+        _on_update: Option<&str>,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        Err("DDL generation not supported".into())
+    }
+
+    async fn drop_index(
+        &self,
+        _params: &ConnectionParams,
+        _table: &str,
+        _index_name: &str,
+        _schema: Option<&str>,
+    ) -> Result<(), String> {
+        Err("Not supported".into())
+    }
+
+    async fn drop_foreign_key(
+        &self,
+        _params: &ConnectionParams,
+        _table: &str,
+        _fk_name: &str,
+        _schema: Option<&str>,
+    ) -> Result<(), String> {
+        Err("Not supported".into())
     }
 
     // --- ER diagram (batch) -------------------------------------------------
