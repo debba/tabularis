@@ -4,12 +4,21 @@
 
 # tabularis
 
+<p align="center">
+  
 ![](https://img.shields.io/github/release/debba/tabularis.svg?style=flat)
 ![](https://img.shields.io/github/downloads/debba/tabularis/total.svg?style=flat)
 ![Build & Release](https://github.com/debba/tabularis/workflows/Release/badge.svg)
 [![Known Vulnerabilities](https://snyk.io//test/github/debba/tabularis/badge.svg?targetFile=package.json)](https://snyk.io//test/github/debba/tabularis?targetFile=package.json)
 [![Discord](https://img.shields.io/discord/1470772941296894128?color=5865F2&logo=discord&logoColor=white)](https://discord.gg/YrZPHAwMSG)
 [![Gitster](https://gitster.dev/api/repositories/badge/cmlko1jr60005ne4yh7i7oy3e)](https://gitster.dev/repo/debba/tabularis)
+
+</p>
+
+<p align="center">
+  <a href="https://snapcraft.io/tabularis"><img src="https://img.shields.io/badge/snap-tabularis-blue?logo=snapcraft" alt="Snap Store" /></a>
+  <a href="https://aur.archlinux.org/packages/tabularis-bin"><img src="https://img.shields.io/badge/AUR-tabularis--bin-1793D1?logo=archlinux&logoColor=white" alt="AUR" /></a>
+</p>
 
 A lightweight, developer-focused database management tool, built with Tauri and React.
 
@@ -23,7 +32,7 @@ A lightweight, developer-focused database management tool, built with Tauri and 
 
 ## Release Download:
 
-[![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/debba/tabularis/releases/download/v0.8.14/tabularis_0.8.14_x64-setup.exe) [![macOS](https://img.shields.io/badge/macOS-Download-black?logo=apple)](https://github.com/debba/tabularis/releases/download/v0.8.14/tabularis_0.8.14_x64.dmg) [![Linux](https://img.shields.io/badge/Linux-Download-green?logo=linux)](https://github.com/debba/tabularis/releases/download/v0.8.14/tabularis_0.8.14_amd64.AppImage)
+[![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/debba/tabularis/releases/download/v0.8.15/tabularis_0.8.15_x64-setup.exe) [![macOS](https://img.shields.io/badge/macOS-Download-black?logo=apple)](https://github.com/debba/tabularis/releases/download/v0.8.15/tabularis_0.8.15_x64.dmg) [![Linux](https://img.shields.io/badge/Linux-Download-green?logo=linux)](https://github.com/debba/tabularis/releases/download/v0.8.15/tabularis_0.8.15_amd64.AppImage)
 
 ## Table of Contents
 
@@ -291,7 +300,6 @@ npm run tauri build
 - [ ] [Query History](https://github.com/debba/tabularis/issues/18)
 - [ ] [Better SQLite Support](https://github.com/debba/tabularis/issues/17)
 - [ ] [Better PostgreSQL Support](https://github.com/debba/tabularis/issues/16)
-
 ## License
 
 Apache License 2.0

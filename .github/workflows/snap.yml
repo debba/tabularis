@@ -1,0 +1,36 @@
+name: Publish to Snap Store
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  snap-publish:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get Release Version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Download .deb Artifact
+        run: |
+          wget "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/tabularis_${{ steps.version.outputs.version }}_amd64.deb" \
+            -O tabularis.deb
+
+      - name: Set version in snapcraft.yaml
+        run: |
+          sed -i "s/^version:.*/version: '${{ steps.version.outputs.version }}'/" snap/snapcraft.yaml
+
+      - name: Build snap
+        uses: snapcore/action-build@v1
+        id: build
+
+      - name: Publish snap
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAP_STORE_TOKEN }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: stable

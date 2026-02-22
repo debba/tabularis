@@ -32,6 +32,7 @@ export const SearchableSelect = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const updatePosition = useCallback(() => {
     if (buttonRef.current) {
@@ -49,7 +50,9 @@ export const SearchableSelect = ({
     const handleClickOutside = (event: MouseEvent) => {
       if (
         containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
+        !containerRef.current.contains(event.target as Node) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
       }
@@ -103,6 +106,7 @@ export const SearchableSelect = ({
 
   const dropdown = isOpen && !disabled && (
     <div
+      ref={dropdownRef}
       className="fixed z-[200] bg-elevated border border-strong rounded-lg shadow-xl max-h-60 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-100"
       style={{
         top: dropdownPosition.top,

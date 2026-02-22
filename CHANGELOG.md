@@ -1,3 +1,22 @@
+## [0.8.15](https://github.com/debba/tabularis/compare/v0.8.14...v0.8.15) (2026-02-21)
+
+
+### Bug Fixes
+
+* **ui:** hide set-empty button for blob fields ([989e5f9](https://github.com/debba/tabularis/commit/989e5f9dbda5497bad3949712b3811f36f18b714))
+
+
+### Features
+
+* **blob:** add blob parsing and payload helpers ([e5e6e66](https://github.com/debba/tabularis/commit/e5e6e66e69873bcda2e6499f04c4567718222ea8))
+* **blob:** add image preview and fetch blob as data URL ([8e0d677](https://github.com/debba/tabularis/commit/8e0d677ecb2ef5fb91bea116390d43634fce065e))
+* **blob:** enforce configurable max blob size and show errors ([86039cc](https://github.com/debba/tabularis/commit/86039ccb9caa725a4b3109ec8f519f1f10cdf3d1))
+* **blob:** handle large BLOBs with backend truncation and UI support ([68848d5](https://github.com/debba/tabularis/commit/68848d5a722a9384bc7a0f5818ee499425ae9c0e)), closes [#36](https://github.com/debba/tabularis/issues/36)
+* **blob:** improve large BLOB handling with preview wire format ([9de0a4e](https://github.com/debba/tabularis/commit/9de0a4ecc2d6cf49020698bb4fffc2f4de7bc9da))
+* **pool-manager:** add default MySQL connection params ([f2fc644](https://github.com/debba/tabularis/commit/f2fc64413ec6754e838109cda425503b1aacce32))
+
+
+
 ## [0.8.14](https://github.com/debba/tabularis/compare/v0.8.13...v0.8.14) (2026-02-17)
 
 
