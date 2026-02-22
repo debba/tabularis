@@ -7,7 +7,6 @@ use tokio::task::AbortHandle;
 use urlencoding::encode;
 use uuid::Uuid;
 
-use crate::drivers::{mysql, postgres, sqlite};
 use crate::keychain_utils;
 use crate::models::{
     ColumnDefinition, ConnectionParams, ForeignKey, Index, QueryResult, RoutineInfo,
@@ -2286,20 +2285,13 @@ pub async fn disconnect_connection<R: Runtime>(
 // --- Type Registry ---
 
 #[tauri::command]
-pub fn get_data_types(driver: String) -> crate::models::DataTypeRegistry {
+pub async fn get_data_types(driver: String) -> Result<crate::models::DataTypeRegistry, String> {
     log::debug!("Fetching data types for driver: {}", driver);
 
-    let types = match driver.to_lowercase().as_str() {
-        "postgres" => postgres::types::get_data_types(),
-        "mysql" | "mariadb" => mysql::types::get_data_types(),
-        "sqlite" => sqlite::types::get_data_types(),
-        _ => {
-            log::warn!("Unknown driver: {}, returning empty type list", driver);
-            vec![]
-        }
-    };
+    let drv = driver_for(&driver).await?;
+    let types = drv.get_data_types();
 
-    crate::models::DataTypeRegistry { driver, types }
+    Ok(crate::models::DataTypeRegistry { driver, types })
 }
 
 

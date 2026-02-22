@@ -187,10 +187,11 @@ fn main() {
                 );
             }
             "execute_query" => {
-                let query = params
+                let raw_query = params
                     .get("query")
                     .and_then(|q| q.as_str())
                     .unwrap_or("");
+                let query = inject_rowid_for_pk_less_tables(conn, raw_query, &schema);
                 let limit = params
                     .get("limit")
                     .and_then(|l| l.as_u64())
@@ -200,7 +201,7 @@ fn main() {
                     .and_then(|p| p.as_u64())
                     .map(|p| p as u32)
                     .unwrap_or(1);
-                match execute_query(conn, query, limit, page) {
+                match execute_query(conn, &query, limit, page) {
                     Ok(v) => send_success(&mut stdout, id, v),
                     Err(e) => send_error(&mut stdout, id, -32012, &e),
                 }
@@ -596,6 +597,71 @@ fn remove_order_by(query: &str) -> String {
     }
 }
 
+/// Extracts a (possibly quoted) table name from the text immediately
+/// following `FROM `.  Returns `None` when the next token is `(` (subquery).
+fn extract_table_name_after_from(s: &str) -> Option<String> {
+    let s = s.trim_start();
+    if s.starts_with('(') {
+        return None; // subquery, not a bare table
+    }
+    if s.starts_with('"') {
+        // Quoted identifier — find closing quote
+        let end = s[1..].find('"')?;
+        Some(s[1..1 + end].to_string())
+    } else {
+        // Unquoted — take until whitespace, semicolon or closing paren
+        let end = s
+            .find(|c: char| c.is_whitespace() || c == ';' || c == ')')
+            .unwrap_or(s.len());
+        if end == 0 {
+            return None;
+        }
+        Some(s[..end].to_string())
+    }
+}
+
+/// Rewrites `SELECT * FROM <table>` patterns so that `rowid` is included in
+/// the result set for tables that lack an explicit primary key.
+///
+/// Only bare-table references are rewritten; `SELECT * FROM (subquery)` is
+/// left untouched because the outer projection inherits columns from the
+/// inner query where `rowid` was already injected.
+fn inject_rowid_for_pk_less_tables(conn: &Connection, query: &str, schema: &str) -> String {
+    let upper = query.to_uppercase();
+    let pattern = "SELECT * FROM ";
+
+    // Collect all match positions first.
+    let mut positions: Vec<usize> = Vec::new();
+    let mut search_start = 0;
+    while let Some(rel_pos) = upper[search_start..].find(pattern) {
+        positions.push(search_start + rel_pos);
+        search_start += rel_pos + pattern.len();
+    }
+
+    if positions.is_empty() {
+        return query.to_string();
+    }
+
+    // Process in reverse so earlier byte offsets stay valid after insertion.
+    let mut result = query.to_string();
+    let select_keyword_len = "SELECT ".len(); // 7
+
+    for &pos in positions.iter().rev() {
+        let after_from = &query[pos + pattern.len()..];
+        let Some(table_name) = extract_table_name_after_from(after_from) else {
+            continue;
+        };
+        let pks = get_primary_keys(conn, &table_name, schema);
+        if pks.is_empty() {
+            // Inject "rowid, " right after "SELECT " to form "SELECT rowid, * …"
+            let inject_pos = pos + select_keyword_len;
+            result.insert_str(inject_pos, "rowid, ");
+        }
+    }
+
+    result
+}
+
 // ---------------------------------------------------------------------------
 // Schema inspection
 // ---------------------------------------------------------------------------
@@ -624,48 +690,63 @@ fn get_tables(conn: &Connection, schema: &str) -> Result<JsonValue, String> {
 }
 
 /// Returns the set of primary-key column names for a table.
+///
+/// Uses `PRAGMA table_info` which is more reliable than `duckdb_constraints()`
+/// + `unnest()` — the latter can fail silently on certain DuckDB versions.
 fn get_primary_keys(
     conn: &Connection,
     table_name: &str,
-    schema: &str,
+    _schema: &str,
 ) -> std::collections::HashSet<String> {
     let mut set = std::collections::HashSet::new();
-    let Ok(mut stmt) = conn.prepare(
-        "SELECT unnest(constraint_column_names) AS column_name \
-         FROM duckdb_constraints() \
-         WHERE table_name = ? AND constraint_type = 'PRIMARY KEY' AND schema_name = ?",
-    ) else {
+    let query = format!(
+        "PRAGMA table_info('{}')",
+        table_name.replace('\'', "''")
+    );
+    let Ok(mut stmt) = conn.prepare(&query) else {
         return set;
     };
-    let Ok(iter) = stmt.query_map([table_name, schema], |row| row.get::<_, String>(0)) else {
+    // PRAGMA table_info columns: cid, name, type, notnull, dflt_value, pk
+    let Ok(iter) = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(1)?, row.get::<_, i32>(5)?))
+    }) else {
         return set;
     };
-    for col in iter.flatten() {
-        set.insert(col);
+    for row in iter.flatten() {
+        if row.1 > 0 {
+            set.insert(row.0);
+        }
     }
     set
 }
 
 /// Returns a map of table_name → set of PK column names for all tables in the schema.
+///
+/// Iterates over all tables and uses `PRAGMA table_info` for each one,
+/// matching the approach used by `get_primary_keys`.
 fn get_all_primary_keys(
     conn: &Connection,
     schema: &str,
 ) -> HashMap<String, std::collections::HashSet<String>> {
     let mut result: HashMap<String, std::collections::HashSet<String>> = HashMap::new();
-    let Ok(mut stmt) = conn.prepare(
-        "SELECT table_name, unnest(constraint_column_names) as col \
-         FROM duckdb_constraints() \
-         WHERE constraint_type = 'PRIMARY KEY' AND schema_name = ?",
+
+    // First, get all table names in the schema
+    let Ok(mut table_stmt) = conn.prepare(
+        "SELECT table_name FROM information_schema.tables \
+         WHERE table_schema = ? AND table_type = 'BASE TABLE'",
     ) else {
         return result;
     };
-    let Ok(iter) = stmt.query_map([schema], |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-    }) else {
+    let Ok(table_iter) = table_stmt.query_map([schema], |row| row.get::<_, String>(0)) else {
         return result;
     };
-    for row in iter.flatten() {
-        result.entry(row.0).or_default().insert(row.1);
+
+    let table_names: Vec<String> = table_iter.flatten().collect();
+    for table_name in table_names {
+        let pks = get_primary_keys(conn, &table_name, schema);
+        if !pks.is_empty() {
+            result.insert(table_name, pks);
+        }
     }
     result
 }
@@ -698,10 +779,15 @@ fn get_columns(
         .map_err(|e| e.to_string())?;
 
     let mut columns = Vec::new();
+    let mut has_explicit_pk = false;
+
     for c in col_iter {
         let (col_name, data_type, is_nullable, default_value) =
             c.map_err(|e| e.to_string())?;
         let is_pk = pk_cols.contains(&col_name);
+        if is_pk {
+            has_explicit_pk = true;
+        }
         let is_auto_increment = data_type.to_uppercase().contains("SERIAL")
             || default_value
                 .as_deref()
@@ -717,6 +803,21 @@ fn get_columns(
             "default_value": default_value,
         }));
     }
+
+    // DuckDB tables without an explicit PK still expose a virtual `rowid`
+    // column.  Prepend it so the frontend can use it as a row identifier
+    // for cell editing.
+    if !has_explicit_pk {
+        columns.insert(0, json!({
+            "name": "rowid",
+            "data_type": "BIGINT",
+            "is_pk": true,
+            "is_nullable": false,
+            "is_auto_increment": false,
+            "default_value": null,
+        }));
+    }
+
     Ok(json!(columns))
 }
 
