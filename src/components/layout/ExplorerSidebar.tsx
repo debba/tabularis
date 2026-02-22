@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { quoteIdentifier, quoteTableRef } from "../../utils/identifiers";
+import { quoteTableRef } from "../../utils/identifiers";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Database,
@@ -1299,7 +1299,6 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
           onSuccess={() => setSchemaVersion((v) => v + 1)}
           connectionId={activeConnectionId}
           tableName={createIndexModal.tableName}
-          driver={activeDriver || "sqlite"}
         />
       )}
 

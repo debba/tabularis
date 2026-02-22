@@ -11,7 +11,6 @@ interface CreateIndexModalProps {
   onSuccess: () => void;
   connectionId: string;
   tableName: string;
-  driver: string;
 }
 
 interface TableColumn {
@@ -24,7 +23,6 @@ export const CreateIndexModal = ({
   onSuccess,
   connectionId,
   tableName,
-  driver
 }: CreateIndexModalProps) => {
   const { t } = useTranslation();
   const { activeSchema } = useDatabase();
