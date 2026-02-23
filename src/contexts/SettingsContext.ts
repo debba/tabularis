@@ -25,6 +25,7 @@ export interface Settings {
   loggingEnabled?: boolean;
   maxLogEntries?: number;
   erDiagramDefaultLayout?: ERDiagramLayout;
+  activeExternalDrivers?: string[];
 }
 
 export interface SettingsContextType {

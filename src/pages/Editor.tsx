@@ -198,7 +198,7 @@ export const Editor = () => {
   const [editorHeight, setEditorHeight] = useState(300);
   const [isResultsCollapsed, setIsResultsCollapsed] = useState(false);
   const isDragging = useRef(false);
-  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const editorsRef = useRef<Record<string, Parameters<OnMount>[0]>>({});
   const [monacoInstance, setMonacoInstance] = useState<Monaco | null>(null);
 
   const [selectableQueries, setSelectableQueries] = useState<string[]>([]);
@@ -523,7 +523,7 @@ export const Editor = () => {
     }
 
     // Monaco Editor: handle selection and multi-query
-    if (!editorRef.current) {
+    if (!editorsRef.current[activeTab.id]) {
       // Fallback: use saved query when editor ref is not available (e.g. after tab restore)
       if (activeTab.query?.trim()) {
         const queries = splitQueries(activeTab.query);
@@ -535,7 +535,7 @@ export const Editor = () => {
       }
       return;
     }
-    const editor = editorRef.current;
+    const editor = editorsRef.current[activeTab.id];
     const selection = editor.getSelection();
     const selectedText = selection
       ? editor.getModel()?.getValueInRange(selection)
@@ -1265,8 +1265,8 @@ export const Editor = () => {
     });
   }, [activeTab, updateActiveTab, applyToAll]);
 
-  const handleEditorMount: OnMount = (editor, monaco) => {
-    editorRef.current = editor;
+  const handleEditorMount = (editor: Parameters<OnMount>[0], monaco: Monaco, tabId: string) => {
+    editorsRef.current[tabId] = editor;
     setMonacoInstance(monaco);
     editor.addAction({
       id: "run-selection",

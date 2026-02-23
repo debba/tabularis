@@ -249,7 +249,27 @@
     "error": "Error",
     "erDiagram": "Diagrama ER",
     "erDiagramDefaultLayout": "Diseño Predeterminado",
-    "erDiagramDefaultLayoutDesc": "Elige la dirección de diseño predeterminada para los diagramas ER"
+    "erDiagramDefaultLayoutDesc": "Elige la dirección de diseño predeterminada para los diagramas ER",
+    "plugins": {
+      "title": "Plugins",
+      "available": "Plugins Disponibles",
+      "availableDesc": "Explora e instala plugins del registro.",
+      "refresh": "Actualizar",
+      "loadingRegistry": "Cargando registro de plugins...",
+      "registryError": "Error al cargar el registro",
+      "installed": "Instalado",
+      "by": "por",
+      "platformNotSupported": "No disponible para tu plataforma",
+      "update": "Actualizar",
+      "install": "Instalar",
+      "upToDate": "Actualizado",
+      "noPlugins": "No hay plugins disponibles en el registro.",
+      "installedDrivers": "Drivers Instalados",
+      "installedDesc": "Habilita o deshabilita los drivers de base de datos. Los drivers integrados no se pueden deshabilitar.",
+      "remove": "Eliminar",
+      "removeTitle": "Eliminar Plugin",
+      "confirmRemove": "¿Estás seguro de que deseas eliminar \"{{name}}\"? Los archivos del plugin serán eliminados."
+    }
   },
   "update": {
     "newVersionAvailable": "Nueva Versión Disponible",
@@ -310,6 +330,7 @@
     "noDatabasesFound": "No se encontraron bases de datos",
     "failLoadDatabases": "Error al cargar las bases de datos. Verifica tus credenciales.",
     "filePathPlaceholder": "/ruta/absoluta/db.sqlite",
+    "browseFile": "Explorar archivo",
     "useSsh": "Usar Túnel SSH",
     "sshHost": "Host SSH",
     "sshPort": "Puerto SSH",
@@ -491,7 +512,8 @@
     "nameRequired": "El nombre de la columna es requerido",
     "fail": "Error: ",
     "noChanges": "No se detectaron cambios",
-    "unsupported": "Driver no soportado"
+    "unsupported": "Driver no soportado",
+    "pkNotSupported": "Este driver solo soporta claves primarias en la creación de la tabla"
   },
   "createIndex": {
     "title": "Crear Índice",

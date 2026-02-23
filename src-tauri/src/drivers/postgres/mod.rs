@@ -1145,3 +1145,414 @@ pub async fn get_routine_definition(
     let definition: String = row.try_get("definition").unwrap_or_default();
     Ok(definition)
 }
+
+// ============================================================
+// Plugin wrapper
+// ============================================================
+
+use crate::drivers::driver_trait::{DatabaseDriver, DriverCapabilities, PluginManifest};
+use async_trait::async_trait;
+use std::collections::HashMap;
+
+pub struct PostgresDriver {
+    manifest: PluginManifest,
+}
+
+impl PostgresDriver {
+    pub fn new() -> Self {
+        Self {
+            manifest: PluginManifest {
+                id: "postgres".to_string(),
+                name: "PostgreSQL".to_string(),
+                version: "1.0.0".to_string(),
+                description: "PostgreSQL databases".to_string(),
+                default_port: Some(5432),
+                capabilities: DriverCapabilities {
+                    schemas: true,
+                    views: true,
+                    routines: true,
+                    file_based: false,
+                    identifier_quote: "\"".into(),
+                    alter_primary_key: true,
+                },
+            },
+        }
+    }
+
+    fn resolve_schema<'a>(&self, schema: Option<&'a str>) -> &'a str {
+        schema.unwrap_or("public")
+    }
+}
+
+#[async_trait]
+impl DatabaseDriver for PostgresDriver {
+    fn manifest(&self) -> &PluginManifest { &self.manifest }
+
+    fn get_data_types(&self) -> Vec<crate::models::DataTypeInfo> {
+        types::get_data_types()
+    }
+
+    fn build_connection_url(&self, params: &crate::models::ConnectionParams) -> Result<String, String> {
+        use urlencoding::encode;
+        let user = encode(params.username.as_deref().unwrap_or_default());
+        let pass = encode(params.password.as_deref().unwrap_or_default());
+        Ok(format!(
+            "postgres://{}:{}@{}:{}/{}",
+            user, pass,
+            params.host.as_deref().unwrap_or("localhost"),
+            params.port.unwrap_or(5432),
+            params.database
+        ))
+    }
+
+    async fn get_databases(&self, params: &crate::models::ConnectionParams) -> Result<Vec<String>, String> {
+        let mut p = params.clone();
+        p.database = "postgres".to_string();
+        get_databases(&p).await
+    }
+
+    async fn get_schemas(&self, params: &crate::models::ConnectionParams) -> Result<Vec<String>, String> {
+        get_schemas(params).await
+    }
+
+    async fn get_tables(&self, params: &crate::models::ConnectionParams, schema: Option<&str>) -> Result<Vec<crate::models::TableInfo>, String> {
+        get_tables(params, self.resolve_schema(schema)).await
+    }
+
+    async fn get_columns(&self, params: &crate::models::ConnectionParams, table: &str, schema: Option<&str>) -> Result<Vec<crate::models::TableColumn>, String> {
+        get_columns(params, table, self.resolve_schema(schema)).await
+    }
+
+    async fn get_foreign_keys(&self, params: &crate::models::ConnectionParams, table: &str, schema: Option<&str>) -> Result<Vec<crate::models::ForeignKey>, String> {
+        get_foreign_keys(params, table, self.resolve_schema(schema)).await
+    }
+
+    async fn get_indexes(&self, params: &crate::models::ConnectionParams, table: &str, schema: Option<&str>) -> Result<Vec<crate::models::Index>, String> {
+        get_indexes(params, table, self.resolve_schema(schema)).await
+    }
+
+    async fn get_views(&self, params: &crate::models::ConnectionParams, schema: Option<&str>) -> Result<Vec<crate::models::ViewInfo>, String> {
+        get_views(params, self.resolve_schema(schema)).await
+    }
+
+    async fn get_view_definition(&self, params: &crate::models::ConnectionParams, view_name: &str, schema: Option<&str>) -> Result<String, String> {
+        get_view_definition(params, view_name, self.resolve_schema(schema)).await
+    }
+
+    async fn get_view_columns(&self, params: &crate::models::ConnectionParams, view_name: &str, schema: Option<&str>) -> Result<Vec<crate::models::TableColumn>, String> {
+        get_view_columns(params, view_name, self.resolve_schema(schema)).await
+    }
+
+    async fn create_view(&self, params: &crate::models::ConnectionParams, view_name: &str, definition: &str, schema: Option<&str>) -> Result<(), String> {
+        create_view(params, view_name, definition, self.resolve_schema(schema)).await
+    }
+
+    async fn alter_view(&self, params: &crate::models::ConnectionParams, view_name: &str, definition: &str, schema: Option<&str>) -> Result<(), String> {
+        alter_view(params, view_name, definition, self.resolve_schema(schema)).await
+    }
+
+    async fn drop_view(&self, params: &crate::models::ConnectionParams, view_name: &str, schema: Option<&str>) -> Result<(), String> {
+        drop_view(params, view_name, self.resolve_schema(schema)).await
+    }
+
+    async fn get_routines(&self, params: &crate::models::ConnectionParams, schema: Option<&str>) -> Result<Vec<crate::models::RoutineInfo>, String> {
+        get_routines(params, self.resolve_schema(schema)).await
+    }
+
+    async fn get_routine_parameters(&self, params: &crate::models::ConnectionParams, routine_name: &str, schema: Option<&str>) -> Result<Vec<crate::models::RoutineParameter>, String> {
+        get_routine_parameters(params, routine_name, self.resolve_schema(schema)).await
+    }
+
+    async fn get_routine_definition(&self, params: &crate::models::ConnectionParams, routine_name: &str, routine_type: &str, schema: Option<&str>) -> Result<String, String> {
+        get_routine_definition(params, routine_name, routine_type, self.resolve_schema(schema)).await
+    }
+
+    async fn execute_query(&self, params: &crate::models::ConnectionParams, query: &str, limit: Option<u32>, page: u32, schema: Option<&str>) -> Result<crate::models::QueryResult, String> {
+        execute_query(params, query, limit, page, schema).await
+    }
+
+    async fn insert_record(&self, params: &crate::models::ConnectionParams, table: &str, data: std::collections::HashMap<String, serde_json::Value>, schema: Option<&str>, max_blob_size: u64) -> Result<u64, String> {
+        insert_record(params, table, data, self.resolve_schema(schema), max_blob_size).await
+    }
+
+    async fn update_record(&self, params: &crate::models::ConnectionParams, table: &str, pk_col: &str, pk_val: serde_json::Value, col_name: &str, new_val: serde_json::Value, schema: Option<&str>, max_blob_size: u64) -> Result<u64, String> {
+        update_record(params, table, pk_col, pk_val, col_name, new_val, self.resolve_schema(schema), max_blob_size).await
+    }
+
+    async fn delete_record(&self, params: &crate::models::ConnectionParams, table: &str, pk_col: &str, pk_val: serde_json::Value, schema: Option<&str>) -> Result<u64, String> {
+        delete_record(params, table, pk_col, pk_val, self.resolve_schema(schema)).await
+    }
+
+    async fn save_blob_to_file(&self, params: &crate::models::ConnectionParams, table: &str, col_name: &str, pk_col: &str, pk_val: serde_json::Value, schema: Option<&str>, file_path: &str) -> Result<(), String> {
+        save_blob_column_to_file(params, table, col_name, pk_col, pk_val, self.resolve_schema(schema), file_path).await
+    }
+
+    async fn fetch_blob_as_data_url(&self, params: &crate::models::ConnectionParams, table: &str, col_name: &str, pk_col: &str, pk_val: serde_json::Value, schema: Option<&str>) -> Result<String, String> {
+        fetch_blob_column_as_data_url(params, table, col_name, pk_col, pk_val, self.resolve_schema(schema)).await
+    }
+
+    async fn get_create_table_sql(
+        &self,
+        table_name: &str,
+        columns: Vec<crate::models::ColumnDefinition>,
+        schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let pg_schema = self.resolve_schema(schema);
+        let mut col_defs = Vec::new();
+        let mut pk_cols = Vec::new();
+        for col in &columns {
+            let type_str = if col.is_auto_increment {
+                let upper = col.data_type.to_uppercase();
+                if upper.contains("BIGINT") || upper.contains("BIGSERIAL") {
+                    "BIGSERIAL".to_string()
+                } else {
+                    "SERIAL".to_string()
+                }
+            } else {
+                col.data_type.clone()
+            };
+            let mut def = format!("\"{}\" {}", col.name.replace('"', "\"\""), type_str);
+            if !col.is_nullable && !col.is_auto_increment {
+                def.push_str(" NOT NULL");
+            }
+            if let Some(default) = &col.default_value {
+                if !col.is_auto_increment {
+                    def.push_str(&format!(" DEFAULT {}", default));
+                }
+            }
+            col_defs.push(def);
+            if col.is_pk {
+                pk_cols.push(format!("\"{}\"", col.name.replace('"', "\"\"")));
+            }
+        }
+        if !pk_cols.is_empty() {
+            col_defs.push(format!("PRIMARY KEY ({})", pk_cols.join(", ")));
+        }
+        Ok(vec![format!(
+            "CREATE TABLE \"{}\".\"{}\" (\n  {}\n)",
+            pg_schema.replace('"', "\"\""),
+            table_name.replace('"', "\"\""),
+            col_defs.join(",\n  ")
+        )])
+    }
+
+    async fn get_add_column_sql(
+        &self,
+        table: &str,
+        column: crate::models::ColumnDefinition,
+        schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let pg_schema = self.resolve_schema(schema);
+        let tbl = format!(
+            "\"{}\".\"{}\"",
+            pg_schema.replace('"', "\"\""),
+            table.replace('"', "\"\"")
+        );
+        let type_str = if column.is_auto_increment {
+            let upper = column.data_type.to_uppercase();
+            if upper.contains("BIGINT") || upper.contains("BIGSERIAL") {
+                "BIGSERIAL".to_string()
+            } else {
+                "SERIAL".to_string()
+            }
+        } else {
+            column.data_type.clone()
+        };
+        let mut def = format!(
+            "ALTER TABLE {} ADD COLUMN \"{}\" {}",
+            tbl,
+            column.name.replace('"', "\"\""),
+            type_str
+        );
+        if !column.is_nullable && !column.is_auto_increment {
+            def.push_str(" NOT NULL");
+        }
+        if let Some(default) = &column.default_value {
+            if !column.is_auto_increment {
+                def.push_str(&format!(" DEFAULT {}", default));
+            }
+        }
+        Ok(vec![def])
+    }
+
+    async fn get_alter_column_sql(
+        &self,
+        table: &str,
+        old_column: crate::models::ColumnDefinition,
+        new_column: crate::models::ColumnDefinition,
+        schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let pg_schema = self.resolve_schema(schema);
+        let tbl = format!(
+            "\"{}\".\"{}\"",
+            pg_schema.replace('"', "\"\""),
+            table.replace('"', "\"\"")
+        );
+        let old_name = format!("\"{}\"", old_column.name.replace('"', "\"\""));
+        let new_name_quoted = format!("\"{}\"", new_column.name.replace('"', "\"\""));
+        let mut stmts = Vec::new();
+
+        if old_column.name != new_column.name {
+            stmts.push(format!(
+                "ALTER TABLE {} RENAME COLUMN {} TO {}",
+                tbl, old_name, new_name_quoted
+            ));
+        }
+
+        let col_ref = &new_name_quoted;
+
+        if old_column.data_type != new_column.data_type {
+            stmts.push(format!(
+                "ALTER TABLE {} ALTER COLUMN {} TYPE {} USING {}::{}",
+                tbl, col_ref, new_column.data_type, col_ref, new_column.data_type
+            ));
+        }
+
+        if old_column.is_nullable != new_column.is_nullable {
+            if new_column.is_nullable {
+                stmts.push(format!(
+                    "ALTER TABLE {} ALTER COLUMN {} DROP NOT NULL",
+                    tbl, col_ref
+                ));
+            } else {
+                stmts.push(format!(
+                    "ALTER TABLE {} ALTER COLUMN {} SET NOT NULL",
+                    tbl, col_ref
+                ));
+            }
+        }
+
+        if old_column.default_value != new_column.default_value {
+            if let Some(default) = &new_column.default_value {
+                stmts.push(format!(
+                    "ALTER TABLE {} ALTER COLUMN {} SET DEFAULT {}",
+                    tbl, col_ref, default
+                ));
+            } else {
+                stmts.push(format!(
+                    "ALTER TABLE {} ALTER COLUMN {} DROP DEFAULT",
+                    tbl, col_ref
+                ));
+            }
+        }
+
+        if stmts.is_empty() {
+            return Err("No changes detected".into());
+        }
+        Ok(stmts)
+    }
+
+    async fn get_create_index_sql(
+        &self,
+        table: &str,
+        index_name: &str,
+        columns: Vec<String>,
+        is_unique: bool,
+        schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let pg_schema = self.resolve_schema(schema);
+        let unique = if is_unique { "UNIQUE " } else { "" };
+        let cols: Vec<String> = columns
+            .iter()
+            .map(|c| format!("\"{}\"", c.replace('"', "\"\"")))
+            .collect();
+        Ok(vec![format!(
+            "CREATE {}INDEX \"{}\" ON \"{}\".\"{}\" ({})",
+            unique,
+            index_name.replace('"', "\"\""),
+            pg_schema.replace('"', "\"\""),
+            table.replace('"', "\"\""),
+            cols.join(", ")
+        )])
+    }
+
+    async fn get_create_foreign_key_sql(
+        &self,
+        table: &str,
+        fk_name: &str,
+        column: &str,
+        ref_table: &str,
+        ref_column: &str,
+        on_delete: Option<&str>,
+        on_update: Option<&str>,
+        schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let pg_schema = self.resolve_schema(schema);
+        let tbl = format!(
+            "\"{}\".\"{}\"",
+            pg_schema.replace('"', "\"\""),
+            table.replace('"', "\"\"")
+        );
+        let mut sql = format!(
+            "ALTER TABLE {} ADD CONSTRAINT \"{}\" FOREIGN KEY (\"{}\") REFERENCES \"{}\".\"{}\" (\"{}\")",
+            tbl,
+            fk_name.replace('"', "\"\""),
+            column.replace('"', "\"\""),
+            pg_schema.replace('"', "\"\""),
+            ref_table.replace('"', "\"\""),
+            ref_column.replace('"', "\"\"")
+        );
+        if let Some(action) = on_delete {
+            sql.push_str(&format!(" ON DELETE {}", action));
+        }
+        if let Some(action) = on_update {
+            sql.push_str(&format!(" ON UPDATE {}", action));
+        }
+        Ok(vec![sql])
+    }
+
+    async fn drop_index(
+        &self,
+        params: &crate::models::ConnectionParams,
+        _table: &str,
+        index_name: &str,
+        schema: Option<&str>,
+    ) -> Result<(), String> {
+        let pg_schema = self.resolve_schema(schema);
+        let sql = format!(
+            "DROP INDEX \"{}\".\"{}\"",
+            pg_schema.replace('"', "\"\""),
+            index_name.replace('"', "\"\"")
+        );
+        execute_query(params, &sql, None, 1, schema).await?;
+        Ok(())
+    }
+
+    async fn drop_foreign_key(
+        &self,
+        params: &crate::models::ConnectionParams,
+        table: &str,
+        fk_name: &str,
+        schema: Option<&str>,
+    ) -> Result<(), String> {
+        let pg_schema = self.resolve_schema(schema);
+        let sql = format!(
+            "ALTER TABLE \"{}\".\"{}\" DROP CONSTRAINT \"{}\"",
+            pg_schema.replace('"', "\"\""),
+            table.replace('"', "\"\""),
+            fk_name.replace('"', "\"\"")
+        );
+        execute_query(params, &sql, None, 1, schema).await?;
+        Ok(())
+    }
+
+    async fn get_all_columns_batch(&self, params: &crate::models::ConnectionParams, schema: Option<&str>) -> Result<HashMap<String, Vec<crate::models::TableColumn>>, String> {
+        get_all_columns_batch(params, self.resolve_schema(schema)).await
+    }
+
+    async fn get_all_foreign_keys_batch(&self, params: &crate::models::ConnectionParams, schema: Option<&str>) -> Result<HashMap<String, Vec<crate::models::ForeignKey>>, String> {
+        get_all_foreign_keys_batch(params, self.resolve_schema(schema)).await
+    }
+
+    async fn get_schema_snapshot(&self, params: &crate::models::ConnectionParams, schema: Option<&str>) -> Result<Vec<crate::models::TableSchema>, String> {
+        let pg_schema = self.resolve_schema(schema);
+        let tables = get_tables(params, pg_schema).await?;
+        let mut columns_map = get_all_columns_batch(params, pg_schema).await?;
+        let mut fks_map = get_all_foreign_keys_batch(params, pg_schema).await?;
+        Ok(tables.into_iter().map(|t| crate::models::TableSchema {
+            name: t.name.clone(),
+            columns: columns_map.remove(&t.name).unwrap_or_default(),
+            foreign_keys: fks_map.remove(&t.name).unwrap_or_default(),
+        }).collect())
+    }
+}

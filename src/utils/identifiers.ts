@@ -1,9 +1,18 @@
+import type { PluginManifest } from "@/types/plugins";
+
 /**
  * Returns the appropriate quote character for SQL identifiers based on the database driver.
+ * Accepts a driver string or a PluginManifest object.
+ * When a manifest is provided, the identifier_quote from capabilities is used.
  * MySQL/MariaDB use backticks (`), while PostgreSQL and SQLite use double quotes (").
  */
-export function getQuoteChar(driver: string | null | undefined): string {
-  return driver === "mysql" || driver === "mariadb" ? "`" : '"';
+export function getQuoteChar(driver: string | PluginManifest | null | undefined): string {
+  if (typeof driver === "object" && driver?.capabilities?.identifier_quote) {
+    return driver.capabilities.identifier_quote;
+  }
+  // legacy fallback for string driver names
+  const driverStr = typeof driver === "object" ? driver?.id : driver;
+  return driverStr === "mysql" || driverStr === "mariadb" ? "`" : '"';
 }
 
 /**

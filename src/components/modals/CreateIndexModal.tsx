@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Save, Loader2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
@@ -59,33 +59,55 @@ export const CreateIndexModal = ({
       }
   };
 
-  const sqlPreview = useMemo(() => {
-      if (!indexName || selectedColumns.length === 0) return '-- ' + t('createIndex.nameRequired');
-      
-      const q = (driver === 'mysql' || driver === 'mariadb') ? '`' : '"';
-      const cols = selectedColumns.map(c => `${q}${c}${q}`).join(', ');
-      
-      if (driver === 'mysql' || driver === 'mariadb') {
-          // MySQL: CREATE [UNIQUE] INDEX index_name ON table (cols)
-          return `CREATE ${isUnique ? 'UNIQUE ' : ''}INDEX ${q}${indexName}${q} ON ${q}${tableName}${q} (${cols});`;
-      } else {
-          // Postgres/SQLite: CREATE [UNIQUE] INDEX [CONCURRENTLY?] index_name ON table (cols)
-          return `CREATE ${isUnique ? 'UNIQUE ' : ''}INDEX ${q}${indexName}${q} ON ${q}${tableName}${q} (${cols});`;
-      }
-  }, [indexName, isUnique, selectedColumns, driver, tableName, t]);
+  const [sqlPreview, setSqlPreview] = useState('-- ...');
+
+  const generatePreview = useCallback(async () => {
+    if (!indexName || selectedColumns.length === 0) {
+      setSqlPreview('-- ' + t('createIndex.nameRequired'));
+      return;
+    }
+    try {
+      const stmts = await invoke<string[]>('get_create_index_sql', {
+        connectionId,
+        table: tableName,
+        indexName,
+        columns: selectedColumns,
+        isUnique,
+        ...(activeSchema ? { schema: activeSchema } : {}),
+      });
+      setSqlPreview(stmts.map(s => s + ';').join('\n'));
+    } catch (e) {
+      setSqlPreview('-- ' + String(e));
+    }
+  }, [indexName, isUnique, selectedColumns, connectionId, tableName, activeSchema, t]);
+
+  useEffect(() => {
+    const timer = setTimeout(generatePreview, 300);
+    return () => clearTimeout(timer);
+  }, [generatePreview]);
 
   const handleCreate = async () => {
       if (!indexName.trim()) { setError(t('createIndex.nameRequired')); return; }
       if (selectedColumns.length === 0) { setError(t('createIndex.colRequired')); return; }
-      
+
       setLoading(true);
       setError('');
       try {
-          await invoke('execute_query', {
+          const stmts = await invoke<string[]>('get_create_index_sql', {
             connectionId,
-            query: sqlPreview,
+            table: tableName,
+            indexName,
+            columns: selectedColumns,
+            isUnique,
             ...(activeSchema ? { schema: activeSchema } : {}),
           });
+          for (const sql of stmts) {
+            await invoke('execute_query', {
+              connectionId,
+              query: sql,
+              ...(activeSchema ? { schema: activeSchema } : {}),
+            });
+          }
           onSuccess();
           onClose();
       } catch (e) {

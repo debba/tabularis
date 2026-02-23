@@ -8,17 +8,19 @@ import {
   Database,
   Settings,
   XCircle,
+  FolderOpen,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import clsx from "clsx";
 import { SshConnectionsModal } from "../modals/SshConnectionsModal";
 import { SearchableSelect } from "./SearchableSelect";
+import { useDrivers } from "../../hooks/useDrivers";
+import type { PluginManifest } from "../../types/plugins";
 import { loadSshConnections, type SshConnection } from "../../utils/ssh";
 
-type Driver = "postgres" | "mysql" | "sqlite";
-
 interface ConnectionParams {
-  driver: Driver;
+  driver: string;
   host?: string;
   port?: number;
   username?: string;
@@ -98,7 +100,9 @@ export const NewConnectionModal = ({
   initialConnection,
 }: NewConnectionModalProps) => {
   const { t } = useTranslation();
-  const [driver, setDriver] = useState<Driver>("postgres");
+  const { drivers } = useDrivers();
+  const [driver, setDriver] = useState<string>("postgres");
+  const activeDriver = drivers.find((d) => d.id === driver) ?? drivers[0];
   const [name, setName] = useState("");
   const [formData, setFormData] = useState<Partial<ConnectionParams>>({
     host: "localhost",
@@ -134,7 +138,7 @@ export const NewConnectionModal = ({
 
   // Load available databases for the user
   const loadDatabases = async () => {
-    if (driver === "sqlite") {
+    if (activeDriver?.capabilities?.file_based === true) {
       // SQLite doesn't support database listing
       return;
     }
@@ -145,7 +149,7 @@ export const NewConnectionModal = ({
       const listParams: Partial<ConnectionParams> = {
         driver,
         ...formData,
-        port: Number(formData.port),
+        port: formData.port != null ? Number(formData.port) : undefined,
       };
 
       // In edit mode: only send password if it was modified (dirty)
@@ -224,20 +228,15 @@ export const NewConnectionModal = ({
 
   if (!isOpen) return null;
 
-  const handleDriverChange = (newDriver: Driver) => {
+  const handleDriverChange = (newDriver: string) => {
     setDriver(newDriver);
     // Only reset if creating new, or be careful not to wipe existing data being edited?
     // Let's assume switching driver resets defaults for convenience.
     setFormData((prev) => ({
       ...prev,
       driver: newDriver,
-      port:
-        newDriver === "postgres"
-          ? 5432
-          : newDriver === "mysql"
-            ? 3306
-            : undefined,
-      username: newDriver === "postgres" ? "postgres" : "root",
+      port: drivers.find(d => d.id === newDriver)?.default_port ?? undefined,
+      username: newDriver === "postgres" ? "postgres" : (newDriver === "mysql" ? "root" : ""),
     }));
     setStatus("idle");
     setMessage("");
@@ -258,7 +257,7 @@ export const NewConnectionModal = ({
       const testParams: Partial<ConnectionParams> = {
         driver,
         ...formData,
-        port: Number(formData.port),
+        port: formData.port != null ? Number(formData.port) : undefined,
       };
 
       if (initialConnection) {
@@ -336,7 +335,7 @@ export const NewConnectionModal = ({
       const params: Partial<ConnectionParams> = {
         driver,
         ...formData,
-        port: Number(formData.port),
+        port: formData.port != null ? Number(formData.port) : undefined,
       };
 
       if (initialConnection) {
@@ -411,24 +410,24 @@ export const NewConnectionModal = ({
           <div className="space-y-1">
             <label className={LabelClass}>{t("newConnection.dbType")}</label>
             <div className="flex gap-2 mt-1">
-              {(["mysql", "postgres", "sqlite"] as Driver[]).map((d) => (
+              {drivers.map((d: PluginManifest) => (
                 <button
-                  key={d}
-                  onClick={() => handleDriverChange(d)}
+                  key={d.id}
+                  onClick={() => handleDriverChange(d.id)}
                   className={clsx(
                     "px-4 py-2 rounded border text-sm font-medium capitalize flex-1",
-                    driver === d
+                    driver === d.id
                       ? "bg-blue-600 border-blue-600 text-white"
                       : "bg-elevated border-strong text-secondary hover:border-strong",
                   )}
                 >
-                  {d}
+                  {d.name}
                 </button>
               ))}
             </div>
           </div>
 
-          {driver !== "sqlite" && (
+          {activeDriver?.capabilities?.file_based === false && (
             <div className="grid grid-cols-3 gap-4">
               <ConnectionInput
                 className="col-span-2"
@@ -447,7 +446,7 @@ export const NewConnectionModal = ({
             </div>
           )}
 
-          {driver !== "sqlite" && (
+          {activeDriver?.capabilities?.file_based === false && (
             <div className="grid grid-cols-2 gap-4">
               <ConnectionInput
                 label={t("newConnection.username")}
@@ -473,13 +472,37 @@ export const NewConnectionModal = ({
           )}
 
           {/* Database Name / File Path Field */}
-          {driver === "sqlite" ? (
-            <ConnectionInput
-              label={t("newConnection.filePath")}
-              value={formData.database}
-              onChange={(val) => updateField("database", val)}
-              placeholder={t("newConnection.filePathPlaceholder")}
-            />
+          {activeDriver?.capabilities?.file_based === true ? (
+            <div className="space-y-1">
+              <label className={LabelClass}>
+                {t("newConnection.filePath")}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.database ?? ""}
+                  onChange={(e) => updateField("database", e.target.value)}
+                  className={clsx(InputClass, "flex-1")}
+                  placeholder={t("newConnection.filePathPlaceholder")}
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const selected = await open({
+                      multiple: false,
+                      directory: false,
+                    });
+                    if (selected) {
+                      updateField("database", selected);
+                    }
+                  }}
+                  className="px-3 pt-2 pb-1 bg-base hover:bg-surface-tertiary text-secondary hover:text-primary border border-strong rounded-lg transition-colors shrink-0"
+                  title={t("newConnection.browseFile")}
+                >
+                  <FolderOpen size={16} />
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="space-y-1">
               <div className="flex items-center justify-between">
@@ -537,7 +560,7 @@ export const NewConnectionModal = ({
           )}
 
           {/* SSH Tunnel Section */}
-          {driver !== "sqlite" && (
+          {activeDriver?.capabilities?.file_based === false && (
             <div className="pt-4 border-t border-default space-y-4">
               <div className="flex items-center gap-2 mb-3">
                 <input
@@ -727,26 +750,28 @@ export const NewConnectionModal = ({
             </div>
           )}
 
-          <div className="mt-4 flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="keychain-toggle"
-              checked={!!formData.save_in_keychain}
-              onChange={(e) => {
-                updateField("password", "");
-                setPasswordDirty(true);
-                setSshPasswordDirty(true);
-                updateField("save_in_keychain", e.target.checked);
-              }}
-              className="accent-blue-500 w-4 h-4 rounded cursor-pointer"
-            />
-            <label
-              htmlFor="keychain-toggle"
-              className="text-sm font-medium text-secondary cursor-pointer select-none"
-            >
-              {t("newConnection.saveKeychain")}
-            </label>
-          </div>
+          {activeDriver?.capabilities?.file_based === false && (
+            <div className="mt-4 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="keychain-toggle"
+                checked={!!formData.save_in_keychain}
+                onChange={(e) => {
+                  updateField("password", "");
+                  setPasswordDirty(true);
+                  setSshPasswordDirty(true);
+                  updateField("save_in_keychain", e.target.checked);
+                }}
+                className="accent-blue-500 w-4 h-4 rounded cursor-pointer"
+              />
+              <label
+                htmlFor="keychain-toggle"
+                className="text-sm font-medium text-secondary cursor-pointer select-none"
+              >
+                {t("newConnection.saveKeychain")}
+              </label>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

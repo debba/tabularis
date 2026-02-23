@@ -9,7 +9,7 @@ import {
   Heart,
   Info,
   Code2,
-  Settings as SettingsIcon,
+  Database, Settings as SettingsIcon,
   Languages,
   Sparkles,
   Power,
@@ -37,6 +37,9 @@ import { APP_VERSION } from "../version";
 import { message, ask, save } from "@tauri-apps/plugin-dialog";
 import { AVAILABLE_FONTS, ROADMAP } from "../utils/settings";
 import { getProviderLabel } from "../utils/settingsUI";
+import { useDrivers } from "../hooks/useDrivers";
+import { usePluginRegistry } from "../hooks/usePluginRegistry";
+import type { PluginManifest } from "../types/plugins";
 import { SearchableSelect } from "../components/ui/SearchableSelect";
 import { useUpdate } from "../hooks/useUpdate";
 
@@ -55,6 +58,7 @@ interface LogEntry {
 const LogsTab = () => {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
+  
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [levelFilter, setLevelFilter] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
@@ -351,12 +355,16 @@ export const Settings = () => {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const { checkForUpdates, isChecking, updateInfo, error: updateError, isUpToDate } = useUpdate();
-  const [activeTab, setActiveTab] = useState<"general" | "appearance" | "localization" | "ai" | "updates" | "logs" | "info">(
+  const [activeTab, setActiveTab] = useState<"general" | "appearance" | "localization" | "ai" | "updates" | "logs" | "info" | "plugins">(
     "general",
   );
   const [aiKeyStatus, setAiKeyStatus] = useState<Record<string, AiKeyStatus>>({});
   const [availableModels, setAvailableModels] = useState<Record<string, string[]>>({});
   const [keyInput, setKeyInput] = useState("");
+  const { allDrivers, refresh: refreshDrivers } = useDrivers();
+  const { plugins: registryPlugins, loading: registryLoading, error: registryError, refresh: refreshRegistry } = usePluginRegistry();
+  const [installingPluginId, setInstallingPluginId] = useState<string | null>(null);
+  const [uninstallingPluginId, setUninstallingPluginId] = useState<string | null>(null);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [explainPrompt, setExplainPrompt] = useState("");
   
@@ -589,6 +597,18 @@ export const Settings = () => {
         >
           <ScrollText size={16} />
           {t("settings.logs")}
+        </button>
+        <button
+          onClick={() => setActiveTab("plugins")}
+          className={clsx(
+            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
+            activeTab === "plugins"
+              ? "bg-surface-secondary text-primary"
+              : "text-muted hover:text-primary hover:bg-surface-secondary/50",
+          )}
+        >
+          <Database size={16} />
+          {t("settings.plugins.title")}
         </button>
         <button
           onClick={() => setActiveTab("info")}
@@ -1355,8 +1375,197 @@ export const Settings = () => {
           {/* Logs Tab */}
           {activeTab === "logs" && <LogsTab />}
 
-          {/* Info Tab */}
-          {activeTab === "info" && (
+          {/* Plugins Tab */}
+          {activeTab === "plugins" && (
+          <div className="space-y-8">
+            {/* Available Plugins */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-primary">{t("settings.plugins.available")}</h2>
+                <button
+                  onClick={() => refreshRegistry()}
+                  className="text-xs text-muted hover:text-primary flex items-center gap-1 transition-colors"
+                >
+                  <RefreshCw size={12} />
+                  {t("settings.plugins.refresh")}
+                </button>
+              </div>
+              <p className="text-xs text-muted mb-4">
+                {t("settings.plugins.availableDesc")}
+              </p>
+
+              {registryLoading && (
+                <div className="flex items-center gap-2 text-muted text-sm py-4">
+                  <Loader2 size={16} className="animate-spin" />
+                  {t("settings.plugins.loadingRegistry")}
+                </div>
+              )}
+
+              {registryError && (
+                <div className="bg-red-900/20 border border-red-900/50 text-red-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+                  <AlertTriangle size={16} />
+                  {t("settings.plugins.registryError")}: {registryError}
+                </div>
+              )}
+
+              {!registryLoading && !registryError && (
+                <div className="space-y-3">
+                  {registryPlugins.map((plugin) => (
+                    <div key={plugin.id} className="flex items-center justify-between p-4 rounded-lg border border-surface-tertiary bg-surface-secondary">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-primary flex items-center gap-2">
+                          {plugin.name}
+                          <span className="text-[10px] bg-purple-900/30 text-purple-400 px-1.5 py-0.5 rounded uppercase">v{plugin.latest_version}</span>
+                          {plugin.installed_version && (
+                            <span className="text-[10px] bg-green-900/30 text-green-400 px-1.5 py-0.5 rounded uppercase">{t("settings.plugins.installed")}</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-secondary mt-0.5">{plugin.description}</div>
+                        <div className="text-xs text-muted mt-1">
+                          {t("settings.plugins.by")} {plugin.author}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        {!plugin.platform_supported ? (
+                          <span className="text-xs text-muted italic">{t("settings.plugins.platformNotSupported")}</span>
+                        ) : plugin.update_available ? (
+                          <button
+                            onClick={async () => {
+                              setInstallingPluginId(plugin.id);
+                              try {
+                                await invoke("install_plugin", { pluginId: plugin.id });
+                                refreshRegistry();
+                                refreshDrivers();
+                              } catch (err) {
+                                await message(String(err), { title: t("common.error"), kind: "error" });
+                              } finally {
+                                setInstallingPluginId(null);
+                              }
+                            }}
+                            disabled={installingPluginId === plugin.id}
+                            className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                          >
+                            {installingPluginId === plugin.id ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <RefreshCw size={12} />
+                            )}
+                            {t("settings.plugins.update")}
+                          </button>
+                        ) : !plugin.installed_version ? (
+                          <button
+                            onClick={async () => {
+                              setInstallingPluginId(plugin.id);
+                              try {
+                                await invoke("install_plugin", { pluginId: plugin.id });
+                                refreshRegistry();
+                                refreshDrivers();
+                              } catch (err) {
+                                await message(String(err), { title: t("common.error"), kind: "error" });
+                              } finally {
+                                setInstallingPluginId(null);
+                              }
+                            }}
+                            disabled={installingPluginId === plugin.id}
+                            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                          >
+                            {installingPluginId === plugin.id ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <Download size={12} />
+                            )}
+                            {t("settings.plugins.install")}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-green-400">{t("settings.plugins.upToDate")}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {registryPlugins.length === 0 && (
+                    <p className="text-sm text-muted py-4">{t("settings.plugins.noPlugins")}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Installed Drivers */}
+            <div>
+              <h2 className="text-xl font-semibold text-primary mb-4">{t("settings.plugins.installedDrivers")}</h2>
+              <p className="text-xs text-muted mb-4">
+                {t("settings.plugins.installedDesc")}
+              </p>
+
+              <div className="space-y-3">
+                {allDrivers.map((driver: PluginManifest) => {
+                  const isBuiltin = ["mysql", "postgres", "sqlite"].includes(driver.id);
+                  const activeExt = settings.activeExternalDrivers || [];
+                  const isEnabled = isBuiltin || activeExt.includes(driver.id);
+
+                  return (
+                    <div key={driver.id} className={`flex items-center justify-between p-3 rounded-lg border border-surface-tertiary bg-surface-secondary ${isBuiltin ? "opacity-80" : ""}`}>
+                      <div>
+                        <div className="text-sm font-medium text-primary flex items-center gap-2">
+                          {driver.name}
+                          {isBuiltin && <span className="text-[10px] bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded uppercase">Built-in</span>}
+                        </div>
+                        <div className="text-xs text-secondary">{driver.description} (v{driver.version})</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {!isBuiltin && (
+                          <button
+                            onClick={async () => {
+                              const confirmed = await ask(
+                                t("settings.plugins.confirmRemove", { name: driver.name }),
+                                { title: t("settings.plugins.removeTitle"), kind: "warning" }
+                              );
+                              if (!confirmed) return;
+                              setUninstallingPluginId(driver.id);
+                              try {
+                                await invoke("uninstall_plugin", { pluginId: driver.id });
+                                refreshDrivers();
+                                refreshRegistry();
+                              } catch (err) {
+                                await message(String(err), { title: t("common.error"), kind: "error" });
+                              } finally {
+                                setUninstallingPluginId(null);
+                              }
+                            }}
+                            disabled={uninstallingPluginId === driver.id}
+                            className="text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors p-1"
+                            title={t("settings.plugins.remove")}
+                          >
+                            {uninstallingPluginId === driver.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <Trash2 size={14} />
+                            )}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (isBuiltin) return;
+                            if (isEnabled) {
+                              updateSetting("activeExternalDrivers", activeExt.filter(id => id !== driver.id));
+                            } else {
+                              updateSetting("activeExternalDrivers", [...activeExt, driver.id]);
+                            }
+                          }}
+                          disabled={isBuiltin}
+                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${isEnabled ? "bg-blue-600" : "bg-surface-tertiary"} ${isBuiltin ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                          <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isEnabled ? "translate-x-4" : "translate-x-0"}`} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "info" && (
             <div className="space-y-8">
               {/* Header / Hero */}
               <div className="bg-gradient-to-br from-blue-900/20 to-elevated border border-blue-500/20 rounded-2xl p-8 text-center relative overflow-hidden">

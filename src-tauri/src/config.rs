@@ -29,6 +29,7 @@ pub struct AppConfig {
     pub schema_preferences: Option<HashMap<String, String>>,
     pub selected_schemas: Option<HashMap<String, Vec<String>>>,
     pub max_blob_size: Option<u64>,
+    pub active_external_drivers: Option<Vec<String>>,
 }
 
 pub fn get_config_dir<R: tauri::Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
@@ -123,6 +124,9 @@ pub fn save_config(app: AppHandle, config: AppConfig) -> Result<(), String> {
         }
         if config.max_blob_size.is_some() {
             existing_config.max_blob_size = config.max_blob_size;
+        }
+        if config.active_external_drivers.is_some() {
+            existing_config.active_external_drivers = config.active_external_drivers;
         }
 
         let content = serde_json::to_string_pretty(&existing_config).map_err(|e| e.to_string())?;

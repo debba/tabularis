@@ -19,10 +19,13 @@ pub mod ssh_tunnel;
 pub mod theme_commands;
 pub mod theme_models;
 pub mod updater;
+pub mod plugins;
 pub mod drivers {
     pub mod common;
+    pub mod driver_trait;
     pub mod mysql;
     pub mod postgres;
+    pub mod registry;
     pub mod sqlite;
 }
 
@@ -126,6 +129,16 @@ pub fn run() {
         .manage(dump_commands::DumpCancellationState::default())
         .manage(log_buffer)
         .setup(move |app| {
+            // Register built-in drivers
+            tauri::async_runtime::block_on(async {
+                drivers::registry::register_driver(drivers::mysql::MysqlDriver::new()).await;
+                drivers::registry::register_driver(drivers::postgres::PostgresDriver::new()).await;
+                drivers::registry::register_driver(drivers::sqlite::SqliteDriver::new()).await;
+
+                // Load external plugins
+                crate::plugins::manager::load_plugins().await;
+            });
+
             // Open devtools automatically in debug mode
             if args.debug {
                 if let Some(window) = app.get_webview_window("main") {
@@ -139,6 +152,7 @@ pub fn run() {
             is_debug_mode,
             open_devtools,
             close_devtools,
+            commands::get_registered_drivers,
             commands::test_connection,
             commands::list_databases,
             commands::save_connection,
@@ -207,6 +221,14 @@ pub fn run() {
             ai::explain_ai_query,
             ai::get_ai_models,
             commands::get_schema_snapshot,
+            // DDL generation
+            commands::get_create_table_sql,
+            commands::get_add_column_sql,
+            commands::get_alter_column_sql,
+            commands::get_create_index_sql,
+            commands::get_create_foreign_key_sql,
+            commands::drop_index_action,
+            commands::drop_foreign_key_action,
             // Routines
             commands::get_routines,
             commands::get_routine_parameters,
@@ -243,6 +265,11 @@ pub fn run() {
             preferences::load_editor_preferences,
             preferences::delete_editor_preferences,
             preferences::list_all_preferences,
+            // Plugin Registry
+            plugins::commands::fetch_plugin_registry,
+            plugins::commands::install_plugin,
+            plugins::commands::uninstall_plugin,
+            plugins::commands::get_installed_plugins,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

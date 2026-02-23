@@ -831,3 +831,293 @@ mod tests {
         crate::pool_manager::close_pool(&params).await;
     }
 }
+
+// ============================================================
+// Plugin wrapper
+// ============================================================
+
+use crate::drivers::driver_trait::{DatabaseDriver, DriverCapabilities, PluginManifest};
+use async_trait::async_trait;
+use std::collections::HashMap;
+
+pub struct SqliteDriver {
+    manifest: PluginManifest,
+}
+
+impl SqliteDriver {
+    pub fn new() -> Self {
+        Self {
+            manifest: PluginManifest {
+                id: "sqlite".to_string(),
+                name: "SQLite".to_string(),
+                version: "1.0.0".to_string(),
+                description: "SQLite file-based databases".to_string(),
+                default_port: None,
+                capabilities: DriverCapabilities {
+                    schemas: false,
+                    views: true,
+                    routines: false,
+                    file_based: true,
+                    identifier_quote: "\"".into(),
+                    alter_primary_key: true,
+                },
+            },
+        }
+    }
+}
+
+#[async_trait]
+impl DatabaseDriver for SqliteDriver {
+    fn manifest(&self) -> &PluginManifest { &self.manifest }
+
+    fn get_data_types(&self) -> Vec<crate::models::DataTypeInfo> {
+        types::get_data_types()
+    }
+
+    fn build_connection_url(&self, params: &crate::models::ConnectionParams) -> Result<String, String> {
+        Ok(format!("sqlite://{}", params.database))
+    }
+
+    async fn get_databases(&self, params: &crate::models::ConnectionParams) -> Result<Vec<String>, String> {
+        get_databases(params).await
+    }
+
+    async fn get_schemas(&self, params: &crate::models::ConnectionParams) -> Result<Vec<String>, String> {
+        get_schemas(params).await
+    }
+
+    async fn get_tables(&self, params: &crate::models::ConnectionParams, _schema: Option<&str>) -> Result<Vec<crate::models::TableInfo>, String> {
+        get_tables(params).await
+    }
+
+    async fn get_columns(&self, params: &crate::models::ConnectionParams, table: &str, _schema: Option<&str>) -> Result<Vec<crate::models::TableColumn>, String> {
+        get_columns(params, table).await
+    }
+
+    async fn get_foreign_keys(&self, params: &crate::models::ConnectionParams, table: &str, _schema: Option<&str>) -> Result<Vec<crate::models::ForeignKey>, String> {
+        get_foreign_keys(params, table).await
+    }
+
+    async fn get_indexes(&self, params: &crate::models::ConnectionParams, table: &str, _schema: Option<&str>) -> Result<Vec<crate::models::Index>, String> {
+        get_indexes(params, table).await
+    }
+
+    async fn get_views(&self, params: &crate::models::ConnectionParams, _schema: Option<&str>) -> Result<Vec<crate::models::ViewInfo>, String> {
+        get_views(params).await
+    }
+
+    async fn get_view_definition(&self, params: &crate::models::ConnectionParams, view_name: &str, _schema: Option<&str>) -> Result<String, String> {
+        get_view_definition(params, view_name).await
+    }
+
+    async fn get_view_columns(&self, params: &crate::models::ConnectionParams, view_name: &str, _schema: Option<&str>) -> Result<Vec<crate::models::TableColumn>, String> {
+        get_view_columns(params, view_name).await
+    }
+
+    async fn create_view(&self, params: &crate::models::ConnectionParams, view_name: &str, definition: &str, _schema: Option<&str>) -> Result<(), String> {
+        create_view(params, view_name, definition).await
+    }
+
+    async fn alter_view(&self, params: &crate::models::ConnectionParams, view_name: &str, definition: &str, _schema: Option<&str>) -> Result<(), String> {
+        alter_view(params, view_name, definition).await
+    }
+
+    async fn drop_view(&self, params: &crate::models::ConnectionParams, view_name: &str, _schema: Option<&str>) -> Result<(), String> {
+        drop_view(params, view_name).await
+    }
+
+    async fn get_routines(&self, params: &crate::models::ConnectionParams, _schema: Option<&str>) -> Result<Vec<crate::models::RoutineInfo>, String> {
+        get_routines(params).await
+    }
+
+    async fn get_routine_parameters(&self, params: &crate::models::ConnectionParams, routine_name: &str, _schema: Option<&str>) -> Result<Vec<crate::models::RoutineParameter>, String> {
+        get_routine_parameters(params, routine_name).await
+    }
+
+    async fn get_routine_definition(&self, params: &crate::models::ConnectionParams, routine_name: &str, routine_type: &str, _schema: Option<&str>) -> Result<String, String> {
+        get_routine_definition(params, routine_name, routine_type).await
+    }
+
+    async fn execute_query(&self, params: &crate::models::ConnectionParams, query: &str, limit: Option<u32>, page: u32, _schema: Option<&str>) -> Result<crate::models::QueryResult, String> {
+        execute_query(params, query, limit, page).await
+    }
+
+    async fn insert_record(&self, params: &crate::models::ConnectionParams, table: &str, data: std::collections::HashMap<String, serde_json::Value>, _schema: Option<&str>, max_blob_size: u64) -> Result<u64, String> {
+        insert_record(params, table, data, max_blob_size).await
+    }
+
+    async fn update_record(&self, params: &crate::models::ConnectionParams, table: &str, pk_col: &str, pk_val: serde_json::Value, col_name: &str, new_val: serde_json::Value, _schema: Option<&str>, max_blob_size: u64) -> Result<u64, String> {
+        update_record(params, table, pk_col, pk_val, col_name, new_val, max_blob_size).await
+    }
+
+    async fn delete_record(&self, params: &crate::models::ConnectionParams, table: &str, pk_col: &str, pk_val: serde_json::Value, _schema: Option<&str>) -> Result<u64, String> {
+        delete_record(params, table, pk_col, pk_val).await
+    }
+
+    async fn save_blob_to_file(&self, params: &crate::models::ConnectionParams, table: &str, col_name: &str, pk_col: &str, pk_val: serde_json::Value, _schema: Option<&str>, file_path: &str) -> Result<(), String> {
+        save_blob_column_to_file(params, table, col_name, pk_col, pk_val, file_path).await
+    }
+
+    async fn fetch_blob_as_data_url(&self, params: &crate::models::ConnectionParams, table: &str, col_name: &str, pk_col: &str, pk_val: serde_json::Value, _schema: Option<&str>) -> Result<String, String> {
+        fetch_blob_column_as_data_url(params, table, col_name, pk_col, pk_val).await
+    }
+
+    async fn get_create_table_sql(
+        &self,
+        table_name: &str,
+        columns: Vec<crate::models::ColumnDefinition>,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let mut col_defs = Vec::new();
+        let mut pk_cols = Vec::new();
+        let single_pk = columns.iter().filter(|c| c.is_pk).count() == 1;
+        for col in &columns {
+            let mut def = format!("\"{}\" {}", col.name.replace('"', "\"\""), col.data_type);
+            if col.is_pk && single_pk {
+                def.push_str(" PRIMARY KEY");
+                if col.is_auto_increment {
+                    def.push_str(" AUTOINCREMENT");
+                }
+            }
+            if !col.is_nullable && !(col.is_pk && single_pk) {
+                def.push_str(" NOT NULL");
+            }
+            if let Some(default) = &col.default_value {
+                def.push_str(&format!(" DEFAULT {}", default));
+            }
+            col_defs.push(def);
+            if col.is_pk && !single_pk {
+                pk_cols.push(format!("\"{}\"", col.name.replace('"', "\"\"")));
+            }
+        }
+        if !pk_cols.is_empty() {
+            col_defs.push(format!("PRIMARY KEY ({})", pk_cols.join(", ")));
+        }
+        Ok(vec![format!(
+            "CREATE TABLE \"{}\" (\n  {}\n)",
+            table_name.replace('"', "\"\""),
+            col_defs.join(",\n  ")
+        )])
+    }
+
+    async fn get_add_column_sql(
+        &self,
+        table: &str,
+        column: crate::models::ColumnDefinition,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let mut def = format!(
+            "ALTER TABLE \"{}\" ADD COLUMN \"{}\" {}",
+            table.replace('"', "\"\""),
+            column.name.replace('"', "\"\""),
+            column.data_type
+        );
+        if !column.is_nullable {
+            def.push_str(" NOT NULL");
+        }
+        if let Some(default) = &column.default_value {
+            def.push_str(&format!(" DEFAULT {}", default));
+        }
+        Ok(vec![def])
+    }
+
+    async fn get_alter_column_sql(
+        &self,
+        table: &str,
+        old_column: crate::models::ColumnDefinition,
+        new_column: crate::models::ColumnDefinition,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        if old_column.name != new_column.name {
+            return Ok(vec![format!(
+                "ALTER TABLE \"{}\" RENAME COLUMN \"{}\" TO \"{}\"",
+                table.replace('"', "\"\""),
+                old_column.name.replace('"', "\"\""),
+                new_column.name.replace('"', "\"\"")
+            )]);
+        }
+        Err("SQLite only supports renaming columns. Other column modifications require recreating the table.".into())
+    }
+
+    async fn get_create_index_sql(
+        &self,
+        table: &str,
+        index_name: &str,
+        columns: Vec<String>,
+        is_unique: bool,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let unique = if is_unique { "UNIQUE " } else { "" };
+        let cols: Vec<String> = columns
+            .iter()
+            .map(|c| format!("\"{}\"", c.replace('"', "\"\"")))
+            .collect();
+        Ok(vec![format!(
+            "CREATE {}INDEX \"{}\" ON \"{}\" ({})",
+            unique,
+            index_name.replace('"', "\"\""),
+            table.replace('"', "\"\""),
+            cols.join(", ")
+        )])
+    }
+
+    async fn get_create_foreign_key_sql(
+        &self,
+        _table: &str,
+        _fk_name: &str,
+        _column: &str,
+        _ref_table: &str,
+        _ref_column: &str,
+        _on_delete: Option<&str>,
+        _on_update: Option<&str>,
+        _schema: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        Err("SQLite does not support adding foreign keys to existing tables. Foreign keys must be defined at table creation time.".into())
+    }
+
+    async fn drop_index(
+        &self,
+        params: &crate::models::ConnectionParams,
+        _table: &str,
+        index_name: &str,
+        _schema: Option<&str>,
+    ) -> Result<(), String> {
+        let sql = format!("DROP INDEX \"{}\"", index_name.replace('"', "\"\""));
+        execute_query(params, &sql, None, 1).await?;
+        Ok(())
+    }
+
+    async fn drop_foreign_key(
+        &self,
+        _params: &crate::models::ConnectionParams,
+        _table: &str,
+        _fk_name: &str,
+        _schema: Option<&str>,
+    ) -> Result<(), String> {
+        Err("SQLite does not support dropping foreign keys".into())
+    }
+
+    async fn get_all_columns_batch(&self, params: &crate::models::ConnectionParams, _schema: Option<&str>) -> Result<HashMap<String, Vec<crate::models::TableColumn>>, String> {
+        let tables = get_tables(params).await?;
+        let names: Vec<String> = tables.into_iter().map(|t| t.name).collect();
+        get_all_columns_batch(params, &names).await
+    }
+
+    async fn get_all_foreign_keys_batch(&self, params: &crate::models::ConnectionParams, _schema: Option<&str>) -> Result<HashMap<String, Vec<crate::models::ForeignKey>>, String> {
+        let tables = get_tables(params).await?;
+        let names: Vec<String> = tables.into_iter().map(|t| t.name).collect();
+        get_all_foreign_keys_batch(params, &names).await
+    }
+
+    async fn get_schema_snapshot(&self, params: &crate::models::ConnectionParams, _schema: Option<&str>) -> Result<Vec<crate::models::TableSchema>, String> {
+        let tables = get_tables(params).await?;
+        let names: Vec<String> = tables.iter().map(|t| t.name.clone()).collect();
+        let mut columns_map = get_all_columns_batch(params, &names).await?;
+        let mut fks_map = get_all_foreign_keys_batch(params, &names).await?;
+        Ok(tables.into_iter().map(|t| crate::models::TableSchema {
+            name: t.name.clone(),
+            columns: columns_map.remove(&t.name).unwrap_or_default(),
+            foreign_keys: fks_map.remove(&t.name).unwrap_or_default(),
+        }).collect())
+    }
+}
