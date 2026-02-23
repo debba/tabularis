@@ -355,7 +355,7 @@ export const Settings = () => {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const { checkForUpdates, isChecking, updateInfo, error: updateError, isUpToDate } = useUpdate();
-  const [activeTab, setActiveTab] = useState<"general" | "appearance" | "localization" | "ai" | "updates" | "logs" | "info" | "plugins">(
+  const [activeTab, setActiveTab] = useState<"general" | "appearance" | "localization" | "ai" | "logs" | "info" | "plugins">(
     "general",
   );
   const [aiKeyStatus, setAiKeyStatus] = useState<Record<string, AiKeyStatus>>({});
@@ -573,18 +573,6 @@ export const Settings = () => {
         >
           <Sparkles size={16} />
           AI
-        </button>
-        <button
-          onClick={() => setActiveTab("updates")}
-          className={clsx(
-            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
-            activeTab === "updates"
-              ? "bg-surface-secondary text-primary"
-              : "text-muted hover:text-primary hover:bg-surface-secondary/50",
-          )}
-        >
-          <Download size={16} />
-          {t("settings.updates")}
         </button>
         <button
           onClick={() => setActiveTab("logs")}
@@ -1288,90 +1276,6 @@ export const Settings = () => {
             </div>
           )}
 
-          {/* Updates Tab */}
-          {activeTab === "updates" && (
-            <div className="space-y-6">
-              <div className="bg-elevated border border-default rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
-                  <Download size={20} className="text-blue-400" />
-                  {t("settings.updates")}
-                </h3>
-
-                <div className="space-y-4">
-                  {/* Current Version */}
-                  <div className="bg-base p-4 rounded-lg border border-default">
-                    <div className="text-sm text-secondary">{t("settings.currentVersion")}</div>
-                    <div className="text-lg font-mono text-primary mt-1">v{APP_VERSION}</div>
-                  </div>
-
-                  {/* Auto Check Toggle */}
-                  <div className="flex items-center justify-between bg-base p-4 rounded-lg border border-default">
-                    <div>
-                      <div className="text-sm text-primary font-medium">
-                        {t("settings.autoCheckUpdates")}
-                      </div>
-                      <div className="text-xs text-muted mt-1">
-                        {t("settings.autoCheckUpdatesDesc")}
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.autoCheckUpdatesOnStartup !== false}
-                      onChange={(e) => updateSetting("autoCheckUpdatesOnStartup", e.target.checked)}
-                      className="w-10 h-6 bg-base border border-strong rounded-full appearance-none cursor-pointer relative transition-colors checked:bg-blue-600 checked:border-blue-600 after:content-[''] after:absolute after:top-1 after:left-1 after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-transform checked:after:translate-x-4"
-                    />
-                  </div>
-
-                  {/* Manual Check Button */}
-                  <button
-                    onClick={() => checkForUpdates(true)}
-                    disabled={isChecking}
-                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                  >
-                    {isChecking ? (
-                      <>
-                        <Loader2 size={16} className="animate-spin" />
-                        {t("settings.checking")}
-                      </>
-                    ) : (
-                      <>
-                        <Download size={16} />
-                        {t("settings.checkNow")}
-                      </>
-                    )}
-                  </button>
-
-                  {/* Up to Date Message */}
-                  {isUpToDate && !updateInfo && (
-                    <div className="bg-blue-900/20 border border-blue-900/50 text-blue-400 px-4 py-3 rounded-lg flex items-center gap-2">
-                      <CheckCircle2 size={16} />
-                      <span className="text-sm">
-                        {t("update.upToDate")}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Update Available Message */}
-                  {updateInfo && (
-                    <div className="bg-green-900/20 border border-green-900/50 text-green-400 px-4 py-3 rounded-lg flex items-center gap-2">
-                      <CheckCircle2 size={16} />
-                      <span className="text-sm">
-                        {t("update.updateAvailable", { version: updateInfo.latestVersion })}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Error Message */}
-                  {updateError && (
-                    <div className="bg-red-900/20 border border-red-900/50 text-red-400 px-4 py-3 rounded-lg text-sm">
-                      {updateError}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Logs Tab */}
           {activeTab === "logs" && <LogsTab />}
 
@@ -1613,6 +1517,86 @@ export const Settings = () => {
                       {APP_VERSION} (Beta)
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Updates */}
+              <div className="bg-elevated border border-default rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+                  <Download size={20} className="text-blue-400" />
+                  {t("settings.updates")}
+                </h3>
+
+                <div className="space-y-4">
+                  {/* Current Version */}
+                  <div className="bg-base p-4 rounded-lg border border-default">
+                    <div className="text-sm text-secondary">{t("settings.currentVersion")}</div>
+                    <div className="text-lg font-mono text-primary mt-1">v{APP_VERSION}</div>
+                  </div>
+
+                  {/* Auto Check Toggle */}
+                  <div className="flex items-center justify-between bg-base p-4 rounded-lg border border-default">
+                    <div>
+                      <div className="text-sm text-primary font-medium">
+                        {t("settings.autoCheckUpdates")}
+                      </div>
+                      <div className="text-xs text-muted mt-1">
+                        {t("settings.autoCheckUpdatesDesc")}
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.autoCheckUpdatesOnStartup !== false}
+                      onChange={(e) => updateSetting("autoCheckUpdatesOnStartup", e.target.checked)}
+                      className="w-10 h-6 bg-base border border-strong rounded-full appearance-none cursor-pointer relative transition-colors checked:bg-blue-600 checked:border-blue-600 after:content-[''] after:absolute after:top-1 after:left-1 after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-transform checked:after:translate-x-4"
+                    />
+                  </div>
+
+                  {/* Manual Check Button */}
+                  <button
+                    onClick={() => checkForUpdates(true)}
+                    disabled={isChecking}
+                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    {isChecking ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        {t("settings.checking")}
+                      </>
+                    ) : (
+                      <>
+                        <Download size={16} />
+                        {t("settings.checkNow")}
+                      </>
+                    )}
+                  </button>
+
+                  {/* Up to Date Message */}
+                  {isUpToDate && !updateInfo && (
+                    <div className="bg-blue-900/20 border border-blue-900/50 text-blue-400 px-4 py-3 rounded-lg flex items-center gap-2">
+                      <CheckCircle2 size={16} />
+                      <span className="text-sm">
+                        {t("update.upToDate")}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Update Available Message */}
+                  {updateInfo && (
+                    <div className="bg-green-900/20 border border-green-900/50 text-green-400 px-4 py-3 rounded-lg flex items-center gap-2">
+                      <CheckCircle2 size={16} />
+                      <span className="text-sm">
+                        {t("update.updateAvailable", { version: updateInfo.latestVersion })}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Error Message */}
+                  {updateError && (
+                    <div className="bg-red-900/20 border border-red-900/50 text-red-400 px-4 py-3 rounded-lg text-sm">
+                      {updateError}
+                    </div>
+                  )}
                 </div>
               </div>
 
