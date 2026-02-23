@@ -301,13 +301,13 @@ npm run tauri build
 
 ## Roadmap
 
+- [x] [Plugin System](https://github.com/debba/tabularis/issues/19)
 - [ ] [Command Palette](https://github.com/debba/tabularis/issues/25)
 - [ ] [JSON/JSONB Editor & Viewer](https://github.com/debba/tabularis/issues/24)
 - [ ] [SQL Formatting / Prettier](https://github.com/debba/tabularis/issues/23)
 - [ ] [Visual Explain Analyze](https://github.com/debba/tabularis/issues/22)
 - [ ] [Data Compare / Diff Tool](https://github.com/debba/tabularis/issues/21)
 - [ ] [Team Collaboration](https://github.com/debba/tabularis/issues/20)
-- [ ] [Plugin System](https://github.com/debba/tabularis/issues/19)
 - [ ] [Query History](https://github.com/debba/tabularis/issues/18)
 - [ ] [Better SQLite Support](https://github.com/debba/tabularis/issues/17)
 - [ ] [Better PostgreSQL Support](https://github.com/debba/tabularis/issues/16)
