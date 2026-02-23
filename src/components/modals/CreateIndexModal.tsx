@@ -24,7 +24,6 @@ export const CreateIndexModal = ({
   onSuccess,
   connectionId,
   tableName,
-  driver
 }: CreateIndexModalProps) => {
   const { t } = useTranslation();
   const { activeSchema } = useDatabase();

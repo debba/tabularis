@@ -48,6 +48,7 @@ pub fn get_current_platform() -> String {
     let arch = std::env::consts::ARCH;
     match (os, arch) {
         ("linux", "x86_64") => "linux-x64".to_string(),
+        ("linux", "aarch64") => "linux-arm64".to_string(),
         ("macos", "aarch64") => "darwin-arm64".to_string(),
         ("macos", "x86_64") => "darwin-x64".to_string(),
         ("windows", "x86_64") => "win-x64".to_string(),

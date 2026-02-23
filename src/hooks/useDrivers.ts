@@ -43,8 +43,7 @@ export function useDrivers(): {
   const [error, setError] = useState<string | null>(null);
   const { settings } = useSettings();
 
-  const refresh = useCallback(() => {
-    setLoading(true);
+  const load = useCallback(() => {
     invoke<PluginManifest[]>("get_registered_drivers")
       .then((result) => {
         setAllDrivers(result);
@@ -56,9 +55,14 @@ export function useDrivers(): {
       .finally(() => setLoading(false));
   }, []);
 
+  const refresh = useCallback(() => {
+    setLoading(true);
+    load();
+  }, [load]);
+
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    load();
+  }, [load]);
 
   const builtin = ["mysql", "postgres", "sqlite"];
   const activeExt = settings.activeExternalDrivers || [];

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { quoteIdentifier, quoteTableRef } from "../../utils/identifiers";
+import { quoteTableRef } from "../../utils/identifiers";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Database,

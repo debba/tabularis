@@ -13,9 +13,7 @@ export function usePluginRegistry(): {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(() => {
-    setLoading(true);
-    setError(null);
+  const load = useCallback(() => {
     invoke<RegistryPluginWithStatus[]>("fetch_plugin_registry")
       .then((result) => {
         setPlugins(result);
@@ -27,9 +25,15 @@ export function usePluginRegistry(): {
       .finally(() => setLoading(false));
   }, []);
 
+  const refresh = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    load();
+  }, [load]);
+
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    load();
+  }, [load]);
 
   return { plugins, loading, error, refresh };
 }

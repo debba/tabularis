@@ -496,7 +496,6 @@ export const Settings = () => {
 
   useEffect(() => {
     // Initialize settings on mount
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     checkKeys();
     loadSystemPrompt();
     loadExplainPrompt();
