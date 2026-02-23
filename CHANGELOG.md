@@ -1,3 +1,28 @@
+# [0.9.0](https://github.com/debba/tabularis/compare/v0.8.15...v0.9.0) (2026-02-23)
+
+
+### Bug Fixes
+
+* **connection:** handle test failures, check DB file, parse port ([09600f2](https://github.com/debba/tabularis/commit/09600f2db7a83f873a681af776f9cba78cfd519f))
+* database dropdown selection on click ([631eccc](https://github.com/debba/tabularis/commit/631ecccb1e5390b1dfdfd955988c87d7994eb07f))
+* **duckdb:** improve query type detection in execute_query function ([9ec6acc](https://github.com/debba/tabularis/commit/9ec6acccc9a3de2cdb21cc6f98db5a9f3412d3f4))
+* **editor:** use per-tab editor ref and fallback to saved query ([b3de58b](https://github.com/debba/tabularis/commit/b3de58b0cde2ab5651ad9f7e7f33d855c30140c5))
+* **ui:** hide keychain option for file-based drivers ([f76c0ec](https://github.com/debba/tabularis/commit/f76c0ec1af1fca9c1e657ff16f2d239de0edb106))
+
+
+### Features
+
+* **drivers:** add alter_primary_key and update duckdb pk logic ([c9b3e9c](https://github.com/debba/tabularis/commit/c9b3e9c2df8261253643bd36aed3d376ac06c23a))
+* **duckdb:** add base64 dependency and extend data types list ([4c1c494](https://github.com/debba/tabularis/commit/4c1c4941c4bb26028e3d91d301964a6c7e1301f6))
+* **duckdb:** add duckdb plugin with manifest and CLI bridge (as ([5b10c38](https://github.com/debba/tabularis/commit/5b10c38935a5267f9f188097465a37da9111db85))
+* **duckdb:** inject rowid for tables without primary key in SELECT * ([2efa700](https://github.com/debba/tabularis/commit/2efa700e1afdc94317117fcc569bf4ef48fc9b2e))
+* **plugins:** add external JSON-RPC plugin system and manager ([ebd23fa](https://github.com/debba/tabularis/commit/ebd23fab7705010392c66f9ecf958003f809d745))
+* **plugins:** add plugin registry and installer ([195f154](https://github.com/debba/tabularis/commit/195f15472c17c859a288d0924226b8110a5a32aa))
+* **plugins:** implement dynamic database driver plugin ecosystem ([609290b](https://github.com/debba/tabularis/commit/609290bc781bbadadd2a208a1856041de30de078))
+* **website:** add plugin registry section to website ([36ac05c](https://github.com/debba/tabularis/commit/36ac05cb7ea59541c0078e22acd8d0c19c6ccd8d))
+
+
+
 ## [0.8.15](https://github.com/debba/tabularis/compare/v0.8.14...v0.8.15) (2026-02-21)
 
 
