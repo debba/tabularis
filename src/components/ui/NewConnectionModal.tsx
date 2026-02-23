@@ -724,26 +724,28 @@ export const NewConnectionModal = ({
             </div>
           )}
 
-          <div className="mt-4 flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="keychain-toggle"
-              checked={!!formData.save_in_keychain}
-              onChange={(e) => {
-                updateField("password", "");
-                setPasswordDirty(true);
-                setSshPasswordDirty(true);
-                updateField("save_in_keychain", e.target.checked);
-              }}
-              className="accent-blue-500 w-4 h-4 rounded cursor-pointer"
-            />
-            <label
-              htmlFor="keychain-toggle"
-              className="text-sm font-medium text-secondary cursor-pointer select-none"
-            >
-              {t("newConnection.saveKeychain")}
-            </label>
-          </div>
+          {activeDriver?.capabilities?.file_based === false && (
+            <div className="mt-4 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="keychain-toggle"
+                checked={!!formData.save_in_keychain}
+                onChange={(e) => {
+                  updateField("password", "");
+                  setPasswordDirty(true);
+                  setSshPasswordDirty(true);
+                  updateField("save_in_keychain", e.target.checked);
+                }}
+                className="accent-blue-500 w-4 h-4 rounded cursor-pointer"
+              />
+              <label
+                htmlFor="keychain-toggle"
+                className="text-sm font-medium text-secondary cursor-pointer select-none"
+              >
+                {t("newConnection.saveKeychain")}
+              </label>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
