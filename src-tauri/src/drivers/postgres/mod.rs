@@ -1173,6 +1173,7 @@ impl PostgresDriver {
                     routines: true,
                     file_based: false,
                     identifier_quote: "\"".into(),
+                    alter_primary_key: true,
                 },
             },
         }

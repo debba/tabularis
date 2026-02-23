@@ -501,7 +501,8 @@
     "nameRequired": "Il nome della colonna è richiesto",
     "fail": "Fallito: ",
     "noChanges": "Nessuna modifica rilevata",
-    "unsupported": "Driver non supportato"
+    "unsupported": "Driver non supportato",
+    "pkNotSupported": "Questo driver supporta le chiavi primarie solo in fase di creazione della tabella"
   },
   "createIndex": {
     "title": "Crea Indice",

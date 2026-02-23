@@ -501,7 +501,8 @@
     "nameRequired": "Column name is required",
     "fail": "Failed: ",
     "noChanges": "No changes detected",
-    "unsupported": "Unsupported driver"
+    "unsupported": "Unsupported driver",
+    "pkNotSupported": "This driver only supports primary keys at table creation time"
   },
   "createIndex": {
     "title": "Create Index",

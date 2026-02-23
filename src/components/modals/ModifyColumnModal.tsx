@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { SqlPreview } from "../ui/SqlPreview";
 import { useDatabase } from "../../hooks/useDatabase";
 import { useDataTypes } from "../../hooks/useDataTypes";
+import { useDrivers } from "../../hooks/useDrivers";
 
 interface ColumnDef {
   name: string;
@@ -66,6 +67,9 @@ export const ModifyColumnModal = ({
   const { t } = useTranslation();
   const { activeSchema } = useDatabase();
   const { dataTypes } = useDataTypes(driver);
+  const { allDrivers } = useDrivers();
+  const driverManifest = allDrivers.find((d) => d.id === driver);
+  const canAlterPk = driverManifest?.capabilities?.alter_primary_key !== false;
   const isEdit = !!column;
 
   const availableTypes = useMemo(
@@ -362,12 +366,13 @@ export const ModifyColumnModal = ({
                 id="isPk"
                 checked={form.isPk}
                 onChange={(e) => setForm({ ...form, isPk: e.target.checked })}
-                disabled={isEdit || (driver === "sqlite" && isEdit)}
+                disabled={isEdit || !canAlterPk}
                 className="accent-blue-500 disabled:opacity-50"
               />
               <label
                 htmlFor="isPk"
-                className={`text-sm select-none cursor-pointer ${isEdit ? "text-muted" : "text-secondary"}`}
+                className={`text-sm select-none cursor-pointer ${isEdit || !canAlterPk ? "text-muted" : "text-secondary"}`}
+                title={!canAlterPk ? t("modifyColumn.pkNotSupported") : undefined}
               >
                 {t("modifyColumn.primaryKey")}
               </label>

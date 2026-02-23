@@ -26,10 +26,17 @@ pub struct DriverCapabilities {
     /// Character used to quote identifiers (e.g. `"` for PostgreSQL, `` ` `` for MySQL).
     #[serde(default = "default_double_quote")]
     pub identifier_quote: String,
+    /// Supports adding or modifying primary keys on existing tables via ALTER TABLE.
+    #[serde(default = "default_true")]
+    pub alter_primary_key: bool,
 }
 
 fn default_double_quote() -> String {
     "\"".to_string()
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// Metadata describing a registered driver plugin.

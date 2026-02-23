@@ -10,7 +10,8 @@
     "views": true,
     "routines": false,
     "file_based": true,
-    "identifier_quote": "\""
+    "identifier_quote": "\"",
+    "alter_primary_key": false
   },
   "data_types": [
     {

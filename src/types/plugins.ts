@@ -4,6 +4,7 @@ export interface DriverCapabilities {
   routines: boolean;
   file_based: boolean;
   identifier_quote: string;
+  alter_primary_key: boolean;
 }
 
 export interface PluginManifest {

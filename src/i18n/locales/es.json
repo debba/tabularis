@@ -491,7 +491,8 @@
     "nameRequired": "El nombre de la columna es requerido",
     "fail": "Error: ",
     "noChanges": "No se detectaron cambios",
-    "unsupported": "Driver no soportado"
+    "unsupported": "Driver no soportado",
+    "pkNotSupported": "Este driver solo soporta claves primarias en la creación de la tabla"
   },
   "createIndex": {
     "title": "Crear Índice",
