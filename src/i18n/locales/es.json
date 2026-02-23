@@ -310,6 +310,7 @@
     "noDatabasesFound": "No se encontraron bases de datos",
     "failLoadDatabases": "Error al cargar las bases de datos. Verifica tus credenciales.",
     "filePathPlaceholder": "/ruta/absoluta/db.sqlite",
+    "browseFile": "Explorar archivo",
     "useSsh": "Usar Túnel SSH",
     "sshHost": "Host SSH",
     "sshPort": "Puerto SSH",

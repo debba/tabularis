@@ -963,6 +963,18 @@ pub async fn test_connection<R: Runtime>(
     );
 
     let drv = driver_for(&resolved_params.driver).await?;
+
+    // For file-based drivers, verify the database file exists before attempting connection
+    if drv.manifest().capabilities.file_based {
+        let db_path = std::path::Path::new(&resolved_params.database);
+        if !db_path.exists() {
+            return Err(format!(
+                "Database file not found: {}",
+                resolved_params.database
+            ));
+        }
+    }
+
     drv.test_connection(&resolved_params).await?;
 
     log::info!(

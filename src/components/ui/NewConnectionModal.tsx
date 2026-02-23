@@ -8,8 +8,10 @@ import {
   Database,
   Settings,
   XCircle,
+  FolderOpen,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import clsx from "clsx";
 import { SshConnectionsModal } from "../modals/SshConnectionsModal";
 import { SearchableSelect } from "./SearchableSelect";
@@ -147,7 +149,7 @@ export const NewConnectionModal = ({
       const listParams: Partial<ConnectionParams> = {
         driver,
         ...formData,
-        port: Number(formData.port),
+        port: formData.port != null ? Number(formData.port) : undefined,
       };
 
       // In edit mode: only send password if it was modified (dirty)
@@ -255,7 +257,7 @@ export const NewConnectionModal = ({
       const testParams: Partial<ConnectionParams> = {
         driver,
         ...formData,
-        port: Number(formData.port),
+        port: formData.port != null ? Number(formData.port) : undefined,
       };
 
       if (initialConnection) {
@@ -333,7 +335,7 @@ export const NewConnectionModal = ({
       const params: Partial<ConnectionParams> = {
         driver,
         ...formData,
-        port: Number(formData.port),
+        port: formData.port != null ? Number(formData.port) : undefined,
       };
 
       if (initialConnection) {
@@ -471,12 +473,36 @@ export const NewConnectionModal = ({
 
           {/* Database Name / File Path Field */}
           {activeDriver?.capabilities?.file_based === true ? (
-            <ConnectionInput
-              label={t("newConnection.filePath")}
-              value={formData.database}
-              onChange={(val) => updateField("database", val)}
-              placeholder={t("newConnection.filePathPlaceholder")}
-            />
+            <div className="space-y-1">
+              <label className={LabelClass}>
+                {t("newConnection.filePath")}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.database ?? ""}
+                  onChange={(e) => updateField("database", e.target.value)}
+                  className={clsx(InputClass, "flex-1")}
+                  placeholder={t("newConnection.filePathPlaceholder")}
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const selected = await open({
+                      multiple: false,
+                      directory: false,
+                    });
+                    if (selected) {
+                      updateField("database", selected);
+                    }
+                  }}
+                  className="px-3 pt-2 pb-1 bg-base hover:bg-surface-tertiary text-secondary hover:text-primary border border-strong rounded-lg transition-colors shrink-0"
+                  title={t("newConnection.browseFile")}
+                >
+                  <FolderOpen size={16} />
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="space-y-1">
               <div className="flex items-center justify-between">

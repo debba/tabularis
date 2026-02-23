@@ -11,7 +11,7 @@ const FALLBACK_DRIVERS: PluginManifest[] = [
     version: "1.0.0",
     description: "PostgreSQL databases",
     default_port: 5432,
-    capabilities: { schemas: true, views: true, routines: true, file_based: false, alter_primary_key: true },
+    capabilities: { schemas: true, views: true, routines: true, file_based: false, identifier_quote: "\"", alter_primary_key: true },
   },
   {
     id: "mysql",
@@ -19,7 +19,7 @@ const FALLBACK_DRIVERS: PluginManifest[] = [
     version: "1.0.0",
     description: "MySQL and MariaDB databases",
     default_port: 3306,
-    capabilities: { schemas: false, views: true, routines: true, file_based: false, alter_primary_key: true },
+    capabilities: { schemas: false, views: true, routines: true, file_based: false, identifier_quote: "`", alter_primary_key: true },
   },
   {
     id: "sqlite",
@@ -27,7 +27,7 @@ const FALLBACK_DRIVERS: PluginManifest[] = [
     version: "1.0.0",
     description: "SQLite file-based databases",
     default_port: null,
-    capabilities: { schemas: false, views: true, routines: false, file_based: true, alter_primary_key: true },
+    capabilities: { schemas: false, views: true, routines: false, file_based: true, identifier_quote: "\"", alter_primary_key: true },
   },
 ];
 

@@ -310,6 +310,7 @@
     "noDatabasesFound": "Nessun database trovato",
     "failLoadDatabases": "Impossibile caricare i database. Verifica le credenziali.",
     "filePathPlaceholder": "/percorso/assoluto/db.sqlite",
+    "browseFile": "Sfoglia file",
     "useSsh": "Usa Tunnel SSH",
     "sshHost": "Host SSH",
     "sshPort": "Porta SSH",

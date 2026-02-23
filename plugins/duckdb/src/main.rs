@@ -80,7 +80,10 @@ fn main() {
 
         match method.as_str() {
             "test_connection" => {
-                send_success(&mut stdout, id, json!(true));
+                match conn.execute_batch("SELECT 1") {
+                    Ok(_) => send_success(&mut stdout, id, json!(true)),
+                    Err(e) => send_error(&mut stdout, id, -32000, &format!("Connection test failed: {}", e)),
+                }
             }
             "get_databases" => {
                 send_success(&mut stdout, id, json!(["main"]));
