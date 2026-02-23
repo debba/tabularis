@@ -1,4 +1,4 @@
-import type { PluginManifest } from "@/types/plugins";
+import type { PluginManifest } from "../types/plugins";
 
 /**
  * Returns the appropriate quote character for SQL identifiers based on the database driver.
@@ -6,7 +6,9 @@ import type { PluginManifest } from "@/types/plugins";
  * When a manifest is provided, the identifier_quote from capabilities is used.
  * MySQL/MariaDB use backticks (`), while PostgreSQL and SQLite use double quotes (").
  */
-export function getQuoteChar(driver: string | PluginManifest | null | undefined): string {
+export function getQuoteChar(
+  driver: string | PluginManifest | null | undefined,
+): string {
   if (typeof driver === "object" && driver?.capabilities?.identifier_quote) {
     return driver.capabilities.identifier_quote;
   }
@@ -18,18 +20,24 @@ export function getQuoteChar(driver: string | PluginManifest | null | undefined)
 /**
  * Quotes a SQL identifier (table name, column name, view name, etc.) using the appropriate
  * quote character for the given database driver.
- * 
+ *
  * @param identifier - The identifier to quote (e.g., table name, column name)
  * @param driver - The database driver ("mysql", "mariadb", "postgres", "sqlite")
  * @returns The quoted identifier
- * 
+ *
  * @example
  * quoteIdentifier("my table", "mysql") // returns: `my table`
  * quoteIdentifier("my_table", "postgres") // returns: "my_table"
  */
-export function quoteIdentifier(identifier: string, driver: string | null | undefined): string {
+export function quoteIdentifier(
+  identifier: string,
+  driver: string | null | undefined,
+): string {
   const quote = getQuoteChar(driver);
-  const escaped = quote === "`" ? identifier.replace(/`/g, "``") : identifier.replace(/"/g, '""');
+  const escaped =
+    quote === "`"
+      ? identifier.replace(/`/g, "``")
+      : identifier.replace(/"/g, '""');
   return `${quote}${escaped}${quote}`;
 }
 

@@ -50,7 +50,8 @@ A lightweight, developer-focused database management tool, built with Tauri and 
   - [Visual Query Builder](#visual-query-builder)
   - [Data Grid](#data-grid)
   - [Logging](#logging)
-  - [Configuration Storage](#configuration-storage)
+  - [Plugin System](#plugin-system)
+- [Configuration Storage](#configuration-storage)
   - [AI Features (Optional)](#ai-features-optional)
 - [Tech Stack](#tech-stack)
 - [Development](#development)
@@ -163,6 +164,16 @@ Join our [Discord server](https://discord.gg/YrZPHAwMSG) to chat with the mainta
 - **Export:** Save results as CSV or JSON.
 - **Smart Context:** Read-only mode for aggregates, edit mode for tables.
 - **Spatial Data Support:** Initial GEOMETRY support for MySQL with raw SQL function inputs for spatial data.
+
+### Plugin System
+
+Tabularis supports extending its database support via an **external plugin system**. Plugins are standalone executables that communicate with the app over **JSON-RPC 2.0 via stdin/stdout**, and can be written in any language.
+
+- **Install Plugins:** Browse and install community drivers from **Settings → Available Plugins** — no restart required.
+- **Manage Drivers:** View all registered drivers (built-in and plugins) in **Settings → Installed Drivers** and uninstall plugins with one click.
+- **Any Database:** Add support for DuckDB, MongoDB, or any other database by writing or installing a plugin.
+- **Plugin Registry:** Official plugins are listed in [`plugins/registry.json`](./plugins/registry.json).
+- **Developer Guide:** See [`plugins/PLUGIN_GUIDE.md`](./plugins/PLUGIN_GUIDE.md) to build your own driver in any language.
 
 ### Logging
 

@@ -13,10 +13,11 @@
         {
           "version": "0.1.0",
           "assets": {
-            "linux-x64": "https://github.com/debba/tabularis/releases/download/plugin-duckdb-v0.1.0/duckdb-plugin-linux-x64.zip",
-            "darwin-arm64": "https://github.com/debba/tabularis/releases/download/plugin-duckdb-v0.1.0/duckdb-plugin-darwin-arm64.zip",
-            "darwin-x64": "https://github.com/debba/tabularis/releases/download/plugin-duckdb-v0.1.0/duckdb-plugin-darwin-x64.zip",
-            "win-x64": "https://github.com/debba/tabularis/releases/download/plugin-duckdb-v0.1.0/duckdb-plugin-win-x64.zip"
+            "linux-arm64": "https://github.com/debba/tabularis-duckdb-plugin/releases/download/v0.1.0/duckdb-plugin-linux-arm64.zip",
+            "linux-x64": "https://github.com/debba/tabularis-duckdb-plugin/releases/download/v0.1.0/duckdb-plugin-linux-x64.zip",
+            "darwin-arm64": "https://github.com/debba/tabularis-duckdb-plugin/releases/download/v0.1.0/duckdb-plugin-darwin-arm64.zip",
+            "darwin-x64": "https://github.com/debba/tabularis-duckdb-plugin/releases/download/v0.1.0/duckdb-plugin-darwin-x64.zip",
+            "win-x64": "https://github.com/debba/tabularis-duckdb-plugin/releases/download/v0.1.0/duckdb-plugin-win-x64.zip"
           }
         }
       ]
