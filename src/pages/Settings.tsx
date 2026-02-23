@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { invoke } from "@tauri-apps/api/core";
@@ -53,6 +53,74 @@ interface LogEntry {
   level: string;
   message: string;
   target?: string;
+}
+
+function parseAuthor(author: string): { name: string; url?: string } {
+  const match = author.match(/^(.+?)\s*<(.+?)>$/);
+  if (match) {
+    return { name: match[1].trim(), url: match[2].trim() };
+  }
+  return { name: author };
+}
+
+interface PluginCardProps {
+  name: string;
+  description: string;
+  version?: string;
+  author?: string;
+  homepage?: string;
+  badges?: ReactNode;
+  actions: ReactNode;
+  dimmed?: boolean;
+}
+
+function PluginCard({ name, description, version, author, homepage, badges, actions, dimmed }: PluginCardProps) {
+  const { t } = useTranslation();
+  const parsedAuthor = author ? parseAuthor(author) : null;
+  return (
+    <div className={`flex items-center justify-between p-4 rounded-lg border border-surface-tertiary bg-surface-secondary${dimmed ? " opacity-80" : ""}`}>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-primary flex items-center gap-2 flex-wrap">
+          {homepage ? (
+            <button
+              type="button"
+              onClick={() => openUrl(homepage)}
+              className="hover:underline flex items-center gap-1 text-primary"
+            >
+              {name}
+              <ExternalLink size={10} className="text-muted" />
+            </button>
+          ) : (
+            <span>{name}</span>
+          )}
+          {version && (
+            <span className="text-[10px] bg-purple-900/30 text-purple-400 px-1.5 py-0.5 rounded uppercase">v{version}</span>
+          )}
+          {badges}
+        </div>
+        <div className="text-xs text-secondary mt-0.5">{description}</div>
+        {parsedAuthor && (
+          <div className="text-xs text-muted mt-1">
+            {t("settings.plugins.by")}{" "}
+            {(parsedAuthor.url ?? homepage) ? (
+              <button
+                type="button"
+                onClick={() => openUrl((parsedAuthor.url ?? homepage)!)}
+                className="hover:underline text-muted"
+              >
+                {parsedAuthor.name}
+              </button>
+            ) : (
+              parsedAuthor.name
+            )}
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-2 ml-4 shrink-0">
+        {actions}
+      </div>
+    </div>
+  );
 }
 
 const LogsTab = () => {
@@ -1314,22 +1382,18 @@ export const Settings = () => {
               {!registryLoading && !registryError && (
                 <div className="space-y-3">
                   {registryPlugins.map((plugin) => (
-                    <div key={plugin.id} className="flex items-center justify-between p-4 rounded-lg border border-surface-tertiary bg-surface-secondary">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-primary flex items-center gap-2">
-                          {plugin.name}
-                          <span className="text-[10px] bg-purple-900/30 text-purple-400 px-1.5 py-0.5 rounded uppercase">v{plugin.latest_version}</span>
-                          {plugin.installed_version && (
-                            <span className="text-[10px] bg-green-900/30 text-green-400 px-1.5 py-0.5 rounded uppercase">{t("settings.plugins.installed")}</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-secondary mt-0.5">{plugin.description}</div>
-                        <div className="text-xs text-muted mt-1">
-                          {t("settings.plugins.by")} {plugin.author}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        {!plugin.platform_supported ? (
+                    <PluginCard
+                      key={plugin.id}
+                      name={plugin.name}
+                      description={plugin.description}
+                      version={plugin.latest_version}
+                      author={plugin.author}
+                      homepage={plugin.homepage}
+                      badges={plugin.installed_version ? (
+                        <span className="text-[10px] bg-green-900/30 text-green-400 px-1.5 py-0.5 rounded uppercase">{t("settings.plugins.installed")}</span>
+                      ) : undefined}
+                      actions={
+                        !plugin.platform_supported ? (
                           <span className="text-xs text-muted italic">{t("settings.plugins.platformNotSupported")}</span>
                         ) : plugin.update_available ? (
                           <button
@@ -1381,9 +1445,9 @@ export const Settings = () => {
                           </button>
                         ) : (
                           <span className="text-xs text-green-400">{t("settings.plugins.upToDate")}</span>
-                        )}
-                      </div>
-                    </div>
+                        )
+                      }
+                    />
                   ))}
                   {registryPlugins.length === 0 && (
                     <p className="text-sm text-muted py-4">{t("settings.plugins.noPlugins")}</p>
@@ -1392,9 +1456,9 @@ export const Settings = () => {
               )}
             </div>
 
-            {/* Installed Drivers */}
+            {/* Installed Plugins */}
             <div>
-              <h2 className="text-xl font-semibold text-primary mb-4">{t("settings.plugins.installedDrivers")}</h2>
+              <h2 className="text-xl font-semibold text-primary mb-4">{t("settings.plugins.installedPlugins")}</h2>
               <p className="text-xs text-muted mb-4">
                 {t("settings.plugins.installedDesc")}
               </p>
@@ -1402,65 +1466,71 @@ export const Settings = () => {
               <div className="space-y-3">
                 {allDrivers.map((driver: PluginManifest) => {
                   const isBuiltin = ["mysql", "postgres", "sqlite"].includes(driver.id);
+                  const registryPlugin = registryPlugins.find(p => p.id === driver.id);
                   const activeExt = settings.activeExternalDrivers || [];
                   const isEnabled = isBuiltin || activeExt.includes(driver.id);
 
                   return (
-                    <div key={driver.id} className={`flex items-center justify-between p-3 rounded-lg border border-surface-tertiary bg-surface-secondary ${isBuiltin ? "opacity-80" : ""}`}>
-                      <div>
-                        <div className="text-sm font-medium text-primary flex items-center gap-2">
-                          {driver.name}
-                          {isBuiltin && <span className="text-[10px] bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded uppercase">Built-in</span>}
-                        </div>
-                        <div className="text-xs text-secondary">{driver.description} (v{driver.version})</div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {!isBuiltin && (
+                    <PluginCard
+                      key={driver.id}
+                      name={driver.name}
+                      description={driver.description}
+                      version={driver.version}
+                      author={!isBuiltin ? registryPlugin?.author : undefined}
+                      homepage={!isBuiltin ? registryPlugin?.homepage : undefined}
+                      dimmed={isBuiltin}
+                      badges={isBuiltin ? (
+                        <span className="text-[10px] bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded uppercase">Built-in</span>
+                      ) : undefined}
+                      actions={
+                        <>
+                          {!isBuiltin && (
+                            <button
+                              onClick={async () => {
+                                const confirmed = await ask(
+                                  t("settings.plugins.confirmRemove", { name: driver.name }),
+                                  { title: t("settings.plugins.removeTitle"), kind: "warning" }
+                                );
+                                if (!confirmed) return;
+                                setUninstallingPluginId(driver.id);
+                                try {
+                                  await invoke("uninstall_plugin", { pluginId: driver.id });
+                                  refreshDrivers();
+                                  refreshRegistry();
+                                } catch (err) {
+                                  await message(String(err), { title: t("common.error"), kind: "error" });
+                                } finally {
+                                  setUninstallingPluginId(null);
+                                }
+                              }}
+                              disabled={uninstallingPluginId === driver.id}
+                              className="text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors p-1"
+                              title={t("settings.plugins.remove")}
+                            >
+                              {uninstallingPluginId === driver.id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={14} />
+                              )}
+                            </button>
+                          )}
                           <button
-                            onClick={async () => {
-                              const confirmed = await ask(
-                                t("settings.plugins.confirmRemove", { name: driver.name }),
-                                { title: t("settings.plugins.removeTitle"), kind: "warning" }
-                              );
-                              if (!confirmed) return;
-                              setUninstallingPluginId(driver.id);
-                              try {
-                                await invoke("uninstall_plugin", { pluginId: driver.id });
-                                refreshDrivers();
-                                refreshRegistry();
-                              } catch (err) {
-                                await message(String(err), { title: t("common.error"), kind: "error" });
-                              } finally {
-                                setUninstallingPluginId(null);
+                            onClick={() => {
+                              if (isBuiltin) return;
+                              if (isEnabled) {
+                                updateSetting("activeExternalDrivers", activeExt.filter(id => id !== driver.id));
+                              } else {
+                                updateSetting("activeExternalDrivers", [...activeExt, driver.id]);
                               }
                             }}
-                            disabled={uninstallingPluginId === driver.id}
-                            className="text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors p-1"
-                            title={t("settings.plugins.remove")}
+                            disabled={isBuiltin}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${isEnabled ? "bg-blue-600" : "bg-surface-tertiary"} ${isBuiltin ? "opacity-50 cursor-not-allowed" : ""}`}
                           >
-                            {uninstallingPluginId === driver.id ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : (
-                              <Trash2 size={14} />
-                            )}
+                            <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isEnabled ? "translate-x-4" : "translate-x-0"}`} />
                           </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            if (isBuiltin) return;
-                            if (isEnabled) {
-                              updateSetting("activeExternalDrivers", activeExt.filter(id => id !== driver.id));
-                            } else {
-                              updateSetting("activeExternalDrivers", [...activeExt, driver.id]);
-                            }
-                          }}
-                          disabled={isBuiltin}
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${isEnabled ? "bg-blue-600" : "bg-surface-tertiary"} ${isBuiltin ? "opacity-50 cursor-not-allowed" : ""}`}
-                        >
-                          <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isEnabled ? "translate-x-4" : "translate-x-0"}`} />
-                        </button>
-                      </div>
-                    </div>
+                        </>
+                      }
+                    />
                   );
                 })}
               </div>

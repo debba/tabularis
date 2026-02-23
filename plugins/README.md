@@ -55,7 +55,7 @@ The registry file is fetched from this repository by the app to display availabl
       "id": "duckdb",
       "name": "DuckDB",
       "description": "DuckDB local analytical database",
-      "author": "Author Name",
+      "author": "Author Name <https://github.com/author>",
       "homepage": "https://github.com/author/repo",
       "latest_version": "1.0.0",
       "min_tabularis_version": "0.8.15",
@@ -82,7 +82,7 @@ The registry file is fetched from this repository by the app to display availabl
 | `id` | string | Unique driver identifier, must match the `id` in `manifest.json` |
 | `name` | string | Display name shown in the UI |
 | `description` | string | Short description shown in the plugins list |
-| `author` | string | Author name or organization |
+| `author` | string | Author name and URL in the format `"Name <https://url>"` |
 | `homepage` | string | URL to the plugin repository or documentation |
 | `latest_version` | string | Latest released version (semver) |
 | `min_tabularis_version` | string | Minimum app version required to run this plugin |

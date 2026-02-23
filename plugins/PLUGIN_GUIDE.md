@@ -734,7 +734,7 @@ You should see a valid JSON-RPC response on stdout.
 2. Place your `manifest.json` and the compiled executable in that directory.
 3. On Linux/macOS, make the executable runnable: `chmod +x myplugin`
 4. Restart Tabularis (or install via Settings to hot-reload without restart).
-5. Open **Settings → Installed Drivers** — your driver should appear.
+5. Open **Settings → Installed Plugins** — your driver should appear.
 6. Try creating a new connection using your driver from the connection form.
 
 ---

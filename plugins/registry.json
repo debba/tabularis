@@ -5,8 +5,8 @@
       "id": "duckdb",
       "name": "DuckDB",
       "description": "DuckDB local analytical database",
-      "author": "Debba",
-      "homepage": "https://github.com/debba/tabularis",
+      "author": "debba <https://github.com/debba>",
+      "homepage": "https://github.com/debba/tabularis-duckdb-plugin",
       "latest_version": "0.1.0",
       "min_tabularis_version": "0.8.15",
       "releases": [

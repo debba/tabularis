@@ -264,7 +264,7 @@
       "install": "Install",
       "upToDate": "Up to date",
       "noPlugins": "No plugins available in the registry.",
-      "installedDrivers": "Installed Drivers",
+      "installedPlugins": "Installed Plugins",
       "installedDesc": "Enable or disable database drivers. Built-in drivers cannot be disabled.",
       "remove": "Remove",
       "removeTitle": "Remove Plugin",

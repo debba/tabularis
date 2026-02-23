@@ -264,7 +264,7 @@
       "install": "Instalar",
       "upToDate": "Actualizado",
       "noPlugins": "No hay plugins disponibles en el registro.",
-      "installedDrivers": "Drivers Instalados",
+      "installedPlugins": "Plugins Instalados",
       "installedDesc": "Habilita o deshabilita los drivers de base de datos. Los drivers integrados no se pueden deshabilitar.",
       "remove": "Eliminar",
       "removeTitle": "Eliminar Plugin",

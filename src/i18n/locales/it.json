@@ -264,7 +264,7 @@
       "install": "Installa",
       "upToDate": "Aggiornato",
       "noPlugins": "Nessun plugin disponibile nel registro.",
-      "installedDrivers": "Driver Installati",
+      "installedPlugins": "Plugin Installati",
       "installedDesc": "Abilita o disabilita i driver database. I driver integrati non possono essere disabilitati.",
       "remove": "Rimuovi",
       "removeTitle": "Rimuovi Plugin",
