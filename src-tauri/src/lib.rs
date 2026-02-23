@@ -265,6 +265,11 @@ pub fn run() {
             preferences::load_editor_preferences,
             preferences::delete_editor_preferences,
             preferences::list_all_preferences,
+            // Plugin Registry
+            plugins::commands::fetch_plugin_registry,
+            plugins::commands::install_plugin,
+            plugins::commands::uninstall_plugin,
+            plugins::commands::get_installed_plugins,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

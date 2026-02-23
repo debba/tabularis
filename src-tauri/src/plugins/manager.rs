@@ -51,7 +51,7 @@ pub async fn load_plugins() {
     }
 }
 
-async fn load_plugin_from_dir(path: &Path) {
+pub async fn load_plugin_from_dir(path: &Path) {
     let manifest_path = path.join("manifest.json");
     if !manifest_path.exists() {
         return;

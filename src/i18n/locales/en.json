@@ -249,7 +249,27 @@
     "error": "Error",
     "erDiagram": "ER Diagram",
     "erDiagramDefaultLayout": "Default Layout",
-    "erDiagramDefaultLayoutDesc": "Choose the default layout direction for ER diagrams"
+    "erDiagramDefaultLayoutDesc": "Choose the default layout direction for ER diagrams",
+    "plugins": {
+      "title": "Plugins",
+      "available": "Available Plugins",
+      "availableDesc": "Browse and install plugins from the registry.",
+      "refresh": "Refresh",
+      "loadingRegistry": "Loading plugin registry...",
+      "registryError": "Failed to load registry",
+      "installed": "Installed",
+      "by": "by",
+      "platformNotSupported": "Not available for your platform",
+      "update": "Update",
+      "install": "Install",
+      "upToDate": "Up to date",
+      "noPlugins": "No plugins available in the registry.",
+      "installedDrivers": "Installed Drivers",
+      "installedDesc": "Enable or disable database drivers. Built-in drivers cannot be disabled.",
+      "remove": "Remove",
+      "removeTitle": "Remove Plugin",
+      "confirmRemove": "Are you sure you want to remove \"{{name}}\"? This will delete the plugin files."
+    }
   },
   "update": {
     "newVersionAvailable": "New Version Available",

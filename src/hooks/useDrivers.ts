@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { PluginManifest } from "../types/plugins";
 import { useSettings } from "./useSettings";
@@ -36,13 +36,15 @@ export function useDrivers(): {
   allDrivers: PluginManifest[];
   loading: boolean;
   error: string | null;
+  refresh: () => void;
 } {
   const [allDrivers, setAllDrivers] = useState<PluginManifest[]>(FALLBACK_DRIVERS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { settings } = useSettings();
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
+    setLoading(true);
     invoke<PluginManifest[]>("get_registered_drivers")
       .then((result) => {
         setAllDrivers(result);
@@ -54,9 +56,13 @@ export function useDrivers(): {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
   const builtin = ["mysql", "postgres", "sqlite"];
   const activeExt = settings.activeExternalDrivers || [];
   const active = allDrivers.filter(d => builtin.includes(d.id) || activeExt.includes(d.id));
 
-  return { drivers: active, allDrivers, loading, error };
+  return { drivers: active, allDrivers, loading, error, refresh };
 }

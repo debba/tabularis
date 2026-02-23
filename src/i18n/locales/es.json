@@ -249,7 +249,27 @@
     "error": "Error",
     "erDiagram": "Diagrama ER",
     "erDiagramDefaultLayout": "Diseño Predeterminado",
-    "erDiagramDefaultLayoutDesc": "Elige la dirección de diseño predeterminada para los diagramas ER"
+    "erDiagramDefaultLayoutDesc": "Elige la dirección de diseño predeterminada para los diagramas ER",
+    "plugins": {
+      "title": "Plugins",
+      "available": "Plugins Disponibles",
+      "availableDesc": "Explora e instala plugins del registro.",
+      "refresh": "Actualizar",
+      "loadingRegistry": "Cargando registro de plugins...",
+      "registryError": "Error al cargar el registro",
+      "installed": "Instalado",
+      "by": "por",
+      "platformNotSupported": "No disponible para tu plataforma",
+      "update": "Actualizar",
+      "install": "Instalar",
+      "upToDate": "Actualizado",
+      "noPlugins": "No hay plugins disponibles en el registro.",
+      "installedDrivers": "Drivers Instalados",
+      "installedDesc": "Habilita o deshabilita los drivers de base de datos. Los drivers integrados no se pueden deshabilitar.",
+      "remove": "Eliminar",
+      "removeTitle": "Eliminar Plugin",
+      "confirmRemove": "¿Estás seguro de que deseas eliminar \"{{name}}\"? Los archivos del plugin serán eliminados."
+    }
   },
   "update": {
     "newVersionAvailable": "Nueva Versión Disponible",

@@ -27,6 +27,16 @@ pub async fn get_driver(id: &str) -> Option<Arc<dyn DatabaseDriver>> {
     reg.get(id).cloned()
 }
 
+/// Unregister a driver by its id. Returns `true` if a driver was removed.
+pub async fn unregister_driver(id: &str) -> bool {
+    let mut reg = REGISTRY.write().await;
+    let removed = reg.remove(id).is_some();
+    if removed {
+        log::info!("Unregistered driver: {}", id);
+    }
+    removed
+}
+
 /// Returns the manifests of all registered drivers, sorted by id.
 /// Called by the `get_registered_drivers` Tauri command.
 pub async fn list_drivers() -> Vec<PluginManifest> {
