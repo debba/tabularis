@@ -429,6 +429,122 @@
                 height: 100%;
                 cursor: default;
             }
+
+            /* PLUGIN LIST */
+            .plugin-list {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .plugin-entry {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1.5rem;
+                padding: 1rem 1.25rem;
+                background: var(--card-bg);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                transition: border-color 0.2s;
+            }
+
+            .plugin-entry:hover {
+                border-color: var(--text-muted);
+            }
+
+            .plugin-entry-info {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .plugin-entry-header {
+                display: flex;
+                align-items: center;
+                gap: 0.6rem;
+                margin-bottom: 0.35rem;
+                flex-wrap: wrap;
+            }
+
+            .plugin-name {
+                font-weight: 600;
+                color: #fff;
+                font-size: 0.95rem;
+                text-decoration: none;
+            }
+
+            .plugin-name:hover {
+                color: var(--accent);
+                text-decoration: underline;
+            }
+
+            .plugin-badge {
+                font-size: 0.68rem;
+                padding: 0.1rem 0.5rem;
+                border-radius: 2rem;
+                background: rgba(88, 166, 255, 0.12);
+                border: 1px solid rgba(88, 166, 255, 0.3);
+                color: var(--accent);
+                letter-spacing: 0.02em;
+            }
+
+            .plugin-desc {
+                font-size: 0.85rem;
+                color: var(--text-muted);
+                margin-bottom: 0.4rem;
+            }
+
+            .plugin-meta {
+                font-size: 0.78rem;
+                color: var(--text-muted);
+            }
+
+            .plugin-platforms {
+                opacity: 0.65;
+            }
+
+            .btn-plugin {
+                display: inline-flex;
+                align-items: center;
+                padding: 0.4rem 0.9rem;
+                background: transparent;
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                color: var(--text-muted);
+                font-size: 0.82rem;
+                white-space: nowrap;
+                transition: all 0.2s;
+                flex-shrink: 0;
+                font-family: var(--font-stack);
+                text-decoration: none;
+            }
+
+            .btn-plugin:hover {
+                border-color: var(--accent);
+                color: var(--accent);
+                text-decoration: none;
+            }
+
+            .plugin-cta {
+                margin-top: 2.5rem;
+                padding: 1.5rem;
+                background: var(--card-bg);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+            }
+
+            .plugin-cta h3 {
+                color: var(--text-main);
+                font-size: 1rem;
+                margin-bottom: 0.6rem;
+            }
+
+            .plugin-cta p {
+                font-size: 0.9rem;
+                color: var(--text-muted);
+                margin-bottom: 1rem;
+            }
         </style>
     </head>
     <body>
@@ -689,6 +805,103 @@
                             GitHub.
                         </p>
                     </article>
+                </div>
+            </section>
+
+            <!-- PLUGINS -->
+            <section class="section" id="plugins">
+                <h2>_plugins</h2>
+                <p>
+                    Tabularis supports extending its database support via an
+                    <strong>external plugin system</strong>. Plugins are
+                    standalone executables that communicate with the app
+                    through <strong>JSON-RPC 2.0 over stdin/stdout</strong>.
+                    They can be written in any programming language and
+                    distributed independently of the main app.
+                </p>
+
+                <div class="features-grid" style="margin: 2rem 0 3rem">
+                    <article class="feature-card">
+                        <h3>🧩 Language-Agnostic</h3>
+                        <p>
+                            Write your driver in Rust, Go, Python, Node.js —
+                            anything that speaks JSON-RPC over stdin/stdout.
+                            No SDK required.
+                        </p>
+                    </article>
+                    <article class="feature-card">
+                        <h3>⚡ Hot Install</h3>
+                        <p>
+                            Install, update, and remove plugins from
+                            <strong>Settings → Plugins</strong> without
+                            restarting. New drivers appear instantly in the
+                            connection form.
+                        </p>
+                    </article>
+                    <article class="feature-card">
+                        <h3>🔒 Process Isolation</h3>
+                        <p>
+                            Each plugin runs as a separate process. A crashing
+                            plugin never takes down the app — only the affected
+                            connection fails.
+                        </p>
+                    </article>
+                </div>
+
+                <h3 style="color: var(--text-main); font-size: 1rem; margin-bottom: 1rem; font-weight: 600">
+                    Available Plugins
+                </h3>
+
+                <div class="plugin-list">
+                    <!-- DuckDB -->
+                    <div class="plugin-entry">
+                        <div class="plugin-entry-info">
+                            <div class="plugin-entry-header">
+                                <a
+                                    href="https://github.com/debba/tabularis-duckdb-plugin"
+                                    class="plugin-name"
+                                >DuckDB</a>
+                                <span class="plugin-badge">v0.1.0</span>
+                            </div>
+                            <p class="plugin-desc">
+                                Fast in-process OLAP SQL engine. File-based,
+                                no server required. Ideal for analytics on local
+                                datasets.
+                            </p>
+                            <div class="plugin-meta">
+                                by <a href="https://github.com/debba">debba</a>
+                                &middot;
+                                <span class="plugin-platforms">Linux &middot; macOS &middot; Windows</span>
+                            </div>
+                        </div>
+                        <a
+                            href="https://github.com/debba/tabularis-duckdb-plugin"
+                            class="btn-plugin"
+                        >View &rarr;</a>
+                    </div>
+                </div>
+
+                <p style="font-size: 0.9rem">
+                    <a href="https://github.com/debba/tabularis/blob/main/plugins/README.md">
+                        Browse the plugin registry &rarr;
+                    </a>
+                </p>
+
+                <div class="plugin-cta">
+                    <h3>Build Your Own Plugin</h3>
+                    <p>
+                        Got a database you'd like to support? The plugin guide
+                        covers the JSON-RPC protocol, manifest format, data
+                        types, and includes a full Rust skeleton to get you
+                        started in minutes.
+                    </p>
+                    <a
+                        href="https://github.com/debba/tabularis/blob/main/plugins/PLUGIN_GUIDE.md"
+                        class="btn-download"
+                        style="display: inline-flex; width: auto"
+                    >
+                        Read the Plugin Guide &rarr;
+                    </a>
                 </div>
             </section>
 
