@@ -1471,19 +1471,25 @@ export const Editor = () => {
   const handleRunDropdownToggle = useCallback(() => {
     if (!isRunDropdownOpen) {
       // Monaco Editor: split queries from editor
-      if (activeTab?.type !== "query_builder" && editorRef.current) {
-        const editor = editorRef.current;
-        const selection = editor.getSelection();
-        const selectedText = selection
-          ? editor.getModel()?.getValueInRange(selection)
-          : undefined;
+      if (activeTab?.type !== "query_builder" && activeTab) {
+        const editor = editorsRef.current[activeTab.id];
+        if (editor) {
+          const selection = editor.getSelection();
+          const selectedText = selection
+            ? editor.getModel()?.getValueInRange(selection)
+            : undefined;
 
-        if (selectedText && selection && !selection.isEmpty()) {
-          const queries = splitQueries(selectedText);
-          setSelectableQueries(queries);
-        } else {
-          const text = editor.getValue();
-          const queries = splitQueries(text);
+          if (selectedText && selection && !selection.isEmpty()) {
+            const queries = splitQueries(selectedText);
+            setSelectableQueries(queries);
+          } else {
+            const text = editor.getValue();
+            const queries = splitQueries(text);
+            setSelectableQueries(queries);
+          }
+        } else if (activeTab.query?.trim()) {
+          // Fallback: use saved query when editor ref is not available
+          const queries = splitQueries(activeTab.query);
           setSelectableQueries(queries);
         }
       }
@@ -1746,7 +1752,7 @@ export const Editor = () => {
                   if (isActive) updateTab(tab.id, { query: val });
                 }}
                 onRun={handleRunButton}
-                onMount={isActive ? handleEditorMount : undefined}
+                onMount={isActive ? (editor, monaco) => handleEditorMount(editor, monaco, tab.id) : undefined}
                 editorKey={tab.id}
                 options={{
                   minimap: { enabled: false },
