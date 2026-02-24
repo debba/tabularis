@@ -1,11 +1,3 @@
----
-title: "Point, Click, Query: The Visual Query Builder"
-date: 2026-01-27
-release: v0.4.0
-tags: [ux, sql]
-excerpt: "Not every query needs to be typed from scratch. v0.4.0 ships a Visual Query Builder that lets you drag tables, draw JOINs, and generate SQL automatically."
----
-
 # Point, Click, Query: The Visual Query Builder
 
 SQL is powerful, but sometimes you just want to browse. You know the tables involved, you know the columns you care about, but spelling out a four-table JOIN with the right aliases from memory is friction. **v0.4.0** ships a Visual Query Builder to handle exactly that.

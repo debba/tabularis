@@ -1,11 +1,3 @@
----
-title: "Passwords in the Keychain, Queries in Three Languages"
-date: 2026-01-28
-release: v0.6.0
-tags: [security, i18n]
-excerpt: "v0.6.0 integrates system keychain storage for credentials and ships the full UI in English, Italian, and Spanish."
----
-
 # Passwords in the Keychain, Queries in Three Languages
 
 Two things in v0.6.0 aren't flashy, but they matter more than most feature launches. **System keychain integration** fixes the nagging security concern of storing database passwords in a config file. **Internationalization** makes Tabularis accessible in three languages from day one.

@@ -269,6 +269,21 @@
                 color: var(--text-muted);
             }
         </style>
+
+        <!-- Matomo -->
+        <script>
+            var _paq = window._paq = window._paq || [];
+            _paq.push(['trackPageView']);
+            _paq.push(['enableLinkTracking']);
+            (function() {
+                var u="//analytics.debbaweb.it/";
+                _paq.push(['setTrackerUrl', u+'matomo.php']);
+                _paq.push(['setSiteId', '4']);
+                var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+                g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+            })();
+        </script>
+        <!-- End Matomo Code -->
     </head>
     <body>
         <div class="container">
@@ -341,93 +356,76 @@
                     return;
                 }
 
-                fetch("posts/" + slug + ".md")
-                    .then(function (res) {
+                function fmtDate(iso) {
+                    var d = new Date(iso + "T12:00:00Z");
+                    return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+                }
+
+                Promise.all([
+                    fetch("posts/" + slug + ".md").then(function (res) {
                         if (!res.ok) throw new Error("Post not found (" + res.status + ")");
                         return res.text();
+                    }),
+                    fetch("posts/index.json").then(function (res) {
+                        if (!res.ok) throw new Error("Post index not found (" + res.status + ")");
+                        return res.json();
                     })
-                    .then(function (raw) {
-                        // Parse YAML front matter
-                        var frontMatter = {};
-                        var body = raw;
-                        var fmMatch = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-                        if (fmMatch) {
-                            fmMatch[1].split("\n").forEach(function (line) {
-                                var idx = line.indexOf(":");
-                                if (idx === -1) return;
-                                var key = line.slice(0, idx).trim();
-                                var val = line.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
-                                frontMatter[key] = val;
-                            });
-                            body = fmMatch[2];
-                        }
+                ]).then(function (results) {
+                    var body = results[0];
+                    var index = results[1];
 
-                        // Parse tags
-                        var tags = [];
-                        if (frontMatter.tags) {
-                            tags = frontMatter.tags
-                                .replace(/^\[|\]$/g, "")
-                                .split(",")
-                                .map(function (t) { return t.trim(); })
-                                .filter(Boolean);
-                        }
+                    var meta = index.find(function (p) { return p.slug === slug; }) || {};
+                    var tags = meta.tags || [];
 
-                        // Render markdown
-                        var html = marked.parse(body);
+                    // Render markdown
+                    var html = marked.parse(body);
 
-                        // Extract title from first h1
-                        var titleMatch = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
-                        postTitle = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, "") : slug;
-                        postExcerpt = frontMatter.excerpt || "";
+                    // Extract title from first h1
+                    var titleMatch = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
+                    postTitle = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, "") : slug;
+                    postExcerpt = meta.excerpt || "";
 
-                        // Update page <title>
-                        document.title = postTitle + " | Tabularis Blog";
+                    // Update page <title>
+                    document.title = postTitle + " | Tabularis Blog";
 
-                        // Update OG / Twitter meta tags dynamically
-                        var pageUrl = "https://tabularis.dev/blog/post.html?slug=" + slug;
-                        document.getElementById("og-url").setAttribute("content", pageUrl);
-                        document.getElementById("og-title").setAttribute("content", postTitle + " | Tabularis Blog");
-                        document.getElementById("tw-title").setAttribute("content", postTitle + " | Tabularis Blog");
-                        if (postExcerpt) {
-                            document.getElementById("og-description").setAttribute("content", postExcerpt);
-                            document.getElementById("tw-description").setAttribute("content", postExcerpt);
-                            document.querySelector("meta[name='description']").setAttribute("content", postExcerpt);
-                        }
-                        // Per-post OG image (place generated PNGs in blog/img/)
-                        var ogImageUrl = "https://tabularis.dev/blog/img/og-" + slug + ".png";
-                        document.getElementById("og-image").setAttribute("content", ogImageUrl);
-                        document.getElementById("tw-image").setAttribute("content", ogImageUrl);
+                    // Update OG / Twitter meta tags dynamically
+                    var pageUrl = "https://tabularis.dev/blog/post.html?slug=" + slug;
+                    document.getElementById("og-url").setAttribute("content", pageUrl);
+                    document.getElementById("og-title").setAttribute("content", postTitle + " | Tabularis Blog");
+                    document.getElementById("tw-title").setAttribute("content", postTitle + " | Tabularis Blog");
+                    if (postExcerpt) {
+                        document.getElementById("og-description").setAttribute("content", postExcerpt);
+                        document.getElementById("tw-description").setAttribute("content", postExcerpt);
+                        document.querySelector("meta[name='description']").setAttribute("content", postExcerpt);
+                    }
+                    // Per-post OG image (place generated PNGs in blog/img/)
+                    var ogImageUrl = "https://tabularis.dev/blog/img/og-" + slug + ".png";
+                    document.getElementById("og-image").setAttribute("content", ogImageUrl);
+                    document.getElementById("tw-image").setAttribute("content", ogImageUrl);
 
-                        // Breadcrumb
-                        var crumb = document.getElementById("breadcrumb-title");
-                        crumb.textContent = postTitle.length > 40 ? postTitle.slice(0, 40) + "…" : postTitle;
+                    // Breadcrumb
+                    var crumb = document.getElementById("breadcrumb-title");
+                    crumb.textContent = postTitle.length > 40 ? postTitle.slice(0, 40) + "…" : postTitle;
 
-                        // Format ISO date → "Feb 23, 2026"
-                        function fmtDate(iso) {
-                            var d = new Date(iso + "T12:00:00Z");
-                            return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
-                        }
+                    // Build meta bar
+                    var metaParts = [];
+                    if (meta.date) metaParts.push("<span>" + fmtDate(meta.date) + "</span><span>·</span><span>2 min read</span>");
+                    if (meta.release) metaParts.push("<span class='post-release'>" + meta.release + "</span>");
+                    tags.forEach(function (t) { metaParts.push("<span class='post-tag'>" + t + "</span>"); });
+                    var metaBar = "<div class='post-meta'>" + metaParts.join("<span>&middot;</span>") + "</div>";
 
-                        // Build meta bar
-                        var metaParts = [];
-                        if (frontMatter.date) metaParts.push("<span>" + fmtDate(frontMatter.date) + "</span><span>·</span><span>2 min read</span>");
-                        if (frontMatter.release) metaParts.push("<span class='post-release'>" + frontMatter.release + "</span>");
-                        tags.forEach(function (t) { metaParts.push("<span class='post-tag'>" + t + "</span>"); });
-                        var metaBar = "<div class='post-meta'>" + metaParts.join("<span>&middot;</span>") + "</div>";
+                    // Inject meta bar after first h1
+                    html = html.replace(/<\/h1>/, "</h1>" + metaBar);
 
-                        // Inject meta bar after first h1
-                        html = html.replace(/<\/h1>/, "</h1>" + metaBar);
-
-                        var article = document.getElementById("post-content");
-                        article.innerHTML = html;
-                        article.style.display = "block";
-                        document.getElementById("status").style.display = "none";
-                        document.getElementById("post-cta").style.display = "block";
-                    })
-                    .catch(function (err) {
-                        document.getElementById("status").textContent =
-                            "Could not load post: " + err.message;
-                    });
+                    var article = document.getElementById("post-content");
+                    article.innerHTML = html;
+                    article.style.display = "block";
+                    document.getElementById("status").style.display = "none";
+                    document.getElementById("post-cta").style.display = "block";
+                }).catch(function (err) {
+                    document.getElementById("status").textContent =
+                        "Could not load post: " + err.message;
+                });
             })();
         </script>
     </body>

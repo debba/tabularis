@@ -1,0 +1,42 @@
+[
+  {
+    "slug": "plugin-ecosystem",
+    "title": "Build Your Own Driver: Tabularis Gets a Plugin System",
+    "date": "2026-02-23",
+    "release": "v0.9.0",
+    "tags": ["extensibility", "plugins"],
+    "excerpt": "Supporting every database in the world is an impossible task for a small team. So we built a plugin system that lets anyone add a new database driver — in any language."
+  },
+  {
+    "slug": "ai-assistant",
+    "title": "Talk to Your Database: AI Assistant Lands in v0.8.0",
+    "date": "2026-01-29",
+    "release": "v0.8.0",
+    "tags": ["ai", "mcp"],
+    "excerpt": "Sometimes you know what you want but not exactly how to write the SQL. v0.8.0 brings an AI assistant that generates queries from plain English — locally or in the cloud."
+  },
+  {
+    "slug": "security-and-i18n",
+    "title": "Passwords in the Keychain, Queries in Three Languages",
+    "date": "2026-01-28",
+    "release": "v0.6.0",
+    "tags": ["security", "i18n"],
+    "excerpt": "v0.6.0 integrates system keychain storage for credentials and ships the full UI in English, Italian, and Spanish."
+  },
+  {
+    "slug": "schema-management",
+    "title": "Schema Management Gets Serious",
+    "date": "2026-01-27",
+    "release": "v0.5.0",
+    "tags": ["schema", "ux"],
+    "excerpt": "v0.5.0 turns the sidebar into a full schema editor. Create tables, modify columns, manage indexes and foreign keys — all without writing DDL by hand."
+  },
+  {
+    "slug": "visual-query-builder",
+    "title": "Point, Click, Query: The Visual Query Builder",
+    "date": "2026-01-27",
+    "release": "v0.4.0",
+    "tags": ["ux", "sql"],
+    "excerpt": "Not every query needs to be typed from scratch. v0.4.0 ships a Visual Query Builder that lets you drag tables, draw JOINs, and generate SQL automatically."
+  }
+]

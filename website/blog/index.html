@@ -231,6 +231,21 @@
                 color: var(--text-muted);
             }
         </style>
+
+        <!-- Matomo -->
+        <script>
+            var _paq = window._paq = window._paq || [];
+            _paq.push(['trackPageView']);
+            _paq.push(['enableLinkTracking']);
+            (function() {
+                var u="//analytics.debbaweb.it/";
+                _paq.push(['setTrackerUrl', u+'matomo.php']);
+                _paq.push(['setSiteId', '4']);
+                var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+                g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+            })();
+        </script>
+        <!-- End Matomo Code -->
     </head>
     <body>
         <div class="container">
@@ -260,83 +275,8 @@
                     </div>
                 </div>
 
-                <div class="post-list">
-
-                    <!-- v0.9.0 -->
-                    <a class="post-card" href="post.html?slug=plugin-ecosystem">
-                        <div class="post-meta">
-                            <span>Feb 23, 2026</span>
-                            <span>·</span>
-                            <span>2 min read</span>
-                            <span>·</span>
-                            <span class="post-release">v0.9.0</span>
-                            <span class="post-tag">extensibility</span>
-                            <span class="post-tag">plugins</span>
-                        </div>
-                        <div class="post-title">Build Your Own Driver: Tabularis Gets a Plugin System</div>
-                        <div class="post-excerpt">Supporting every database in the world is an impossible task for a small team. So we built a plugin system that lets anyone add a new database driver — in any language.</div>
-                    </a>
-
-                    <!-- v0.8.0 -->
-                    <a class="post-card" href="post.html?slug=ai-assistant">
-                        <div class="post-meta">
-                            <span>Jan 29, 2026</span>
-                            <span>·</span>
-                            <span>2 min read</span>
-                            <span>·</span>
-                            <span class="post-release">v0.8.0</span>
-                            <span class="post-tag">ai</span>
-                            <span class="post-tag">mcp</span>
-                        </div>
-                        <div class="post-title">Talk to Your Database: AI Assistant Lands in v0.8.0</div>
-                        <div class="post-excerpt">Sometimes you know what you want but not exactly how to write the SQL. v0.8.0 brings an AI assistant that generates queries from plain English — locally or in the cloud.</div>
-                    </a>
-
-                    <!-- v0.6.0 -->
-                    <a class="post-card" href="post.html?slug=security-and-i18n">
-                        <div class="post-meta">
-                            <span>Jan 28, 2026</span>
-                            <span>·</span>
-                            <span>2 min read</span>
-                            <span>·</span>
-                            <span class="post-release">v0.6.0</span>
-                            <span class="post-tag">security</span>
-                            <span class="post-tag">i18n</span>
-                        </div>
-                        <div class="post-title">Passwords in the Keychain, Queries in Three Languages</div>
-                        <div class="post-excerpt">v0.6.0 integrates system keychain storage for credentials and ships the full UI in English, Italian, and Spanish.</div>
-                    </a>
-
-                    <!-- v0.5.0 -->
-                    <a class="post-card" href="post.html?slug=schema-management">
-                        <div class="post-meta">
-                            <span>Jan 27, 2026</span>
-                            <span>·</span>
-                            <span>2 min read</span>
-                            <span>·</span>
-                            <span class="post-release">v0.5.0</span>
-                            <span class="post-tag">schema</span>
-                            <span class="post-tag">ux</span>
-                        </div>
-                        <div class="post-title">Schema Management Gets Serious</div>
-                        <div class="post-excerpt">v0.5.0 turns the sidebar into a full schema editor. Create tables, modify columns, manage indexes and foreign keys — all without writing DDL by hand.</div>
-                    </a>
-
-                    <!-- v0.4.0 -->
-                    <a class="post-card" href="post.html?slug=visual-query-builder">
-                        <div class="post-meta">
-                            <span>Jan 27, 2026</span>
-                            <span>·</span>
-                            <span>2 min read</span>
-                            <span>·</span>
-                            <span class="post-release">v0.4.0</span>
-                            <span class="post-tag">ux</span>
-                            <span class="post-tag">sql</span>
-                        </div>
-                        <div class="post-title">Point, Click, Query: The Visual Query Builder</div>
-                        <div class="post-excerpt">Not every query needs to be typed from scratch. v0.4.0 ships a Visual Query Builder that lets you drag tables, draw JOINs, and generate SQL automatically.</div>
-                    </a>
-
+                <div class="post-list" id="post-list">
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Loading…</span>
                 </div>
 
                 <div class="cta-strip">
@@ -360,5 +300,48 @@
                 </p>
             </footer>
         </div>
+        <script>
+            (function () {
+                function fmtDate(iso) {
+                    var d = new Date(iso + "T12:00:00Z");
+                    return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+                }
+
+                function renderPosts(posts) {
+                    var list = document.getElementById("post-list");
+                    if (!posts.length) {
+                        list.innerHTML = '<span style="color: var(--text-muted); font-size: 0.9rem;">No posts yet.</span>';
+                        return;
+                    }
+                    list.innerHTML = posts.map(function (p) {
+                        var tags = (p.tags || []).map(function (t) {
+                            return '<span class="post-tag">' + t + '</span>';
+                        }).join("");
+                        var release = p.release ? '<span class="post-release">' + p.release + '</span>' : "";
+                        return '<a class="post-card" href="post.html?slug=' + p.slug + '">'
+                            + '<div class="post-meta">'
+                            + '<span>' + fmtDate(p.date) + '</span>'
+                            + '<span>·</span><span>2 min read</span>'
+                            + (release ? '<span>·</span>' + release : "")
+                            + (tags ? '<span>·</span>' + tags : "")
+                            + '</div>'
+                            + '<div class="post-title">' + p.title + '</div>'
+                            + '<div class="post-excerpt">' + p.excerpt + '</div>'
+                            + '</a>';
+                    }).join("");
+                }
+
+                fetch("posts/index.json")
+                    .then(function (res) {
+                        if (!res.ok) throw new Error("Failed to load post list (" + res.status + ")");
+                        return res.json();
+                    })
+                    .then(renderPosts)
+                    .catch(function (err) {
+                        document.getElementById("post-list").innerHTML =
+                            '<span style="color: var(--text-muted); font-size: 0.9rem;">Could not load posts: ' + err.message + '</span>';
+                    });
+            })();
+        </script>
     </body>
 </html>

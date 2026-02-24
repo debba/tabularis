@@ -1,11 +1,3 @@
----
-title: "Schema Management Gets Serious"
-date: 2026-01-27
-release: v0.5.0
-tags: [schema, ux]
-excerpt: "v0.5.0 turns the sidebar into a full schema editor. Create tables, modify columns, manage indexes and foreign keys — all without writing DDL by hand."
----
-
 # Schema Management Gets Serious
 
 Reading your schema was always possible. v0.5.0 makes it writable. The sidebar — already a useful navigator for tables and columns — becomes a full editor in this release. **You can now create, modify, and delete schema objects without writing a single line of DDL.**
