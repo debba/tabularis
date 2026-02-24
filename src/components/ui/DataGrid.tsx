@@ -259,9 +259,8 @@ export const DataGrid = React.memo(
       colIndex: number,
       value: unknown,
     ) => {
-      if (!tableName) return; // Only edit if table context is known
+      if (!tableName) return;
 
-      // For insertion rows, allow editing without pkColumn
       const mergedRow = mergedRows[rowIndex];
       if (!mergedRow) return;
       if (mergedRow.type !== "insertion" && !pkColumn) return;
@@ -269,7 +268,6 @@ export const DataGrid = React.memo(
       const colName = columns[colIndex];
       const colType = columnTypeMap?.get(colName);
 
-      // For BLOB columns, open sidebar directly instead of inline editing
       if (colType && isBlobType(colType)) {
         const rowData: Record<string, unknown> = {};
         columns.forEach((col, idx) => {
@@ -280,7 +278,6 @@ export const DataGrid = React.memo(
         return;
       }
 
-      // For geometric columns, show WKT format in editor instead of WKB hex
       let editValue = value;
       if (
         colType &&
@@ -935,13 +932,8 @@ export const DataGrid = React.memo(
                               colName,
                             )
                           }
-                          className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 whitespace-nowrap font-mono ${isEditing ? "overflow-visible" : "truncate"} max-w-[300px] cursor-text ${stateClass}`}
+                          className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 font-mono ${isEditing ? "relative" : "whitespace-nowrap truncate max-w-[300px]"} cursor-text ${stateClass}`}
                           title={!isEditing ? String(displayValue) : ""}
-                          style={
-                            isEditing
-                              ? { position: "relative", zIndex: 100 }
-                              : undefined
-                          }
                         >
                           {isEditing
                             ? (() => {
@@ -1013,21 +1005,64 @@ export const DataGrid = React.memo(
                                     />
                                   );
                                 }
+                                const textValue = String(
+                                  editingCell.value ?? "",
+                                );
+                                // Measure the longest line to size the textarea
+                                const lines = textValue.split("\n");
+                                const canvas = document.createElement("canvas");
+                                const ctx = canvas.getContext("2d");
+                                if (ctx) {
+                                  ctx.font =
+                                    "14px ui-monospace, SFMono-Regular, monospace";
+                                }
+                                const longestLineWidth = ctx
+                                  ? Math.max(
+                                      ...lines.map(
+                                        (line) =>
+                                          ctx.measureText(line).width,
+                                      ),
+                                    )
+                                  : 200;
+                                // padding (p-2 = 8px * 2) + small buffer
+                                const textareaWidth =
+                                  Math.ceil(longestLineWidth) + 32;
+
                                 return (
-                                  <input
-                                    ref={editInputRef}
-                                    value={String(editingCell.value ?? "")}
-                                    onChange={(e) =>
-                                      setEditingCell((prev) =>
-                                        prev
-                                          ? { ...prev, value: e.target.value }
-                                          : null,
-                                      )
-                                    }
-                                    onBlur={handleEditCommit}
-                                    onKeyDown={handleKeyDown}
-                                    className="w-full bg-base text-primary border-none outline-none p-0 m-0 font-mono"
-                                  />
+                                  <>
+                                    {/* Invisible placeholder to preserve td width */}
+                                    <span className="invisible whitespace-nowrap">
+                                      {String(displayValue)}
+                                    </span>
+                                    <textarea
+                                      ref={(el) => {
+                                        (
+                                          editInputRef as React.MutableRefObject<HTMLElement | null>
+                                        ).current = el;
+                                        if (el) {
+                                          const td = el.parentElement;
+                                          if (td) {
+                                            el.style.width = `${Math.max(td.offsetWidth, textareaWidth)}px`;
+                                          }
+                                        }
+                                      }}
+                                      value={textValue}
+                                      rows={Math.min(lines.length, 10)}
+                                      onChange={(e) => {
+                                        setEditingCell((prev) =>
+                                          prev
+                                            ? {
+                                                ...prev,
+                                                value: e.target.value,
+                                              }
+                                            : null,
+                                        );
+                                      }}
+                                      onBlur={handleEditCommit}
+                                      onKeyDown={handleKeyDown}
+                                      className="absolute left-0 top-0 max-w-[400px] max-h-[120px] bg-base text-primary border border-blue-500 rounded shadow-lg p-2 font-mono text-sm resize-none z-50 outline-none"
+                                    />
+                                  </>
                                 );
                               })()
                             : hasPendingChange
