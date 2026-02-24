@@ -545,6 +545,72 @@
                 color: var(--text-muted);
                 margin-bottom: 1rem;
             }
+
+            /* BLOG CARDS */
+            .blog-list {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                margin-bottom: 2rem;
+            }
+
+            .blog-card {
+                display: flex;
+                align-items: flex-start;
+                gap: 1.25rem;
+                padding: 1rem 1.25rem;
+                background: var(--card-bg);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                text-decoration: none;
+                transition: border-color 0.2s;
+            }
+
+            .blog-card:hover {
+                border-color: var(--text-muted);
+                text-decoration: none;
+            }
+
+            .blog-card-body { flex: 1; min-width: 0; }
+
+            .blog-card-meta {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-size: 0.76rem;
+                color: var(--text-muted);
+                margin-bottom: 0.3rem;
+                flex-wrap: wrap;
+            }
+
+            .blog-release {
+                font-size: 0.66rem;
+                padding: 0.1rem 0.45rem;
+                border-radius: 2rem;
+                background: rgba(88, 166, 255, 0.12);
+                border: 1px solid rgba(88, 166, 255, 0.3);
+                color: var(--accent);
+                letter-spacing: 0.02em;
+            }
+
+            .blog-card-title {
+                font-weight: 600;
+                color: #fff;
+                font-size: 0.95rem;
+                margin-bottom: 0.2rem;
+                line-height: 1.4;
+            }
+
+            .blog-card-excerpt {
+                font-size: 0.83rem;
+                color: var(--text-muted);
+                line-height: 1.5;
+            }
+
+            .blog-all-link {
+                font-size: 0.9rem;
+                margin-top: 0.5rem;
+            }
         </style>
     </head>
     <body>
@@ -1175,6 +1241,77 @@
                         </p>
                     </article>
                 </div>
+            </section>
+
+            <!-- BLOG -->
+            <section class="section" id="blog">
+                <h2>_blog</h2>
+                <div class="blog-list">
+
+                    <a class="blog-card" href="blog/post.html?slug=plugin-ecosystem">
+                        <div class="blog-card-body">
+                            <div class="blog-card-meta">
+                                <span>Feb 23, 2026</span>
+                                <span>·</span>
+                                <span class="blog-release">v0.9.0</span>
+                            </div>
+                            <div class="blog-card-title">Build Your Own Driver: Tabularis Gets a Plugin System</div>
+                            <div class="blog-card-excerpt">Anyone can now add a new database driver — in any language — via JSON-RPC over stdin/stdout.</div>
+                        </div>
+                    </a>
+
+                    <a class="blog-card" href="blog/post.html?slug=ai-assistant">
+                        <div class="blog-card-body">
+                            <div class="blog-card-meta">
+                                <span>Jan 29, 2026</span>
+                                <span>·</span>
+                                <span class="blog-release">v0.8.0</span>
+                            </div>
+                            <div class="blog-card-title">Talk to Your Database: AI Assistant Lands in v0.8.0</div>
+                            <div class="blog-card-excerpt">Generate queries from plain English, explain complex SQL, and connect via MCP — locally or in the cloud.</div>
+                        </div>
+                    </a>
+
+                    <a class="blog-card" href="blog/post.html?slug=security-and-i18n">
+                        <div class="blog-card-body">
+                            <div class="blog-card-meta">
+                                <span>Jan 28, 2026</span>
+                                <span>·</span>
+                                <span class="blog-release">v0.6.0</span>
+                            </div>
+                            <div class="blog-card-title">Passwords in the Keychain, Queries in Three Languages</div>
+                            <div class="blog-card-excerpt">System keychain integration and full i18n in English, Italian, and Spanish.</div>
+                        </div>
+                    </a>
+
+                    <a class="blog-card" href="blog/post.html?slug=schema-management">
+                        <div class="blog-card-body">
+                            <div class="blog-card-meta">
+                                <span>Jan 27, 2026</span>
+                                <span>·</span>
+                                <span class="blog-release">v0.5.0</span>
+                            </div>
+                            <div class="blog-card-title">Schema Management Gets Serious</div>
+                            <div class="blog-card-excerpt">Inline column editing, table wizard, index management, FK panels, and auto-generated ER diagrams.</div>
+                        </div>
+                    </a>
+
+                    <a class="blog-card" href="blog/post.html?slug=visual-query-builder">
+                        <div class="blog-card-body">
+                            <div class="blog-card-meta">
+                                <span>Jan 27, 2026</span>
+                                <span>·</span>
+                                <span class="blog-release">v0.4.0</span>
+                            </div>
+                            <div class="blog-card-title">Point, Click, Query: The Visual Query Builder</div>
+                            <div class="blog-card-excerpt">Drag tables, draw JOINs, generate SQL — then edit it freely. Plus isolated multi-tab editor.</div>
+                        </div>
+                    </a>
+
+                </div>
+                <p class="blog-all-link">
+                    <a href="blog/index.html">View all posts →</a>
+                </p>
             </section>
 
             <!-- GALLERY -->
