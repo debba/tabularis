@@ -27,7 +27,7 @@ A lightweight, developer-focused database management tool, built with Tauri and 
 **Discord** - [Join our discord server](https://discord.gg/YrZPHAwMSG) and chat with the maintainers.
 
 <div align="center">
-  <img src="screenshots/overview.png?v" width="80%" alt="Tabularis" />
+  <img src="website/img/overview.png?v" width="80%" alt="Tabularis" />
 </div>
 
 ## Release Download:
