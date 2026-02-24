@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Sparkles, Ban, FileDigit } from "lucide-react";
 import { GeometryInput } from "./GeometryInput";
 import { BlobInput } from "./BlobInput";
+import { DateInput } from "./DateInput";
 import { isGeometricType, formatGeometricValue } from "../../utils/geometry";
 import { isBlobType } from "../../utils/blob";
+import { getDateInputMode } from "../../utils/dateInput";
 import { USE_DEFAULT_SENTINEL } from "../../utils/dataGrid";
 
 export interface FieldEditorProps {
@@ -50,6 +52,7 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
   const { t } = useTranslation();
   const isGeometric = type && isGeometricType(type);
   const isBlob = type && isBlobType(type);
+  const dateMode = type ? getDateInputMode(type) : null;
 
   const defaultPlaceholder = placeholder || t("rowEditor.enterValue");
 
@@ -89,6 +92,13 @@ export const FieldEditor: React.FC<FieldEditorProps> = ({
         className="w-full bg-transparent text-primary border-none outline-none p-0 m-0 font-mono"
       />
     </div>
+  ) : dateMode ? (
+    <DateInput
+      value={String(value ?? "")}
+      mode={dateMode}
+      onChange={(newValue) => onChange(newValue)}
+      className={className}
+    />
   ) : (
     <textarea
       value={String(value ?? "")}

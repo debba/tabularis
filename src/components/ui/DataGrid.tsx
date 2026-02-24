@@ -43,7 +43,9 @@ import {
 } from "../../utils/dataGrid";
 import { isGeometricType, formatGeometricValue } from "../../utils/geometry";
 import { isBlobType } from "../../utils/blob";
+import { getDateInputMode } from "../../utils/dateInput";
 import { GeometryInput } from "./GeometryInput";
+import { DateInput } from "./DateInput";
 import { RowEditorSidebar } from "./RowEditorSidebar";
 import { useDatabase } from "../../hooks/useDatabase";
 import {
@@ -988,6 +990,26 @@ export const DataGrid = React.memo(
                                         }
                                       }}
                                       className="w-full bg-base text-primary border-none outline-none p-0 m-0 font-mono"
+                                    />
+                                  );
+                                }
+                                const dateMode =
+                                  colType ? getDateInputMode(colType) : null;
+                                if (dateMode) {
+                                  return (
+                                    <DateInput
+                                      value={String(editingCell.value ?? "")}
+                                      mode={dateMode}
+                                      onChange={(newValue) =>
+                                        setEditingCell((prev) =>
+                                          prev
+                                            ? { ...prev, value: newValue }
+                                            : null,
+                                        )
+                                      }
+                                      onBlur={handleEditCommit}
+                                      onKeyDown={handleKeyDown}
+                                      inputRef={editInputRef}
                                     />
                                   );
                                 }
