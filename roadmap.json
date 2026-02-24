@@ -1,5 +1,10 @@
 [
   {
+    "label": "Plugin System",
+    "done": true,
+    "url": "https://github.com/debba/tabularis/issues/19"
+  },
+  {
     "label": "Command Palette",
     "done": false,
     "url": "https://github.com/debba/tabularis/issues/25"
@@ -28,11 +33,6 @@
     "label": "Team Collaboration",
     "done": false,
     "url": "https://github.com/debba/tabularis/issues/20"
-  },
-  {
-    "label": "Plugin System",
-    "done": false,
-    "url": "https://github.com/debba/tabularis/issues/19"
   },
   {
     "label": "Query History",
