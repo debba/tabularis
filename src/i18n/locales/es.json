@@ -446,6 +446,12 @@
     "noValidQueries": "No se encontraron consultas válidas",
     "queryFailed": "La consulta falló.",
     "newVisualQuery": "Nueva Consulta Visual",
+    "tabSwitcher": {
+      "title": "Pestañas Abiertas",
+      "hint": "Ctrl+Tab",
+      "tabs": "pestañas",
+      "escHint": "Esc para cerrar"
+    },
     "submitChanges": "Enviar Cambios",
     "rollbackChanges": "Revertir Cambios",
     "applyToAll": "Aplicar a todo",

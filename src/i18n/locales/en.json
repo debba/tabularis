@@ -453,6 +453,12 @@
     "noValidQueries": "No valid queries found",
     "queryFailed": "Query failed.",
     "newVisualQuery": "New Visual Query",
+    "tabSwitcher": {
+      "title": "Open Tabs",
+      "hint": "Ctrl+Tab",
+      "tabs": "tabs",
+      "escHint": "Esc to close"
+    },
     "submitChanges": "Submit Changes",
     "rollbackChanges": "Rollback Changes",
     "applyToAll": "Apply to all",

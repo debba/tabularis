@@ -43,6 +43,7 @@ import { TableToolbar } from "../components/ui/TableToolbar";
 import { DataGrid } from "../components/ui/DataGrid";
 import { NewRowModal } from "../components/modals/NewRowModal";
 import { QuerySelectionModal } from "../components/modals/QuerySelectionModal";
+import { TabSwitcherModal } from "../components/modals/TabSwitcherModal";
 import { QueryModal } from "../components/modals/QueryModal";
 import { QueryParamsModal } from "../components/modals/QueryParamsModal";
 import { VisualQueryBuilder } from "../components/ui/VisualQueryBuilder";
@@ -65,7 +66,9 @@ import { useDatabase } from "../hooks/useDatabase";
 import { useSavedQueries } from "../hooks/useSavedQueries";
 import { useSettings } from "../hooks/useSettings";
 import { useEditor } from "../hooks/useEditor";
+import { useConnectionLayoutContext } from "../contexts/useConnectionLayoutContext";
 import type { QueryResult, Tab, PendingInsertion, TableColumn } from "../types/editor";
+import { getTabScrollState, getAdjacentTabIndex, resolveNextTabId, isFocusedPane } from "../utils/tabScroll";
 import clsx from "clsx";
 
 interface EditorState {
@@ -84,6 +87,7 @@ interface ExportProgress {
 export const Editor = () => {
   const { t } = useTranslation();
   const { activeConnectionId, tables, activeDriver, activeSchema } = useDatabase();
+  const { explorerConnectionId } = useConnectionLayoutContext();
   const { settings } = useSettings();
   const { saveQuery } = useSavedQueries();
   const {
@@ -204,6 +208,7 @@ export const Editor = () => {
   const [selectableQueries, setSelectableQueries] = useState<string[]>([]);
   const [isQuerySelectionModalOpen, setIsQuerySelectionModalOpen] =
     useState(false);
+  const [isTabSwitcherOpen, setIsTabSwitcherOpen] = useState(false);
   const [isRunDropdownOpen, setIsRunDropdownOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isAiExplainModalOpen, setIsAiExplainModalOpen] = useState(false);
@@ -244,6 +249,29 @@ export const Editor = () => {
 
   const tabsRef = useRef<Tab[]>([]);
   const activeTabIdRef = useRef<string | null>(null);
+  const tabScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollArrows = useCallback(() => {
+    const el = tabScrollRef.current;
+    if (!el) return;
+    const { canScrollLeft, canScrollRight } = getTabScrollState(el);
+    setCanScrollLeft(canScrollLeft);
+    setCanScrollRight(canScrollRight);
+  }, []);
+
+  const scrollTabs = useCallback((direction: "left" | "right") => {
+    const currentIndex = tabs.findIndex((t) => t.id === activeTabId);
+    const targetIndex = getAdjacentTabIndex(currentIndex, tabs.length, direction);
+    if (targetIndex === null) return;
+    const targetTab = tabs[targetIndex];
+    setActiveTabId(targetTab.id);
+    const el = tabScrollRef.current;
+    if (!el) return;
+    const tabEl = el.children[targetIndex] as HTMLElement | undefined;
+    tabEl?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+  }, [tabs, activeTabId, setActiveTabId]);
   const processingRef = useRef<string | null>(null);
   const pendingExecutionsRef = useRef<
     Record<string, { sql: string; page: number }>
@@ -303,6 +331,10 @@ export const Editor = () => {
     tabsRef.current = tabs;
     activeTabIdRef.current = activeTabId;
   }, [tabs, activeTabId]);
+
+  useEffect(() => {
+    updateScrollArrows();
+  }, [tabs, updateScrollArrows]);
 
   const fetchPkColumn = useCallback(
     async (table: string, tabId?: string) => {
@@ -568,6 +600,30 @@ export const Editor = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleRunButton]);
+
+  // Global Ctrl+Tab shortcut: open tab switcher and advance to next tab circularly.
+  // In split mode only the focused pane (explorerConnectionId) handles the shortcut.
+  useEffect(() => {
+    const focused = isFocusedPane(explorerConnectionId, activeConnectionId);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!focused || !e.ctrlKey || e.key !== "Tab") return;
+      e.preventDefault();
+      setIsTabSwitcherOpen(true);
+      const nextId = resolveNextTabId(tabsRef.current, activeTabIdRef.current);
+      if (nextId !== null) setActiveTabId(nextId);
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (!focused || e.key !== "Control") return;
+      setIsTabSwitcherOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [explorerConnectionId, activeConnectionId, setActiveTabId]);
 
   const handleRefresh = useCallback(() => {
     const currentTab = tabsRef.current.find(
@@ -1522,7 +1578,21 @@ export const Editor = () => {
     <div className="flex flex-col h-full bg-base">
       {/* Tab Bar */}
       <div className="flex items-center bg-elevated border-b border-default h-9 shrink-0">
-        <div className="flex flex-1 overflow-x-auto no-scrollbar h-full">
+        <button
+          onClick={() => scrollTabs("left")}
+          disabled={!canScrollLeft}
+          className="flex items-center justify-center w-7 h-full text-muted border-r border-default shrink-0 transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:text-white hover:enabled:bg-surface-secondary"
+        >
+          <ChevronLeft size={14} />
+        </button>
+        <button
+          onClick={() => scrollTabs("right")}
+          disabled={!canScrollRight}
+          className="flex items-center justify-center w-7 h-full text-muted border-r border-default shrink-0 transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:text-white hover:enabled:bg-surface-secondary"
+        >
+          <ChevronRight size={14} />
+        </button>
+        <div ref={tabScrollRef} onScroll={updateScrollArrows} className="flex flex-1 overflow-x-auto no-scrollbar h-full">
           {tabs.map((tab) => (
             <div
               key={tab.id}
@@ -2153,6 +2223,17 @@ export const Editor = () => {
           setIsQuerySelectionModalOpen(false);
         }}
         onClose={() => setIsQuerySelectionModalOpen(false)}
+      />
+      <TabSwitcherModal
+        isOpen={isTabSwitcherOpen}
+        tabs={tabs}
+        activeTabId={activeTabId}
+        onSelect={(tabId) => {
+          setActiveTabId(tabId);
+          setIsTabSwitcherOpen(false);
+        }}
+        onClose={(tabId) => closeTab(tabId)}
+        onDismiss={() => setIsTabSwitcherOpen(false)}
       />
       {saveQueryModal.isOpen && (
         <QueryModal

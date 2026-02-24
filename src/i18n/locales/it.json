@@ -453,6 +453,12 @@
     "noValidQueries": "Nessuna query valida trovata",
     "queryFailed": "Esecuzione query fallita.",
     "newVisualQuery": "Nuova Query Visuale",
+    "tabSwitcher": {
+      "title": "Tab Aperte",
+      "hint": "Ctrl+Tab",
+      "tabs": "tab",
+      "escHint": "Esc per chiudere"
+    },
     "submitChanges": "Invia Modifiche",
     "rollbackChanges": "Annulla Modifiche",
     "applyToAll": "Applica a tutto",
