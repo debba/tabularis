@@ -34,6 +34,9 @@ describe("UpdateProvider", () => {
 
     // Default mock for invoke
     vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === "get_installation_source") {
+        return Promise.resolve(null); // Not a managed package by default
+      }
       if (cmd === "get_config") {
         return Promise.resolve({ autoCheckUpdatesOnStartup: false });
       }
@@ -71,6 +74,7 @@ describe("UpdateProvider", () => {
     };
 
     vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === "get_installation_source") return Promise.resolve(null);
       if (cmd === "check_for_updates") {
         return Promise.resolve(mockUpdateResult);
       }
@@ -110,6 +114,7 @@ describe("UpdateProvider", () => {
     };
 
     vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === "get_installation_source") return Promise.resolve(null);
       if (cmd === "check_for_updates") {
         return Promise.resolve(mockUpdateResult);
       }
@@ -146,6 +151,7 @@ describe("UpdateProvider", () => {
     };
 
     vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === "get_installation_source") return Promise.resolve(null);
       if (cmd === "check_for_updates") {
         return Promise.resolve(mockUpdateResult);
       }
@@ -173,6 +179,7 @@ describe("UpdateProvider", () => {
 
   it("should handle check for updates error", async () => {
     vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === "get_installation_source") return Promise.resolve(null);
       if (cmd === "check_for_updates") {
         return Promise.reject("Network error");
       }
@@ -200,6 +207,7 @@ describe("UpdateProvider", () => {
 
   it("should download and install update", async () => {
     vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === "get_installation_source") return Promise.resolve(null);
       if (cmd === "download_and_install_update") {
         return Promise.resolve(undefined);
       }
@@ -223,6 +231,7 @@ describe("UpdateProvider", () => {
 
   it("should handle download error", async () => {
     vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === "get_installation_source") return Promise.resolve(null);
       if (cmd === "download_and_install_update") {
         return Promise.reject("Download failed");
       }
@@ -259,6 +268,7 @@ describe("UpdateProvider", () => {
     };
 
     vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === "get_installation_source") return Promise.resolve(null);
       if (cmd === "check_for_updates") {
         return Promise.resolve(mockUpdateResult);
       }
@@ -300,6 +310,7 @@ describe("UpdateProvider", () => {
     vi.useFakeTimers();
 
     vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === "get_installation_source") return Promise.resolve(null);
       if (cmd === "get_config") {
         return Promise.resolve({ autoCheckUpdatesOnStartup: false });
       }
@@ -321,6 +332,60 @@ describe("UpdateProvider", () => {
 
     expect(invoke).toHaveBeenCalledWith("get_config");
     expect(invoke).not.toHaveBeenCalledWith("check_for_updates", expect.anything());
+
+    vi.useRealTimers();
+  });
+
+  it("should skip update check on startup for managed packages (AUR/Snap)", async () => {
+    vi.useFakeTimers();
+
+    vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === "get_installation_source") return Promise.resolve("aur");
+      if (cmd === "check_for_updates") return Promise.reject("Should not be called");
+      if (cmd === "get_config") return Promise.reject("Should not be called");
+      return Promise.reject(new Error(`Unexpected command: ${cmd}`));
+    });
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(UpdateProvider, null, children);
+
+    const { result } = renderHook(() => useUpdate(), { wrapper });
+
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    await waitFor(() => {
+      expect(result.current.installationSource).toBe("aur");
+    });
+
+    expect(invoke).not.toHaveBeenCalledWith("check_for_updates", expect.anything());
+    expect(invoke).not.toHaveBeenCalledWith("get_config");
+
+    vi.useRealTimers();
+  });
+
+  it("should expose installationSource as null for direct installs", async () => {
+    vi.useFakeTimers();
+
+    vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === "get_installation_source") return Promise.resolve(null);
+      if (cmd === "get_config") return Promise.resolve({ autoCheckUpdatesOnStartup: false });
+      return Promise.reject(new Error(`Unexpected command: ${cmd}`));
+    });
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(UpdateProvider, null, children);
+
+    const { result } = renderHook(() => useUpdate(), { wrapper });
+
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    await waitFor(() => {
+      expect(result.current.installationSource).toBeNull();
+    });
 
     vi.useRealTimers();
   });

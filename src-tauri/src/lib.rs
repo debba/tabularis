@@ -252,6 +252,7 @@ pub fn run() {
             // Updater
             updater::check_for_updates,
             updater::download_and_install_update,
+            updater::get_installation_source,
             // Logs
             log_commands::get_logs,
             log_commands::clear_logs,

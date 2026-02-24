@@ -288,7 +288,9 @@
     "upToDate": "You're up to date",
     "updateAvailable": "Version {{version}} is available",
     "error": "Update Error",
-    "currentVersion": "Current version"
+    "currentVersion": "Current version",
+    "managedByPackageManager": "Updates managed by {{source}}",
+    "managedByPackageManagerDesc": "Use your package manager to update Tabularis."
   },
   "ai": {
     "assist": "AI Assist",

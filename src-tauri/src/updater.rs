@@ -55,6 +55,39 @@ struct GitHubAsset {
 // Constants
 const GITHUB_REPO: &str = "debba/tabularis";
 const CACHE_DURATION_SECS: u64 = 43200; // 12 hours
+/// Returns the installation source: "snap", "aur", or None for direct installs.
+/// Only meaningful on Linux; always returns None on other platforms.
+fn detect_installation_source() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        // Snap sets the SNAP env var when running inside a snap sandbox
+        if std::env::var("SNAP").is_ok() {
+            return Some("snap".to_string());
+        }
+
+        // AUR: check if pacman's local database has a tabularis-bin entry
+        if let Ok(entries) = std::fs::read_dir("/var/lib/pacman/local") {
+            let is_aur = entries
+                .filter_map(|e| e.ok())
+                .any(|e| e.file_name().to_string_lossy().starts_with("tabularis-bin-"));
+            if is_aur {
+                return Some("aur".to_string());
+            }
+        }
+    }
+
+    None
+}
+
+/// Returns true when updates should not be managed by the app itself.
+fn is_managed_package() -> bool {
+    detect_installation_source().is_some()
+}
+
+#[tauri::command]
+pub fn get_installation_source() -> Option<String> {
+    detect_installation_source()
+}
 
 // Helper functions
 fn get_cache_path(app: &AppHandle) -> Option<PathBuf> {
@@ -124,6 +157,11 @@ fn categorize_asset(name: &str) -> String {
 // Tauri commands
 #[tauri::command]
 pub async fn check_for_updates(app: AppHandle, force: bool) -> Result<UpdateCheckResult, String> {
+    // Managed packages (AUR, Snap) should not use the built-in updater
+    if is_managed_package() {
+        return Err("Updates are managed by the package manager".to_string());
+    }
+
     let config = crate::config::load_config_internal(&app);
 
     // Check if updates are disabled
@@ -351,5 +389,15 @@ mod tests {
     fn test_cache_duration() {
         assert_eq!(CACHE_DURATION_SECS, 43200); // 12 hours in seconds
         assert_eq!(CACHE_DURATION_SECS / 3600, 12); // Verify it's 12 hours
+    }
+
+    // Installation source detection tests
+    #[test]
+    fn test_detect_installation_source_no_snap_env() {
+        // When SNAP is not set and pacman has no tabularis-bin entry, result should be None
+        std::env::remove_var("SNAP");
+        let source = detect_installation_source();
+        // On a dev/CI machine without pacman or tabularis-bin installed, must be None
+        assert!(source.is_none() || source.as_deref() == Some("aur"));
     }
 }

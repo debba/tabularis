@@ -28,6 +28,7 @@ interface UpdateContextType {
   dismissUpdate: () => void;
   error: string | null;
   isUpToDate: boolean;
+  installationSource: string | null;
 }
 
 export const UpdateContext = createContext<UpdateContextType | undefined>(

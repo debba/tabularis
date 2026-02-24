@@ -422,7 +422,7 @@ const LogsTab = () => {
 export const Settings = () => {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
-  const { checkForUpdates, isChecking, updateInfo, error: updateError, isUpToDate } = useUpdate();
+  const { checkForUpdates, isChecking, updateInfo, error: updateError, isUpToDate, installationSource } = useUpdate();
   const [activeTab, setActiveTab] = useState<"general" | "appearance" | "localization" | "ai" | "logs" | "info" | "plugins">(
     "general",
   );
@@ -1603,68 +1603,82 @@ export const Settings = () => {
                     <div className="text-lg font-mono text-primary mt-1">v{APP_VERSION}</div>
                   </div>
 
-                  {/* Auto Check Toggle */}
-                  <div className="flex items-center justify-between bg-base p-4 rounded-lg border border-default">
-                    <div>
-                      <div className="text-sm text-primary font-medium">
-                        {t("settings.autoCheckUpdates")}
+                  {installationSource ? (
+                    /* Managed package: AUR or Snap — disable built-in update UI */
+                    <div className="bg-yellow-900/20 border border-yellow-900/50 text-yellow-400 px-4 py-3 rounded-lg">
+                      <div className="text-sm font-medium">
+                        {t("update.managedByPackageManager", { source: installationSource.toUpperCase() })}
                       </div>
-                      <div className="text-xs text-muted mt-1">
-                        {t("settings.autoCheckUpdatesDesc")}
+                      <div className="text-xs mt-1 text-yellow-400/70">
+                        {t("update.managedByPackageManagerDesc")}
                       </div>
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.autoCheckUpdatesOnStartup !== false}
-                      onChange={(e) => updateSetting("autoCheckUpdatesOnStartup", e.target.checked)}
-                      className="w-10 h-6 bg-base border border-strong rounded-full appearance-none cursor-pointer relative transition-colors checked:bg-blue-600 checked:border-blue-600 after:content-[''] after:absolute after:top-1 after:left-1 after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-transform checked:after:translate-x-4"
-                    />
-                  </div>
+                  ) : (
+                    <>
+                      {/* Auto Check Toggle */}
+                      <div className="flex items-center justify-between bg-base p-4 rounded-lg border border-default">
+                        <div>
+                          <div className="text-sm text-primary font-medium">
+                            {t("settings.autoCheckUpdates")}
+                          </div>
+                          <div className="text-xs text-muted mt-1">
+                            {t("settings.autoCheckUpdatesDesc")}
+                          </div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={settings.autoCheckUpdatesOnStartup !== false}
+                          onChange={(e) => updateSetting("autoCheckUpdatesOnStartup", e.target.checked)}
+                          className="w-10 h-6 bg-base border border-strong rounded-full appearance-none cursor-pointer relative transition-colors checked:bg-blue-600 checked:border-blue-600 after:content-[''] after:absolute after:top-1 after:left-1 after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-transform checked:after:translate-x-4"
+                        />
+                      </div>
 
-                  {/* Manual Check Button */}
-                  <button
-                    onClick={() => checkForUpdates(true)}
-                    disabled={isChecking}
-                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                  >
-                    {isChecking ? (
-                      <>
-                        <Loader2 size={16} className="animate-spin" />
-                        {t("settings.checking")}
-                      </>
-                    ) : (
-                      <>
-                        <Download size={16} />
-                        {t("settings.checkNow")}
-                      </>
-                    )}
-                  </button>
+                      {/* Manual Check Button */}
+                      <button
+                        onClick={() => checkForUpdates(true)}
+                        disabled={isChecking}
+                        className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                      >
+                        {isChecking ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            {t("settings.checking")}
+                          </>
+                        ) : (
+                          <>
+                            <Download size={16} />
+                            {t("settings.checkNow")}
+                          </>
+                        )}
+                      </button>
 
-                  {/* Up to Date Message */}
-                  {isUpToDate && !updateInfo && (
-                    <div className="bg-blue-900/20 border border-blue-900/50 text-blue-400 px-4 py-3 rounded-lg flex items-center gap-2">
-                      <CheckCircle2 size={16} />
-                      <span className="text-sm">
-                        {t("update.upToDate")}
-                      </span>
-                    </div>
-                  )}
+                      {/* Up to Date Message */}
+                      {isUpToDate && !updateInfo && (
+                        <div className="bg-blue-900/20 border border-blue-900/50 text-blue-400 px-4 py-3 rounded-lg flex items-center gap-2">
+                          <CheckCircle2 size={16} />
+                          <span className="text-sm">
+                            {t("update.upToDate")}
+                          </span>
+                        </div>
+                      )}
 
-                  {/* Update Available Message */}
-                  {updateInfo && (
-                    <div className="bg-green-900/20 border border-green-900/50 text-green-400 px-4 py-3 rounded-lg flex items-center gap-2">
-                      <CheckCircle2 size={16} />
-                      <span className="text-sm">
-                        {t("update.updateAvailable", { version: updateInfo.latestVersion })}
-                      </span>
-                    </div>
-                  )}
+                      {/* Update Available Message */}
+                      {updateInfo && (
+                        <div className="bg-green-900/20 border border-green-900/50 text-green-400 px-4 py-3 rounded-lg flex items-center gap-2">
+                          <CheckCircle2 size={16} />
+                          <span className="text-sm">
+                            {t("update.updateAvailable", { version: updateInfo.latestVersion })}
+                          </span>
+                        </div>
+                      )}
 
-                  {/* Error Message */}
-                  {updateError && (
-                    <div className="bg-red-900/20 border border-red-900/50 text-red-400 px-4 py-3 rounded-lg text-sm">
-                      {updateError}
-                    </div>
+                      {/* Error Message */}
+                      {updateError && (
+                        <div className="bg-red-900/20 border border-red-900/50 text-red-400 px-4 py-3 rounded-lg text-sm">
+                          {updateError}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
