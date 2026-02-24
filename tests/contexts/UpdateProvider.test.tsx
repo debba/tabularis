@@ -46,6 +46,7 @@ describe("UpdateProvider", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it("should provide initial state", () => {
@@ -325,15 +326,12 @@ describe("UpdateProvider", () => {
 
     renderHook(() => useUpdate(), { wrapper });
 
-    // Fast-forward timers
     await act(async () => {
-      vi.advanceTimersByTime(2000);
+      await vi.runAllTimersAsync();
     });
 
     expect(invoke).toHaveBeenCalledWith("get_config");
     expect(invoke).not.toHaveBeenCalledWith("check_for_updates", expect.anything());
-
-    vi.useRealTimers();
   });
 
   it("should skip update check on startup for managed packages (AUR/Snap)", async () => {
@@ -352,17 +350,12 @@ describe("UpdateProvider", () => {
     const { result } = renderHook(() => useUpdate(), { wrapper });
 
     await act(async () => {
-      vi.advanceTimersByTime(2000);
+      await vi.runAllTimersAsync();
     });
 
-    await waitFor(() => {
-      expect(result.current.installationSource).toBe("aur");
-    });
-
+    expect(result.current.installationSource).toBe("aur");
     expect(invoke).not.toHaveBeenCalledWith("check_for_updates", expect.anything());
     expect(invoke).not.toHaveBeenCalledWith("get_config");
-
-    vi.useRealTimers();
   });
 
   it("should expose installationSource as null for direct installs", async () => {
@@ -380,14 +373,10 @@ describe("UpdateProvider", () => {
     const { result } = renderHook(() => useUpdate(), { wrapper });
 
     await act(async () => {
-      vi.advanceTimersByTime(2000);
+      await vi.runAllTimersAsync();
     });
 
-    await waitFor(() => {
-      expect(result.current.installationSource).toBeNull();
-    });
-
-    vi.useRealTimers();
+    expect(result.current.installationSource).toBeNull();
   });
 
   it("should setup and cleanup event listeners", async () => {

@@ -1604,10 +1604,10 @@ export const Settings = () => {
                   </div>
 
                   {installationSource ? (
-                    /* Managed package: AUR or Snap — disable built-in update UI */
+                    /* Managed package: AUR, Snap, Flatpak — disable built-in update UI */
                     <div className="bg-yellow-900/20 border border-yellow-900/50 text-yellow-400 px-4 py-3 rounded-lg">
                       <div className="text-sm font-medium">
-                        {t("update.managedByPackageManager", { source: installationSource.toUpperCase() })}
+                        {t("update.managedByPackageManager", { source: { aur: "AUR", snap: "Snap Store", flatpak: "Flathub" }[installationSource] ?? installationSource })}
                       </div>
                       <div className="text-xs mt-1 text-yellow-400/70">
                         {t("update.managedByPackageManagerDesc")}

@@ -10,6 +10,7 @@ export const UpdateProvider = ({ children }: { children: ReactNode }) => {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isUpToDate, setIsUpToDate] = useState(false);
+  const [installationSource, setInstallationSource] = useState<string | null>(null);
 
   // Listen for download progress events
   useEffect(() => {
@@ -89,6 +90,11 @@ export const UpdateProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const performStartupCheck = async () => {
       try {
+        // Detect installation source first; managed packages skip built-in updates
+        const source = await invoke<string | null>("get_installation_source");
+        setInstallationSource(source ?? null);
+        if (source) return;
+
         const config = await invoke<{ autoCheckUpdatesOnStartup: boolean }>(
           "get_config",
         );
@@ -118,6 +124,7 @@ export const UpdateProvider = ({ children }: { children: ReactNode }) => {
         dismissUpdate,
         error,
         isUpToDate,
+        installationSource,
       }}
     >
       {children}

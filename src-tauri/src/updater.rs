@@ -65,6 +65,11 @@ fn detect_installation_source() -> Option<String> {
             return Some("snap".to_string());
         }
 
+        // Flatpak sets FLATPAK_ID when running inside a Flatpak sandbox
+        if std::env::var("FLATPAK_ID").is_ok() {
+            return Some("flatpak".to_string());
+        }
+
         // AUR: check if pacman's local database has a tabularis-bin entry
         if let Ok(entries) = std::fs::read_dir("/var/lib/pacman/local") {
             let is_aur = entries
@@ -391,11 +396,36 @@ mod tests {
         assert_eq!(CACHE_DURATION_SECS / 3600, 12); // Verify it's 12 hours
     }
 
+    // Mutex to serialize env var mutations across parallel tests
+    static ENV_MUTEX: std::sync::LazyLock<std::sync::Mutex<()>> =
+        std::sync::LazyLock::new(|| std::sync::Mutex::new(()));
+
     // Installation source detection tests
     #[test]
-    fn test_detect_installation_source_no_snap_env() {
-        // When SNAP is not set and pacman has no tabularis-bin entry, result should be None
+    fn test_detect_installation_source_snap() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        std::env::remove_var("FLATPAK_ID");
+        std::env::set_var("SNAP", "/snap/tabularis/current");
+        let source = detect_installation_source();
         std::env::remove_var("SNAP");
+        assert_eq!(source.as_deref(), Some("snap"));
+    }
+
+    #[test]
+    fn test_detect_installation_source_flatpak() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        std::env::remove_var("SNAP");
+        std::env::set_var("FLATPAK_ID", "io.github.debba.tabularis");
+        let source = detect_installation_source();
+        std::env::remove_var("FLATPAK_ID");
+        assert_eq!(source.as_deref(), Some("flatpak"));
+    }
+
+    #[test]
+    fn test_detect_installation_source_direct() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        std::env::remove_var("SNAP");
+        std::env::remove_var("FLATPAK_ID");
         let source = detect_installation_source();
         // On a dev/CI machine without pacman or tabularis-bin installed, must be None
         assert!(source.is_none() || source.as_deref() == Some("aur"));

@@ -1,0 +1,46 @@
+name: Publish to Flathub
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  flathub-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get Release Version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Download AppImage Artifact
+        run: |
+          wget "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/tabularis_${{ steps.version.outputs.version }}_amd64.AppImage" \
+            -O tabularis.AppImage
+
+      - name: Calculate SHA256
+        id: shasum
+        run: |
+          echo "sha256=$(sha256sum tabularis.AppImage | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Update Flatpak manifest
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA256="${{ steps.shasum.outputs.sha256 }}"
+          sed -i "s|releases/download/vVERSION/tabularis_VERSION_amd64.AppImage|releases/download/v${VERSION}/tabularis_${VERSION}_amd64.AppImage|g" \
+            flatpak/io.github.debba.tabularis.yml
+          sed -i "s/sha256: CHECKSUM/sha256: ${SHA256}/" \
+            flatpak/io.github.debba.tabularis.yml
+
+      - name: Push to Flathub app repo
+        run: |
+          git clone "https://x-access-token:${{ secrets.FLATHUB_TOKEN }}@github.com/flathub/io.github.debba.tabularis.git" flathub-repo
+          cp flatpak/io.github.debba.tabularis.yml flathub-repo/io.github.debba.tabularis.yml
+          cd flathub-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "release-${{ steps.version.outputs.version }}"
+          git add io.github.debba.tabularis.yml
+          git commit -m "Update to v${{ steps.version.outputs.version }}"
+          git push origin "release-${{ steps.version.outputs.version }}"

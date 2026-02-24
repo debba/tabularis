@@ -1,0 +1,33 @@
+id: io.github.debba.tabularis
+runtime: org.gnome.Platform
+runtime-version: "49"
+sdk: org.gnome.Sdk
+command: tabularis
+
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --filesystem=home
+  - --talk-name=org.freedesktop.secrets
+  - --device=dri
+
+modules:
+  - name: tabularis
+    buildsystem: simple
+    build-commands:
+      - chmod +x tabularis.AppImage
+      - ./tabularis.AppImage --appimage-extract
+      - install -Dm755 squashfs-root/usr/bin/tabularis /app/bin/tabularis
+      - install -Dm644 squashfs-root/usr/share/applications/tabularis.desktop /app/share/applications/io.github.debba.tabularis.desktop
+      - desktop-file-edit --set-key=Icon --set-value=io.github.debba.tabularis /app/share/applications/io.github.debba.tabularis.desktop
+      - install -Dm644 squashfs-root/usr/share/icons/hicolor/32x32/apps/tabularis.png /app/share/icons/hicolor/32x32/apps/io.github.debba.tabularis.png
+      - install -Dm644 squashfs-root/usr/share/icons/hicolor/64x64/apps/tabularis.png /app/share/icons/hicolor/64x64/apps/io.github.debba.tabularis.png
+      - install -Dm644 squashfs-root/usr/share/icons/hicolor/128x128/apps/tabularis.png /app/share/icons/hicolor/128x128/apps/io.github.debba.tabularis.png
+      - install -Dm644 squashfs-root/usr/share/icons/hicolor/512x512/apps/tabularis.png /app/share/icons/hicolor/512x512/apps/io.github.debba.tabularis.png
+    sources:
+      - type: file
+        url: https://github.com/debba/tabularis/releases/download/vVERSION/tabularis_VERSION_amd64.AppImage
+        sha256: CHECKSUM
+        dest-filename: tabularis.AppImage
