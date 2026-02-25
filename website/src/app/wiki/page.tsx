@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BlogHeader } from "@/components/BlogHeader";
+import { SiteHeader } from "@/components/SiteHeader";
 import { getAllWikiPages } from "@/lib/wiki";
 
 export const metadata: Metadata = {
@@ -13,11 +13,9 @@ export default function WikiPage() {
 
   return (
     <div className="container">
-      <BlogHeader crumbs={[{ label: "wiki" }]} />
+      <SiteHeader crumbs={[{ label: "wiki" }]} />
 
       <section>
-        <h2>_wiki</h2>
-
         <div className="blog-intro">
           <img
             src="/img/logo.png"

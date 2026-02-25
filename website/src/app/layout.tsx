@@ -3,6 +3,7 @@ import { Analytics } from "@/components/Analytics";
 import { SearchModal } from "@/components/SearchModal";
 import { getAllPosts } from "@/lib/posts";
 import { getAllWikiPages } from "@/lib/wiki";
+import { getAllPlugins } from "@/lib/plugins";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -39,12 +40,13 @@ export default function RootLayout({
 }) {
   const posts = getAllPosts();
   const wikiPages = getAllWikiPages();
+  const plugins = getAllPlugins();
   return (
     <html lang="en">
       <body>
         {children}
         <Analytics />
-        <SearchModal posts={posts} wikiPages={wikiPages} />
+        <SearchModal posts={posts} wikiPages={wikiPages} plugins={plugins} />
       </body>
     </html>
   );

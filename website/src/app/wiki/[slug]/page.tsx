@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BlogHeader } from "@/components/BlogHeader";
+import { SiteHeader } from "@/components/SiteHeader";
 import { GitHubIcon, DiscordIcon } from "@/components/Icons";
 import { ShareButton } from "@/components/ShareButton";
 import { getAllWikiPages, getWikiPageBySlug, getAdjacentWikiPages } from "@/lib/wiki";
@@ -41,7 +41,7 @@ export default async function WikiPageDetail({ params }: PageProps) {
 
   return (
     <div className="container">
-      <BlogHeader
+      <SiteHeader
         crumbs={[{ label: "wiki", href: "/wiki" }, { label: crumbTitle }]}
       />
 

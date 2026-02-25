@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { BlogHeader } from "@/components/BlogHeader";
+import { SiteHeader } from "@/components/SiteHeader";
 import { Footer } from "@/components/Footer";
 import { GitHubIcon, DiscordIcon } from "@/components/Icons";
 import { PostCard } from "@/components/PostCard";
@@ -46,7 +46,7 @@ export default async function BlogPageN({
 
   return (
     <div className="container">
-      <BlogHeader
+      <SiteHeader
         crumbs={[
           { label: "blog", href: "/blog" },
           { label: `page ${page}` },
@@ -54,8 +54,6 @@ export default async function BlogPageN({
       />
 
       <section>
-        <h2>_blog</h2>
-
         <div className="post-list">
           {posts.map((p) => (
             <PostCard key={p.slug} post={p} />

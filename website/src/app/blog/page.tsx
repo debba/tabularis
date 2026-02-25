@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BlogHeader } from "@/components/BlogHeader";
+import { SiteHeader } from "@/components/SiteHeader";
 import { Footer } from "@/components/Footer";
 import { GitHubIcon, DiscordIcon } from "@/components/Icons";
 import { PostCard } from "@/components/PostCard";
@@ -38,11 +38,9 @@ export default function BlogPage() {
 
   return (
     <div className="container">
-      <BlogHeader crumbs={[{ label: "blog" }]} />
+      <SiteHeader crumbs={[{ label: "blog" }]} />
 
       <section>
-        <h2>_blog</h2>
-
         <div className="blog-intro">
           <img
             src="/img/logo.png"

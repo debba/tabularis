@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BlogHeader } from "@/components/BlogHeader";
+import { SiteHeader } from "@/components/SiteHeader";
 import { Footer } from "@/components/Footer";
 import { GitHubIcon, DiscordIcon } from "@/components/Icons";
 import { ShareButton } from "@/components/ShareButton";
@@ -72,7 +72,7 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   return (
     <div className="container">
-      <BlogHeader
+      <SiteHeader
         crumbs={[{ label: "blog", href: "/blog" }, { label: crumbTitle }]}
       />
 

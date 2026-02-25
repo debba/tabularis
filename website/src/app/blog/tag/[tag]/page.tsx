@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { BlogHeader } from "@/components/BlogHeader";
+import { SiteHeader } from "@/components/SiteHeader";
 import { Footer } from "@/components/Footer";
 import { GitHubIcon, DiscordIcon } from "@/components/Icons";
 import { PostCard } from "@/components/PostCard";
@@ -34,7 +34,7 @@ export default async function TagPage({
 
   return (
     <div className="container">
-      <BlogHeader
+      <SiteHeader
         crumbs={[
           { label: "blog", href: "/blog" },
           { label: `#${tag}` },
@@ -42,8 +42,6 @@ export default async function TagPage({
       />
 
       <section>
-        <h2>_blog</h2>
-
         <div className="tag-page-header">
           <span className="tag-page-label">
             {posts.length} {posts.length === 1 ? "post" : "posts"} tagged

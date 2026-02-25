@@ -4,17 +4,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PostMeta } from "@/lib/posts";
 import type { WikiMeta } from "@/lib/wiki";
+import type { Plugin } from "@/lib/plugins";
 
 interface SearchModalProps {
   posts: PostMeta[];
   wikiPages: WikiMeta[];
+  plugins: Plugin[];
 }
 
 type SearchResult = 
   | { type: "post"; slug: string; title: string; excerpt: string; meta: string; badge?: string }
-  | { type: "wiki"; slug: string; title: string; excerpt: string; meta: string };
+  | { type: "wiki"; slug: string; title: string; excerpt: string; meta: string }
+  | { type: "plugin"; slug: string; title: string; excerpt: string; meta: string; badge?: string; url: string };
 
-export function SearchModal({ posts, wikiPages }: SearchModalProps) {
+export function SearchModal({ posts, wikiPages, plugins }: SearchModalProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,8 +58,24 @@ export function SearchModal({ posts, wikiPages }: SearchModalProps) {
         meta: "Wiki"
       }));
 
-    return [...postResults, ...wikiResults];
-  }, [query, posts, wikiPages]);
+    const pluginResults: SearchResult[] = plugins
+      .filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q)
+      )
+      .map(p => ({
+        type: "plugin",
+        slug: p.id,
+        title: p.name,
+        excerpt: p.description,
+        meta: "Plugin",
+        badge: `v${p.latest_version}`,
+        url: p.homepage
+      }));
+
+    return [...postResults, ...wikiResults, ...pluginResults];
+  }, [query, posts, wikiPages, plugins]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -90,6 +109,10 @@ export function SearchModal({ posts, wikiPages }: SearchModalProps) {
 
   function handleResultClick(result: SearchResult) {
     setOpen(false);
+    if (result.type === "plugin") {
+      window.open(result.url, "_blank");
+      return;
+    }
     const path = result.type === "post" ? `/blog/${result.slug}` : `/wiki/${result.slug}`;
     router.push(path);
   }
@@ -124,6 +147,7 @@ export function SearchModal({ posts, wikiPages }: SearchModalProps) {
               >
                 <div className="search-result-title">
                   {result.type === 'wiki' && <span style={{ color: 'var(--accent)', marginRight: '0.5rem' }}>[Wiki]</span>}
+                  {result.type === 'plugin' && <span style={{ color: 'var(--success)', marginRight: '0.5rem' }}>[Plugin]</span>}
                   {result.title}
                 </div>
                 {result.excerpt && (
@@ -131,7 +155,7 @@ export function SearchModal({ posts, wikiPages }: SearchModalProps) {
                 )}
                 <div className="search-result-meta">
                   {result.meta && <span>{result.meta}</span>}
-                  {result.type === 'post' && result.badge && (
+                  {(result.type === 'post' || result.type === 'plugin') && result.badge && (
                     <span className="search-result-release">{result.badge}</span>
                   )}
                 </div>

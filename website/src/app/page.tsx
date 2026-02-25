@@ -1,10 +1,37 @@
 import Link from "next/link";
+import fs from "fs";
+import path from "path";
+import { marked } from "marked";
 import { Footer } from "@/components/Footer";
 import { DiscordIcon } from "@/components/Icons";
 import { LightboxGallery } from "@/components/Lightbox";
 import { getAllPosts } from "@/lib/posts";
 import { PostCard } from "@/components/PostCard";
 import { APP_VERSION } from "@/lib/version";
+import { getAllPlugins } from "@/lib/plugins";
+
+import { SiteHeader } from "@/components/SiteHeader";
+
+// Helper to parse home.md into sections
+function getHomeContent() {
+  const filePath = path.join(process.cwd(), "content", "home.md");
+  if (!fs.existsSync(filePath)) return {};
+
+  const content = fs.readFileSync(filePath, "utf-8");
+  const sections: Record<string, string> = {};
+
+  // Split by # Header
+  const parts = content.split(/^# /m);
+  parts.forEach((part) => {
+    if (!part.trim()) return;
+    const lines = part.split("\n");
+    const title = lines[0].trim().toLowerCase().replace(/[^\w]/g, "_");
+    const body = lines.slice(1).join("\n").trim();
+    sections[title] = marked.parse(body) as string;
+  });
+
+  return sections;
+}
 
 const GALLERY_ITEMS = [
   {
@@ -79,9 +106,12 @@ const THEMES = [
 
 export default function HomePage() {
   const posts = getAllPosts();
+  const plugins = getAllPlugins().slice(0, 3);
+  const home = getHomeContent();
 
   return (
     <div className="container">
+      <SiteHeader />
       {/* HERO */}
       <header className="hero">
         <div className="hero-badges">
@@ -89,42 +119,11 @@ export default function HomePage() {
           <span className="badge">Open Source</span>
           <span className="badge">Apache 2.0</span>
           <span className="badge">🌍 EN | IT | ES</span>
-          <a
-            href="https://discord.gg/YrZPHAwMSG"
-            className="badge"
-            style={{
-              textDecoration: "none",
-              color: "#5865f2",
-              borderColor: "rgba(88, 101, 242, 0.4)",
-              background: "rgba(88, 101, 242, 0.1)",
-            }}
-          >
-            <DiscordIcon size={14} />
-            Discord
-          </a>
         </div>
-
-        <h1>
-          <img src="/img/logo.png" alt="Logo" className="logo-img" />
-          tabularis
-        </h1>
-
-        <p
-          style={{
-            fontSize: "1.2rem",
-            color: "var(--text-muted)",
-            marginTop: "1rem",
-          }}
-        >
-          A lightweight, developer-focused database management tool.
-          <br />
-          Built with <strong>Tauri</strong> and <strong>React</strong> for
-          speed, security, and aesthetics.
-        </p>
 
         <div className="download-grid">
           <a
-            href="https://github.com/debba/tabularis/releases/download/v0.8.0/tabularis_0.9.0_x64-setup.exe"
+            href={`https://github.com/debba/tabularis/releases/download/v${APP_VERSION}/tabularis_${APP_VERSION}_x64-setup.exe`}
             className="btn-download"
           >
             <span>
@@ -148,7 +147,13 @@ export default function HomePage() {
             </span>
           </a>
         </div>
-        <div style={{ marginTop: "1rem", fontSize: "0.9rem" }}>
+        <div
+          style={{
+            marginTop: "1.5rem",
+            fontSize: "0.9rem",
+            color: "var(--text-muted)",
+          }}
+        >
           Or view source on{" "}
           <a href="https://github.com/debba/tabularis">GitHub</a>
         </div>
@@ -161,46 +166,83 @@ export default function HomePage() {
           alt="Tabularis Overview"
           className="screenshot-main"
         />
-        <p
-          style={{
-            marginTop: "1rem",
-            color: "var(--text-muted)",
-            fontSize: "0.9rem",
-          }}
-        >
-          Connection Manager &amp; SQL Editor
-        </p>
       </div>
 
       {/* WHY TABULARIS */}
       <section className="section">
         <h2>_why_tabularis</h2>
-        <p>
-          This project was born from frustration with existing database tools.
-          Most current solutions feel clunky, outdated, or bloated with poor
-          user experience.
-        </p>
-        <p>
-          <strong>Tabularis</strong> is the answer: a refreshing alternative
-          built to prioritize UX without sacrificing power. It bridges the gap
-          between native performance and web flexibility, using Tauri to keep
-          the footprint tiny and startup instant.
-        </p>
-        <div className="tech-stack">
-          <div className="tech-item">
-            <span className="dot" style={{ background: "#dea584" }} />
+        <div
+          className="post-content"
+          dangerouslySetInnerHTML={{ __html: home.why_tabularis || "" }}
+        />
+        <div
+          className="tech-stack"
+          style={{
+            marginTop: "2rem",
+            display: "flex",
+            gap: "2rem",
+            flexWrap: "wrap",
+            color: "var(--text-muted)",
+          }}
+        >
+          <div
+            className="tech-item"
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          >
+            <span
+              className="dot"
+              style={{
+                background: "#dea584",
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+              }}
+            />
             Rust
           </div>
-          <div className="tech-item">
-            <span className="dot" style={{ background: "#2b7489" }} />
+          <div
+            className="tech-item"
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          >
+            <span
+              className="dot"
+              style={{
+                background: "#2b7489",
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+              }}
+            />
             TypeScript
           </div>
-          <div className="tech-item">
-            <span className="dot" style={{ background: "#61dafb" }} />
+          <div
+            className="tech-item"
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          >
+            <span
+              className="dot"
+              style={{
+                background: "#61dafb",
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+              }}
+            />
             React
           </div>
-          <div className="tech-item">
-            <span className="dot" style={{ background: "#f1e05a" }} />
+          <div
+            className="tech-item"
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          >
+            <span
+              className="dot"
+              style={{
+                background: "#f1e05a",
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+              }}
+            />
             SQLite/PG/MySQL
           </div>
         </div>
@@ -275,10 +317,7 @@ export default function HomePage() {
               <strong>Inline editing</strong> of table and column properties
               directly from the sidebar. GUI wizards to Create Tables, Modify
               Columns, and Manage Indexes/Foreign Keys. Visualize your database
-              structure with an interactive <strong>ER Diagram</strong> -
-              auto-generated graphs showing all tables and foreign key
-              relationships in a separate window with zoom, pan, and fullscreen
-              mode.
+              structure with an interactive <strong>ER Diagram</strong>.
             </p>
           </article>
           <article className="feature-card">
@@ -300,7 +339,7 @@ export default function HomePage() {
             <h3>🔄 Seamless Updates</h3>
             <p>
               <strong>Automatic:</strong> Tabularis checks for updates on
-              startup and notifies you when a new version is available. <br />
+              startup and notifies you when a new version is available.{" "}
               <strong>Manual:</strong> You can always check for updates manually
               or download the latest release from GitHub.
             </p>
@@ -311,45 +350,16 @@ export default function HomePage() {
       {/* PLUGINS */}
       <section className="section" id="plugins">
         <h2>_plugins</h2>
-        <p>
-          Tabularis supports extending its database support via an{" "}
-          <strong>external plugin system</strong>. Plugins are standalone
-          executables that communicate with the app through{" "}
-          <strong>JSON-RPC 2.0 over stdin/stdout</strong>. They can be written
-          in any programming language and distributed independently of the main
-          app.
-        </p>
-
-        <div className="features-grid" style={{ margin: "2rem 0 3rem" }}>
-          <article className="feature-card">
-            <h3>🧩 Language-Agnostic</h3>
-            <p>
-              Write your driver in Rust, Go, Python, Node.js — anything that
-              speaks JSON-RPC over stdin/stdout. No SDK required.
-            </p>
-          </article>
-          <article className="feature-card">
-            <h3>⚡ Hot Install</h3>
-            <p>
-              Install, update, and remove plugins from{" "}
-              <strong>Settings → Plugins</strong> without restarting. New
-              drivers appear instantly in the connection form.
-            </p>
-          </article>
-          <article className="feature-card">
-            <h3>🔒 Process Isolation</h3>
-            <p>
-              Each plugin runs as a separate process. A crashing plugin never
-              takes down the app — only the affected connection fails.
-            </p>
-          </article>
-        </div>
+        <div
+          className="post-content"
+          dangerouslySetInnerHTML={{ __html: home.plugins || "" }}
+        />
 
         <h3
           style={{
-            color: "var(--text-main)",
+            color: "var(--text-bright)",
             fontSize: "1rem",
-            marginBottom: "1rem",
+            margin: "2.5rem 0 1.25rem",
             fontWeight: 600,
           }}
         >
@@ -357,58 +367,68 @@ export default function HomePage() {
         </h3>
 
         <div className="plugin-list">
-          <div className="plugin-entry">
-            <div className="plugin-entry-info">
-              <div className="plugin-entry-header">
-                <a
-                  href="https://github.com/debba/tabularis-duckdb-plugin"
-                  className="plugin-name"
+          {plugins.length === 0 && (
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
+              No plugins found in registry.
+            </p>
+          )}
+          {plugins.map((plugin) => (
+            <div key={plugin.id} className="plugin-entry">
+              <div className="plugin-entry-info">
+                <div
+                  className="plugin-entry-header"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                    flexWrap: "wrap",
+                  }}
                 >
-                  DuckDB
-                </a>
-                <span className="plugin-badge">v0.1.0</span>
+                  <a
+                    href={plugin.homepage}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="plugin-name"
+                    style={{ fontWeight: 700, fontSize: "1.1rem" }}
+                  >
+                    {plugin.name}
+                  </a>
+                  <span className="plugin-badge">v{plugin.latest_version}</span>
+                </div>
+                <p className="plugin-desc" style={{ margin: "0.5rem 0" }}>
+                  {plugin.description}
+                </p>
+                <div
+                  className="plugin-meta"
+                  style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}
+                >
+                  by {plugin.author.split("<")[0].trim()} &middot;{" "}
+                  <span className="plugin-platforms">
+                    Supports v{plugin.min_tabularis_version}+
+                  </span>
+                </div>
               </div>
-              <p className="plugin-desc">
-                Fast in-process OLAP SQL engine. File-based, no server required.
-                Ideal for analytics on local datasets.
-              </p>
-              <div className="plugin-meta">
-                by <a href="https://github.com/debba">debba</a> &middot;{" "}
-                <span className="plugin-platforms">
-                  Linux &middot; macOS &middot; Windows
-                </span>
-              </div>
+              <a
+                href={plugin.homepage}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-download"
+                style={{
+                  width: "auto",
+                  padding: "0.5rem 1rem",
+                  fontSize: "0.85rem",
+                  marginTop: "1rem",
+                }}
+              >
+                View &rarr;
+              </a>
             </div>
-            <a
-              href="https://github.com/debba/tabularis-duckdb-plugin"
-              className="btn-plugin"
-            >
-              View &rarr;
-            </a>
-          </div>
+          ))}
         </div>
 
-        <p style={{ fontSize: "0.9rem" }}>
-          <a href="https://github.com/debba/tabularis/blob/main/plugins/README.md">
-            Browse the plugin registry &rarr;
-          </a>
+        <p style={{ fontSize: "0.9rem", marginTop: "1.5rem" }}>
+          <Link href="/plugins">Browse the full plugin registry &rarr;</Link>
         </p>
-
-        <div className="plugin-cta">
-          <h3>Build Your Own Plugin</h3>
-          <p>
-            Got a database you&apos;d like to support? The plugin guide covers
-            the JSON-RPC protocol, manifest format, data types, and includes a
-            full Rust skeleton to get you started in minutes.
-          </p>
-          <a
-            href="https://github.com/debba/tabularis/blob/main/plugins/PLUGIN_GUIDE.md"
-            className="btn-download"
-            style={{ display: "inline-flex", width: "auto" }}
-          >
-            Read the Plugin Guide &rarr;
-          </a>
-        </div>
       </section>
 
       {/* THEMES */}
@@ -464,8 +484,7 @@ export default function HomePage() {
             <p>
               Your code, your font. Choose from built-in favorites like{" "}
               <strong>JetBrains Mono</strong> and <strong>Fira Code</strong>, or
-              use any font installed on your system. Adjust text size for
-              perfect readability.
+              use any font installed on your system.
             </p>
           </article>
         </div>
@@ -478,8 +497,10 @@ export default function HomePage() {
           Need a deeper dive? Explore our documentation to learn about all the
           powerful features Tabularis has to offer.
         </p>
-        <p className="blog-all-link">
-          <Link href="/wiki">Go to Wiki →</Link>
+        <p className="blog-all-link" style={{ marginTop: "1rem" }}>
+          <Link href="/wiki" style={{ fontWeight: 600 }}>
+            Go to Wiki →
+          </Link>
         </p>
       </section>
 
@@ -487,12 +508,14 @@ export default function HomePage() {
       <section className="section" id="blog">
         <h2>_blog</h2>
         <div className="post-list">
-          {posts.map((post) => (
+          {posts.slice(0, 3).map((post) => (
             <PostCard key={post.slug} post={post} />
           ))}
         </div>
-        <p className="blog-all-link">
-          <Link href="/blog">View all posts →</Link>
+        <p className="blog-all-link" style={{ marginTop: "2rem" }}>
+          <Link href="/blog" style={{ fontWeight: 600 }}>
+            View all posts →
+          </Link>
         </p>
       </section>
 
@@ -509,31 +532,33 @@ export default function HomePage() {
           Join our <strong>Discord server</strong> to chat with the maintainers,
           suggest new features, or get help from the community.
         </p>
-        <div style={{ marginTop: "1.5rem" }}>
+        <div style={{ marginTop: "2rem" }}>
           <a
             href="https://discord.gg/YrZPHAwMSG"
-            className="btn-download"
+            className="discord-btn"
             style={{
-              display: "inline-flex",
-              width: "auto",
-              borderColor: "#5865f2",
-              background: "rgba(88, 101, 242, 0.1)",
+              padding: "0.75rem 1.5rem",
+              fontSize: "1rem",
             }}
           >
-            <DiscordIcon size={20} className="discord-join-icon" />
+            <DiscordIcon size={20} />
             <span>Join Discord</span>
           </a>
         </div>
       </section>
 
       {/* INSTALLATION */}
-      <section className="section">
+      <section className="section" id="download">
         <h2>_installation</h2>
 
-        <h3>Direct Download</h3>
+        <div className="post-content">
+          <h3>Direct Download</h3>
+          <p>Get the pre-compiled binaries for your operating system.</p>
+        </div>
+
         <div
           className="download-grid"
-          style={{ marginTop: "1rem", marginBottom: "2rem" }}
+          style={{ marginTop: "1rem", marginBottom: "4rem" }}
         >
           <a
             href={`https://github.com/debba/tabularis/releases/download/v${APP_VERSION}/tabularis_${APP_VERSION}_x64-setup.exe`}
@@ -554,42 +579,28 @@ export default function HomePage() {
             <span>Linux (.AppImage)</span>
           </a>
         </div>
-        <p style={{ marginBottom: "2rem" }}>
-          <a href="https://github.com/debba/tabularis/releases">
-            View all releases on GitHub &rarr;
-          </a>
-        </p>
 
-        <h3>Arch Linux (AUR)</h3>
-        <p>Install via your favorite AUR helper:</p>
-        <pre>
-          <code>
-            <span className="cmd">yay</span> <span className="flag">-S</span>{" "}
-            tabularis-bin
-          </code>
-        </pre>
+        <div className="post-content">
+          <h3>Arch Linux (AUR)</h3>
+          <p>Install via your favorite AUR helper:</p>
+          <pre>
+            <code>yay -S tabularis-bin</code>
+          </pre>
 
-        <h3>Snap (Linux)</h3>
-        <pre>
-          <code>
-            <span className="cmd">sudo</span> snap install tabularis
-          </code>
-        </pre>
+          <h3>Snap (Linux)</h3>
+          <pre>
+            <code>sudo snap install tabularis</code>
+          </pre>
 
-        <h3>Build from Source</h3>
-        <pre>
-          <code>
-            <span className="cmd">git</span> <span className="arg">clone</span>{" "}
-            <span className="str">https://github.com/debba/tabularis.git</span>
-            {"\n"}
-            <span className="cmd">cd</span> tabularis{"\n"}
-            <span className="cmd">npm</span>{" "}
-            <span className="arg">install</span>
-            {"\n"}
-            <span className="cmd">npm</span> <span className="arg">run</span>{" "}
-            tauri build
-          </code>
-        </pre>
+          <h3>Build from Source</h3>
+          <p>Requires Node.js and Rust installed on your machine.</p>
+          <pre>
+            <code>
+              git clone https://github.com/debba/tabularis.git cd tabularis npm
+              install npm run tauri build
+            </code>
+          </pre>
+        </div>
       </section>
 
       <Footer />
