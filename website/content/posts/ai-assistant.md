@@ -1,3 +1,16 @@
+---
+title: "Talk to Your Database: AI Assistant Lands in v0.8.0"
+date: "2026-01-29"
+release: "v0.8.0"
+tags: ["ai", "mcp", "sql", "productivity"]
+excerpt: "Sometimes you know what you want but not exactly how to write the SQL. v0.8.0 brings an AI assistant that generates queries from plain English — locally or in the cloud."
+og:
+  title: "Talk to Your Database:"
+  accent: "AI Assistant."
+  claim: "Generate SQL from plain English — locally or in the cloud."
+  image: "/img/screenshot-8.png"
+---
+
 # Talk to Your Database: AI Assistant Lands in v0.8.0
 
 Sometimes you know exactly what you want — "Show me the top 10 customers by revenue this quarter" — but translating that to SQL means remembering table names, join conditions, and aggregate syntax all at once. **v0.8.0** introduces an AI assistant that bridges that gap.

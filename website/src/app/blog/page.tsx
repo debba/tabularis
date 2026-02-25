@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BlogHeader } from "@/components/BlogHeader";
 import { GitHubIcon, DiscordIcon } from "@/components/Icons";
-import { getAllPosts, formatDate } from "@/lib/posts";
+import { PostCard } from "@/components/PostCard";
+import { Pagination } from "@/components/Pagination";
+import { getPaginatedPosts, getAllTags } from "@/lib/posts";
 
 export const metadata: Metadata = {
   title: "Blog | Tabularis",
@@ -30,7 +32,8 @@ export const metadata: Metadata = {
 };
 
 export default function BlogPage() {
-  const posts = getAllPosts();
+  const { posts, totalPages, currentPage } = getPaginatedPosts(1);
+  const tags = getAllTags();
 
   return (
     <div className="container">
@@ -58,42 +61,21 @@ export default function BlogPage() {
           </div>
         </div>
 
-        <div className="post-list">
-          {posts.map((p) => {
-            const tags = p.tags || [];
-            return (
-              <Link
-                key={p.slug}
-                className="post-card"
-                href={`/blog/${p.slug}`}
-              >
-                <div className="post-meta">
-                  <span>{formatDate(p.date)}</span>
-                  <span>&middot;</span>
-                  <span>2 min read</span>
-                  {p.release && (
-                    <>
-                      <span>&middot;</span>
-                      <span className="post-release">{p.release}</span>
-                    </>
-                  )}
-                  {tags.length > 0 && (
-                    <>
-                      <span>&middot;</span>
-                      {tags.map((t) => (
-                        <span key={t} className="post-tag">
-                          {t}
-                        </span>
-                      ))}
-                    </>
-                  )}
-                </div>
-                <div className="post-title">{p.title}</div>
-                <div className="post-excerpt">{p.excerpt}</div>
-              </Link>
-            );
-          })}
+        <div className="tag-cloud">
+          {tags.map((t) => (
+            <Link key={t} href={`/blog/tag/${t}`} className="post-tag">
+              {t}
+            </Link>
+          ))}
         </div>
+
+        <div className="post-list">
+          {posts.map((p) => (
+            <PostCard key={p.slug} post={p} />
+          ))}
+        </div>
+
+        <Pagination currentPage={currentPage} totalPages={totalPages} />
 
         <div className="cta-strip">
           <a className="btn-cta" href="https://github.com/debba/tabularis">

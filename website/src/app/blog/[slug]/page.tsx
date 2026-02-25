@@ -20,8 +20,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!post) return {};
 
   const { meta } = post;
-  const ogImage = `https://tabularis.dev/blog/img/og-${slug}.png`;
-
   return {
     title: `${meta.title} | Tabularis Blog`,
     description: meta.excerpt,
@@ -31,13 +29,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `${meta.title} | Tabularis Blog`,
       description: meta.excerpt,
       siteName: "Tabularis Blog",
-      images: [ogImage],
     },
     twitter: {
       card: "summary_large_image",
       title: `${meta.title} | Tabularis Blog`,
       description: meta.excerpt,
-      images: [ogImage],
     },
   };
 }

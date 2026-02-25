@@ -1,3 +1,16 @@
+---
+title: "Point, Click, Query: The Visual Query Builder"
+date: "2026-01-27"
+release: "v0.4.0"
+tags: ["sql", "ux", "query-builder", "joins"]
+excerpt: "Not every query needs to be typed from scratch. v0.4.0 ships a Visual Query Builder that lets you drag tables, draw JOINs, and generate SQL automatically."
+og:
+  title: "Point, Click,"
+  accent: "Query."
+  claim: "Drag tables, draw JOINs, and generate SQL automatically."
+  image: "/img/screenshot-5.png"
+---
+
 # Point, Click, Query: The Visual Query Builder
 
 SQL is powerful, but sometimes you just want to browse. You know the tables involved, you know the columns you care about, but spelling out a four-table JOIN with the right aliases from memory is friction. **v0.4.0** ships a Visual Query Builder to handle exactly that.
@@ -33,4 +46,4 @@ The visual builder covers the common case well. Future iterations will handle su
 ---
 
 ![SQL Editor and Data Grid in Tabularis v0.4.0](../img/screenshot-2.png)
-*Multi-tab SQL Editor with Data Grid — each tab has its own isolated query, results, and state.*
+_Multi-tab SQL Editor with Data Grid — each tab has its own isolated query, results, and state._

@@ -1,3 +1,16 @@
+---
+title: "Build Your Own Driver: Tabularis Gets a Plugin System"
+date: "2026-02-23"
+release: "v0.9.0"
+tags: ["plugins", "extensibility", "architecture", "open-source"]
+excerpt: "Supporting every database in the world is an impossible task for a small team. So we built a plugin system that lets anyone add a new database driver — in any language."
+og:
+  title: "Build Your Own Driver:"
+  accent: "Plugin System."
+  claim: "Supporting every database with a flexible, language-agnostic plugin architecture."
+  image: "/img/screenshot-9.png"
+---
+
 # Build Your Own Driver: Tabularis Gets a Plugin System
 
 PostgreSQL, MySQL, SQLite — those three cover most use cases. But developers live in a world of DuckDB, CockroachDB, ClickHouse, Turso, and a dozen others. Supporting every database in the world is an impossible task for a small team. **v0.9.0** changes that.

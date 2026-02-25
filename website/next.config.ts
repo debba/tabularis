@@ -6,7 +6,9 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  outputFileTracingRoot: path.join(import.meta.dirname),
+  turbopack: {
+    root: path.join(import.meta.dirname, ".."),
+  },
 };
 
 export default nextConfig;

@@ -492,16 +492,23 @@ pre {
 }
 
 .post-card {
-  display: block;
+  display: flex;
+  flex-direction: column;
   padding: 1.25rem 1.5rem;
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 6px;
-  text-decoration: none;
   transition: border-color 0.2s;
 }
 .post-card:hover {
   border-color: var(--text-muted);
+}
+
+.post-card-body {
+  display: block;
+  text-decoration: none;
+}
+.post-card-body:hover {
   text-decoration: none;
 }
 
@@ -532,6 +539,39 @@ pre {
   background: rgba(139, 148, 158, 0.1);
   border: 1px solid var(--border);
   color: var(--text-muted);
+  text-decoration: none;
+  transition: border-color 0.2s, color 0.2s;
+}
+a.post-tag:hover {
+  border-color: var(--text-muted);
+  color: #e2e8f0;
+  text-decoration: none;
+}
+
+/* TAG CLOUD */
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+/* TAG PAGE HEADER */
+.tag-page-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+}
+
+.tag-page-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.tag-page-tag {
+  font-size: 0.82rem;
+  padding: 0.2rem 0.75rem;
 }
 
 .post-title {
@@ -546,6 +586,62 @@ pre {
   font-size: 0.88rem;
   color: var(--text-muted);
   line-height: 1.55;
+}
+
+/* PAGINATION */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+.pagination-btn {
+  font-size: 0.82rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: border-color 0.2s, color 0.2s;
+}
+.pagination-btn:hover {
+  border-color: var(--text-muted);
+  color: #fff;
+  text-decoration: none;
+}
+.pagination-btn.disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.pagination-pages {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.pagination-page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.82rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: border-color 0.2s, color 0.2s;
+}
+.pagination-page:hover {
+  border-color: var(--text-muted);
+  color: #fff;
+  text-decoration: none;
+}
+.pagination-page.active {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* BLOG INTRO */
