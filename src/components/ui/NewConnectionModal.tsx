@@ -427,7 +427,7 @@ export const NewConnectionModal = ({
             </div>
           </div>
 
-          {activeDriver?.capabilities?.file_based === false && (
+          {activeDriver?.capabilities?.file_based === false && !activeDriver?.capabilities?.folder_based && (
             <div className="grid grid-cols-3 gap-4">
               <ConnectionInput
                 className="col-span-2"
@@ -446,7 +446,7 @@ export const NewConnectionModal = ({
             </div>
           )}
 
-          {activeDriver?.capabilities?.file_based === false && (
+          {activeDriver?.capabilities?.file_based === false && !activeDriver?.capabilities?.folder_based && (
             <div className="grid grid-cols-2 gap-4">
               <ConnectionInput
                 label={t("newConnection.username")}
@@ -471,11 +471,13 @@ export const NewConnectionModal = ({
             </div>
           )}
 
-          {/* Database Name / File Path Field */}
-          {activeDriver?.capabilities?.file_based === true ? (
+          {/* Database Name / File Path / Folder Path Field */}
+          {activeDriver?.capabilities?.file_based === true || activeDriver?.capabilities?.folder_based === true ? (
             <div className="space-y-1">
               <label className={LabelClass}>
-                {t("newConnection.filePath")}
+                {activeDriver.capabilities.folder_based
+                  ? t("newConnection.folderPath")
+                  : t("newConnection.filePath")}
               </label>
               <div className="flex gap-2">
                 <input
@@ -483,21 +485,29 @@ export const NewConnectionModal = ({
                   value={formData.database ?? ""}
                   onChange={(e) => updateField("database", e.target.value)}
                   className={clsx(InputClass, "flex-1")}
-                  placeholder={t("newConnection.filePathPlaceholder")}
+                  placeholder={
+                    activeDriver.capabilities.folder_based
+                      ? t("newConnection.folderPathPlaceholder")
+                      : t("newConnection.filePathPlaceholder")
+                  }
                 />
                 <button
                   type="button"
                   onClick={async () => {
                     const selected = await open({
                       multiple: false,
-                      directory: false,
+                      directory: activeDriver.capabilities.folder_based,
                     });
                     if (selected) {
                       updateField("database", selected);
                     }
                   }}
                   className="px-3 pt-2 pb-1 bg-base hover:bg-surface-tertiary text-secondary hover:text-primary border border-strong rounded-lg transition-colors shrink-0"
-                  title={t("newConnection.browseFile")}
+                  title={
+                    activeDriver.capabilities.folder_based
+                      ? t("newConnection.browseFolder")
+                      : t("newConnection.browseFile")
+                  }
                 >
                   <FolderOpen size={16} />
                 </button>
@@ -560,7 +570,7 @@ export const NewConnectionModal = ({
           )}
 
           {/* SSH Tunnel Section */}
-          {activeDriver?.capabilities?.file_based === false && (
+          {activeDriver?.capabilities?.file_based === false && !activeDriver?.capabilities?.folder_based && (
             <div className="pt-4 border-t border-default space-y-4">
               <div className="flex items-center gap-2 mb-3">
                 <input
@@ -750,7 +760,7 @@ export const NewConnectionModal = ({
             </div>
           )}
 
-          {activeDriver?.capabilities?.file_based === false && (
+          {activeDriver?.capabilities?.file_based === false && !activeDriver?.capabilities?.folder_based && (
             <div className="mt-4 flex items-center gap-2">
               <input
                 type="checkbox"

@@ -55,6 +55,11 @@
           "type": "boolean",
           "description": "true for local file databases (e.g. SQLite, DuckDB). Replaces the host/port fields with a file path input."
         },
+        "folder_based": {
+          "type": "boolean",
+          "default": false,
+          "description": "true for plugins that connect to a directory rather than a single file (e.g. CSV plugin). Replaces host/port fields with a folder picker."
+        },
         "identifier_quote": {
           "type": "string",
           "enum": ["\"", "`"],

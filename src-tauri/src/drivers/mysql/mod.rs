@@ -996,6 +996,7 @@ impl MysqlDriver {
                     views: true,
                     routines: true,
                     file_based: false,
+                    folder_based: false,
                     identifier_quote: "`".into(),
                     alter_primary_key: true,
                 },

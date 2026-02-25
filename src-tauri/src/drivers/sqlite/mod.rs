@@ -858,6 +858,7 @@ impl SqliteDriver {
                     views: true,
                     routines: false,
                     file_based: true,
+                    folder_based: false,
                     identifier_quote: "\"".into(),
                     alter_primary_key: true,
                 },

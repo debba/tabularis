@@ -23,6 +23,9 @@ pub struct DriverCapabilities {
     pub routines: bool,
     /// File-based database (e.g. SQLite); no host/port required.
     pub file_based: bool,
+    /// Folder-based database (e.g. CSV directory); connection points to a directory instead of a file.
+    #[serde(default)]
+    pub folder_based: bool,
     /// Character used to quote identifiers (e.g. `"` for PostgreSQL, `` ` `` for MySQL).
     #[serde(default = "default_double_quote")]
     pub identifier_quote: String,
