@@ -1,3 +1,52 @@
+## [0.9.1](https://github.com/debba/tabularis/compare/v0.9.0...v0.9.1) (2026-02-25)
+
+
+### Bug Fixes
+
+* **app:** remove localhost debug override ([7cbbacd](https://github.com/debba/tabularis/commit/7cbbacdfda3f3231da15c859a2698c95eda5c58f))
+* **ci:** resolve pnpm store path from website directory ([6badec3](https://github.com/debba/tabularis/commit/6badec36b5524ab3014b431a87751e1d5197f301))
+* **ci:** resolve pnpm store path from website directory ([f0c4620](https://github.com/debba/tabularis/commit/f0c4620cb1683cb8f7dd50e490b00ceac7c5d5ad))
+* **plugins:** accept 'universal' asset as fallback for platform ([45b638d](https://github.com/debba/tabularis/commit/45b638d9d7ecbcf20cc48ee329adf4c5ec3b50f6))
+* **website:** correct next-env import path ([4f04254](https://github.com/debba/tabularis/commit/4f04254030709e108436b0973423cee291f17124))
+
+
+### Features
+
+* **blog:** add blog section with posts and styling ([cc4cab7](https://github.com/debba/tabularis/commit/cc4cab747bab9d718b16c19aef276f5d4f9ca48a))
+* **blog:** add post meta bar and syntax highlighting ([f6a3dc8](https://github.com/debba/tabularis/commit/f6a3dc8e3ca4fe9e532b921f95154add51307349))
+* **blog:** add search modal, post navigation, and author card ([01c16c7](https://github.com/debba/tabularis/commit/01c16c7e03ef00f3b937f79fc87479e0425ed0a2))
+* **data-grid:** support multiline cell editing with autosized textarea ([fa9df84](https://github.com/debba/tabularis/commit/fa9df8401528ad86697eaafc28eca889f3d5a287))
+* **drivers:** add folder_based capability for directory plugins ([0919ccc](https://github.com/debba/tabularis/commit/0919ccc4d977a9900222aa874a1bb3d1f600108b))
+* **drivers:** add folder_based capability to fallback drivers ([3ac2a90](https://github.com/debba/tabularis/commit/3ac2a903395eb0bf994ea164f22787fd162c4b0b))
+* **editor:** add tab switcher modal and tab scrolling utils ([f50627f](https://github.com/debba/tabularis/commit/f50627f349ab3e66261fdcaa2ebc7cf0fe371d11))
+* **flathub:** add publishing workflow and flatpak support ([a7b10d5](https://github.com/debba/tabularis/commit/a7b10d5e7c7878b511fa279114ba8780a8d46f0a))
+* **home:** add edit-on-github links to home page ([fe1af9e](https://github.com/debba/tabularis/commit/fe1af9e028dde7a8cd3b22f821cae43439acbed9))
+* **layout:** set metadataBase to https://tabularis.dev ([82ba795](https://github.com/debba/tabularis/commit/82ba7952b3fbde82034d7636337bfdb888eced4b))
+* **plugins:** add csv plugin entry to registry ([602b3c6](https://github.com/debba/tabularis/commit/602b3c6f7c4a2681f2e0ecfbb57c5abdf2d461e0))
+* **plugins:** add plugin manifest JSON schema and guide note ([11d9854](https://github.com/debba/tabularis/commit/11d9854dbeac9128da743fbd19a9fa2faf14fa5e))
+* **plugins:** require length and precision in manifests ([adc5254](https://github.com/debba/tabularis/commit/adc5254d0f870c9ac5ed2a1e107b1f9f787c178f))
+* **site-header:** add logo and restructure header with crumbs ([d9517e8](https://github.com/debba/tabularis/commit/d9517e8f9cc111ebe27c0406a08751f7aa5c997c))
+* **site:** add Matomo tracking and dynamic post list loading ([bb80f04](https://github.com/debba/tabularis/commit/bb80f0452fff87a782c652f3cf3de3a0994c8956))
+* **ui:** add DateInput component and dateInput utils with tests ([9b3f52b](https://github.com/debba/tabularis/commit/9b3f52ba70a304caf9dfd9272e40fe57ca2840c2))
+* **ui:** redesign theme cards and enhance search modal ([87481c7](https://github.com/debba/tabularis/commit/87481c700c118b493e9dad00a80d38fe01725419))
+* **updater:** detect installation source and skip updates for packages ([d5e4b10](https://github.com/debba/tabularis/commit/d5e4b10967acf381f6a4e03eeeced79321a86169))
+* **website:** add 404 page, sitemap and header crumbs styles ([db5fb3f](https://github.com/debba/tabularis/commit/db5fb3f29dd0631e7d61d9cbb1708e513d8fd5ae))
+* **website:** add blog pagination, tags, and og images ([4aa9352](https://github.com/debba/tabularis/commit/4aa935291314f58fcb7b1c1353423a9510890c2b))
+* **website:** add plugins registry and unified site header ([3c3d93c](https://github.com/debba/tabularis/commit/3c3d93cd2076c177d7cb2367e1612046fb2c6d41))
+* **website:** add post styles and wiki open graph metadata ([6ef5705](https://github.com/debba/tabularis/commit/6ef5705c30f7f7c9bef34905f8b59f70f2ed8aa7))
+* **website:** add screenshot 9 and OG page ([0001546](https://github.com/debba/tabularis/commit/0001546b6464493cda5a7f9765207460c1ed94c4))
+* **website:** convert static HTML site to Next.js with static export ([60201c3](https://github.com/debba/tabularis/commit/60201c31b0eb85bae17ddc6317f716aed237ac42))
+* **website:** use APP_VERSION and add platform install docs ([18ffc35](https://github.com/debba/tabularis/commit/18ffc358651f396a6ffa2009de080d6ea9350767))
+* **wiki:** add wiki content, pages, and UI integration ([cfee3fd](https://github.com/debba/tabularis/commit/cfee3fdf41ff0b5ab4b57daab5dfc004b63eae37))
+
+
+### BREAKING CHANGES
+
+* **plugins:** manifest.schema.json replaces has_length with
+requires_length and requires_precision and adds default_length
+
+
+
 # [0.9.0](https://github.com/debba/tabularis/compare/v0.8.15...v0.9.0) (2026-02-23)
 
 
