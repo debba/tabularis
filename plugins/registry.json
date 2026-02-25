@@ -34,7 +34,7 @@
         {
           "version": "1.0.0",
           "assets": {
-            "universal": "https://github.com/debba/tabularis-csv-plugin/releases/download/v1.0.0/csv-plugin.zip"
+            "universal": "https://github.com/debba/tabularis-csv-plugin/releases/download/v1.0.0/tabularis-csv-plugin.zip"
           }
         }
       ]

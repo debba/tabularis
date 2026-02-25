@@ -26,7 +26,7 @@ pub async fn fetch_plugin_registry() -> Result<Vec<RegistryPluginWithStatus>, St
             let platform_supported = plugin
                 .releases
                 .iter()
-                .any(|r| r.version == plugin.latest_version && r.assets.contains_key(&platform));
+                .any(|r| r.version == plugin.latest_version && (r.assets.contains_key(&platform) || r.assets.contains_key("universal")));
 
             RegistryPluginWithStatus {
                 id: plugin.id,
@@ -71,6 +71,7 @@ pub async fn install_plugin(plugin_id: String) -> Result<(), String> {
     let download_url = release
         .assets
         .get(&platform)
+        .or_else(|| release.assets.get("universal"))
         .ok_or_else(|| {
             format!(
                 "Plugin '{}' does not support platform '{}'",
