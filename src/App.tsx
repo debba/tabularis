@@ -34,12 +34,6 @@ function App() {
 
   useEffect(() => {
     invoke<boolean>("is_debug_mode").then((debugMode) => {
-      const isLocalhost =
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1";
-      if (isLocalhost) {
-        debugMode = true;
-      }
       setIsDebugMode(debugMode);
     });
   }, []);
@@ -62,14 +56,14 @@ function App() {
     <>
       <BrowserRouter>
         <ConnectionLayoutProvider>
-        <Routes>
-          <Route path="/" element={<MainLayout />}>
-            <Route index element={<Connections />} />
-            <Route path="editor" element={<Editor />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
-          <Route path="/schema-diagram" element={<SchemaDiagramPage />} />
-        </Routes>
+          <Routes>
+            <Route path="/" element={<MainLayout />}>
+              <Route index element={<Connections />} />
+              <Route path="editor" element={<Editor />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+            <Route path="/schema-diagram" element={<SchemaDiagramPage />} />
+          </Routes>
         </ConnectionLayoutProvider>
       </BrowserRouter>
 
