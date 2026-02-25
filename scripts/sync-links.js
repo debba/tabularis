@@ -7,7 +7,7 @@ const paths = {
   configLinks: resolve('src/config/links.ts'),
   readme: resolve('README.md'),
   contributing: resolve('CONTRIBUTING.md'),
-  website: resolve('website/index.html')
+  website: resolve('website/src/app/page.tsx')
 };
 
 // 1. Read links from package.json
@@ -63,14 +63,14 @@ contributing = contributing.replace(
 writeFileSync(paths.contributing, contributing);
 console.log('✅ Updated CONTRIBUTING.md');
 
-// 5. Update website/index.html - Discord links
+// 5. Update website/src/app/page.tsx - Discord links
 let website = readFileSync(paths.website, 'utf-8');
 website = website.replace(
   /https:\/\/discord\.gg\/[A-Za-z0-9]+/g,
   links.discord
 );
 writeFileSync(paths.website, website);
-console.log('✅ Updated website/index.html');
+console.log('✅ Updated website/src/app/page.tsx');
 
 console.log('\n✨ All links synced successfully!');
 console.log('\n💡 React components automatically use the updated links from src/config/links.ts');

@@ -37,7 +37,10 @@ A lightweight, developer-focused database management tool, built with Tauri and 
 ## Table of Contents
 
 - [Installation](#installation)
+  - [Windows](#windows)
   - [macOS](#macos)
+  - [Linux (Snap)](#linux-snap)
+  - [Linux (AppImage)](#linux-appimage)
   - [Arch Linux (AUR)](#arch-linux-aur)
 - [Updates](#updates)
 - [Gallery](#gallery)
@@ -59,6 +62,16 @@ A lightweight, developer-focused database management tool, built with Tauri and 
 - [License](#license)
 
 ## Installation
+
+### Windows
+
+Download the installer from the [Releases page](https://github.com/debba/tabularis/releases) and run it:
+
+```
+tabularis_x.x.x_x64-setup.exe
+```
+
+Follow the on-screen instructions to complete the installation.
 
 ### macOS
 
@@ -91,6 +104,23 @@ xattr -c /Applications/tabularis.app
 ```
 
 after copying the app to the Applications directory.
+
+### Linux (Snap)
+
+```bash
+sudo snap install tabularis
+```
+
+[![Snap Store](https://img.shields.io/badge/snap-tabularis-blue?logo=snapcraft)](https://snapcraft.io/tabularis)
+
+### Linux (AppImage)
+
+Download the `.AppImage` file from the [Releases page](https://github.com/debba/tabularis/releases), make it executable and run it:
+
+```bash
+chmod +x tabularis_x.x.x_amd64.AppImage
+./tabularis_x.x.x_amd64.AppImage
+```
 
 ### Arch Linux (AUR)
 
