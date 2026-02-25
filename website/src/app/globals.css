@@ -254,6 +254,7 @@ pre {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  padding-right: 0.35rem;
 }
 
 .crumb-sep {
@@ -851,18 +852,26 @@ pre {
 
 .post-tag {
   font-size: 0.68rem;
-  padding: 0.1rem 0.5rem;
+  padding: 0.15rem 0.55rem;
   border-radius: 2rem;
-  background: rgba(139, 148, 158, 0.1);
+  background: rgba(139, 148, 158, 0.08);
   border: 1px solid var(--border);
   color: var(--text-muted);
   text-decoration: none;
-  transition: border-color 0.2s, color 0.2s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
 }
 
-a.post-tag:hover {
-  border-color: var(--text-muted);
-  color: #e2e8f0;
+.post-tag::before {
+  content: "#";
+  opacity: 0.5;
+  margin-right: 0.1em;
+}
+
+.post-tag:hover {
+  background: rgba(139, 148, 158, 0.15);
+  border-color: rgba(139, 148, 158, 0.5);
+  color: var(--text-bright);
 }
 
 .tag-cloud {
@@ -1103,6 +1112,10 @@ a.post-tag:hover {
   color: var(--text-bright);
 }
 
+.post-content .post-meta {
+  margin: 0.75rem 0 2.5rem;
+}
+
 .post-content code {
   background-color: rgba(110, 118, 129, 0.4);
   padding: 0.2em 0.4em;
@@ -1124,7 +1137,6 @@ a.post-tag:hover {
   padding: 0;
   border-radius: 0;
   font-size: 0.88rem;
-  color: var(--text-main);
 }
 
 .post-content blockquote {

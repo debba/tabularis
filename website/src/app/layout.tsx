@@ -5,6 +5,7 @@ import { getAllPosts } from "@/lib/posts";
 import { getAllWikiPages } from "@/lib/wiki";
 import { getAllPlugins } from "@/lib/plugins";
 import "./globals.css";
+import "highlight.js/styles/atom-one-dark.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://tabularis.dev"),

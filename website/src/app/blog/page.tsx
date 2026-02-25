@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Footer } from "@/components/Footer";
 import { GitHubIcon, DiscordIcon } from "@/components/Icons";
 import { PostCard } from "@/components/PostCard";
+import { PostTagBadge } from "@/components/PostTagBadge";
 import { Pagination } from "@/components/Pagination";
 import { getPaginatedPosts, getAllTags } from "@/lib/posts";
 
@@ -62,9 +63,7 @@ export default function BlogPage() {
 
         <div className="tag-cloud">
           {tags.map((t) => (
-            <Link key={t} href={`/blog/tag/${t}`} className="post-tag">
-              {t}
-            </Link>
+            <PostTagBadge key={t} tag={t} />
           ))}
         </div>
 

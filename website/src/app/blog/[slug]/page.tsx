@@ -5,7 +5,8 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Footer } from "@/components/Footer";
 import { GitHubIcon, DiscordIcon } from "@/components/Icons";
 import { ShareButton } from "@/components/ShareButton";
-import { getAllPosts, getPostBySlug, getAdjacentPosts, formatDate } from "@/lib/posts";
+import { getAllPosts, getPostBySlug, getAdjacentPosts } from "@/lib/posts";
+import { PostMetaBar } from "@/components/PostMetaBar";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -47,23 +48,10 @@ export default async function BlogPostPage({ params }: PageProps) {
   if (!post) notFound();
 
   const { meta, html } = post;
-  const tags = meta.tags || [];
 
-  // Inject meta bar after first h1 (same as original)
-  const metaParts: string[] = [];
-  if (meta.date) {
-    metaParts.push(
-      `<span>${formatDate(meta.date)}</span><span>&middot;</span><span>2 min read</span>`,
-    );
-  }
-  if (meta.release) {
-    metaParts.push(`<span class="post-release">${meta.release}</span>`);
-  }
-  tags.forEach((t) => {
-    metaParts.push(`<span class="post-tag">${t}</span>`);
-  });
-  const metaBar = `<div class="post-meta" style="margin: 0.75rem 0 2.5rem">${metaParts.join("<span>&middot;</span>")}</div>`;
-  const renderedHtml = html.replace(/<\/h1>/, `</h1>${metaBar}`);
+  const h1End = html.indexOf("</h1>");
+  const htmlBefore = h1End >= 0 ? html.slice(0, h1End + 5) : html;
+  const htmlAfter = h1End >= 0 ? html.slice(h1End + 5) : "";
 
   const { prev, next } = getAdjacentPosts(slug);
 
@@ -76,10 +64,11 @@ export default async function BlogPostPage({ params }: PageProps) {
         crumbs={[{ label: "blog", href: "/blog" }, { label: crumbTitle }]}
       />
 
-      <article
-        className="post-content"
-        dangerouslySetInnerHTML={{ __html: renderedHtml }}
-      />
+      <article className="post-content">
+        {htmlBefore && <div dangerouslySetInnerHTML={{ __html: htmlBefore }} />}
+        <PostMetaBar date={meta.date} release={meta.release} tags={meta.tags} />
+        {htmlAfter && <div dangerouslySetInnerHTML={{ __html: htmlAfter }} />}
+      </article>
 
       <div className="post-footer-cta">
         <p>
