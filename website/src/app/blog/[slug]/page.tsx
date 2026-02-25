@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { BlogHeader } from "@/components/BlogHeader";
 import { GitHubIcon, DiscordIcon } from "@/components/Icons";
 import { ShareButton } from "@/components/ShareButton";
-import { getAllPosts, getPostBySlug, formatDate } from "@/lib/posts";
+import { getAllPosts, getPostBySlug, getAdjacentPosts, formatDate } from "@/lib/posts";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -14,7 +14,9 @@ export function generateStaticParams() {
   return getAllPosts().map((p) => ({ slug: p.slug }));
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const post = getPostBySlug(slug);
   if (!post) return {};
@@ -50,7 +52,7 @@ export default async function BlogPostPage({ params }: PageProps) {
   const metaParts: string[] = [];
   if (meta.date) {
     metaParts.push(
-      `<span>${formatDate(meta.date)}</span><span>&middot;</span><span>2 min read</span>`
+      `<span>${formatDate(meta.date)}</span><span>&middot;</span><span>2 min read</span>`,
     );
   }
   if (meta.release) {
@@ -59,19 +61,18 @@ export default async function BlogPostPage({ params }: PageProps) {
   tags.forEach((t) => {
     metaParts.push(`<span class="post-tag">${t}</span>`);
   });
-  const metaBar = `<div class="post-meta" style="margin: 0.75rem 0 2.5rem">${metaParts.join('<span>&middot;</span>')}</div>`;
+  const metaBar = `<div class="post-meta" style="margin: 0.75rem 0 2.5rem">${metaParts.join("<span>&middot;</span>")}</div>`;
   const renderedHtml = html.replace(/<\/h1>/, `</h1>${metaBar}`);
+
+  const { prev, next } = getAdjacentPosts(slug);
 
   const crumbTitle =
     meta.title.length > 40 ? meta.title.slice(0, 40) + "…" : meta.title;
 
   return (
-    <div className="container" style={{ maxWidth: "720px" }}>
+    <div className="container">
       <BlogHeader
-        crumbs={[
-          { label: "blog", href: "/blog" },
-          { label: crumbTitle },
-        ]}
+        crumbs={[{ label: "blog", href: "/blog" }, { label: crumbTitle }]}
       />
 
       <article
@@ -89,16 +90,58 @@ export default async function BlogPostPage({ params }: PageProps) {
             <GitHubIcon size={15} />
             Star on GitHub
           </a>
-          <a
-            className="btn-cta discord"
-            href="https://discord.gg/YrZPHAwMSG"
-          >
+          <a className="btn-cta discord" href="https://discord.gg/YrZPHAwMSG">
             <DiscordIcon size={15} />
             Join Discord
           </a>
           <ShareButton />
         </div>
       </div>
+
+      <div className="post-author">
+        <img
+          src="https://github.com/debba.png"
+          alt="Andrea Debernardi"
+          className="post-author-avatar"
+        />
+        <div className="post-author-info">
+          <span className="post-author-name">Andrea Debernardi</span>
+          <span className="post-author-bio">
+            Developer & creator of Tabularis. Building open-source tools for
+            developers.{" "}
+            <a
+              href="https://github.com/debba"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              @debba
+            </a>
+          </span>
+        </div>
+      </div>
+
+      <nav className="post-nav">
+        <div className="post-nav-item post-nav-prev">
+          {prev ? (
+            <Link href={`/blog/${prev.slug}`}>
+              <span className="post-nav-label">← Newer</span>
+              <span className="post-nav-title">{prev.title}</span>
+            </Link>
+          ) : (
+            <span className="post-nav-empty" />
+          )}
+        </div>
+        <div className="post-nav-item post-nav-next">
+          {next ? (
+            <Link href={`/blog/${next.slug}`}>
+              <span className="post-nav-label">Older →</span>
+              <span className="post-nav-title">{next.title}</span>
+            </Link>
+          ) : (
+            <span className="post-nav-empty" />
+          )}
+        </div>
+      </nav>
 
       <footer>
         <p>

@@ -98,6 +98,18 @@ export function getPostBySlug(
   return { meta, html };
 }
 
+export function getAdjacentPosts(slug: string): {
+  prev: PostMeta | null;
+  next: PostMeta | null;
+} {
+  const all = getAllPosts();
+  const idx = all.findIndex((p) => p.slug === slug);
+  return {
+    prev: idx > 0 ? all[idx - 1] : null,
+    next: idx < all.length - 1 ? all[idx + 1] : null,
+  };
+}
+
 export function formatDate(iso: string): string {
   const d = new Date(iso + "T12:00:00Z");
   return d.toLocaleDateString("en-US", {

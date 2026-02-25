@@ -954,6 +954,92 @@ a.post-tag:hover {
   color: #fff;
 }
 
+/* POST NAVIGATION */
+.post-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.post-nav-item a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1rem 1.25rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-decoration: none;
+  transition: border-color 0.2s;
+  height: 100%;
+}
+
+.post-nav-item a:hover {
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
+.post-nav-next a {
+  text-align: right;
+}
+
+.post-nav-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.post-nav-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.4;
+}
+
+.post-nav-empty {
+  display: block;
+}
+
+/* POST AUTHOR */
+.post-author {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.post-author-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.post-author-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.post-author-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.post-author-bio {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
 /* FOOTER */
 footer {
   margin-top: 5rem;
@@ -967,6 +1053,153 @@ footer {
 .discord-join-icon {
   fill: #5865f2;
   margin-right: 0.5rem;
+}
+
+/* SEARCH MODAL */
+.search-overlay {
+  position: fixed;
+  z-index: 1000;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(13, 17, 23, 0.85);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 20vh;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.search-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.search-modal {
+  width: 100%;
+  max-width: 600px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  transform: translateY(-8px);
+  transition: transform 0.15s ease;
+}
+
+.search-overlay.open .search-modal {
+  transform: translateY(0);
+}
+
+.search-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-main);
+  font-family: var(--font-stack);
+  font-size: 1rem;
+  padding: 1rem 1.25rem;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-results {
+  list-style: none;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.search-result-item {
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background: rgba(88, 166, 255, 0.08);
+}
+
+.search-result-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 0.2rem;
+}
+
+.search-result-excerpt {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 0.3rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.search-result-release {
+  font-size: 0.66rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 2rem;
+  background: rgba(88, 166, 255, 0.12);
+  border: 1px solid rgba(88, 166, 255, 0.3);
+  color: var(--accent);
+}
+
+.search-empty {
+  padding: 1.5rem 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* SEARCH BUTTON */
+.search-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-stack);
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.search-btn:hover {
+  color: var(--accent);
+}
+
+.search-btn kbd {
+  font-family: var(--font-stack);
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
 }
 
 @media (max-width: 768px) {

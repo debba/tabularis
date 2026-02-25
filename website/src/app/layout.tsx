@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Analytics } from "@/components/Analytics";
+import { SearchModal } from "@/components/SearchModal";
+import { getAllPosts } from "@/lib/posts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,11 +35,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const posts = getAllPosts();
   return (
     <html lang="en">
       <body>
         {children}
         <Analytics />
+        <SearchModal posts={posts} />
       </body>
     </html>
   );
