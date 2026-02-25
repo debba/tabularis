@@ -1120,6 +1120,118 @@ a.post-tag:hover {
 
 .post-content a {
   color: var(--accent);
+  text-decoration: none;
+  transition: filter 0.15s ease;
+}
+
+.post-content a:hover {
+  filter: brightness(1.25);
+  text-decoration: underline;
+}
+
+/* h4 / h5 / h6 */
+.post-content h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin: 1.75rem 0 0.5rem;
+}
+
+.post-content h5,
+.post-content h6 {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 1.5rem 0 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Lists */
+.post-content ul {
+  list-style: disc;
+}
+
+.post-content ol {
+  list-style: decimal;
+}
+
+.post-content li {
+  color: var(--text-main);
+}
+
+.post-content li::marker {
+  color: var(--accent);
+}
+
+.post-content li > ul,
+.post-content li > ol {
+  margin-top: 0.35rem;
+  margin-bottom: 0;
+}
+
+/* Blockquote */
+.post-content blockquote {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 0.75rem 1rem;
+  border-radius: 0 4px 4px 0;
+  color: var(--text-main);
+  margin-bottom: 1.5rem;
+}
+
+.post-content blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* Pre */
+.post-content pre {
+  line-height: 1.65;
+}
+
+/* Tables */
+.post-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.75rem;
+  font-size: 0.875rem;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.post-content thead {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.post-content th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-bright);
+  padding: 0.65rem 1rem;
+  border-top: 1px solid var(--border);
+  border-bottom: 2px solid var(--border-bright);
+  white-space: nowrap;
+}
+
+.post-content td {
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-main);
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.post-content td code {
+  font-size: 0.82rem;
+}
+
+.post-content tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.post-content tbody tr:hover td {
+  background-color: var(--card-hover);
 }
 
 /* POST FOOTER CTA */

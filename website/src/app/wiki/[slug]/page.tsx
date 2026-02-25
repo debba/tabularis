@@ -14,6 +14,9 @@ export function generateStaticParams() {
   return getAllWikiPages().map((p) => ({ slug: p.slug }));
 }
 
+const OG_IMAGE =
+  "https://raw.githubusercontent.com/debba/tabularis/main/website/img/og.png";
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
@@ -22,9 +25,29 @@ export async function generateMetadata({
   if (!page) return {};
 
   const { meta } = page;
+  const title = `${meta.title} | Tabularis Wiki`;
+  const description = meta.excerpt;
+
   return {
-    title: `${meta.title} | Tabularis Wiki`,
-    description: meta.excerpt,
+    title,
+    description,
+    alternates: {
+      canonical: `/wiki/${slug}`,
+    },
+    openGraph: {
+      type: "article",
+      url: `/wiki/${slug}`,
+      title,
+      description,
+      siteName: "Tabularis",
+      images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Tabularis" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [OG_IMAGE],
+    },
   };
 }
 
