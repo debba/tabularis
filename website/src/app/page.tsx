@@ -436,57 +436,28 @@ export default function HomePage() {
         <h2>_themes</h2>
         <p>
           Why stare at a dull interface? Tabularis brings a first-class theming
-          experience. Switch instantly between <strong>10+ presets</strong>{" "}
-          without restarting.
+          experience. Switch instantly between <strong>10+ presets</strong> without restarting.
+          Syntax highlighting is automatically generated from the UI theme.
         </p>
 
         <div className="theme-grid">
           {THEMES.map((theme) => (
-            <div key={theme.name} className="theme-preview">
-              <div className="theme-name">{theme.name}</div>
-              <div className="palette">
-                {theme.colors.map((color, i) => (
-                  <div
-                    key={i}
-                    className="color-dot"
-                    style={{ background: color }}
-                  />
-                ))}
+            <div key={theme.name} className="theme-card">
+              <div className="theme-card-preview" style={{ background: theme.colors[0] }}>
+                <div className="theme-card-sidebar" style={{ background: theme.colors[1] }}>
+                  <div className="theme-card-dot" style={{ background: theme.colors[2] }} />
+                  <div className="theme-card-dot" style={{ background: theme.colors[3] }} />
+                  <div className="theme-card-dot" style={{ background: theme.colors[2], opacity: 0.5 }} />
+                </div>
+                <div className="theme-card-content">
+                  <div className="theme-card-line" style={{ background: theme.colors[2], width: "60%" }} />
+                  <div className="theme-card-line" style={{ background: theme.colors[3], width: "40%" }} />
+                  <div className="theme-card-line" style={{ background: theme.colors[1], width: "75%", opacity: 0.6 }} />
+                </div>
               </div>
+              <div className="theme-card-label">{theme.name}</div>
             </div>
           ))}
-        </div>
-
-        <div className="features-grid">
-          <article className="feature-card">
-            <h3>⚡ Zero-Latency Switching</h3>
-            <p>
-              No restarts. No reloads. The entire application including the
-              Monaco Editor repaints instantly when you switch themes.
-            </p>
-          </article>
-          <article className="feature-card">
-            <h3>🎨 Full Consistency</h3>
-            <p>
-              Syntax highlighting is automatically generated from the UI theme,
-              ensuring perfect visual harmony between your chrome and your code.
-            </p>
-          </article>
-          <article className="feature-card">
-            <h3>🛠️ CSS Variable Engine</h3>
-            <p>
-              Built on a modern CSS variable system allowing for complete
-              customization and easy creation of new custom themes.
-            </p>
-          </article>
-          <article className="feature-card">
-            <h3>🔠 Typography Control</h3>
-            <p>
-              Your code, your font. Choose from built-in favorites like{" "}
-              <strong>JetBrains Mono</strong> and <strong>Fira Code</strong>, or
-              use any font installed on your system.
-            </p>
-          </article>
         </div>
       </section>
 
