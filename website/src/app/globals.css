@@ -717,14 +717,34 @@ a.post-tag:hover {
   padding-bottom: 1.5rem;
   margin-bottom: 3rem;
   display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.site-header-row {
+  display: flex;
   align-items: center;
-  gap: 1rem;
+}
+
+.site-header-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
   flex-wrap: wrap;
 }
 
 .site-header .back-link {
   font-size: 0.85rem;
   color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
 }
 .site-header .back-link:hover {
   color: var(--accent);
@@ -1208,5 +1228,8 @@ footer {
   }
   h1 {
     font-size: 2rem;
+  }
+  .search-btn kbd {
+    display: none;
   }
 }
