@@ -1594,6 +1594,23 @@ a.post-tag:hover {
   line-height: 1.4;
 }
 
+.edit-on-github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.edit-on-github-link:hover {
+  opacity: 1;
+  color: var(--text-main);
+}
+
 .discord-join-icon {
   fill: #5865f2;
   margin-right: 0.5rem;
