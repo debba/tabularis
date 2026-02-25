@@ -1,7 +1,7 @@
 import Link from "next/link";
 import fs from "fs";
 import path from "path";
-import { marked } from "marked";
+import { marked } from "@/lib/markdown";
 import { Footer } from "@/components/Footer";
 import { DiscordIcon } from "@/components/Icons";
 import { LightboxGallery } from "@/components/Lightbox";
@@ -578,27 +578,10 @@ export default function HomePage() {
           </a>
         </div>
 
-        <div className="post-content">
-          <h3>Arch Linux (AUR)</h3>
-          <p>Install via your favorite AUR helper:</p>
-          <pre>
-            <code>yay -S tabularis-bin</code>
-          </pre>
-
-          <h3>Snap (Linux)</h3>
-          <pre>
-            <code>sudo snap install tabularis</code>
-          </pre>
-
-          <h3>Build from Source</h3>
-          <p>Requires Node.js and Rust installed on your machine.</p>
-          <pre>
-            <code>
-              git clone https://github.com/debba/tabularis.git cd tabularis npm
-              install npm run tauri build
-            </code>
-          </pre>
-        </div>
+        <div
+          className="post-content"
+          dangerouslySetInnerHTML={{ __html: home.installation || "" }}
+        />
       </section>
 
       <Footer />

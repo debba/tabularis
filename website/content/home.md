@@ -46,3 +46,30 @@ Each plugin runs as a separate process. A crashing plugin never takes down the a
 # Themes
 
 Why stare at a dull interface? Tabularis brings a first-class theming experience. Switch instantly between **10+ presets** without restarting. Syntax highlighting is automatically generated from the UI theme, ensuring perfect visual harmony.
+
+# Installation
+
+### Arch Linux (AUR)
+
+Install via your favorite AUR helper:
+
+```bash
+yay -S tabularis-bin
+```
+
+### Snap (Linux)
+
+```bash
+sudo snap install tabularis
+```
+
+### Build from Source
+
+Requires Node.js, pnpm, and Rust installed on your machine.
+
+```bash
+git clone https://github.com/debba/tabularis.git
+cd tabularis
+pnpm install
+pnpm tauri build
+```
