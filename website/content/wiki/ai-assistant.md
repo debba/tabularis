@@ -29,15 +29,16 @@ By feeding this exact structural context to the LLM alongside your natural langu
 Tabularis is provider-agnostic. Configure your preferred engine in Settings:
 
 ### 1. Cloud Providers
-- **OpenAI**: Supports `gpt-4o` and `gpt-4-turbo`. Requires your own API Key.
-- **Anthropic**: Supports Claude 3.5 Sonnet and Haiku. Excellent for complex query explanations.
-- **OpenRouter**: Access hundreds of models via a unified API.
+- **OpenAI** (`openai`): Supports `gpt-4o`, `gpt-4o-mini`, and other GPT models. Requires your own API Key.
+- **Anthropic** (`anthropic`): Supports Claude Opus, Sonnet, and Haiku (claude-opus-4.5, claude-sonnet-4.5, claude-haiku-4.5, claude-3.5-sonnet, claude-3.5-haiku). Excellent for complex query explanations.
+- **OpenRouter** (`openrouter`): Access hundreds of models (GPT-4o, Gemini, Claude, Deepseek, and more) via a unified API.
+- **Custom OpenAI-compatible** (`custom-openai`): Any endpoint that speaks the OpenAI API (e.g., LM Studio, vLLM). Set `aiCustomOpenaiUrl` and `aiCustomOpenaiModel` in Settings.
 
 ### 2. Local Execution (Zero-Knowledge Privacy)
 For enterprise databases with strict compliance requirements, you cannot send schema data to third-party servers. Tabularis natively integrates with **Ollama**.
 1. Install [Ollama](https://ollama.com/) on your machine.
-2. Pull a coding model: `ollama run codellama` or `ollama run llama3`.
-3. In Tabularis Settings, set the provider to **Ollama** and point it to `http://localhost:11434`.
+2. Pull a coding model: `ollama pull codellama` or `ollama pull llama3`.
+3. In Tabularis Settings, set the provider to **Ollama**. The default port is `11434`; change it via `aiOllamaPort` if needed.
 **Result**: Powerful AI assistance with a guarantee that zero bytes of data ever leave your network.
 
 ## Explain & Optimize Queries

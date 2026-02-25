@@ -53,8 +53,8 @@ When a query returns 100,000 rows, Tabularis doesn't attempt to send a massive 5
 
 ## Frontend Architecture
 
-- **React 18 & Vite**: Fast HMR during development and optimized, minified builds for production.
-- **Zustand**: Used for global state management (active tabs, theme, UI state). It provides a much lighter footprint than Redux.
+- **React 19 & Vite**: Fast HMR during development and optimized, minified builds for production.
+- **React Context & Hooks**: Global state management (active tabs, theme, UI state) is handled via React's built-in Context API and custom hooks.
 - **Tailwind CSS & Vanilla CSS Variables**: The theming engine is built entirely on native CSS variables, allowing dynamic theme swapping without React re-renders.
 - **Monaco & Web Workers**: The SQL Editor parsing logic is offloaded to Web Workers, preventing typing latency on the main UI thread.
 

@@ -30,11 +30,11 @@ The Monaco integration brings powerful developer features:
 
 | Feature | Shortcut (Mac) | Shortcut (Win/Linux) | Description |
 | :--- | :--- | :--- | :--- |
-| **Execute All** | `Cmd + Enter` | `Ctrl + Enter` | Runs the entire script. |
-| **Execute Selected** | `Cmd + E` | `Ctrl + E` | Runs only the highlighted query, or the query under the cursor. |
-| **Format SQL** | `Shift + Option + F` | `Shift + Alt + F` | Prettifies the SQL syntax. |
-| **Toggle Comment** | `Cmd + /` | `Ctrl + /` | Comments/uncomments the current line or selection. |
-| **Multi-Cursor** | `Option + Click` | `Alt + Click` | Place multiple cursors for simultaneous editing. |
+| **Execute** | `Cmd + Enter` or `Cmd + F5` | `Ctrl + Enter` or `Ctrl + F5` | Runs the selected text, or the entire script if nothing is selected. |
+| **Execute Selection** | *(context menu only)* | *(context menu only)* | Right-click → "Execute Selection" to run highlighted text. |
+| **Format SQL** | `Shift + Option + F` | `Shift + Alt + F` | Prettifies the SQL syntax (built-in Monaco). |
+| **Toggle Comment** | `Cmd + /` | `Ctrl + /` | Comments/uncomments the current line or selection (built-in Monaco). |
+| **Multi-Cursor** | `Option + Click` | `Alt + Click` | Place multiple cursors for simultaneous editing (built-in Monaco). |
 | **Command Palette**| `F1` | `F1` | Open the Monaco command palette. |
 
 ## Query Execution & Data Grid

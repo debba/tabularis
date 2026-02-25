@@ -11,8 +11,8 @@ A developer tool should adapt to your preferences. Tabularis ships with a robust
 ## Built-In Themes
 
 Switch themes instantly in **Settings → General**. Changes apply immediately without requiring a restart or refreshing the DOM.
-- **Dark Themes**: Tabularis Dark, Dracula, Nord, GitHub Dark, Night Owl.
-- **Light Themes**: Tabularis Light, GitHub Light, Solarized Light.
+- **Dark Themes**: Tabularis Dark, Monokai, One Dark Pro, Nord, Dracula, GitHub Dark, Solarized Dark, High Contrast.
+- **Light Themes**: Tabularis Light, Solarized Light.
 - **System Sync**: Choose "Auto" to have Tabularis track your OS's dark/light mode preference dynamically.
 
 ## Typography Configuration

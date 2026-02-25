@@ -8,55 +8,132 @@ excerpt: "Adjust Tabularis to your workflow: language settings, SSH keys, and ge
 
 Tabularis is designed to work perfectly out-of-the-box, but offers extensive configuration options via the UI **Settings** panel and an underlying `config.json` file.
 
+## Accessing Settings
+
+Open the Settings panel from:
+- **Menu**: `Tabularis → Preferences` (macOS) or `File → Settings` (Windows/Linux)
+- **Keyboard shortcut**: `Cmd/Ctrl + ,`
+- **Sidebar**: Click the gear icon at the bottom of the left sidebar
+
 ## General Settings
 
-- **Language Support**: Native translations for **English**, **Italian**, and **Spanish**. The app defaults to your OS locale.
+- **Language Support**: Native translations for **English**, **Italian**, and **Spanish**. The app defaults to your OS locale. Changing the language requires a restart.
 - **Startup Behavior**: Configure whether to launch with a blank slate or restore the exact tabs, split-pane layouts, and active connections from your previous session.
+- **Update Checks**: Enable or disable automatic update checks on startup. Checks query the GitHub Releases API — no version data is sent, only a GET request is made.
 
 ## Storage Paths & config.json
 
-Tabularis stores non-sensitive configuration, UI preferences, and connection metadata in a central `config.json`. **Passwords and SSH passphrases are NEVER stored here.**
+Tabularis stores non-sensitive configuration, UI preferences, and connection metadata in a central `config.json`. **Passwords and SSH passphrases are NEVER stored here** — they live exclusively in your OS keychain.
 
 ### File Locations
 
-- **Windows**: `%APPDATA%\io.github.debba.tabularis\config.json`
-- **macOS**: `~/Library/Application Support/io.github.debba.tabularis/config.json`
-- **Linux**: `~/.config/io.github.debba.tabularis/config.json`
+| Platform | Path |
+| :--- | :--- |
+| **Windows** | `%APPDATA%\tabularis\config.json` |
+| **macOS** | `~/Library/Application Support/tabularis/config.json` |
+| **Linux** | `~/.config/tabularis/config.json` |
 
-### `config.json` Reference
+### Manually Editing config.json
 
-The configuration file is a typed JSON object. You can edit it manually (while the app is closed) if necessary:
+You can edit the file manually while **the application is closed**. Editing while Tabularis is running will likely result in your changes being overwritten when the app writes its state on exit.
+
+A minimal valid `config.json` looks like:
+```json
+{
+  "theme": "tabularis-dark",
+  "language": "auto",
+  "fontSize": 14,
+  "aiEnabled": false
+}
+```
+
+Any key omitted from the file falls back to its default value. You do not need a complete file.
+
+### `config.json` Full Reference
 
 | Key | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `theme` | `string` | `"tabularis-dark"` | Active UI theme ID. |
-| `language` | `string` | `"auto"` | Preferred locale (`en`, `it`, `es`, or `auto`). |
-| `resultPageSize` | `number` | `100` | Rows fetched per pagination request in the grid. |
+| `theme` | `string` | `"tabularis-dark"` | Active UI theme ID. See [Themes](/wiki/themes). |
+| `language` | `string` | `"auto"` | Preferred locale: `en`, `it`, `es`, or `auto` (follows OS). |
+| `resultPageSize` | `number` | `100` | Rows fetched per pagination request in the Data Grid. |
 | `fontFamily` | `string` | `"JetBrains Mono"` | Editor font. Must be installed on the system. |
 | `fontSize` | `number` | `14` | Editor font size in pixels. |
-| `aiEnabled` | `boolean` | `false` | Master toggle for AI features. |
-| `aiProvider` | `string` | `"openai"` | Active provider (`openai`, `anthropic`, `ollama`). |
-| `aiModel` | `string` | `"gpt-4o"` | The model identifier. |
-| `aiOllamaPort` | `number` | `11434` | Local port for Ollama daemon. |
-| `aiCustomOpenaiUrl` | `string` | `null` | Base URL for OpenAI-compatible endpoints (e.g., LM Studio). |
-| `autoCheckUpdatesOnStartup` | `boolean` | `true` | Checks GitHub releases on boot. |
-| `erDiagramDefaultLayout`| `string` | `"TB"` | `TB` (Top-Bottom) or `LR` (Left-Right) for Dagre layout. |
-| `maxBlobSize` | `number` | `1048576` | Max bytes (1MB) to load into UI for BLOB columns. |
+| `aiEnabled` | `boolean` | `false` | Master toggle for all AI features. |
+| `aiProvider` | `string` | `"openai"` | Active AI provider: `openai`, `anthropic`, `ollama`, `openrouter`, `custom-openai`. |
+| `aiModel` | `string` | `"gpt-4o"` | The model identifier string sent to the provider. |
+| `aiCustomModels` | `object` | `null` | Custom model lists per provider (map of provider ID → string[]). |
+| `aiOllamaPort` | `number` | `11434` | Local port for the Ollama daemon. |
+| `aiCustomOpenaiUrl` | `string` | `null` | Base URL for OpenAI-compatible endpoints (e.g., LM Studio, vLLM). |
+| `aiCustomOpenaiModel` | `string` | `null` | Model name to use with the custom OpenAI-compatible endpoint. |
+| `checkForUpdates` | `boolean` | `true` | Enable or disable update checks entirely. |
+| `autoCheckUpdatesOnStartup` | `boolean` | `true` | Checks GitHub Releases API on boot. |
+| `lastDismissedVersion` | `string` | `null` | Version string of the last dismissed update notification. |
+| `erDiagramDefaultLayout` | `string` | `"TB"` | `TB` (Top-Bottom) or `LR` (Left-Right) for Dagre layout. |
+| `schemaPreferences` | `object` | `{}` | Per-connection active schema for DDL operations (map of connection ID → schema name). |
+| `selectedSchemas` | `object` | `{}` | Per-connection visible schemas in the sidebar (map of connection ID → string[]). |
+| `maxBlobSize` | `number` | `1048576` | Max bytes to load into UI for BLOB/bytea columns (default 1 MB). |
+| `activeExternalDrivers` | `string[]` | `[]` | List of plugin driver IDs loaded at startup. |
 
 ## Application Logs
 
-For debugging connection failures or plugin crashes, Tabularis writes detailed logs:
-- **macOS**: `~/Library/Logs/io.github.debba.tabularis/`
-- **Windows**: `%APPDATA%\io.github.debba.tabularis\logs\`
-- **Linux**: `~/.cache/io.github.debba.tabularis/`
+For debugging connection failures, plugin crashes, or unexpected behavior, Tabularis writes structured logs.
 
-You can also launch Tabularis from the terminal with the `RUST_LOG` environment variable for real-time debug output:
+### Log File Locations
+
+| Platform | Path |
+| :--- | :--- |
+| **macOS** | `~/Library/Logs/tabularis/` |
+| **Windows** | `%APPDATA%\tabularis\logs\` |
+| **Linux** | `~/.cache/tabularis/` |
+
+### Runtime Debug Logging
+
+Launch Tabularis from the terminal with the `RUST_LOG` environment variable for real-time debug output:
+
 ```bash
+# All debug messages from the Tabularis crate
+RUST_LOG=tabularis=debug tabularis
+
+# Debug messages from all crates (very verbose)
 RUST_LOG=debug tabularis
+
+# Only errors and warnings
+RUST_LOG=warn tabularis
 ```
+
+The `RUST_LOG` directive supports `error`, `warn`, `info`, `debug`, and `trace` levels, with `info` being the default for production builds.
+
+### What to Look for in Logs
+
+When troubleshooting a connection issue, search the log file for entries related to the connection UUID:
+
+```bash
+grep "conn-" ~/Library/Logs/io.github.debba.tabularis/tabularis.log | tail -50
+```
+
+SSH tunnel events are prefixed with `[ssh]`, database driver events with `[driver]`, and plugin events with `[plugin:<plugin-id>]`.
 
 ## Privacy & Telemetry
 
-Tabularis respects your privacy.
-- **Zero Telemetry**: We do not embed Google Analytics, Mixpanel, or any tracking SDKs.
-- **Local Isolation**: All parsing, AST generation, and layout calculation happen locally. Network requests are only made to your database host, GitHub (for update checks), or your chosen AI provider (if explicitly enabled).
+Tabularis is built with a strict zero-telemetry policy.
+
+- **No analytics SDKs**: We do not embed Google Analytics, Mixpanel, Sentry (in production), or any third-party tracking library.
+- **No crash reporting**: Panics are written to the local log file only. No automatic crash reports are sent anywhere.
+- **No usage data**: Feature usage, query counts, session duration — none of this is tracked or transmitted.
+- **Network requests made by Tabularis**:
+  - Your configured database host(s)
+  - `api.github.com/repos/debba/tabularis/releases/latest` (for update checks, if enabled)
+  - Your chosen AI provider endpoint (only if AI is enabled and you trigger it)
+  - Any URLs referenced in plugins you have installed
+
+You can verify all outgoing network connections using `lsof -i` (macOS/Linux) or Resource Monitor (Windows) while the application runs.
+
+## Resetting to Defaults
+
+To reset all settings to factory defaults:
+1. Close Tabularis completely.
+2. Delete or rename the `config.json` file.
+3. Relaunch Tabularis. A fresh `config.json` with all defaults will be created.
+
+**Important**: This does NOT delete saved connections. Connection metadata is stored in a separate `connections.json` file in the same directory. To also remove connections, delete `connections.json`. Passwords stored in the OS keychain must be removed manually (via Keychain Access on macOS, Credential Manager on Windows, or `secret-tool` on Linux).
+
