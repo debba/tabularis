@@ -11,7 +11,15 @@ const FALLBACK_DRIVERS: PluginManifest[] = [
     version: "1.0.0",
     description: "PostgreSQL databases",
     default_port: 5432,
-    capabilities: { schemas: true, views: true, routines: true, file_based: false, identifier_quote: "\"", alter_primary_key: true },
+    capabilities: {
+      schemas: true,
+      views: true,
+      routines: true,
+      file_based: false,
+      folder_based: true,
+      identifier_quote: '"',
+      alter_primary_key: true,
+    },
   },
   {
     id: "mysql",
@@ -19,7 +27,15 @@ const FALLBACK_DRIVERS: PluginManifest[] = [
     version: "1.0.0",
     description: "MySQL and MariaDB databases",
     default_port: 3306,
-    capabilities: { schemas: false, views: true, routines: true, file_based: false, identifier_quote: "`", alter_primary_key: true },
+    capabilities: {
+      schemas: false,
+      views: true,
+      routines: true,
+      file_based: false,
+      folder_based: true,
+      identifier_quote: "`",
+      alter_primary_key: true,
+    },
   },
   {
     id: "sqlite",
@@ -27,7 +43,15 @@ const FALLBACK_DRIVERS: PluginManifest[] = [
     version: "1.0.0",
     description: "SQLite file-based databases",
     default_port: null,
-    capabilities: { schemas: false, views: true, routines: false, file_based: true, identifier_quote: "\"", alter_primary_key: true },
+    capabilities: {
+      schemas: false,
+      views: true,
+      routines: false,
+      file_based: true,
+      folder_based: true,
+      identifier_quote: '"',
+      alter_primary_key: true,
+    },
   },
 ];
 
@@ -38,7 +62,8 @@ export function useDrivers(): {
   error: string | null;
   refresh: () => void;
 } {
-  const [allDrivers, setAllDrivers] = useState<PluginManifest[]>(FALLBACK_DRIVERS);
+  const [allDrivers, setAllDrivers] =
+    useState<PluginManifest[]>(FALLBACK_DRIVERS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { settings } = useSettings();
@@ -66,7 +91,9 @@ export function useDrivers(): {
 
   const builtin = ["mysql", "postgres", "sqlite"];
   const activeExt = settings.activeExternalDrivers || [];
-  const active = allDrivers.filter(d => builtin.includes(d.id) || activeExt.includes(d.id));
+  const active = allDrivers.filter(
+    (d) => builtin.includes(d.id) || activeExt.includes(d.id),
+  );
 
   return { drivers: active, allDrivers, loading, error, refresh };
 }
