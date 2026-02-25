@@ -27,6 +27,7 @@ export function BlogHeader({ crumbs = [] }: BlogHeaderProps) {
           tabularis
         </Link>
         <div className="header-links">
+          <Link href="/wiki" className="badge" style={{ textDecoration: 'none' }}>Wiki</Link>
           <button className="search-btn" onClick={openSearch} type="button">
             Search <kbd>{isMac ? "⌘K" : "Ctrl+K"}</kbd>
           </button>

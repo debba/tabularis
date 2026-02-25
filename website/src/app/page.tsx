@@ -471,6 +471,18 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* WIKI */}
+      <section className="section" id="wiki">
+        <h2>_wiki</h2>
+        <p>
+          Need a deeper dive? Explore our documentation to learn about all the
+          powerful features Tabularis has to offer.
+        </p>
+        <p className="blog-all-link">
+          <Link href="/wiki">Go to Wiki →</Link>
+        </p>
+      </section>
+
       {/* BLOG */}
       <section className="section" id="blog">
         <h2>_blog</h2>

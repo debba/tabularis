@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BlogHeader } from "@/components/BlogHeader";
+import { Footer } from "@/components/Footer";
 import { GitHubIcon, DiscordIcon } from "@/components/Icons";
 import { ShareButton } from "@/components/ShareButton";
 import { getAllPosts, getPostBySlug, getAdjacentPosts, formatDate } from "@/lib/posts";
@@ -143,14 +144,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         </div>
       </nav>
 
-      <footer>
-        <p>
-          &copy; 2026 Tabularis Project &mdash;{" "}
-          <Link href="/">tabularis.dev</Link> &middot;{" "}
-          <a href="https://github.com/debba/tabularis">GitHub</a> &middot;{" "}
-          <a href="https://discord.gg/YrZPHAwMSG">Discord</a>
-        </p>
-      </footer>
+      <Footer />
     </div>
   );
 }

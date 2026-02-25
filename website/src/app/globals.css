@@ -711,6 +711,30 @@ a.post-tag:hover {
   color: #5865f2;
 }
 
+/* WIKI EDIT LINK */
+.wiki-edit-link-container {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.wiki-edit-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.wiki-edit-link:hover {
+  color: var(--text-main);
+  text-decoration: none;
+}
+
 /* BLOG HEADER */
 .site-header {
   border-bottom: 1px solid var(--border);

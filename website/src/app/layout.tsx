@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Analytics } from "@/components/Analytics";
 import { SearchModal } from "@/components/SearchModal";
 import { getAllPosts } from "@/lib/posts";
+import { getAllWikiPages } from "@/lib/wiki";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -37,12 +38,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const posts = getAllPosts();
+  const wikiPages = getAllWikiPages();
   return (
     <html lang="en">
       <body>
         {children}
         <Analytics />
-        <SearchModal posts={posts} />
+        <SearchModal posts={posts} wikiPages={wikiPages} />
       </body>
     </html>
   );

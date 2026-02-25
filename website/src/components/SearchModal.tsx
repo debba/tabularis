@@ -3,12 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PostMeta } from "@/lib/posts";
+import type { WikiMeta } from "@/lib/wiki";
 
 interface SearchModalProps {
   posts: PostMeta[];
+  wikiPages: WikiMeta[];
 }
 
-export function SearchModal({ posts }: SearchModalProps) {
+type SearchResult = 
+  | { type: "post"; slug: string; title: string; excerpt: string; meta: string; badge?: string }
+  | { type: "wiki"; slug: string; title: string; excerpt: string; meta: string };
+
+export function SearchModal({ posts, wikiPages }: SearchModalProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -17,14 +23,40 @@ export function SearchModal({ posts }: SearchModalProps) {
   const results = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return posts.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        p.excerpt.toLowerCase().includes(q) ||
-        p.release.toLowerCase().includes(q) ||
-        p.tags.some((t) => t.toLowerCase().includes(q))
-    );
-  }, [query, posts]);
+    
+    const postResults: SearchResult[] = posts
+      .filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.excerpt.toLowerCase().includes(q) ||
+          p.release.toLowerCase().includes(q) ||
+          p.tags.some((t) => t.toLowerCase().includes(q))
+      )
+      .map(p => ({
+        type: "post",
+        slug: p.slug,
+        title: p.title,
+        excerpt: p.excerpt,
+        meta: p.date,
+        badge: p.release
+      }));
+
+    const wikiResults: SearchResult[] = wikiPages
+      .filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.excerpt.toLowerCase().includes(q)
+      )
+      .map(p => ({
+        type: "wiki",
+        slug: p.slug,
+        title: p.title,
+        excerpt: p.excerpt,
+        meta: "Wiki"
+      }));
+
+    return [...postResults, ...wikiResults];
+  }, [query, posts, wikiPages]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -56,9 +88,10 @@ export function SearchModal({ posts }: SearchModalProps) {
     }
   }, [open]);
 
-  function handleResultClick(slug: string) {
+  function handleResultClick(result: SearchResult) {
     setOpen(false);
-    router.push(`/blog/${slug}`);
+    const path = result.type === "post" ? `/blog/${result.slug}` : `/wiki/${result.slug}`;
+    router.push(path);
   }
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -77,26 +110,29 @@ export function SearchModal({ posts }: SearchModalProps) {
           ref={inputRef}
           className="search-input"
           type="text"
-          placeholder="Search posts..."
+          placeholder="Search wiki or blog..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         {results.length > 0 && (
           <ul className="search-results">
-            {results.map((post) => (
+            {results.map((result) => (
               <li
-                key={post.slug}
+                key={`${result.type}-${result.slug}`}
                 className="search-result-item"
-                onClick={() => handleResultClick(post.slug)}
+                onClick={() => handleResultClick(result)}
               >
-                <div className="search-result-title">{post.title}</div>
-                {post.excerpt && (
-                  <div className="search-result-excerpt">{post.excerpt}</div>
+                <div className="search-result-title">
+                  {result.type === 'wiki' && <span style={{ color: 'var(--accent)', marginRight: '0.5rem' }}>[Wiki]</span>}
+                  {result.title}
+                </div>
+                {result.excerpt && (
+                  <div className="search-result-excerpt">{result.excerpt}</div>
                 )}
                 <div className="search-result-meta">
-                  {post.date && <span>{post.date}</span>}
-                  {post.release && (
-                    <span className="search-result-release">{post.release}</span>
+                  {result.meta && <span>{result.meta}</span>}
+                  {result.type === 'post' && result.badge && (
+                    <span className="search-result-release">{result.badge}</span>
                   )}
                 </div>
               </li>
