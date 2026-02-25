@@ -239,9 +239,49 @@ pre {
 .header-crumbs {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0 1rem;
+  gap: 0;
+  padding: 0.35rem 0 1.25rem;
   overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+
+.header-crumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.crumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.crumb-sep {
+  color: var(--border-bright);
+  font-size: 0.7rem;
+  user-select: none;
+  margin-right: 0.5rem;
+}
+
+.crumb-link {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.crumb-link:hover {
+  color: var(--text-main);
+  filter: none;
+}
+
+.crumb-text {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-bright);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40ch;
 }
 
 /* HERO SECTION */
@@ -1631,6 +1671,90 @@ a.post-tag:hover {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 404 NOT FOUND PAGE */
+.not-found-page {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 5rem 0 4rem;
+  gap: 1.25rem;
+}
+
+.not-found-code {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  line-height: 1;
+}
+
+.not-found-prompt {
+  font-size: 2rem;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  opacity: 0.5;
+}
+
+.not-found-number {
+  font-size: 6rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.not-found-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-bright);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.not-found-description {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 36rem;
+}
+
+.not-found-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.not-found-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.not-found-link:hover {
+  border-color: var(--border-bright);
+  color: var(--text-bright);
+  filter: none;
+}
+
+.not-found-link--primary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.not-found-link--primary:hover {
+  background-color: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .search-result-aside {
