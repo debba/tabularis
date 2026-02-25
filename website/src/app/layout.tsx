@@ -5,6 +5,7 @@ import { getAllPosts } from "@/lib/posts";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://tabularis.dev"),
   title: "Tabularis | Enjoy your queries again",
   description:
     "A lightweight, developer-focused database management tool, built with Tauri and React.",
