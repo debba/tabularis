@@ -28,13 +28,13 @@
       "description": "Query a folder of .csv / .tsv files as a database. Each file becomes a table.",
       "author": "debba <https://github.com/debba>",
       "homepage": "https://github.com/debba/tabularis-csv-plugin",
-      "latest_version": "1.0.0",
+      "latest_version": "1.0.1",
       "min_tabularis_version": "0.9.0",
       "releases": [
         {
-          "version": "1.0.0",
+          "version": "1.0.1",
           "assets": {
-            "universal": "https://github.com/debba/tabularis-csv-plugin/releases/download/v1.0.0/tabularis-csv-plugin.zip"
+            "universal": "https://github.com/debba/tabularis-csv-plugin/releases/download/v1.0.1/tabularis-csv-plugin.zip"
           }
         }
       ]

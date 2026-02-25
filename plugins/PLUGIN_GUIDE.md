@@ -65,12 +65,14 @@ The manifest tells Tabularis everything about your plugin.
     {
       "name": "INTEGER",
       "category": "numeric",
-      "has_length": false
+      "requires_length": false,
+      "requires_precision": false
     },
     {
       "name": "VARCHAR",
       "category": "string",
-      "has_length": true
+      "requires_length": true,
+      "requires_precision": false
     }
   ]
 }
@@ -108,7 +110,9 @@ Each entry in `data_types` describes a type the driver supports for column creat
 |-------|------|-------------|
 | `name` | string | SQL type name (e.g., `"VARCHAR"`, `"BIGINT"`). |
 | `category` | string | UI grouping category (see below). |
-| `has_length` | bool | `true` if this type accepts a length/precision argument (e.g., `VARCHAR(255)`). |
+| `requires_length` | bool | `true` if this type requires a length argument (e.g., `VARCHAR(255)`). |
+| `requires_precision` | bool | `true` if this type requires a precision/scale argument (e.g., `DECIMAL(10,2)`). |
+| `default_length` | string? | Optional default length pre-filled in the UI (e.g., `"255"` for `VARCHAR`). |
 
 **Type Categories:**
 

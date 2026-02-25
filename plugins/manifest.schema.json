@@ -71,7 +71,7 @@
       "description": "List of SQL data types supported by this driver for column creation in the UI.",
       "items": {
         "type": "object",
-        "required": ["name", "category", "has_length"],
+        "required": ["name", "category", "requires_length", "requires_precision"],
         "additionalProperties": false,
         "properties": {
           "name": {
@@ -83,9 +83,17 @@
             "enum": ["numeric", "string", "date", "binary", "json", "spatial", "other"],
             "description": "UI grouping category for this type."
           },
-          "has_length": {
+          "requires_length": {
             "type": "boolean",
-            "description": "true if this type accepts a length or precision argument (e.g. VARCHAR(255))."
+            "description": "true if this type requires a length argument (e.g. VARCHAR(255))."
+          },
+          "requires_precision": {
+            "type": "boolean",
+            "description": "true if this type requires a precision/scale argument (e.g. DECIMAL(10,2))."
+          },
+          "default_length": {
+            "type": "string",
+            "description": "Optional default length value pre-filled in the UI (e.g. \"255\" for VARCHAR)."
           }
         }
       }

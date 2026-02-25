@@ -63,10 +63,10 @@ Every plugin must include a `manifest.json` that tells Tabularis its capabilitie
     "alter_primary_key": false
   },
   "data_types": [
-    { "name": "INTEGER",  "category": "numeric", "has_length": false },
-    { "name": "VARCHAR",  "category": "string",  "has_length": true  },
-    { "name": "BOOLEAN",  "category": "other",   "has_length": false },
-    { "name": "TIMESTAMP","category": "date",    "has_length": false }
+    { "name": "INTEGER",  "category": "numeric", "requires_length": false, "requires_precision": false },
+    { "name": "VARCHAR",  "category": "string",  "requires_length": true,  "requires_precision": false },
+    { "name": "BOOLEAN",  "category": "other",   "requires_length": false, "requires_precision": false },
+    { "name": "TIMESTAMP","category": "date",    "requires_length": false, "requires_precision": false }
   ]
 }
 ```
