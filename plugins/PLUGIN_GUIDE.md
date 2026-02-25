@@ -42,8 +42,11 @@ plugins/
 
 The manifest tells Tabularis everything about your plugin.
 
+> **JSON Schema available:** [`plugins/manifest.schema.json`](./manifest.schema.json) — add `"$schema": "./manifest.schema.json"` to your manifest for IDE autocompletion and validation.
+
 ```json
 {
+  "$schema": "https://tabularis.dev/schemas/plugin-manifest.json",
   "id": "duckdb",
   "name": "DuckDB",
   "version": "1.0.0",
