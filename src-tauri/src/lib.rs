@@ -77,6 +77,17 @@ struct Args {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // On Linux + Wayland, disable the DMA-BUF renderer in WebKitGTK to prevent
+    // "Protocol error dispatching to Wayland display" crashes.
+    // This targets the specific protocol causing the error while keeping GPU
+    // compositing and rendering intact.
+    #[cfg(target_os = "linux")]
+    {
+        if std::env::var("WAYLAND_DISPLAY").is_ok() || std::env::var("XDG_SESSION_TYPE").map_or(false, |v| v == "wayland") {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
+    }
+
     // Check for CLI args first
     // We use try_parse because on some platforms (like GUI launch) args might be weird
     // or Tauri might want to handle them. But for --mcp we need priority.
