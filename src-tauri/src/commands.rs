@@ -1893,6 +1893,42 @@ pub async fn execute_query<R: Runtime>(
     }
 }
 
+// --- Count Query ---
+
+#[tauri::command]
+pub async fn count_query<R: Runtime>(
+    app: AppHandle<R>,
+    connection_id: String,
+    query: String,
+    schema: Option<String>,
+) -> Result<u64, String> {
+    let saved_conn = find_connection_by_id(&app, &connection_id)?;
+    let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
+
+    let sanitized = query
+        .trim()
+        .trim_end_matches(';')
+        .to_string();
+
+    let count_q = format!("SELECT COUNT(*) FROM ({}) as count_wrapper", sanitized);
+
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    let result = drv
+        .execute_query(&params, &count_q, None, 1, schema.as_deref())
+        .await?;
+
+    let total: u64 = result
+        .rows
+        .first()
+        .and_then(|r| r.first())
+        .and_then(|v| v.as_i64())
+        .map(|n| n as u64)
+        .unwrap_or(0);
+
+    Ok(total)
+}
+
 // --- Window Title Management ---
 
 /// Sets the window title with Wayland workaround

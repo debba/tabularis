@@ -131,7 +131,8 @@ pub struct Index {
 pub struct Pagination {
     pub page: u32,
     pub page_size: u32,
-    pub total_rows: u64,
+    pub total_rows: Option<u64>,
+    pub has_more: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

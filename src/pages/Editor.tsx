@@ -36,6 +36,8 @@ import {
   Undo2,
   Sparkles,
   BookOpen,
+  Hash,
+  Loader2,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -214,6 +216,7 @@ export const Editor = () => {
   const [isAiExplainModalOpen, setIsAiExplainModalOpen] = useState(false);
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [tempPage, setTempPage] = useState("1");
+  const [isCountLoading, setIsCountLoading] = useState(false);
   const [applyToAll, setApplyToAll] = useState(false);
 
   const activeTabType = activeTab?.type;
@@ -473,6 +476,9 @@ export const Editor = () => {
       // Automatically open results panel when running a query
       setIsResultsCollapsed(false);
 
+      // Preserve total_rows across page changes so the count doesn't disappear
+      const previousTotalRows = targetTab?.result?.pagination?.total_rows ?? null;
+
       updateTab(targetTabId, {
         isLoading: true,
         error: "",
@@ -522,8 +528,13 @@ export const Editor = () => {
           updateTab(targetTabId, { pkColumn: null });
         }
 
+        const resultWithCount =
+          res.pagination && res.pagination.total_rows === null && previousTotalRows !== null
+            ? { ...res, pagination: { ...res.pagination, total_rows: previousTotalRows } }
+            : res;
+
         updateTab(targetTabId, {
-          result: res,
+          result: resultWithCount,
           executionTime: end - start,
           isLoading: false,
         });
@@ -536,6 +547,26 @@ export const Editor = () => {
     },
     [activeConnectionId, updateTab, settings.resultPageSize, fetchPkColumn, t, activeDriver, activeSchema],
   );
+
+  const loadCount = useCallback(async () => {
+    if (!activeTab?.result?.pagination || !activeConnectionId) return;
+    setIsCountLoading(true);
+    try {
+      const total = await invoke<number>("count_query", {
+        connectionId: activeConnectionId,
+        query: activeTab.query,
+        schema: activeTab.schema ?? activeSchema,
+      });
+      updateTab(activeTab.id, {
+        result: {
+          ...activeTab.result,
+          pagination: { ...activeTab.result.pagination, total_rows: total },
+        },
+      });
+    } finally {
+      setIsCountLoading(false);
+    }
+  }, [activeTab, activeConnectionId, activeSchema, updateTab]);
 
   const handleRunButton = useCallback(() => {
     if (!activeTab) return;
@@ -926,7 +957,8 @@ export const Editor = () => {
           pagination: {
             page: 1,
             page_size: settings.resultPageSize || 100,
-            total_rows: 0,
+            total_rows: null,
+            has_more: false,
           },
         };
       } else if (!activeTab.result.columns || activeTab.result.columns.length === 0) {
@@ -1948,8 +1980,7 @@ export const Editor = () => {
                       )}
                     </span>
 
-                    {activeTab.result.truncated &&
-                      activeTab.result.pagination && (
+                    {activeTab.result.pagination?.has_more && (
                         <span className="px-2 py-0.5 bg-yellow-900/30 text-yellow-400 rounded text-[10px] font-semibold uppercase tracking-wide border border-yellow-500/30">
                           {t("editor.autoPaginated")}
                         </span>
@@ -2007,16 +2038,11 @@ export const Editor = () => {
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 const newPage = parseInt(tempPage);
-                                const maxPage = Math.ceil(
-                                  activeTab.result!.pagination!.total_rows /
-                                    activeTab.result!.pagination!.page_size,
-                                );
-                                if (
-                                  !isNaN(newPage) &&
-                                  newPage >= 1 &&
-                                  newPage <= maxPage
-                                ) {
-                                  runQuery(activeTab.query, newPage);
+                                const totalRows = activeTab.result!.pagination!.total_rows;
+                                if (!isNaN(newPage) && newPage >= 1) {
+                                  if (totalRows === null || newPage <= Math.ceil(totalRows / activeTab.result!.pagination!.page_size)) {
+                                    runQuery(activeTab.query, newPage);
+                                  }
                                 }
                                 setIsEditingPage(false);
                               } else if (e.key === "Escape") {
@@ -2029,22 +2055,36 @@ export const Editor = () => {
                           />
                         ) : (
                           <>
-                            {t("editor.pageOf", {
-                              current: activeTab.result.pagination.page,
-                              total: Math.ceil(
-                                activeTab.result.pagination.total_rows /
-                                  activeTab.result.pagination.page_size,
-                              ),
-                            })}
+                            {activeTab.result.pagination.total_rows !== null
+                              ? t("editor.pageOf", {
+                                  current: activeTab.result.pagination.page,
+                                  total: Math.ceil(
+                                    activeTab.result.pagination.total_rows /
+                                      activeTab.result.pagination.page_size,
+                                  ),
+                                })
+                              : t("editor.page", { current: activeTab.result.pagination.page })}
                           </>
                         )}
                       </div>
 
+                      {/* Count load button or spinner */}
+                      {activeTab.result.pagination.total_rows === null && (
+                        <button
+                          disabled={isCountLoading || activeTab.isLoading}
+                          onClick={loadCount}
+                          className="p-1 hover:bg-surface-tertiary text-secondary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed border-l border-strong"
+                          title={t("editor.loadRowCount")}
+                        >
+                          {isCountLoading
+                            ? <Loader2 size={14} className="animate-spin" />
+                            : <Hash size={14} />}
+                        </button>
+                      )}
+
                       <button
                         disabled={
-                          activeTab.result.pagination.page *
-                            activeTab.result.pagination.page_size >=
-                            activeTab.result.pagination.total_rows ||
+                          !activeTab.result.pagination.has_more ||
                           activeTab.isLoading
                         }
                         onClick={() =>
@@ -2060,16 +2100,14 @@ export const Editor = () => {
                       </button>
                       <button
                         disabled={
-                          activeTab.result.pagination.page *
-                            activeTab.result.pagination.page_size >=
-                            activeTab.result.pagination.total_rows ||
+                          activeTab.result.pagination.total_rows === null ||
                           activeTab.isLoading
                         }
                         onClick={() =>
                           runQuery(
                             activeTab.query,
                             Math.ceil(
-                              activeTab.result!.pagination!.total_rows /
+                              activeTab.result!.pagination!.total_rows! /
                                 activeTab.result!.pagination!.page_size,
                             ),
                           )
