@@ -13,6 +13,14 @@ vi.mock('../../src/utils/autocomplete', () => ({
   clearAutocompleteCache: vi.fn(),
 }));
 
+vi.mock('../../src/hooks/useSettings', () => ({
+  useSettings: () => ({
+    settings: { activeExternalDrivers: [] },
+    updateSetting: vi.fn(),
+    isLoading: false,
+  }),
+}));
+
 const mockPostgresManifest = {
   id: 'postgres',
   name: 'PostgreSQL',

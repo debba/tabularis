@@ -431,7 +431,7 @@ export const Settings = () => {
   const [aiKeyStatus, setAiKeyStatus] = useState<Record<string, AiKeyStatus>>({});
   const [availableModels, setAvailableModels] = useState<Record<string, string[]>>({});
   const [keyInput, setKeyInput] = useState("");
-  const { allDrivers, refresh: refreshDrivers } = useDrivers();
+  const { allDrivers, installedPlugins, refresh: refreshDrivers } = useDrivers();
   const { plugins: registryPlugins, loading: registryLoading, error: registryError, refresh: refreshRegistry } = usePluginRegistry();
   const { openConnectionIds, connectionDataMap, disconnect } = useDatabase();
   const [installingPluginId, setInstallingPluginId] = useState<string | null>(null);
@@ -1568,6 +1568,71 @@ export const Settings = () => {
                     />
                   );
                 })}
+
+                {/* Disabled (installed but not running) external plugins */}
+                {installedPlugins
+                  .filter(p => !allDrivers.some(d => d.id === p.id))
+                  .map(plugin => {
+                    const activeExt = settings.activeExternalDrivers || [];
+                    const registryPlugin = registryPlugins.find(r => r.id === plugin.id);
+                    return (
+                      <PluginCard
+                        key={plugin.id}
+                        name={plugin.name}
+                        description={plugin.description}
+                        version={plugin.version}
+                        author={registryPlugin?.author}
+                        homepage={registryPlugin?.homepage}
+                        actions={
+                          <>
+                            <button
+                              onClick={async () => {
+                                const confirmed = await ask(
+                                  t("settings.plugins.confirmRemove", { name: plugin.name }),
+                                  { title: t("settings.plugins.removeTitle"), kind: "warning" }
+                                );
+                                if (!confirmed) return;
+                                setUninstallingPluginId(plugin.id);
+                                try {
+                                  await invoke("uninstall_plugin", { pluginId: plugin.id });
+                                  updateSetting("activeExternalDrivers", activeExt.filter(id => id !== plugin.id));
+                                  refreshDrivers();
+                                  refreshRegistry();
+                                } catch (err) {
+                                  await message(String(err), { title: t("common.error"), kind: "error" });
+                                } finally {
+                                  setUninstallingPluginId(null);
+                                }
+                              }}
+                              disabled={uninstallingPluginId === plugin.id}
+                              className="text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors p-1"
+                              title={t("settings.plugins.remove")}
+                            >
+                              {uninstallingPluginId === plugin.id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={14} />
+                              )}
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await invoke("enable_plugin", { pluginId: plugin.id });
+                                  updateSetting("activeExternalDrivers", [...activeExt, plugin.id]);
+                                  refreshDrivers();
+                                } catch (err) {
+                                  await message(String(err), { title: t("common.error"), kind: "error" });
+                                }
+                              }}
+                              className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 bg-surface-tertiary"
+                            >
+                              <span className="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-0" />
+                            </button>
+                          </>
+                        }
+                      />
+                    );
+                  })}
               </div>
             </div>
           </div>
