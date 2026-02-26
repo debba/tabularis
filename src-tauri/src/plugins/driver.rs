@@ -16,24 +16,34 @@ use crate::models::{
 };
 use crate::plugins::rpc::{JsonRpcRequest, JsonRpcResponse};
 
-struct PluginProcess {
+pub struct PluginProcess {
     sender: mpsc::Sender<(JsonRpcRequest, oneshot::Sender<Result<Value, String>>)>,
     next_id: AtomicU64,
     shutdown_tx: tokio::sync::Mutex<Option<oneshot::Sender<()>>>,
+    pub pid: Option<u32>,
 }
 
 impl PluginProcess {
-    fn new(executable_path: PathBuf) -> Self {
-        let (tx, mut rx) = mpsc::channel::<(JsonRpcRequest, oneshot::Sender<Result<Value, String>>)>(100);
-        let (shutdown_tx, mut shutdown_rx) = oneshot::channel::<()>();
+    async fn new(executable_path: PathBuf) -> Result<Self, String> {
+        let (tx, rx) = mpsc::channel::<(JsonRpcRequest, oneshot::Sender<Result<Value, String>>)>(100);
+        let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
 
+        // Spawn the child process directly in the async context so that any
+        // spawn failure is immediately propagated as an error (no silent panic).
+        let child = Command::new(&executable_path)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::inherit())
+            .spawn()
+            .map_err(|e| format!("Failed to start plugin process {:?}: {}", executable_path, e))?;
+
+        let pid = child.id();
+
+        // Hand the running child off to the management task.
         tokio::spawn(async move {
-            let mut child = Command::new(&executable_path)
-                .stdin(std::process::Stdio::piped())
-                .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::inherit())
-                .spawn()
-                .expect("Failed to start plugin process");
+            let mut child = child;
+            let mut rx = rx;
+            let mut shutdown_rx = shutdown_rx;
 
             let mut stdin = child.stdin.take().expect("Failed to open stdin");
             let stdout = child.stdout.take().expect("Failed to open stdout");
@@ -107,11 +117,12 @@ impl PluginProcess {
             }
         });
 
-        Self {
+        Ok(Self {
             sender: tx,
             next_id: AtomicU64::new(1),
             shutdown_tx: tokio::sync::Mutex::new(Some(shutdown_tx)),
-        }
+            pid,
+        })
     }
 
     async fn shutdown(&self) {
@@ -144,12 +155,12 @@ pub struct RpcDriver {
 }
 
 impl RpcDriver {
-    pub fn new(manifest: PluginManifest, executable_path: PathBuf, data_types: Vec<DataTypeInfo>) -> Self {
-        Self {
+    pub async fn new(manifest: PluginManifest, executable_path: PathBuf, data_types: Vec<DataTypeInfo>) -> Result<Self, String> {
+        Ok(Self {
             manifest,
-            process: Arc::new(PluginProcess::new(executable_path)),
+            process: Arc::new(PluginProcess::new(executable_path).await?),
             data_types,
-        }
+        })
     }
 }
 
@@ -161,6 +172,10 @@ impl DatabaseDriver for RpcDriver {
 
     async fn shutdown(&self) {
         self.process.shutdown().await;
+    }
+
+    fn pid(&self) -> Option<u32> {
+        self.process.pid
     }
 
     fn get_data_types(&self) -> Vec<DataTypeInfo> {

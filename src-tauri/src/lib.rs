@@ -18,6 +18,7 @@ pub mod saved_queries;
 pub mod ssh_tunnel;
 pub mod theme_commands;
 pub mod theme_models;
+pub mod task_manager;
 pub mod updater;
 pub mod plugins;
 pub mod drivers {
@@ -291,6 +292,12 @@ pub fn run() {
             plugins::commands::get_installed_plugins,
             plugins::commands::disable_plugin,
             plugins::commands::enable_plugin,
+            // Task Manager
+            task_manager::get_process_list,
+            task_manager::get_system_stats,
+            task_manager::kill_plugin_process,
+            task_manager::restart_plugin_process,
+            task_manager::open_task_manager_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

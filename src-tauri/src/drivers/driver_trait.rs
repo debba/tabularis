@@ -107,6 +107,12 @@ pub trait DatabaseDriver: Send + Sync {
     /// Built-in sqlx-based drivers hold no background process; the default is a no-op.
     async fn shutdown(&self) {}
 
+    /// Returns the OS process ID of the subprocess backing this driver, if any.
+    /// Built-in drivers always return `None`.
+    fn pid(&self) -> Option<u32> {
+        None
+    }
+
     /// Tests connectivity. Default implementation uses `build_connection_url` + sqlx.
     /// Plugin drivers that manage their own connections should override this.
     async fn test_connection(&self, params: &ConnectionParams) -> Result<(), String> {

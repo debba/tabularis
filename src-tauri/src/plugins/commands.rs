@@ -97,7 +97,8 @@ pub async fn install_plugin(app: AppHandle, plugin_id: String, version: Option<S
     // Hot-register the new driver (no restart needed)
     let plugins_dir = installer::get_plugins_dir()?;
     let plugin_dir = plugins_dir.join(&plugin_id);
-    crate::plugins::manager::load_plugin_from_dir(&plugin_dir).await;
+    crate::plugins::manager::load_plugin_from_dir(&plugin_dir).await
+        .map_err(|e| format!("Plugin installed but failed to load: {}", e))?;
 
     Ok(())
 }
@@ -134,6 +135,6 @@ pub async fn enable_plugin(plugin_id: String) -> Result<(), String> {
     if !plugin_dir.exists() {
         return Err(format!("Plugin '{}' is not installed", plugin_id));
     }
-    crate::plugins::manager::load_plugin_from_dir(&plugin_dir).await;
+    crate::plugins::manager::load_plugin_from_dir(&plugin_dir).await?;
     Ok(())
 }

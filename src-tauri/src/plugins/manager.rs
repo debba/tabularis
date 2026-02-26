@@ -65,36 +65,27 @@ pub async fn load_plugins(enabled_ids: Option<&[String]>) {
             }
         }
 
-        load_plugin_from_dir(&path).await;
+        if let Err(e) = load_plugin_from_dir(&path).await {
+            log::error!("Failed to load plugin {:?}: {}", path, e);
+        }
     }
 }
 
-pub async fn load_plugin_from_dir(path: &Path) {
+pub async fn load_plugin_from_dir(path: &Path) -> Result<(), String> {
     let manifest_path = path.join("manifest.json");
     if !manifest_path.exists() {
-        return;
+        return Err(format!("manifest.json not found in {:?}", path));
     }
 
-    let manifest_str = match fs::read_to_string(&manifest_path) {
-        Ok(s) => s,
-        Err(e) => {
-            log::error!("Failed to read plugin manifest {:?}: {}", manifest_path, e);
-            return;
-        }
-    };
+    let manifest_str = fs::read_to_string(&manifest_path)
+        .map_err(|e| format!("Failed to read plugin manifest {:?}: {}", manifest_path, e))?;
 
-    let config: ConfigManifest = match serde_json::from_str(&manifest_str) {
-        Ok(c) => c,
-        Err(e) => {
-            log::error!("Failed to parse plugin manifest {:?}: {}", manifest_path, e);
-            return;
-        }
-    };
+    let config: ConfigManifest = serde_json::from_str(&manifest_str)
+        .map_err(|e| format!("Failed to parse plugin manifest {:?}: {}", manifest_path, e))?;
 
     let exec_path = path.join(&config.executable);
     if !exec_path.exists() {
-        log::error!("Plugin executable not found: {:?}", exec_path);
-        return;
+        return Err(format!("Plugin executable not found: {:?}", exec_path));
     }
 
     let manifest = PluginManifest {
@@ -108,6 +99,7 @@ pub async fn load_plugin_from_dir(path: &Path) {
         default_username: config.default_username.unwrap_or_default(),
     };
 
-    let driver = RpcDriver::new(manifest, exec_path, config.data_types);
+    let driver = RpcDriver::new(manifest, exec_path, config.data_types).await?;
     crate::drivers::registry::register_driver(driver).await;
+    Ok(())
 }

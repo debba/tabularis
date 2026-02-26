@@ -52,3 +52,15 @@ pub async fn list_drivers() -> Vec<PluginManifest> {
     manifests.sort_by(|a, b| a.id.cmp(&b.id));
     manifests
 }
+
+/// Returns (manifest, pid) pairs for all registered drivers, sorted by id.
+/// Used by the task manager to associate driver metadata with process IDs.
+pub async fn list_drivers_with_pid() -> Vec<(PluginManifest, Option<u32>)> {
+    let reg = REGISTRY.read().await;
+    let mut entries: Vec<(PluginManifest, Option<u32>)> = reg
+        .values()
+        .map(|d| (d.manifest().clone(), d.pid()))
+        .collect();
+    entries.sort_by(|a, b| a.0.id.cmp(&b.0.id));
+    entries
+}
