@@ -109,7 +109,14 @@ const THEMES = [
 
 export default function HomePage() {
   const posts = getAllPosts();
-  const plugins = getAllPlugins().slice(0, 3);
+  const plugins = getAllPlugins()
+    .slice(0, 3)
+    .map((plugin) => ({
+      ...plugin,
+      min_tabularis_version: plugin.releases.find(
+        (release) => release.version === plugin.latest_version,
+      )?.min_tabularis_version,
+    }));
   const home = getHomeContent();
 
   return (
@@ -453,9 +460,11 @@ export default function HomePage() {
                     plugin.author
                   )}{" "}
                   &middot;{" "}
-                  <span className="plugin-platforms">
-                    Supports Tabularis v{plugin.min_tabularis_version}+
-                  </span>
+                  {plugin?.min_tabularis_version && (
+                    <span className="plugin-platforms">
+                      Supports Tabularis v{plugin.min_tabularis_version}
+                    </span>
+                  )}
                 </div>
               </div>
               <a
