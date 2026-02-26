@@ -124,6 +124,13 @@ export default function HomePage() {
           <span className="badge">🌍 EN | IT | ES</span>
         </div>
 
+        <p style={{ fontSize: "1.2rem", color: "var(--text-muted)", marginTop: "1rem" }}>
+          A lightweight, developer-focused database management tool.
+          <br />
+          Supports <strong>MySQL</strong>, <strong>PostgreSQL</strong> and <strong>SQLite</strong>.
+          Hackable with plugins. Built for speed, security, and aesthetics.
+        </p>
+
         <div className="download-grid">
           <a
             href={`https://github.com/debba/tabularis/releases/download/v${APP_VERSION}/tabularis_${APP_VERSION}_x64-setup.exe`}
@@ -150,16 +157,6 @@ export default function HomePage() {
             </span>
           </a>
         </div>
-        <div
-          style={{
-            marginTop: "1.5rem",
-            fontSize: "0.9rem",
-            color: "var(--text-muted)",
-          }}
-        >
-          Or view source on{" "}
-          <a href="https://github.com/debba/tabularis">GitHub</a>
-        </div>
       </header>
 
       {/* MAIN SCREENSHOT */}
@@ -184,7 +181,17 @@ export default function HomePage() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
           </svg>
@@ -375,7 +382,17 @@ export default function HomePage() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
           </svg>
@@ -463,23 +480,52 @@ export default function HomePage() {
         <h2>_themes</h2>
         <p>
           Why stare at a dull interface? Tabularis brings a first-class theming
-          experience. Switch instantly between <strong>10+ presets</strong> without restarting.
-          Syntax highlighting is automatically generated from the UI theme.
+          experience. Switch instantly between <strong>10+ presets</strong>{" "}
+          without restarting. Syntax highlighting is automatically generated
+          from the UI theme.
         </p>
 
         <div className="theme-grid">
           {THEMES.map((theme) => (
             <div key={theme.name} className="theme-card">
-              <div className="theme-card-preview" style={{ background: theme.colors[0] }}>
-                <div className="theme-card-sidebar" style={{ background: theme.colors[1] }}>
-                  <div className="theme-card-dot" style={{ background: theme.colors[2] }} />
-                  <div className="theme-card-dot" style={{ background: theme.colors[3] }} />
-                  <div className="theme-card-dot" style={{ background: theme.colors[2], opacity: 0.5 }} />
+              <div
+                className="theme-card-preview"
+                style={{ background: theme.colors[0] }}
+              >
+                <div
+                  className="theme-card-sidebar"
+                  style={{ background: theme.colors[1] }}
+                >
+                  <div
+                    className="theme-card-dot"
+                    style={{ background: theme.colors[2] }}
+                  />
+                  <div
+                    className="theme-card-dot"
+                    style={{ background: theme.colors[3] }}
+                  />
+                  <div
+                    className="theme-card-dot"
+                    style={{ background: theme.colors[2], opacity: 0.5 }}
+                  />
                 </div>
                 <div className="theme-card-content">
-                  <div className="theme-card-line" style={{ background: theme.colors[2], width: "60%" }} />
-                  <div className="theme-card-line" style={{ background: theme.colors[3], width: "40%" }} />
-                  <div className="theme-card-line" style={{ background: theme.colors[1], width: "75%", opacity: 0.6 }} />
+                  <div
+                    className="theme-card-line"
+                    style={{ background: theme.colors[2], width: "60%" }}
+                  />
+                  <div
+                    className="theme-card-line"
+                    style={{ background: theme.colors[3], width: "40%" }}
+                  />
+                  <div
+                    className="theme-card-line"
+                    style={{
+                      background: theme.colors[1],
+                      width: "75%",
+                      opacity: 0.6,
+                    }}
+                  />
                 </div>
               </div>
               <div className="theme-card-label">{theme.name}</div>
