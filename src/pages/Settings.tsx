@@ -1465,7 +1465,7 @@ export const Settings = () => {
 
               <div className="space-y-3">
                 {allDrivers.map((driver: PluginManifest) => {
-                  const isBuiltin = ["mysql", "postgres", "sqlite"].includes(driver.id);
+                  const isBuiltin = driver.is_builtin === true;
                   const registryPlugin = registryPlugins.find(p => p.id === driver.id);
                   const activeExt = settings.activeExternalDrivers || [];
                   const isEnabled = isBuiltin || activeExt.includes(driver.id);

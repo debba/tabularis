@@ -59,7 +59,7 @@ export const GenerateSQLModal = ({
           columns,
           foreignKeys,
           indexes,
-          activeCapabilities ?? (activeDriver ?? 'sqlite'),
+          activeCapabilities ?? 'sqlite',
         );
         setSql(generatedSQL);
       } catch (err) {

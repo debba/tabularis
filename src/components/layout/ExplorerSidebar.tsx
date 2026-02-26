@@ -65,6 +65,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
   const {
     activeConnectionId,
     activeDriver,
+    activeCapabilities,
     activeTable,
     setActiveTable,
     tables,
@@ -411,8 +412,8 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                 )}
               </Accordion>
 
-              {/* PostgreSQL: Schema tree layout */}
-              {activeDriver === "postgres" && schemas.length > 0 ? (
+              {/* Schema-capable driver: Schema tree layout */}
+              {activeCapabilities?.schemas === true && schemas.length > 0 ? (
                 <div>
                   {needsSchemaSelection ? (
                     /* Schema picker (first connect, no saved preference) */
@@ -840,7 +841,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                   </Accordion>
 
                   {/* Routines */}
-                  {activeDriver !== "sqlite" && (
+                  {activeCapabilities?.routines === true && (
                     <Accordion
                       title={`${t("sidebar.routines")} (${routines.length})`}
                       isOpen={routinesOpen}

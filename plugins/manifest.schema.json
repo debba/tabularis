@@ -29,6 +29,16 @@
       "type": ["integer", "null"],
       "description": "Default TCP port for the database. Use null for file-based databases."
     },
+    "is_builtin": {
+      "type": "boolean",
+      "default": false,
+      "description": "true for built-in drivers shipped with Tabularis. External plugins should omit this field or set it to false."
+    },
+    "default_username": {
+      "type": "string",
+      "default": "",
+      "description": "Default username pre-filled in the connection modal (e.g. \"postgres\", \"root\"). Leave empty if there is no conventional default."
+    },
     "executable": {
       "type": "string",
       "description": "Relative path to the plugin executable inside the plugin folder (without extension on Linux/macOS; Tabularis appends .exe on Windows automatically)."

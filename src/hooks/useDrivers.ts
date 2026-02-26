@@ -11,12 +11,14 @@ const FALLBACK_DRIVERS: PluginManifest[] = [
     version: "1.0.0",
     description: "PostgreSQL databases",
     default_port: 5432,
+    is_builtin: true,
+    default_username: "postgres",
     capabilities: {
       schemas: true,
       views: true,
       routines: true,
       file_based: false,
-      folder_based: true,
+      folder_based: false,
       identifier_quote: '"',
       alter_primary_key: true,
       auto_increment_keyword: "",
@@ -32,12 +34,14 @@ const FALLBACK_DRIVERS: PluginManifest[] = [
     version: "1.0.0",
     description: "MySQL and MariaDB databases",
     default_port: 3306,
+    is_builtin: true,
+    default_username: "root",
     capabilities: {
       schemas: false,
       views: true,
       routines: true,
       file_based: false,
-      folder_based: true,
+      folder_based: false,
       identifier_quote: "`",
       alter_primary_key: true,
       auto_increment_keyword: "AUTO_INCREMENT",
@@ -53,12 +57,14 @@ const FALLBACK_DRIVERS: PluginManifest[] = [
     version: "1.0.0",
     description: "SQLite file-based databases",
     default_port: null,
+    is_builtin: true,
+    default_username: "",
     capabilities: {
       schemas: false,
       views: true,
       routines: false,
       file_based: true,
-      folder_based: true,
+      folder_based: false,
       identifier_quote: '"',
       alter_primary_key: true,
       auto_increment_keyword: "AUTOINCREMENT",
@@ -104,10 +110,9 @@ export function useDrivers(): {
     load();
   }, [load]);
 
-  const builtin = ["mysql", "postgres", "sqlite"];
   const activeExt = settings.activeExternalDrivers || [];
   const active = allDrivers.filter(
-    (d) => builtin.includes(d.id) || activeExt.includes(d.id),
+    (d) => d.is_builtin === true || activeExt.includes(d.id),
   );
 
   return { drivers: active, allDrivers, loading, error, refresh };

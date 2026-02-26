@@ -22,6 +22,10 @@ export interface PluginManifest {
   description: string;
   default_port: number | null;
   capabilities: DriverCapabilities;
+  /** true for built-in drivers (postgres, mysql, sqlite); false/absent for external plugins */
+  is_builtin?: boolean;
+  /** Default username pre-filled in the connection modal (e.g. "postgres", "root") */
+  default_username?: string;
 }
 
 export interface RegistryPluginWithStatus {

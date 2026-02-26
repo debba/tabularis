@@ -1181,6 +1181,8 @@ impl PostgresDriver {
                     alter_column: true,
                     create_foreign_keys: true,
                 },
+                is_builtin: true,
+                default_username: "postgres".to_string(),
             },
         }
     }

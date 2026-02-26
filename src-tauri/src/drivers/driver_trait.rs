@@ -75,6 +75,15 @@ pub struct PluginManifest {
     /// Default TCP port, `None` for file-based drivers.
     pub default_port: Option<u16>,
     pub capabilities: DriverCapabilities,
+    /// `true` for built-in drivers (postgres, mysql, sqlite); always `false`
+    /// for external plugin drivers. The frontend uses this to distinguish
+    /// built-in entries without relying on a hardcoded ID list.
+    #[serde(default)]
+    pub is_builtin: bool,
+    /// Default username pre-filled in the connection modal (e.g. `"postgres"`,
+    /// `"root"`). Empty string for drivers that have no default.
+    #[serde(default)]
+    pub default_username: String,
 }
 
 /// The complete interface every database driver plugin must implement.

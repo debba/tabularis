@@ -236,7 +236,7 @@ export const NewConnectionModal = ({
       ...prev,
       driver: newDriver,
       port: drivers.find(d => d.id === newDriver)?.default_port ?? undefined,
-      username: newDriver === "postgres" ? "postgres" : (newDriver === "mysql" ? "root" : ""),
+      username: drivers.find(d => d.id === newDriver)?.default_username ?? "",
     }));
     setStatus("idle");
     setMessage("");

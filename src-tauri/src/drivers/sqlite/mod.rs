@@ -867,6 +867,8 @@ impl SqliteDriver {
                     alter_column: false,
                     create_foreign_keys: false,
                 },
+                is_builtin: true,
+                default_username: String::new(),
             },
         }
     }

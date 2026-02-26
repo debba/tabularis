@@ -1005,6 +1005,8 @@ impl MysqlDriver {
                     alter_column: true,
                     create_foreign_keys: true,
                 },
+                is_builtin: true,
+                default_username: "root".to_string(),
             },
         }
     }

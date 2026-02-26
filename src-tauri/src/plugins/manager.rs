@@ -18,6 +18,8 @@ struct ConfigManifest {
     pub capabilities: DriverCapabilities,
     pub data_types: Vec<DataTypeInfo>,
     pub executable: String,
+    #[serde(default)]
+    pub default_username: Option<String>,
 }
 
 pub async fn load_plugins() {
@@ -86,6 +88,8 @@ pub async fn load_plugin_from_dir(path: &Path) {
         description: config.description,
         default_port: config.default_port,
         capabilities: config.capabilities,
+        is_builtin: false,
+        default_username: config.default_username.unwrap_or_default(),
     };
 
     let driver = RpcDriver::new(manifest, exec_path, config.data_types);
