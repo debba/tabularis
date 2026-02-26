@@ -734,6 +734,60 @@ pub async fn execute_query(
     schema: Option<&str>,
 ) -> Result<QueryResult, String> {
     let pool = get_postgres_pool(params).await?;
+
+    let is_select = query.trim_start().to_uppercase().starts_with("SELECT");
+    let mut manual_limit = limit;
+    let mut truncated = false;
+
+    // Build the paginated data query and spawn the COUNT query concurrently.
+    // Both queries run in parallel: COUNT on its own connection, data on the main one.
+    let (final_query, count_handle) = if is_select && limit.is_some() {
+        let l = limit.unwrap();
+        let offset = (page - 1) * l;
+
+        let order_by_clause = extract_order_by(query);
+        let data_query = if !order_by_clause.is_empty() {
+            let query_without_order = remove_order_by(query);
+            format!(
+                "SELECT * FROM ({}) as data_wrapper {} LIMIT {} OFFSET {}",
+                query_without_order, order_by_clause, l, offset
+            )
+        } else {
+            format!(
+                "SELECT * FROM ({}) as data_wrapper LIMIT {} OFFSET {}",
+                query, l, offset
+            )
+        };
+
+        let count_q = format!("SELECT COUNT(*) FROM ({}) as count_wrapper", query);
+        let pool2 = pool.clone();
+        let schema_owned = schema.map(|s| s.to_string());
+
+        let handle = tokio::spawn(async move {
+            let mut conn = pool2.acquire().await.map_err(|e| e.to_string())?;
+            if let Some(ref s) = schema_owned {
+                let search_path = format!("SET search_path TO \"{}\"", escape_identifier(s));
+                sqlx::query(&search_path)
+                    .execute(&mut *conn)
+                    .await
+                    .map_err(|e| e.to_string())?;
+            }
+            let count_res = sqlx::query(&count_q).fetch_one(&mut *conn).await;
+            let total_rows: u64 = if let Ok(row) = count_res {
+                row.try_get::<i64, _>(0).unwrap_or(0) as u64
+            } else {
+                0
+            };
+            Ok::<(u64, u32, u32), String>((total_rows, l, page))
+        });
+
+        manual_limit = None;
+        (data_query, Some(handle))
+    } else {
+        (query.to_string(), None)
+    };
+
+    // Acquire main connection for the data fetch (COUNT runs concurrently above)
     let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
 
     if let Some(schema) = schema {
@@ -744,57 +798,7 @@ pub async fn execute_query(
             .map_err(|e| e.to_string())?;
     }
 
-    let is_select = query.trim_start().to_uppercase().starts_with("SELECT");
-    let mut pagination: Option<Pagination> = None;
-    let final_query: String;
-    let mut manual_limit = limit;
-    let mut truncated = false;
-
-    if is_select && limit.is_some() {
-        let l = limit.unwrap();
-        let offset = (page - 1) * l;
-
-        let count_q = format!("SELECT COUNT(*) FROM ({}) as count_wrapper", query);
-        let count_res = sqlx::query(&count_q).fetch_one(&mut *conn).await;
-
-        let total_rows: u64 = if let Ok(row) = count_res {
-            row.try_get::<i64, _>(0).unwrap_or(0) as u64
-        } else {
-            0
-        };
-
-        pagination = Some(Pagination {
-            page,
-            page_size: l,
-            total_rows,
-        });
-
-        // Set truncated if there are more results than shown
-        truncated = total_rows > l as u64;
-
-        // Extract ORDER BY clause from the original query to preserve sorting
-        let order_by_clause = extract_order_by(query);
-
-        if !order_by_clause.is_empty() {
-            // Remove ORDER BY from inner query and add it to outer query
-            let query_without_order = remove_order_by(query);
-            final_query = format!(
-                "SELECT * FROM ({}) as data_wrapper {} LIMIT {} OFFSET {}",
-                query_without_order, order_by_clause, l, offset
-            );
-        } else {
-            final_query = format!(
-                "SELECT * FROM ({}) as data_wrapper LIMIT {} OFFSET {}",
-                query, l, offset
-            );
-        }
-
-        manual_limit = None;
-    } else {
-        final_query = query.to_string();
-    }
-
-    // Streaming
+    // Stream data rows while COUNT runs in the background
     let mut rows_stream = sqlx::query(&final_query).fetch(&mut *conn);
 
     let mut columns: Vec<String> = Vec::new();
@@ -826,6 +830,23 @@ pub async fn execute_query(
             Err(e) => return Err(e.to_string()),
         }
     }
+
+    // Await the count result (likely already finished by the time data streaming ends)
+    let pagination = if let Some(handle) = count_handle {
+        match handle.await {
+            Ok(Ok((total_rows, page_size, p))) => {
+                truncated = total_rows > page_size as u64;
+                Some(Pagination {
+                    page: p,
+                    page_size,
+                    total_rows,
+                })
+            }
+            _ => None,
+        }
+    } else {
+        None
+    };
 
     Ok(QueryResult {
         columns,

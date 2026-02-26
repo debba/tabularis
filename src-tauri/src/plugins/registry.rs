@@ -66,8 +66,5 @@ pub async fn fetch_registry() -> Result<PluginRegistry, String> {
         .await
         .map_err(|e| format!("Failed to parse plugin registry: {}", e))?;
 
-    // log registry for debugging
-    println!("Fetched plugin registry: {:#?}", registry);
-
     Ok(registry)
 }
