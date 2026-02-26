@@ -63,8 +63,10 @@ pub fn get_current_platform() -> String {
     }
 }
 
-pub async fn fetch_registry() -> Result<PluginRegistry, String> {
-    let response = reqwest::get(REGISTRY_URL)
+pub async fn fetch_registry(custom_url: Option<&str>) -> Result<PluginRegistry, String> {
+    let url = custom_url.unwrap_or(REGISTRY_URL);
+
+    let response = reqwest::get(url)
         .await
         .map_err(|e| format!("Failed to fetch plugin registry: {}", e))?;
 

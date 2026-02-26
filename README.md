@@ -258,6 +258,7 @@ This approach ensures fast startup times while preserving your workspace layout 
 - `language`: `"auto"`, `"en"` (English), `"it"` (Italian), `"es"` (Spanish).
 - `resultPageSize`: Default rows per page.
 - `aiEnabled`: Enable/Disable AI features.
+- `customRegistryUrl`: Custom URL for the plugin registry (overrides the default official registry).
 
 #### Custom AI Models override
 

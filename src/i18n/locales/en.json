@@ -271,7 +271,9 @@
       "installedDesc": "Enable or disable database drivers. Built-in drivers cannot be disabled.",
       "remove": "Remove",
       "removeTitle": "Remove Plugin",
-      "confirmRemove": "Are you sure you want to remove \"{{name}}\"? This will delete the plugin files."
+      "confirmRemove": "Are you sure you want to remove \"{{name}}\"? This will delete the plugin files.",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
     }
   },
   "update": {

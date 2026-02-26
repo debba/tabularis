@@ -325,6 +325,18 @@ You should see a valid JSON-RPC response on `stdout`.
 3. On Linux/macOS, make it executable: `chmod +x myplugin`
 4. Open Tabularis **Settings → Available Plugins** and install it — no restart required.
 
+## Using a Custom Plugin Registry
+
+By default, Tabularis fetches the plugin list from the official registry. You can point the app to a different registry (e.g., a self-hosted or company-internal one) by setting `customRegistryUrl` in your `config.json`:
+
+```json
+{
+  "customRegistryUrl": "https://example.com/my-registry.json"
+}
+```
+
+The custom registry must expose a JSON file that follows the same schema as the [official registry](https://github.com/debba/tabularis/blob/main/plugins/registry.json). When this key is set, both the plugin browser and the install command will use your URL instead of the default one.
+
 ## Publishing to the Registry
 
 To make your plugin available in the official in-app plugin browser:

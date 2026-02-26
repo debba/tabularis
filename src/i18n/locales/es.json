@@ -271,7 +271,9 @@
       "installedDesc": "Habilita o deshabilita los drivers de base de datos. Los drivers integrados no se pueden deshabilitar.",
       "remove": "Eliminar",
       "removeTitle": "Eliminar Plugin",
-      "confirmRemove": "¿Estás seguro de que deseas eliminar \"{{name}}\"? Los archivos del plugin serán eliminados."
+      "confirmRemove": "¿Estás seguro de que deseas eliminar \"{{name}}\"? Los archivos del plugin serán eliminados.",
+      "enabled": "Habilitado",
+      "disabled": "Deshabilitado"
     }
   },
   "update": {

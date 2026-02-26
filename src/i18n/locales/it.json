@@ -271,7 +271,9 @@
       "installedDesc": "Abilita o disabilita i driver database. I driver integrati non possono essere disabilitati.",
       "remove": "Rimuovi",
       "removeTitle": "Rimuovi Plugin",
-      "confirmRemove": "Sei sicuro di voler rimuovere \"{{name}}\"? I file del plugin verranno eliminati."
+      "confirmRemove": "Sei sicuro di voler rimuovere \"{{name}}\"? I file del plugin verranno eliminati.",
+      "enabled": "Abilitato",
+      "disabled": "Disabilitato"
     }
   },
   "update": {

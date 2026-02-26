@@ -2,10 +2,12 @@ use crate::plugins::installer::{self, InstalledPluginInfo};
 use crate::plugins::registry::{
     self, RegistryPluginWithStatus, RegistryReleaseWithStatus,
 };
+use tauri::AppHandle;
 
 #[tauri::command]
-pub async fn fetch_plugin_registry() -> Result<Vec<RegistryPluginWithStatus>, String> {
-    let remote = registry::fetch_registry().await?;
+pub async fn fetch_plugin_registry(app: AppHandle) -> Result<Vec<RegistryPluginWithStatus>, String> {
+    let config = crate::config::load_config_internal(&app);
+    let remote = registry::fetch_registry(config.custom_registry_url.as_deref()).await?;
     let installed = installer::list_installed()?;
     let platform = registry::get_current_platform();
 
@@ -60,8 +62,9 @@ pub async fn fetch_plugin_registry() -> Result<Vec<RegistryPluginWithStatus>, St
 }
 
 #[tauri::command]
-pub async fn install_plugin(plugin_id: String, version: Option<String>) -> Result<(), String> {
-    let remote = registry::fetch_registry().await?;
+pub async fn install_plugin(app: AppHandle, plugin_id: String, version: Option<String>) -> Result<(), String> {
+    let config = crate::config::load_config_internal(&app);
+    let remote = registry::fetch_registry(config.custom_registry_url.as_deref()).await?;
     let platform = registry::get_current_platform();
 
     let plugin = remote

@@ -73,6 +73,7 @@ Any key omitted from the file falls back to its default value. You do not need a
 | `selectedSchemas` | `object` | `{}` | Per-connection visible schemas in the sidebar (map of connection ID → string[]). |
 | `maxBlobSize` | `number` | `1048576` | Max bytes to load into UI for BLOB/bytea columns (default 1 MB). |
 | `activeExternalDrivers` | `string[]` | `[]` | List of plugin driver IDs loaded at startup. |
+| `customRegistryUrl` | `string` | `null` | Custom URL for the plugin registry. Overrides the default official registry when fetching and installing plugins. |
 
 ## Application Logs
 
