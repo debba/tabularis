@@ -74,6 +74,11 @@ const GALLERY_ITEMS = [
     caption: "Visual Query Builder",
   },
   { src: "/img/screenshot-9.png", alt: "Plugins", caption: "Plugins" },
+  {
+    src: "/img/screenshot-10.png",
+    alt: "Task Manager",
+    caption: "Task Manager",
+  },
 ];
 
 const THEMES = [
@@ -379,6 +384,15 @@ export default function HomePage() {
               startup and notifies you when a new version is available.{" "}
               <strong>Manual:</strong> You can always check for updates manually
               or download the latest release from GitHub.
+            </p>
+          </article>
+          <article className="feature-card">
+            <h3>📈 Task Manager</h3>
+            <p>
+              Monitor <strong>plugin processes</strong> in real time. Track CPU,
+              RAM and disk usage for each plugin, inspect child processes, and
+              force-kill or restart any plugin directly from the built-in Task
+              Manager window.
             </p>
           </article>
         </div>
