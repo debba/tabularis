@@ -999,6 +999,11 @@ impl MysqlDriver {
                     folder_based: false,
                     identifier_quote: "`".into(),
                     alter_primary_key: true,
+                    auto_increment_keyword: "AUTO_INCREMENT".into(),
+                    serial_type: String::new(),
+                    inline_pk: false,
+                    alter_column: true,
+                    create_foreign_keys: true,
                 },
             },
         }

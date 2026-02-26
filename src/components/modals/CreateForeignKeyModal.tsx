@@ -4,6 +4,8 @@ import { X, Save, Loader2, AlertTriangle } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { SqlPreview } from '../ui/SqlPreview';
 import { useDatabase } from '../../hooks/useDatabase';
+import { useDrivers } from '../../hooks/useDrivers';
+import { supportsCreateForeignKeys, getCapabilitiesForDriver } from '../../utils/driverCapabilities';
 
 interface CreateForeignKeyModalProps {
   isOpen: boolean;
@@ -34,6 +36,8 @@ export const CreateForeignKeyModal = ({
 }: CreateForeignKeyModalProps) => {
   const { t } = useTranslation();
   const { activeSchema } = useDatabase();
+  const { allDrivers } = useDrivers();
+  const canCreateFk = supportsCreateForeignKeys(getCapabilitiesForDriver(driver, allDrivers));
   const [fkName, setFkName] = useState('');
   const [localColumn, setLocalColumn] = useState('');
   const [refTable, setRefTable] = useState('');
@@ -171,7 +175,7 @@ export const CreateForeignKeyModal = ({
         </div>
 
         <div className="p-6 flex flex-col gap-4">
-            {driver === 'sqlite' && (
+            {!canCreateFk && (
                 <div className="bg-warning-bg border border-warning-border text-warning-text text-xs p-3 rounded flex items-start gap-2">
                     <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                     <span>{t('sidebar.sqliteFkError')}</span>
@@ -272,7 +276,7 @@ export const CreateForeignKeyModal = ({
            </button>
            <button 
              onClick={handleCreate}
-             disabled={loading || driver === 'sqlite'}
+             disabled={loading || !canCreateFk}
              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-primary px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-900/20 transition-all"
            >
              {loading && <Loader2 size={16} className="animate-spin" />}

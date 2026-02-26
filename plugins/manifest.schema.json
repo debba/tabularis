@@ -68,6 +68,31 @@
         "alter_primary_key": {
           "type": "boolean",
           "description": "true if the database supports altering primary keys after table creation."
+        },
+        "auto_increment_keyword": {
+          "type": "string",
+          "default": "",
+          "description": "Keyword appended after the column type for auto-increment columns (e.g. \"AUTO_INCREMENT\" for MySQL). Empty string if not applicable."
+        },
+        "serial_type": {
+          "type": "string",
+          "default": "",
+          "description": "Replacement data type used for auto-increment columns (e.g. \"SERIAL\" for PostgreSQL). Empty string if not applicable."
+        },
+        "inline_pk": {
+          "type": "boolean",
+          "default": false,
+          "description": "true if primary key is defined inline in the column definition (e.g. SQLite AUTOINCREMENT style)."
+        },
+        "alter_column": {
+          "type": "boolean",
+          "default": false,
+          "description": "true if the driver supports ALTER TABLE MODIFY/ALTER COLUMN on existing tables."
+        },
+        "create_foreign_keys": {
+          "type": "boolean",
+          "default": false,
+          "description": "true if the driver properly supports creating foreign key constraints."
         }
       }
     },

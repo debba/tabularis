@@ -6,6 +6,7 @@ import { SqlPreview } from "../ui/SqlPreview";
 import { useDatabase } from "../../hooks/useDatabase";
 import { useDataTypes } from "../../hooks/useDataTypes";
 import { useDrivers } from "../../hooks/useDrivers";
+import { supportsAlterColumn } from "../../utils/driverCapabilities";
 
 interface ColumnDef {
   name: string;
@@ -69,7 +70,9 @@ export const ModifyColumnModal = ({
   const { dataTypes } = useDataTypes(driver);
   const { allDrivers } = useDrivers();
   const driverManifest = allDrivers.find((d) => d.id === driver);
-  const canAlterPk = driverManifest?.capabilities?.alter_primary_key !== false;
+  const driverCapabilities = driverManifest?.capabilities ?? null;
+  const canAlterPk = driverCapabilities?.alter_primary_key !== false;
+  const canAlterColumn = supportsAlterColumn(driverCapabilities);
   const isEdit = !!column;
 
   const availableTypes = useMemo(
@@ -247,7 +250,7 @@ export const ModifyColumnModal = ({
 
         {/* Body */}
         <div className="p-6 flex flex-col gap-4">
-          {driver === "sqlite" && isEdit && (
+          {!canAlterColumn && isEdit && (
             <div className="bg-warning-bg border border-warning-border text-warning-text text-xs p-3 rounded flex items-start gap-2">
               <AlertTriangle size={14} className="shrink-0 mt-0.5" />
               <span>{t("modifyColumn.sqliteWarn")}</span>
@@ -286,7 +289,7 @@ export const ModifyColumnModal = ({
                       : "",
                   });
                 }}
-                disabled={driver === "sqlite" && isEdit}
+                disabled={!canAlterColumn && isEdit}
                 className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none disabled:opacity-50 appearance-none cursor-pointer hover:bg-elevated transition-colors"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
@@ -311,7 +314,7 @@ export const ModifyColumnModal = ({
                 value={form.length}
                 onChange={(e) => setForm({ ...form, length: e.target.value })}
                 disabled={
-                  (driver === "sqlite" && isEdit) ||
+                  (!canAlterColumn && isEdit) ||
                   !availableTypes.find((t) => t.name === form.type)?.requires_length &&
                   !availableTypes.find((t) => t.name === form.type)?.requires_precision
                 }
@@ -333,7 +336,7 @@ export const ModifyColumnModal = ({
                 onChange={(e) =>
                   setForm({ ...form, defaultValue: e.target.value })
                 }
-                disabled={driver === "sqlite" && isEdit}
+                disabled={!canAlterColumn && isEdit}
                 className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none font-mono disabled:opacity-50"
                 placeholder="NULL"
               />
@@ -349,7 +352,7 @@ export const ModifyColumnModal = ({
                 onChange={(e) =>
                   setForm({ ...form, isNullable: !e.target.checked })
                 }
-                disabled={driver === "sqlite" && isEdit}
+                disabled={!canAlterColumn && isEdit}
                 className="accent-blue-500"
               />
               <label
@@ -387,14 +390,14 @@ export const ModifyColumnModal = ({
                   setForm({ ...form, isAutoInc: e.target.checked })
                 }
                 disabled={
-                  (isEdit && driver !== "mysql" && driver !== "mariadb") ||
+                  (isEdit && !(canAlterColumn && !!driverCapabilities?.auto_increment_keyword)) ||
                   !["INTEGER", "BIGINT"].includes(form.type)
                 }
                 className="accent-blue-500 disabled:opacity-50"
               />
               <label
                 htmlFor="isAutoInc"
-                className={`text-sm select-none cursor-pointer ${(isEdit && driver !== "mysql" && driver !== "mariadb") || !["INTEGER", "BIGINT"].includes(form.type) ? "text-muted" : "text-secondary"}`}
+                className={`text-sm select-none cursor-pointer ${(isEdit && !(canAlterColumn && !!driverCapabilities?.auto_increment_keyword)) || !["INTEGER", "BIGINT"].includes(form.type) ? "text-muted" : "text-secondary"}`}
               >
                 {t("modifyColumn.autoInc")}
               </label>
@@ -432,7 +435,7 @@ export const ModifyColumnModal = ({
             onClick={handleSubmit}
             disabled={
               loading ||
-              (driver === "sqlite" && isEdit && form.name === column?.name)
+              (!canAlterColumn && isEdit && form.name === column?.name)
             }
             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-primary px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-900/20 transition-all"
           >

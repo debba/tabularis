@@ -153,6 +153,7 @@ pub fn run() {
             open_devtools,
             close_devtools,
             commands::get_registered_drivers,
+            commands::get_driver_manifest,
             commands::test_connection,
             commands::list_databases,
             commands::save_connection,

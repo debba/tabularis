@@ -1,4 +1,5 @@
 import { createContext } from 'react';
+import type { DriverCapabilities } from '../types/plugins';
 
 export interface TableInfo {
   name: string;
@@ -40,6 +41,7 @@ export interface SchemaData {
 
 export interface ConnectionData {
   driver: string;
+  capabilities: DriverCapabilities | null;
   connectionName: string;
   databaseName: string;
   tables: TableInfo[];
@@ -65,6 +67,7 @@ export interface DatabaseContextType {
   connectionDataMap: Record<string, ConnectionData>;
   activeTable: string | null;
   activeDriver: string | null;
+  activeCapabilities: DriverCapabilities | null;
   activeConnectionName: string | null;
   activeDatabaseName: string | null;
   tables: TableInfo[];

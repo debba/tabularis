@@ -13,6 +13,26 @@ vi.mock('../../src/utils/autocomplete', () => ({
   clearAutocompleteCache: vi.fn(),
 }));
 
+const mockPostgresManifest = {
+  id: 'postgres',
+  name: 'PostgreSQL',
+  version: '1.0.0',
+  description: '',
+  default_port: 5432,
+  capabilities: {
+    schemas: true,
+    views: true,
+    routines: true,
+    file_based: false,
+    folder_based: false,
+    identifier_quote: '"',
+    alter_primary_key: true,
+    serial_type: 'SERIAL',
+    alter_column: true,
+    create_foreign_keys: true,
+  },
+};
+
 describe('DatabaseProvider', () => {
   const mockConnections = [
     {
@@ -449,6 +469,7 @@ describe('DatabaseProvider', () => {
       vi.mocked(invoke).mockImplementation((cmd: string) => {
         if (cmd === 'get_connections') return Promise.resolve(mockPgConnections);
         if (cmd === 'test_connection') return Promise.resolve('Connection successful!');
+        if (cmd === 'get_driver_manifest') return Promise.resolve(mockPostgresManifest);
         if (cmd === 'get_schemas') return Promise.resolve(mockSchemas);
         if (cmd === 'get_selected_schemas') return Promise.resolve([]);
         if (cmd === 'set_window_title') return Promise.resolve(undefined);
@@ -475,6 +496,7 @@ describe('DatabaseProvider', () => {
       vi.mocked(invoke).mockImplementation((cmd: string, args?: Record<string, unknown>) => {
         if (cmd === 'get_connections') return Promise.resolve(mockPgConnections);
         if (cmd === 'test_connection') return Promise.resolve('Connection successful!');
+        if (cmd === 'get_driver_manifest') return Promise.resolve(mockPostgresManifest);
         if (cmd === 'get_schemas') return Promise.resolve(mockSchemas);
         if (cmd === 'get_selected_schemas') return Promise.resolve(['public']);
         if (cmd === 'get_schema_preference') return Promise.resolve('public');
@@ -507,6 +529,7 @@ describe('DatabaseProvider', () => {
       vi.mocked(invoke).mockImplementation((cmd: string) => {
         if (cmd === 'get_connections') return Promise.resolve(mockPgConnections);
         if (cmd === 'test_connection') return Promise.resolve('Connection successful!');
+        if (cmd === 'get_driver_manifest') return Promise.resolve(mockPostgresManifest);
         if (cmd === 'get_schemas') return Promise.resolve(mockSchemas);
         if (cmd === 'get_selected_schemas') return Promise.resolve([]);
         if (cmd === 'set_selected_schemas') return Promise.resolve(undefined);
@@ -549,6 +572,7 @@ describe('DatabaseProvider', () => {
       vi.mocked(invoke).mockImplementation((cmd: string) => {
         if (cmd === 'get_connections') return Promise.resolve(mockPgConnections);
         if (cmd === 'test_connection') return Promise.resolve('Connection successful!');
+        if (cmd === 'get_driver_manifest') return Promise.resolve(mockPostgresManifest);
         if (cmd === 'get_schemas') return Promise.resolve(mockSchemas);
         if (cmd === 'get_selected_schemas') return Promise.resolve(['public', 'analytics']);
         if (cmd === 'get_schema_preference') return Promise.resolve('analytics');
@@ -585,6 +609,7 @@ describe('DatabaseProvider', () => {
       vi.mocked(invoke).mockImplementation((cmd: string) => {
         if (cmd === 'get_connections') return Promise.resolve(mockPgConnections);
         if (cmd === 'test_connection') return Promise.resolve('Connection successful!');
+        if (cmd === 'get_driver_manifest') return Promise.resolve(mockPostgresManifest);
         if (cmd === 'get_schemas') return Promise.resolve(mockSchemas);
         if (cmd === 'get_selected_schemas') return Promise.resolve(['public']);
         if (cmd === 'get_schema_preference') return Promise.resolve('public');
@@ -617,6 +642,7 @@ describe('DatabaseProvider', () => {
       vi.mocked(invoke).mockImplementation((cmd: string) => {
         if (cmd === 'get_connections') return Promise.resolve(mockPgConnections);
         if (cmd === 'test_connection') return Promise.resolve('Connection successful!');
+        if (cmd === 'get_driver_manifest') return Promise.resolve(mockPostgresManifest);
         if (cmd === 'get_schemas') return Promise.resolve(['public', 'analytics']); // 'deleted_schema' not available
         if (cmd === 'get_selected_schemas') return Promise.resolve(['public', 'deleted_schema']); // saved has stale entry
         if (cmd === 'get_schema_preference') return Promise.resolve('public');

@@ -861,6 +861,11 @@ impl SqliteDriver {
                     folder_based: false,
                     identifier_quote: "\"".into(),
                     alter_primary_key: true,
+                    auto_increment_keyword: "AUTOINCREMENT".into(),
+                    serial_type: String::new(),
+                    inline_pk: true,
+                    alter_column: false,
+                    create_foreign_keys: false,
                 },
             },
         }

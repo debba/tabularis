@@ -1175,6 +1175,11 @@ impl PostgresDriver {
                     folder_based: false,
                     identifier_quote: "\"".into(),
                     alter_primary_key: true,
+                    auto_increment_keyword: String::new(),
+                    serial_type: "SERIAL".into(),
+                    inline_pk: false,
+                    alter_column: true,
+                    create_foreign_keys: true,
                 },
             },
         }

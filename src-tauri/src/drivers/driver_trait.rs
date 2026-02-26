@@ -32,6 +32,25 @@ pub struct DriverCapabilities {
     /// Supports adding or modifying primary keys on existing tables via ALTER TABLE.
     #[serde(default = "default_true")]
     pub alter_primary_key: bool,
+    // SQL generation capabilities
+    /// Keyword appended after column type for auto-increment (e.g. "AUTO_INCREMENT" for MySQL).
+    /// Empty string means the driver does not use a keyword-based auto-increment.
+    #[serde(default)]
+    pub auto_increment_keyword: String,
+    /// Replacement type for auto-increment columns (e.g. "SERIAL" for PostgreSQL).
+    /// Empty string means the driver does not use a type replacement.
+    #[serde(default)]
+    pub serial_type: String,
+    /// Whether primary key is defined inline in the column definition (e.g. SQLite AUTOINCREMENT).
+    #[serde(default)]
+    pub inline_pk: bool,
+    // DDL capabilities
+    /// Supports ALTER TABLE MODIFY/ALTER COLUMN on existing tables.
+    #[serde(default)]
+    pub alter_column: bool,
+    /// Supports creating foreign key constraints (properly enforced).
+    #[serde(default)]
+    pub create_foreign_keys: bool,
 }
 
 fn default_double_quote() -> String {

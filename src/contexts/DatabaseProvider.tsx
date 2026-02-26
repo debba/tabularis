@@ -1,18 +1,20 @@
 import { useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { 
-  DatabaseContext, 
-  type TableInfo, 
-  type ViewInfo, 
-  type RoutineInfo, 
-  type SavedConnection, 
-  type ConnectionData 
+import {
+  DatabaseContext,
+  type TableInfo,
+  type ViewInfo,
+  type RoutineInfo,
+  type SavedConnection,
+  type ConnectionData
 } from './DatabaseContext';
 import type { ReactNode } from 'react';
+import type { PluginManifest } from '../types/plugins';
 import { clearAutocompleteCache } from '../utils/autocomplete';
 
 const createEmptyConnectionData = (driver: string = '', name: string = '', dbName: string = ''): ConnectionData => ({
   driver,
+  capabilities: null,
   connectionName: name,
   databaseName: dbName,
   tables: [],
@@ -47,6 +49,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
   const activeData = getActiveConnectionData();
 
   const activeDriver = activeData?.driver ?? null;
+  const activeCapabilities = activeData?.capabilities ?? null;
   const activeConnectionName = activeData?.connectionName ?? null;
   const activeDatabaseName = activeData?.databaseName ?? null;
   const tables = activeData?.tables ?? [];
@@ -67,7 +70,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       try {
         let title = 'tabularis';
         if (activeConnectionName && activeDatabaseName) {
-          const schemaSuffix = activeSchema && activeDriver === 'postgres' ? `/${activeSchema}` : '';
+          const schemaSuffix = activeSchema && activeCapabilities?.schemas === true ? `/${activeSchema}` : '';
           title = `tabularis - ${activeConnectionName} (${activeDatabaseName}${schemaSuffix})`;
         }
         await invoke('set_window_title', { title });
@@ -76,7 +79,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       }
     };
     updateTitle();
-  }, [activeConnectionName, activeDatabaseName, activeSchema, activeDriver]);
+  }, [activeConnectionName, activeDatabaseName, activeSchema, activeCapabilities]);
 
   const updateConnectionData = useCallback((connectionId: string, updates: Partial<ConnectionData>) => {
     setConnectionDataMap(prev => ({
@@ -300,8 +303,17 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
 
       const driver = conn.params.driver;
 
+      // Fetch driver manifest to access capabilities (driver-agnostic feature detection)
+      let driverManifest: PluginManifest | null = null;
+      try {
+        driverManifest = await invoke<PluginManifest | null>('get_driver_manifest', { driverId: driver });
+      } catch {
+        // Manifest not found; capabilities will be null and features will degrade gracefully
+      }
+
       updateConnectionData(connectionId, {
         driver,
+        capabilities: driverManifest?.capabilities ?? null,
         connectionName: conn.name,
         databaseName: conn.params.database,
       });
@@ -327,7 +339,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(errorMsg);
       }
 
-      if (driver === 'postgres') {
+      if (driverManifest?.capabilities?.schemas === true) {
         updateConnectionData(connectionId, { isLoadingSchemas: true });
 
         try {
@@ -509,6 +521,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       connectionDataMap,
       activeTable,
       activeDriver,
+      activeCapabilities,
       activeConnectionName,
       activeDatabaseName,
       tables,

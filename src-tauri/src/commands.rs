@@ -2419,3 +2419,12 @@ pub async fn drop_foreign_key_action<R: Runtime>(
 pub async fn get_registered_drivers() -> Vec<crate::drivers::driver_trait::PluginManifest> {
     crate::drivers::registry::list_drivers().await
 }
+
+#[tauri::command]
+pub async fn get_driver_manifest(
+    driver_id: String,
+) -> Option<crate::drivers::driver_trait::PluginManifest> {
+    crate::drivers::registry::get_driver(&driver_id)
+        .await
+        .map(|d| d.manifest().clone())
+}

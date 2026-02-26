@@ -6,6 +6,13 @@ export interface DriverCapabilities {
   folder_based: boolean;
   identifier_quote: string;
   alter_primary_key: boolean;
+  // SQL generation capabilities (optional, default to '' / false when not present)
+  auto_increment_keyword?: string;
+  serial_type?: string;
+  inline_pk?: boolean;
+  // DDL capabilities (optional, default to false when not present)
+  alter_column?: boolean;
+  create_foreign_keys?: boolean;
 }
 
 export interface PluginManifest {

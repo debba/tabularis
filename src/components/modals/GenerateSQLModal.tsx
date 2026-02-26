@@ -10,7 +10,6 @@ import {
   type TableColumn,
   type ForeignKey,
   type Index,
-  type DatabaseDriver,
 } from "../../utils/sqlGenerator";
 
 interface GenerateSQLModalProps {
@@ -25,7 +24,7 @@ export const GenerateSQLModal = ({
   tableName,
 }: GenerateSQLModalProps) => {
   const { t } = useTranslation();
-  const { activeConnectionId, activeDriver, activeSchema } = useDatabase();
+  const { activeConnectionId, activeDriver, activeSchema, activeCapabilities } = useDatabase();
   const [sql, setSql] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -60,7 +59,7 @@ export const GenerateSQLModal = ({
           columns,
           foreignKeys,
           indexes,
-          activeDriver as DatabaseDriver,
+          activeCapabilities ?? (activeDriver ?? 'sqlite'),
         );
         setSql(generatedSQL);
       } catch (err) {
@@ -72,7 +71,7 @@ export const GenerateSQLModal = ({
     };
 
     void generateSQL();
-  }, [isOpen, activeConnectionId, tableName, activeDriver, t, activeSchema]);
+  }, [isOpen, activeConnectionId, tableName, activeDriver, activeCapabilities, t, activeSchema]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(sql);

@@ -6,7 +6,9 @@ import { invoke } from '@tauri-apps/api/core';
 import { ask } from '@tauri-apps/plugin-dialog';
 import { Database, Plus, Power, Edit, Trash2, Shield, AlertCircle, Copy, Loader2 } from 'lucide-react';
 import { useDatabase } from '../hooks/useDatabase';
+import { useDrivers } from '../hooks/useDrivers';
 import { getConnectionCardClass, getConnectionIconClass } from '../utils/connectionManager';
+import { isLocalDriver, getCapabilitiesForDriver } from '../utils/driverCapabilities';
 
 interface SavedConnection {
   id: string;
@@ -31,6 +33,7 @@ export const Connections = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { connect, activeConnectionId, disconnect, isConnectionOpen, switchConnection } = useDatabase();
+  const { allDrivers } = useDrivers();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingConnection, setEditingConnection] = useState<SavedConnection | null>(null);
   const [connections, setConnections] = useState<SavedConnection[]>([]);
@@ -202,8 +205,8 @@ export const Connections = () => {
                 </div>
                 
                 <div className="text-sm text-secondary mt-3 truncate pl-1 font-mono">
-                  {conn.params.driver === 'sqlite' 
-                    ? conn.params.database 
+                  {isLocalDriver(getCapabilitiesForDriver(conn.params.driver, allDrivers))
+                    ? conn.params.database
                     : `${conn.params.host}:${conn.params.database}`}
                 </div>
 

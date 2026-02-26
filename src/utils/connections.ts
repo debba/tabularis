@@ -3,6 +3,9 @@
  * Extracted from Connections.tsx for testability
  */
 
+import type { DriverCapabilities } from "../types/plugins";
+import { isLocalDriver } from "./driverCapabilities";
+
 export type DatabaseDriver = string;
 
 export const BUILTIN_DRIVER_IDS = ["postgres", "mysql", "sqlite"] as const;
@@ -39,12 +42,21 @@ export interface ConnectionParams {
 }
 
 /**
- * Format a connection string for display
+ * Format a connection string for display.
+ * When capabilities are provided, uses file_based/folder_based to determine local vs remote.
+ * Falls back to driver === "sqlite" when capabilities are not available.
  * @param params - Connection parameters
+ * @param capabilities - Optional driver capabilities
  * @returns Formatted connection string
  */
-export function formatConnectionString(params: ConnectionParams): string {
-  if (params.driver === "sqlite") {
+export function formatConnectionString(
+  params: ConnectionParams,
+  capabilities?: DriverCapabilities | null,
+): string {
+  const local =
+    capabilities != null ? isLocalDriver(capabilities) : params.driver === "sqlite";
+
+  if (local) {
     return params.database;
   }
 
@@ -73,11 +85,17 @@ export function getDefaultPort(driver: DatabaseDriver): number {
 }
 
 /**
- * Validate connection parameters
+ * Validate connection parameters.
+ * When capabilities are provided, uses file_based/folder_based to determine local vs remote.
+ * Falls back to driver === "sqlite" when capabilities are not available.
  * @param params - Connection parameters to validate
+ * @param capabilities - Optional driver capabilities
  * @returns Object with isValid flag and optional error message
  */
-export function validateConnectionParams(params: Partial<ConnectionParams>): {
+export function validateConnectionParams(
+  params: Partial<ConnectionParams>,
+  capabilities?: DriverCapabilities | null,
+): {
   isValid: boolean;
   error?: string;
 } {
@@ -89,8 +107,12 @@ export function validateConnectionParams(params: Partial<ConnectionParams>): {
     return { isValid: false, error: "Database name is required" };
   }
 
-  // For non-SQLite drivers, host is required
-  if (params.driver !== "sqlite" && !params.host) {
+  // For remote drivers, host is required
+  const local =
+    capabilities != null
+      ? isLocalDriver(capabilities)
+      : params.driver === "sqlite";
+  if (!local && !params.host) {
     return { isValid: false, error: "Host is required for remote databases" };
   }
 
@@ -175,14 +197,22 @@ export function hasSSH(params: ConnectionParams): boolean {
 }
 
 /**
- * Create a connection display name from parameters
- * If no name is provided, generate one from the connection details
+ * Create a connection display name from parameters.
+ * When capabilities are provided, uses file_based/folder_based to determine local vs remote.
+ * Falls back to driver === "sqlite" when capabilities are not available.
  * @param params - Connection parameters
+ * @param capabilities - Optional driver capabilities
  * @returns Display name for the connection
  */
-export function generateConnectionName(params: ConnectionParams): string {
-  if (params.driver === "sqlite") {
-    // Extract filename from path
+export function generateConnectionName(
+  params: ConnectionParams,
+  capabilities?: DriverCapabilities | null,
+): string {
+  const local =
+    capabilities != null ? isLocalDriver(capabilities) : params.driver === "sqlite";
+
+  if (local) {
+    // Extract filename or folder name from path
     const parts = params.database.split("/");
     return parts[parts.length - 1] || params.database;
   }

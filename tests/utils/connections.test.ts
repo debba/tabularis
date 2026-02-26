@@ -9,6 +9,25 @@ import {
   type ConnectionParams,
   type DatabaseDriver,
 } from '../../src/utils/connections';
+import type { DriverCapabilities } from '../../src/types/plugins';
+
+const makeFileCaps = (): DriverCapabilities => ({
+  schemas: false, views: false, routines: false,
+  file_based: true, folder_based: false,
+  identifier_quote: '"', alter_primary_key: false,
+});
+
+const makeFolderCaps = (): DriverCapabilities => ({
+  schemas: false, views: false, routines: false,
+  file_based: false, folder_based: true,
+  identifier_quote: '"', alter_primary_key: false,
+});
+
+const makeRemoteCaps = (): DriverCapabilities => ({
+  schemas: false, views: true, routines: true,
+  file_based: false, folder_based: false,
+  identifier_quote: '"', alter_primary_key: true,
+});
 
 describe('connections', () => {
   describe('formatConnectionString', () => {
@@ -348,6 +367,90 @@ describe('connections', () => {
       };
 
       expect(generateConnectionName(params)).toBe('main.sqlite');
+    });
+  });
+
+  // Capability-based tests
+  describe('formatConnectionString with capabilities', () => {
+    it('should format local path for file_based driver', () => {
+      const params: ConnectionParams = { driver: 'custom-db', database: '/data/app.db' };
+      expect(formatConnectionString(params, makeFileCaps())).toBe('/data/app.db');
+    });
+
+    it('should format local path for folder_based driver', () => {
+      const params: ConnectionParams = { driver: 'csv', database: '/data/csvdir' };
+      expect(formatConnectionString(params, makeFolderCaps())).toBe('/data/csvdir');
+    });
+
+    it('should format remote connection string for remote driver', () => {
+      const params: ConnectionParams = { driver: 'duckdb', database: 'mydb', host: 'db.host', port: 5432 };
+      expect(formatConnectionString(params, makeRemoteCaps())).toBe('db.host:5432/mydb');
+    });
+
+    it('should use getDefaultPort when capabilities indicate remote and no port given', () => {
+      const params: ConnectionParams = { driver: 'postgres', database: 'mydb', host: 'localhost' };
+      expect(formatConnectionString(params, makeRemoteCaps())).toBe('localhost:5432/mydb');
+    });
+
+    it('should treat unknown driver as remote when capabilities show remote', () => {
+      const params: ConnectionParams = { driver: 'oracle', database: 'orcl', host: 'db.host', port: 1521 };
+      expect(formatConnectionString(params, makeRemoteCaps())).toBe('db.host:1521/orcl');
+    });
+  });
+
+  describe('validateConnectionParams with capabilities', () => {
+    it('should pass for file_based driver without host', () => {
+      const params: ConnectionParams = { driver: 'custom-db', database: '/path/to/db' };
+      const result = validateConnectionParams(params, makeFileCaps());
+      expect(result.isValid).toBe(true);
+    });
+
+    it('should pass for folder_based driver without host', () => {
+      const params: ConnectionParams = { driver: 'csv', database: '/data/dir' };
+      const result = validateConnectionParams(params, makeFolderCaps());
+      expect(result.isValid).toBe(true);
+    });
+
+    it('should fail for remote driver without host', () => {
+      const params: ConnectionParams = { driver: 'duckdb-remote', database: 'mydb' };
+      const result = validateConnectionParams(params, makeRemoteCaps());
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBe('Host is required for remote databases');
+    });
+
+    it('should pass for remote driver with host', () => {
+      const params: ConnectionParams = { driver: 'duckdb-remote', database: 'mydb', host: 'db.host' };
+      const result = validateConnectionParams(params, makeRemoteCaps());
+      expect(result.isValid).toBe(true);
+    });
+
+    it('should still require driver field even with capabilities', () => {
+      const params = { database: '/path/to/db' };
+      const result = validateConnectionParams(params, makeFileCaps());
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBe('Driver is required');
+    });
+  });
+
+  describe('generateConnectionName with capabilities', () => {
+    it('should extract filename for file_based driver', () => {
+      const params: ConnectionParams = { driver: 'custom-db', database: '/home/user/data.db' };
+      expect(generateConnectionName(params, makeFileCaps())).toBe('data.db');
+    });
+
+    it('should extract folder name for folder_based driver', () => {
+      const params: ConnectionParams = { driver: 'csv', database: '/data/csvfiles' };
+      expect(generateConnectionName(params, makeFolderCaps())).toBe('csvfiles');
+    });
+
+    it('should format database@host for remote driver', () => {
+      const params: ConnectionParams = { driver: 'duckdb-remote', database: 'analytics', host: 'db.host' };
+      expect(generateConnectionName(params, makeRemoteCaps())).toBe('analytics@db.host');
+    });
+
+    it('should use localhost when host is missing for remote driver', () => {
+      const params: ConnectionParams = { driver: 'duckdb-remote', database: 'analytics' };
+      expect(generateConnectionName(params, makeRemoteCaps())).toBe('analytics@localhost');
     });
   });
 });

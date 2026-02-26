@@ -11,6 +11,15 @@ import {
   type Index,
   type DatabaseDriver,
 } from '../../src/utils/sqlGenerator';
+import type { DriverCapabilities } from '../../src/types/plugins';
+
+const makeCaps = (overrides: Partial<DriverCapabilities> = {}): DriverCapabilities => ({
+  schemas: false, views: false, routines: false,
+  file_based: false, folder_based: false,
+  identifier_quote: '"', alter_primary_key: false,
+  auto_increment_keyword: '', serial_type: '', inline_pk: false,
+  ...overrides,
+});
 
 describe('sqlGenerator utils', () => {
   describe('getIdentifierQuote', () => {
@@ -362,6 +371,150 @@ describe('sqlGenerator utils', () => {
       const result = generateCreateTableSQL('users', columns, [], indexes, 'mysql');
       const parts = result.split('\n\n');
       expect(parts).toHaveLength(2);
+    });
+  });
+
+  // CapabilityCapabilities-based API tests
+  describe('getIdentifierQuote with DriverCapabilities', () => {
+    it('should use identifier_quote from capabilities', () => {
+      expect(getIdentifierQuote(makeCaps({ identifier_quote: '`' }))).toBe('`');
+    });
+
+    it('should default to double quote when identifier_quote is empty', () => {
+      expect(getIdentifierQuote(makeCaps({ identifier_quote: '' }))).toBe('"');
+    });
+
+    it('should use double quote from capabilities', () => {
+      expect(getIdentifierQuote(makeCaps({ identifier_quote: '"' }))).toBe('"');
+    });
+  });
+
+  describe('generateColumnDefinition with DriverCapabilities', () => {
+    const baseColumn: TableColumn = {
+      name: 'id', data_type: 'INT', is_pk: true,
+      is_nullable: false, is_auto_increment: false, default_value: null,
+    };
+
+    it('should use identifier_quote from capabilities', () => {
+      const caps = makeCaps({ identifier_quote: '`' });
+      const result = generateColumnDefinition(baseColumn, caps, '"');
+      expect(result).toBe('  `id` INT NOT NULL');
+    });
+
+    it('should append auto_increment_keyword when set', () => {
+      const caps = makeCaps({ identifier_quote: '`', auto_increment_keyword: 'AUTO_INCREMENT' });
+      const col = { ...baseColumn, is_auto_increment: true };
+      const result = generateColumnDefinition(col, caps, '"');
+      expect(result).toContain('AUTO_INCREMENT');
+    });
+
+    it('should replace type with serial_type for auto-increment', () => {
+      const caps = makeCaps({ identifier_quote: '"', serial_type: 'SERIAL' });
+      const col = { ...baseColumn, is_auto_increment: true };
+      const result = generateColumnDefinition(col, caps, '"');
+      expect(result).toContain('SERIAL');
+      expect(result).not.toContain('INT');
+    });
+
+    it('should use inline_pk style for auto-increment', () => {
+      const caps = makeCaps({
+        identifier_quote: '"', inline_pk: true, auto_increment_keyword: 'AUTOINCREMENT',
+      });
+      const col = { ...baseColumn, is_auto_increment: true };
+      const result = generateColumnDefinition(col, caps, '"');
+      expect(result).toContain('INTEGER PRIMARY KEY AUTOINCREMENT');
+    });
+
+    it('should produce no auto-increment syntax when all capabilities are empty', () => {
+      const caps = makeCaps({ identifier_quote: '"' });
+      const col = { ...baseColumn, is_auto_increment: true };
+      const result = generateColumnDefinition(col, caps, '"');
+      expect(result).not.toContain('AUTO_INCREMENT');
+      expect(result).not.toContain('SERIAL');
+      expect(result).not.toContain('AUTOINCREMENT');
+    });
+  });
+
+  describe('generatePrimaryKeyConstraint with DriverCapabilities', () => {
+    const pkColumns: TableColumn[] = [
+      { name: 'id', data_type: 'INT', is_pk: true, is_nullable: false, is_auto_increment: false, default_value: null },
+    ];
+
+    it('should return null when inline_pk is true', () => {
+      const caps = makeCaps({ identifier_quote: '"', inline_pk: true });
+      expect(generatePrimaryKeyConstraint(pkColumns, caps, '"')).toBeNull();
+    });
+
+    it('should return constraint when inline_pk is false', () => {
+      const caps = makeCaps({ identifier_quote: '"', inline_pk: false });
+      const result = generatePrimaryKeyConstraint(pkColumns, caps, '"');
+      expect(result).toBe('  PRIMARY KEY ("id")');
+    });
+
+    it('should use identifier_quote from capabilities for PK constraint', () => {
+      const caps = makeCaps({ identifier_quote: '`', inline_pk: false });
+      const result = generatePrimaryKeyConstraint(pkColumns, caps, '"');
+      expect(result).toBe('  PRIMARY KEY (`id`)');
+    });
+
+    it('should return null when no pk columns even with capabilities', () => {
+      const noPkCols: TableColumn[] = [
+        { name: 'name', data_type: 'VARCHAR', is_pk: false, is_nullable: true, is_auto_increment: false, default_value: null },
+      ];
+      const caps = makeCaps({ identifier_quote: '"' });
+      expect(generatePrimaryKeyConstraint(noPkCols, caps, '"')).toBeNull();
+    });
+  });
+
+  describe('generateCreateTableSQL with DriverCapabilities', () => {
+    const columns: TableColumn[] = [
+      { name: 'id', data_type: 'INT', is_pk: true, is_nullable: false, is_auto_increment: true, default_value: null },
+      { name: 'name', data_type: 'VARCHAR(100)', is_pk: false, is_nullable: false, is_auto_increment: false, default_value: null },
+    ];
+
+    it('should generate SQL for mysql-like capabilities', () => {
+      const caps = makeCaps({
+        identifier_quote: '`',
+        auto_increment_keyword: 'AUTO_INCREMENT',
+        inline_pk: false,
+      });
+      const result = generateCreateTableSQL('users', columns, [], [], caps);
+      expect(result).toContain('CREATE TABLE `users` (');
+      expect(result).toContain('`id` INT NOT NULL AUTO_INCREMENT');
+      expect(result).toContain('PRIMARY KEY (`id`)');
+    });
+
+    it('should generate SQL for postgresql-like capabilities', () => {
+      const caps = makeCaps({
+        identifier_quote: '"',
+        serial_type: 'SERIAL',
+        inline_pk: false,
+      });
+      const result = generateCreateTableSQL('users', columns, [], [], caps);
+      expect(result).toContain('CREATE TABLE "users" (');
+      expect(result).toContain('"id" SERIAL');
+      expect(result).toContain('PRIMARY KEY ("id")');
+    });
+
+    it('should generate SQL for sqlite-like capabilities', () => {
+      const caps = makeCaps({
+        identifier_quote: '"',
+        auto_increment_keyword: 'AUTOINCREMENT',
+        inline_pk: true,
+      });
+      const result = generateCreateTableSQL('users', columns, [], [], caps);
+      expect(result).toContain('CREATE TABLE "users" (');
+      expect(result).toContain('INTEGER PRIMARY KEY AUTOINCREMENT');
+      expect(result).not.toContain('PRIMARY KEY ("id")');
+    });
+
+    it('should generate SQL for unknown driver with no auto-increment capabilities', () => {
+      const caps = makeCaps({ identifier_quote: '"' });
+      const result = generateCreateTableSQL('items', columns, [], [], caps);
+      expect(result).toContain('CREATE TABLE "items" (');
+      expect(result).not.toContain('AUTO_INCREMENT');
+      expect(result).not.toContain('SERIAL');
+      expect(result).not.toContain('AUTOINCREMENT');
     });
   });
 });
