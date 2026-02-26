@@ -28,7 +28,7 @@ import {
   getStatusBadgeColor,
   sortProcesses,
 } from "../utils/taskManager";
-import type { ProcessInfo, ProcessSortKey, TabularisSelfStats, ChildProcessInfo } from "../utils/taskManager";
+import type { ProcessInfo, ProcessSortKey, TabularisSelfStats, ChildProcessInfo, TabularisChildProcess } from "../utils/taskManager";
 
 // ---------------------------------------------------------------------------
 // Kill confirm modal
@@ -89,53 +89,98 @@ const KillConfirmModal = ({ pluginName, onConfirm, onCancel }: KillConfirmModalP
 // ---------------------------------------------------------------------------
 // Tabularis self stats panel
 // ---------------------------------------------------------------------------
-const TabularisSelfPanel = ({ stats }: { stats: TabularisSelfStats }) => (
-  <div className="bg-elevated border border-default rounded-xl p-5">
-    <h2 className="text-sm font-semibold text-primary mb-4 flex items-center gap-2">
-      <Activity size={15} className="text-blue-400" />
-      Tabularis Process
-      <span className="ml-auto text-xs text-muted font-mono">PID {stats.pid}</span>
-    </h2>
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <StatCard
-        icon={<Cpu size={14} className="text-blue-400" />}
-        label="CPU"
-        value={formatCpuPercent(stats.cpu_percent)}
-      />
-      <StatCard
-        icon={<MemoryStick size={14} className="text-purple-400" />}
-        label="RAM"
-        value={formatBytes(stats.self_memory_bytes)}
-      />
-      <StatCard
-        icon={<HardDrive size={14} className="text-green-400" />}
-        label="Disk Read/s"
-        value={formatBytes(stats.disk_read_bytes)}
-        suffix="/s"
-      />
-      <StatCard
-        icon={<HardDrive size={14} className="text-orange-400" />}
-        label="Disk Write/s"
-        value={formatBytes(stats.disk_write_bytes)}
-        suffix="/s"
-      />
-    </div>
-    <p className="mt-3 text-xs text-muted flex items-center gap-1.5">
-      <Layers size={12} />
-      {stats.child_count > 0
-        ? `${stats.child_count} child process${stats.child_count !== 1 ? "es" : ""}`
-        : "No child processes"}
-      {stats.child_count > 0 && (
-        <span
-          className="ml-auto opacity-60"
-          title="Sum of RSS across the process tree — may overcount shared memory"
-        >
-          Tree total: {formatBytes(stats.total_memory_bytes)}
-        </span>
+const TabularisSelfPanel = ({ stats }: { stats: TabularisSelfStats }) => {
+  const [expanded, setExpanded] = useState(false);
+  const hasChildren = stats.children.length > 0;
+
+  return (
+    <div className="bg-elevated border border-default rounded-xl p-5">
+      <h2 className="text-sm font-semibold text-primary mb-4 flex items-center gap-2">
+        <Activity size={15} className="text-blue-400" />
+        Tabularis Process
+        <span className="ml-auto text-xs text-muted font-mono">PID {stats.pid}</span>
+      </h2>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard
+          icon={<Cpu size={14} className="text-blue-400" />}
+          label="CPU"
+          value={formatCpuPercent(stats.cpu_percent)}
+        />
+        <StatCard
+          icon={<MemoryStick size={14} className="text-purple-400" />}
+          label="RAM"
+          value={formatBytes(stats.self_memory_bytes)}
+        />
+        <StatCard
+          icon={<HardDrive size={14} className="text-green-400" />}
+          label="Disk Read/s"
+          value={formatBytes(stats.disk_read_bytes)}
+          suffix="/s"
+        />
+        <StatCard
+          icon={<HardDrive size={14} className="text-orange-400" />}
+          label="Disk Write/s"
+          value={formatBytes(stats.disk_write_bytes)}
+          suffix="/s"
+        />
+      </div>
+
+      {/* Footer: child count + expand toggle */}
+      <button
+        onClick={() => hasChildren && setExpanded((v) => !v)}
+        className={clsx(
+          "mt-3 w-full flex items-center gap-1.5 text-xs text-muted",
+          hasChildren && "hover:text-primary transition-colors cursor-pointer",
+        )}
+      >
+        {hasChildren ? (
+          expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />
+        ) : (
+          <Layers size={12} />
+        )}
+        {stats.child_count > 0
+          ? `${stats.child_count} child process${stats.child_count !== 1 ? "es" : ""}`
+          : "No child processes"}
+        {stats.child_count > 0 && (
+          <span
+            className="ml-auto opacity-60"
+            title="Sum of RSS across the process tree — may overcount shared memory"
+          >
+            Tree total: {formatBytes(stats.total_memory_bytes)}
+          </span>
+        )}
+      </button>
+
+      {/* Expanded child process list */}
+      {expanded && (
+        <div className="mt-3 rounded-lg border border-default overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-default bg-base/50">
+                <th className="px-3 py-2 text-left font-medium text-muted uppercase tracking-wide">PID</th>
+                <th className="px-3 py-2 text-left font-medium text-muted uppercase tracking-wide">Name</th>
+                <th className="px-3 py-2 text-left font-medium text-muted uppercase tracking-wide">CPU</th>
+                <th className="px-3 py-2 text-left font-medium text-muted uppercase tracking-wide">RAM</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-default">
+              {stats.children.map((child: TabularisChildProcess) => (
+                <tr key={child.pid} className="hover:bg-surface-secondary/20 transition-colors">
+                  <td className="px-3 py-1.5 font-mono text-muted">{child.pid}</td>
+                  <td className="px-3 py-1.5 text-secondary max-w-[160px] truncate" title={child.name}>
+                    {child.name}
+                  </td>
+                  <td className="px-3 py-1.5 text-secondary">{formatCpuPercent(child.cpu_percent)}</td>
+                  <td className="px-3 py-1.5 text-secondary">{formatBytes(child.memory_bytes)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-    </p>
-  </div>
-);
+    </div>
+  );
+};
 
 interface StatCardProps {
   icon: React.ReactNode;

@@ -18,6 +18,13 @@ export interface ProcessInfo {
   children: ChildProcessInfo[];
 }
 
+export interface TabularisChildProcess {
+  pid: number;
+  name: string;
+  cpu_percent: number;
+  memory_bytes: number;
+}
+
 export interface TabularisSelfStats {
   pid: number;
   cpu_percent: number;
@@ -26,6 +33,7 @@ export interface TabularisSelfStats {
   disk_read_bytes: number;
   disk_write_bytes: number;
   child_count: number;
+  children: TabularisChildProcess[];
 }
 
 export interface SystemStats {

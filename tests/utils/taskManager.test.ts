@@ -19,6 +19,7 @@ const makeProcess = (overrides: Partial<ProcessInfo> = {}): ProcessInfo => ({
   disk_read_bytes: 0,
   disk_write_bytes: 0,
   status: "running",
+  children: [],
   ...overrides,
 });
 

@@ -55,6 +55,14 @@ pub struct ProcessInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TabularisChildProcess {
+    pub pid: u32,
+    pub name: String,
+    pub cpu_percent: f32,
+    pub memory_bytes: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TabularisSelfStats {
     pub pid: u32,
     /// RSS of the main tabularis process only (bytes).
@@ -65,6 +73,7 @@ pub struct TabularisSelfStats {
     pub disk_read_bytes: u64,
     pub disk_write_bytes: u64,
     pub child_count: usize,
+    pub children: Vec<TabularisChildProcess>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -220,6 +229,19 @@ fn refresh_and_collect_system_stats() -> SystemStats {
             }
         }
 
+        let mut children: Vec<TabularisChildProcess> = descendants
+            .iter()
+            .filter_map(|pid| {
+                sys.process(*pid).map(|proc| TabularisChildProcess {
+                    pid: pid.as_u32(),
+                    name: proc.name().to_string_lossy().to_string(),
+                    cpu_percent: proc.cpu_usage(),
+                    memory_bytes: proc.memory(),
+                })
+            })
+            .collect();
+        children.sort_by_key(|c| c.pid);
+
         TabularisSelfStats {
             pid: self_pid.as_u32(),
             self_memory_bytes,
@@ -228,6 +250,7 @@ fn refresh_and_collect_system_stats() -> SystemStats {
             disk_read_bytes: total_dr,
             disk_write_bytes: total_dw,
             child_count: descendants.len(),
+            children,
         }
     });
 
