@@ -30,7 +30,7 @@ Re-enabling follows the reverse path: the process spawns, the driver registers, 
 
 This matters in practice. Plugin processes consume memory and file handles. Being able to turn off drivers you are not currently using is a basic hygiene feature that was missing.
 
-![Plugin Manager in Tabularis v0.9.2](../img/screenshot-9.png)
+![Plugin Manager in Tabularis v0.9.2](/img/screenshot-9.png)
 *Plugin Manager — available plugins from the registry above, installed drivers with enable/disable toggles below.*
 
 ## Version History and Rollback
@@ -135,7 +135,7 @@ From the same panel you can **kill** or **restart** any plugin process directly.
 
 The resource data comes from `sysinfo`, a cross-platform Rust crate for system metrics. CPU percentages, resident memory, and disk I/O are available across all supported operating systems. The child process list is fetched on demand rather than on every polling tick — a deliberate trade-off to keep idle overhead low.
 
-![Task Manager in Tabularis v0.9.2](../img/screenshot-10.png)
+![Task Manager in Tabularis v0.9.2](/img/screenshot-10.png)
 *Task Manager — monitor the app and all plugin processes in real time, with kill and restart controls.*
 
 ---
