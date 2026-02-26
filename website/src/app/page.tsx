@@ -124,11 +124,19 @@ export default function HomePage() {
           <span className="badge">🌍 EN | IT | ES</span>
         </div>
 
-        <p style={{ fontSize: "1.2rem", color: "var(--text-muted)", marginTop: "1rem" }}>
+        <p
+          style={{
+            fontSize: "1.2rem",
+            color: "var(--text-muted)",
+            marginTop: "1rem",
+          }}
+        >
           A lightweight, developer-focused database management tool.
           <br />
-          Supports <strong>MySQL</strong>, <strong>PostgreSQL</strong> and <strong>SQLite</strong>.
-          Hackable with plugins. Built for speed, security, and aesthetics.
+          Supports <strong>MySQL</strong>, <strong>PostgreSQL</strong> and{" "}
+          <strong>SQLite</strong>. Hackable with plugins.
+          <br />
+          Built for speed, security, and aesthetics.
         </p>
 
         <div className="download-grid">
@@ -419,36 +427,34 @@ export default function HomePage() {
           {plugins.map((plugin) => (
             <div key={plugin.id} className="plugin-entry">
               <div className="plugin-entry-info">
-                <div
-                  className="plugin-entry-header"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.75rem",
-                    flexWrap: "wrap",
-                  }}
-                >
+                <div className="plugin-entry-header">
                   <a
                     href={plugin.homepage}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="plugin-name"
-                    style={{ fontWeight: 700, fontSize: "1.1rem" }}
                   >
                     {plugin.name}
                   </a>
                   <span className="plugin-badge">v{plugin.latest_version}</span>
                 </div>
-                <p className="plugin-desc" style={{ margin: "0.5rem 0" }}>
-                  {plugin.description}
-                </p>
-                <div
-                  className="plugin-meta"
-                  style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}
-                >
-                  by {plugin.author.split("<")[0].trim()} &middot;{" "}
+                <p className="plugin-desc">{plugin.description}</p>
+                <div className="plugin-meta">
+                  by{" "}
+                  {plugin.author.includes("<") ? (
+                    <a
+                      href={plugin.author.match(/<(.*)>/)?.[1]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {plugin.author.split("<")[0].trim()}
+                    </a>
+                  ) : (
+                    plugin.author
+                  )}{" "}
+                  &middot;{" "}
                   <span className="plugin-platforms">
-                    Supports v{plugin.min_tabularis_version}+
+                    Supports Tabularis v{plugin.min_tabularis_version}+
                   </span>
                 </div>
               </div>
@@ -456,15 +462,9 @@ export default function HomePage() {
                 href={plugin.homepage}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-download"
-                style={{
-                  width: "auto",
-                  padding: "0.5rem 1rem",
-                  fontSize: "0.85rem",
-                  marginTop: "1rem",
-                }}
+                className="btn-plugin"
               >
-                View &rarr;
+                Repo &rarr;
               </a>
             </div>
           ))}
