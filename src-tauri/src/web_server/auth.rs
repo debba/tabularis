@@ -52,8 +52,10 @@ pub async fn auth_middleware(
         return Ok(next.run(req).await);
     };
 
-    // Allow the login endpoint without auth
-    if req.uri().path() == "/api/auth" {
+    // Static files are always served without auth
+    // The login endpoint is also public
+    let path = req.uri().path();
+    if !path.starts_with("/api/") || path == "/api/auth" {
         return Ok(next.run(req).await);
     }
 

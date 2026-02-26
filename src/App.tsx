@@ -10,6 +10,10 @@ import { SchemaDiagramPage } from "./pages/SchemaDiagramPage";
 import { UpdateNotificationModal } from "./components/modals/UpdateNotificationModal";
 import { CommunityModal } from "./components/modals/CommunityModal";
 import { useUpdate } from "./hooks/useUpdate";
+import { LoginPage } from "./components/LoginPage";
+
+const isTauri = (): boolean =>
+  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 const COMMUNITY_MODAL_KEY = "tabularis_community_modal_dismissed";
 
@@ -26,6 +30,9 @@ function App() {
   const [isCommunityModalOpen, setIsCommunityModalOpen] = useState(
     () => !localStorage.getItem(COMMUNITY_MODAL_KEY),
   );
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => isTauri() || !!localStorage.getItem("rc_token"),
+  );
 
   const dismissCommunityModal = useCallback(() => {
     localStorage.setItem(COMMUNITY_MODAL_KEY, "1");
@@ -33,10 +40,11 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     invoke<boolean>("is_debug_mode").then((debugMode) => {
       setIsDebugMode(debugMode);
     });
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isDebugMode) return;
@@ -51,6 +59,10 @@ function App() {
       document.removeEventListener("contextmenu", handleContextMenu);
     };
   }, [isDebugMode]);
+
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <>

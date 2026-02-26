@@ -30,3 +30,4 @@ devdiary
 docs
 coverage
 plugins/**/target
+.gitnexus

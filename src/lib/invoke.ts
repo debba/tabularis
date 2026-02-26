@@ -23,6 +23,13 @@ export async function invoke<T>(
 
   if (!res.ok) {
     const text = await res.text();
+    if (res.status === 401) {
+      const hadToken = !!localStorage.getItem('rc_token');
+      localStorage.removeItem('rc_token');
+      if (hadToken) {
+        window.location.reload();
+      }
+    }
     throw new Error(text);
   }
   return res.json() as Promise<T>;
