@@ -39,6 +39,8 @@ import { AVAILABLE_FONTS, ROADMAP } from "../utils/settings";
 import { getProviderLabel } from "../utils/settingsUI";
 import { useDrivers } from "../hooks/useDrivers";
 import { usePluginRegistry } from "../hooks/usePluginRegistry";
+import { useDatabase } from "../hooks/useDatabase";
+import { findConnectionsForDrivers } from "../utils/connectionManager";
 import type { PluginManifest } from "../types/plugins";
 import { SearchableSelect } from "../components/ui/SearchableSelect";
 import { useUpdate } from "../hooks/useUpdate";
@@ -431,6 +433,7 @@ export const Settings = () => {
   const [keyInput, setKeyInput] = useState("");
   const { allDrivers, refresh: refreshDrivers } = useDrivers();
   const { plugins: registryPlugins, loading: registryLoading, error: registryError, refresh: refreshRegistry } = usePluginRegistry();
+  const { openConnectionIds, connectionDataMap, disconnect } = useDatabase();
   const [installingPluginId, setInstallingPluginId] = useState<string | null>(null);
   const [selectedVersions, setSelectedVersions] = useState<Record<string, string>>({});
   const [uninstallingPluginId, setUninstallingPluginId] = useState<string | null>(null);
@@ -1512,6 +1515,14 @@ export const Settings = () => {
                                 if (!confirmed) return;
                                 setUninstallingPluginId(driver.id);
                                 try {
+                                  // Disconnect open connections using this driver before uninstalling
+                                  const toDisconnect = findConnectionsForDrivers(
+                                    openConnectionIds,
+                                    connectionDataMap,
+                                    [driver.id],
+                                  );
+                                  await Promise.all(toDisconnect.map(id => disconnect(id)));
+
                                   await invoke("uninstall_plugin", { pluginId: driver.id });
                                   refreshDrivers();
                                   refreshRegistry();
@@ -1533,12 +1544,18 @@ export const Settings = () => {
                             </button>
                           )}
                           <button
-                            onClick={() => {
+                            onClick={async () => {
                               if (isBuiltin) return;
-                              if (isEnabled) {
-                                updateSetting("activeExternalDrivers", activeExt.filter(id => id !== driver.id));
-                              } else {
-                                updateSetting("activeExternalDrivers", [...activeExt, driver.id]);
+                              try {
+                                if (isEnabled) {
+                                  await invoke("disable_plugin", { pluginId: driver.id });
+                                  updateSetting("activeExternalDrivers", activeExt.filter(id => id !== driver.id));
+                                } else {
+                                  await invoke("enable_plugin", { pluginId: driver.id });
+                                  updateSetting("activeExternalDrivers", [...activeExt, driver.id]);
+                                }
+                              } catch (err) {
+                                await message(String(err), { title: t("common.error"), kind: "error" });
                               }
                             }}
                             disabled={isBuiltin}

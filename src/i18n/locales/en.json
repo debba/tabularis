@@ -129,7 +129,8 @@
     "failDisconnect": "Failed to disconnect from database",
     "failDuplicate": "Failed to duplicate connection",
     "connecting": "Connecting...",
-    "open": "Open"
+    "open": "Open",
+    "pluginDisabled": "Plugin disabled"
   },
   "settings": {
     "title": "Settings",

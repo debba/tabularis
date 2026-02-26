@@ -19,11 +19,13 @@ use crate::plugins::rpc::{JsonRpcRequest, JsonRpcResponse};
 struct PluginProcess {
     sender: mpsc::Sender<(JsonRpcRequest, oneshot::Sender<Result<Value, String>>)>,
     next_id: AtomicU64,
+    shutdown_tx: tokio::sync::Mutex<Option<oneshot::Sender<()>>>,
 }
 
 impl PluginProcess {
     fn new(executable_path: PathBuf) -> Self {
         let (tx, mut rx) = mpsc::channel::<(JsonRpcRequest, oneshot::Sender<Result<Value, String>>)>(100);
+        let (shutdown_tx, mut shutdown_rx) = oneshot::channel::<()>();
 
         tokio::spawn(async move {
             let mut child = Command::new(&executable_path)
@@ -42,17 +44,32 @@ impl PluginProcess {
 
             loop {
                 tokio::select! {
-                    Some((req, resp_tx)) = rx.recv() => {
-                        let id = req.id;
-                        pending_requests.insert(id, resp_tx);
+                    _ = &mut shutdown_rx => {
+                        log::info!("Plugin process shutdown requested, terminating child");
+                        let _ = child.kill().await;
+                        break;
+                    }
+                    msg = rx.recv() => {
+                        match msg {
+                            Some((req, resp_tx)) => {
+                                let id = req.id;
+                                pending_requests.insert(id, resp_tx);
 
-                        let mut req_str = serde_json::to_string(&req).unwrap();
-                        req_str.push('\n');
+                                let mut req_str = serde_json::to_string(&req).unwrap();
+                                req_str.push('\n');
 
-                        if let Err(e) = stdin.write_all(req_str.as_bytes()).await {
-                            log::error!("Failed to write to plugin stdin: {}", e);
-                            if let Some(tx) = pending_requests.remove(&id) {
-                                let _ = tx.send(Err(format!("Plugin communication error: {}", e)));
+                                if let Err(e) = stdin.write_all(req_str.as_bytes()).await {
+                                    log::error!("Failed to write to plugin stdin: {}", e);
+                                    if let Some(tx) = pending_requests.remove(&id) {
+                                        let _ = tx.send(Err(format!("Plugin communication error: {}", e)));
+                                    }
+                                }
+                            }
+                            None => {
+                                // Channel closed without explicit shutdown — kill the process anyway.
+                                log::warn!("Plugin process channel closed without shutdown signal, terminating child");
+                                let _ = child.kill().await;
+                                break;
                             }
                         }
                     }
@@ -93,6 +110,14 @@ impl PluginProcess {
         Self {
             sender: tx,
             next_id: AtomicU64::new(1),
+            shutdown_tx: tokio::sync::Mutex::new(Some(shutdown_tx)),
+        }
+    }
+
+    async fn shutdown(&self) {
+        let mut guard = self.shutdown_tx.lock().await;
+        if let Some(tx) = guard.take() {
+            let _ = tx.send(());
         }
     }
 
@@ -132,6 +157,10 @@ impl RpcDriver {
 impl DatabaseDriver for RpcDriver {
     fn manifest(&self) -> &PluginManifest {
         &self.manifest
+    }
+
+    async fn shutdown(&self) {
+        self.process.shutdown().await;
     }
 
     fn get_data_types(&self) -> Vec<DataTypeInfo> {

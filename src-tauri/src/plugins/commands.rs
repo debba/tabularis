@@ -114,3 +114,23 @@ pub async fn uninstall_plugin(plugin_id: String) -> Result<(), String> {
 pub async fn get_installed_plugins() -> Result<Vec<InstalledPluginInfo>, String> {
     installer::list_installed()
 }
+
+/// Stops the plugin process and removes the driver from the registry.
+/// The plugin files remain on disk and can be re-enabled with `enable_plugin`.
+#[tauri::command]
+pub async fn disable_plugin(plugin_id: String) -> Result<(), String> {
+    crate::drivers::registry::unregister_driver(&plugin_id).await;
+    Ok(())
+}
+
+/// Loads the plugin from disk and registers its driver, starting the plugin process.
+#[tauri::command]
+pub async fn enable_plugin(plugin_id: String) -> Result<(), String> {
+    let plugins_dir = installer::get_plugins_dir()?;
+    let plugin_dir = plugins_dir.join(&plugin_id);
+    if !plugin_dir.exists() {
+        return Err(format!("Plugin '{}' is not installed", plugin_id));
+    }
+    crate::plugins::manager::load_plugin_from_dir(&plugin_dir).await;
+    Ok(())
+}

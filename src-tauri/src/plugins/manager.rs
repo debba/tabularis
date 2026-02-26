@@ -22,14 +22,19 @@ struct ConfigManifest {
     pub default_username: Option<String>,
 }
 
-pub async fn load_plugins() {
+/// Load installed plugins at startup.
+///
+/// `enabled_ids` controls which plugins are started:
+/// - `None`  → load all installed plugins (first-run or no preference saved).
+/// - `Some(ids)` → load only the plugins whose directory name (= plugin ID) is in `ids`.
+pub async fn load_plugins(enabled_ids: Option<&[String]>) {
     let proj_dirs = match ProjectDirs::from("com", "debba", "tabularis") {
         Some(d) => d,
         None => return,
     };
 
     let plugins_dir = proj_dirs.data_dir().join("plugins");
-    
+
     if !plugins_dir.exists() {
         if let Err(e) = fs::create_dir_all(&plugins_dir) {
             log::error!("Failed to create plugins directory: {}", e);
@@ -47,9 +52,20 @@ pub async fn load_plugins() {
 
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.is_dir() {
-            load_plugin_from_dir(&path).await;
+        if !path.is_dir() {
+            continue;
         }
+
+        if let Some(enabled) = enabled_ids {
+            if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                if !enabled.iter().any(|id| id == dir_name) {
+                    log::info!("Skipping disabled plugin: {}", dir_name);
+                    continue;
+                }
+            }
+        }
+
+        load_plugin_from_dir(&path).await;
     }
 }
 

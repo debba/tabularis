@@ -129,7 +129,8 @@
     "failDisconnect": "Impossibile disconnettersi dal database",
     "failDuplicate": "Impossibile duplicare la connessione",
     "connecting": "Connessione in corso...",
-    "open": "Aperta"
+    "open": "Aperta",
+    "pluginDisabled": "Plugin disabilitato"
   },
   "settings": {
     "title": "Impostazioni",

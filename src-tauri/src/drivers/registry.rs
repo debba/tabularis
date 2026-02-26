@@ -27,14 +27,20 @@ pub async fn get_driver(id: &str) -> Option<Arc<dyn DatabaseDriver>> {
     reg.get(id).cloned()
 }
 
-/// Unregister a driver by its id. Returns `true` if a driver was removed.
+/// Unregister a driver by its id. Shuts down its background process (if any)
+/// and returns `true` if a driver was removed.
 pub async fn unregister_driver(id: &str) -> bool {
-    let mut reg = REGISTRY.write().await;
-    let removed = reg.remove(id).is_some();
-    if removed {
+    let driver = {
+        let mut reg = REGISTRY.write().await;
+        reg.remove(id)
+    };
+    if let Some(d) = driver {
+        d.shutdown().await;
         log::info!("Unregistered driver: {}", id);
+        true
+    } else {
+        false
     }
-    removed
 }
 
 /// Returns the manifests of all registered drivers, sorted by id.

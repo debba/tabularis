@@ -140,14 +140,19 @@ pub fn run() {
         .manage(dump_commands::DumpCancellationState::default())
         .manage(log_buffer)
         .setup(move |app| {
+            // Read persisted config to know which external plugins are enabled.
+            // `None` means no preference has been saved yet → load all installed plugins.
+            let active_ext_drivers = crate::config::load_config_internal(&app.handle())
+                .active_external_drivers;
+
             // Register built-in drivers
             tauri::async_runtime::block_on(async {
                 drivers::registry::register_driver(drivers::mysql::MysqlDriver::new()).await;
                 drivers::registry::register_driver(drivers::postgres::PostgresDriver::new()).await;
                 drivers::registry::register_driver(drivers::sqlite::SqliteDriver::new()).await;
 
-                // Load external plugins
-                crate::plugins::manager::load_plugins().await;
+                // Load only enabled external plugins (or all if no preference saved).
+                crate::plugins::manager::load_plugins(active_ext_drivers.as_deref()).await;
             });
 
             // Open devtools automatically in debug mode
@@ -284,6 +289,8 @@ pub fn run() {
             plugins::commands::install_plugin,
             plugins::commands::uninstall_plugin,
             plugins::commands::get_installed_plugins,
+            plugins::commands::disable_plugin,
+            plugins::commands::enable_plugin,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

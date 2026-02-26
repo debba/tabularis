@@ -129,7 +129,8 @@
     "failDisconnect": "No se pudo desconectar de la base de datos",
     "failDuplicate": "Error al duplicar la conexión",
     "connecting": "Conectando...",
-    "open": "Abierta"
+    "open": "Abierta",
+    "pluginDisabled": "Plugin desactivado"
   },
   "settings": {
     "title": "Configuración",
