@@ -19,14 +19,21 @@ pub struct RegistryPlugin {
     pub author: String,
     pub homepage: String,
     pub latest_version: String,
-    pub min_tabularis_version: String,
     pub releases: Vec<PluginRelease>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PluginRelease {
     pub version: String,
+    pub min_tabularis_version: Option<String>,
     pub assets: HashMap<String, String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct RegistryReleaseWithStatus {
+    pub version: String,
+    pub min_tabularis_version: Option<String>,
+    pub platform_supported: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -37,7 +44,7 @@ pub struct RegistryPluginWithStatus {
     pub author: String,
     pub homepage: String,
     pub latest_version: String,
-    pub min_tabularis_version: String,
+    pub releases: Vec<RegistryReleaseWithStatus>,
     pub installed_version: Option<String>,
     pub update_available: bool,
     pub platform_supported: bool,
