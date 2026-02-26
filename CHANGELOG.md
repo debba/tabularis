@@ -1,3 +1,39 @@
+## [0.9.2](https://github.com/debba/tabularis/compare/v0.9.1...v0.9.2) (2026-02-26)
+
+
+### Features
+
+* **drivers:** add driver capability metadata and helper utilities ([3b0a2a3](https://github.com/debba/tabularis/commit/3b0a2a3ff8b68b4ffa9073bd4b512ea4c632a63f))
+* **drivers:** add is_builtin and default_username to plugin manifests ([60ac211](https://github.com/debba/tabularis/commit/60ac211bf494ab52e46ae8383c3dbfc3469dfc74))
+* **lightbox:** add mobile slider, touch and keyboard navigation ([ab00d29](https://github.com/debba/tabularis/commit/ab00d29c66a37f613385a4740d5a5735b3d76768))
+* **plugin:** add enable/disable functionality with proper shutdown ([6a4272a](https://github.com/debba/tabularis/commit/6a4272a84fa53d4510ad6b61e6f1aed0a88fbd23))
+* **plugins:** add custom registry URL support ([7f17e46](https://github.com/debba/tabularis/commit/7f17e46986e121f0dabdfba9b06c0356c70e8ae6))
+* **plugins:** manage disabled external plugins ([99968d8](https://github.com/debba/tabularis/commit/99968d8c58d7404195613f5aada4b7d83aa66e06))
+* **query:** use LIMIT+1 for pagination and add count query ([7473e63](https://github.com/debba/tabularis/commit/7473e6338a1f563c4549745b5a5f2e08726a98bf))
+* **registry:** add plugin releases metadata and GitNexus skills ([49e5480](https://github.com/debba/tabularis/commit/49e54803aad975cc14025a2e398231ea64d63a19))
+* **task-manager:** add child process details to task manager ([a24b2cb](https://github.com/debba/tabularis/commit/a24b2cb4bc212ac779146bd534c2b44aaccfe509))
+* **task-manager:** add process monitoring and management system ([c899ee5](https://github.com/debba/tabularis/commit/c899ee517c4da26466ee6981115a9f94f8a0f87f))
+* **task-manager:** optimize child process loading ([4d8e8bc](https://github.com/debba/tabularis/commit/4d8e8bc90b5dcf6109c59ee141e7db5baedba34f))
+* **ui:** add Task Manager feature article and gallery item ([c9f2fd4](https://github.com/debba/tabularis/commit/c9f2fd4833fb84b2c400c790b06b2131390ade38))
+* **website:** add homepage intro and update global styles ([a024a74](https://github.com/debba/tabularis/commit/a024a74fb730e68555cd5342e52cb401c5b82a9f))
+* **website:** include min_tabularis_version in plugin display ([17f0aab](https://github.com/debba/tabularis/commit/17f0aab3eae5d510e50aa23ae29acda56f157cbc))
+* **website:** make plugin author link clickable and tidy layout ([83ed834](https://github.com/debba/tabularis/commit/83ed83495ae0ca79db432312d9e75f2b0ff07a5b))
+
+
+### Performance Improvements
+
+* **postgres:** run count query concurrently for paginated selects ([f96152c](https://github.com/debba/tabularis/commit/f96152c1edc29d3839d40db4b491135c006dc6cf))
+
+
+### BREAKING CHANGES
+
+* **task-manager:** removes children field from TabularisSelfStats, now
+fetched on-demand
+* **query:** Pagination.total_rows is now Option<u64> and has_more
+added
+
+
+
 ## [0.9.1](https://github.com/debba/tabularis/compare/v0.9.0...v0.9.1) (2026-02-25)
 
 
