@@ -27,7 +27,7 @@ import {
   FileDigit,
   ExternalLink,
 } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../../lib/invoke";
 import { message } from "@tauri-apps/plugin-dialog";
 import {
   USE_DEFAULT_SENTINEL,

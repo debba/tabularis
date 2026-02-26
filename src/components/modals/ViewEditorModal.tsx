@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { X, Loader2, Eye, AlertCircle, Play } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../../lib/invoke";
 import { message, ask } from "@tauri-apps/plugin-dialog";
 import { SqlEditorWrapper } from "../ui/SqlEditorWrapper";
 import { useDatabase } from "../../hooks/useDatabase";

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Loader2, BookOpen } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../../lib/invoke";
 import { useSettings } from "../../hooks/useSettings";
 import { useTheme } from "../../hooks/useTheme";
 import MonacoEditor from "@monaco-editor/react";

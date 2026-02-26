@@ -3,7 +3,7 @@
  * Extracted for testability and reusability
  */
 
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../lib/invoke";
 
 export interface SshConnection {
   id: string;

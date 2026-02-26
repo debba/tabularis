@@ -46,6 +46,10 @@ directories = "6.0.0"
 serde_yaml = "0.9.34"
 zip = "4.2.0"
 tauri-plugin-clipboard-manager = "2"
+axum = { version = "0.8", features = ["ws"] }
+tower-http = { version = "0.6", features = ["cors"] }
+include_dir = "0.7"
+mime_guess = "2"
 
 # GTK dependencies for Wayland window title workaround (Linux only)
 [target.'cfg(target_os = "linux")'.dependencies]

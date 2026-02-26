@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../lib/invoke";
 import { useCallback, useEffect, useState } from "react";
 
 import type { RegistryPluginWithStatus } from "../types/plugins";

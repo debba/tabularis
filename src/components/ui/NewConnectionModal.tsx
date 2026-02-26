@@ -10,7 +10,7 @@ import {
   XCircle,
   FolderOpen,
 } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../../lib/invoke";
 import { open } from "@tauri-apps/plugin-dialog";
 import clsx from "clsx";
 import { SshConnectionsModal } from "../modals/SshConnectionsModal";

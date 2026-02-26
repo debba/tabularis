@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../../lib/invoke";
 import { useTranslation } from "react-i18next";
 import { X, Check, Copy, Cpu } from "lucide-react";
 import { message } from "@tauri-apps/plugin-dialog";

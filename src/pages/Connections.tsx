@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { NewConnectionModal } from '../components/ui/NewConnectionModal';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../lib/invoke';
 import { ask } from '@tauri-apps/plugin-dialog';
 import { Database, Plus, Power, Edit, Trash2, Shield, AlertCircle, Copy, Loader2 } from 'lucide-react';
 import { useDatabase } from '../hooks/useDatabase';

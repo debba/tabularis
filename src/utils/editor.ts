@@ -5,7 +5,7 @@ import type {
   EditorPreferences,
 } from "../types/editor";
 import { quoteTableRef } from "./identifiers";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../lib/invoke";
 import { cleanTabForStorage, restoreTabFromStorage } from "./tabCleaner";
 import {
   filterTabsByConnection,

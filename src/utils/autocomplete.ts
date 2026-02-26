@@ -1,5 +1,5 @@
 import type { Monaco } from "@monaco-editor/react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../lib/invoke";
 import type { TableInfo } from "../contexts/DatabaseContext";
 import { getCurrentStatement, parseTablesFromQuery } from "./sqlAnalysis";
 

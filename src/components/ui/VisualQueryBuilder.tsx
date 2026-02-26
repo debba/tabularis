@@ -17,7 +17,7 @@ import '@xyflow/react/dist/style.css';
 import { TableNodeComponent, type TableNodeData, type ColumnAggregation } from './TableNode';
 import { JoinEdge } from './JoinEdge';
 import { useDatabase } from '../../hooks/useDatabase';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../../lib/invoke';
 import { useEditor } from '../../hooks/useEditor';
 import { Filter, SortAsc, Group, Hash, X, Plus } from 'lucide-react';
 import { generateVisualQuerySQL, type WhereCondition, type OrderByClause } from '../../utils/visualQuery';

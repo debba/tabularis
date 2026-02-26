@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Plus, Trash2, Save, Code, Loader2 } from 'lucide-react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../../lib/invoke';
 import { useDatabase } from '../../hooks/useDatabase';
 import { SqlPreview } from '../ui/SqlPreview';
 import { useDataTypes } from '../../hooks/useDataTypes';

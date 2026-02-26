@@ -269,6 +269,24 @@
       "remove": "Rimuovi",
       "removeTitle": "Rimuovi Plugin",
       "confirmRemove": "Sei sicuro di voler rimuovere \"{{name}}\"? I file del plugin verranno eliminati."
+    },
+    "remoteControl": {
+      "title": "Controllo Remoto",
+      "description": "Accedi a Tabularis da qualsiasi browser nella tua rete locale",
+      "enable": "Abilita Server di Controllo Remoto",
+      "port": "Porta",
+      "password": "Password (opzionale)",
+      "passwordPlaceholder": "Lascia vuoto per nessuna autenticazione",
+      "status": {
+        "running": "Attivo",
+        "stopped": "Inattivo"
+      },
+      "url": "URL del Server",
+      "copyUrl": "Copia URL",
+      "warning": "Chiunque nella tua rete locale può accedere ai tuoi database",
+      "startServer": "Avvia Server",
+      "stopServer": "Ferma Server",
+      "saveAndRestart": "Salva e Riavvia"
     }
   },
   "update": {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { X, Loader2, Plus } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../../lib/invoke";
 import { useDatabase } from "../../hooks/useDatabase";
 import { quoteTableRef } from "../../utils/identifiers";
 import { isGeometricType } from "../../utils/geometry";

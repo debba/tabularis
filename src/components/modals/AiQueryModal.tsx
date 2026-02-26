@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { X, Sparkles, Loader2 } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../../lib/invoke";
 import { useDatabase } from "../../hooks/useDatabase";
 import { useSettings } from "../../hooks/useSettings";
 

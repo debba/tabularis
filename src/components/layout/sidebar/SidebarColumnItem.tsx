@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../../../lib/invoke";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { Key, Columns, Edit, Copy, Trash2 } from "lucide-react";
 import clsx from "clsx";

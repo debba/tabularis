@@ -20,6 +20,7 @@ pub mod theme_commands;
 pub mod theme_models;
 pub mod updater;
 pub mod plugins;
+pub mod web_server;
 pub mod drivers {
     pub mod common;
     pub mod driver_trait;
@@ -33,6 +34,7 @@ use clap::Parser;
 use logger::{create_log_buffer, init_logger, SharedLogBuffer};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Manager;
+use web_server::{RemoteControlConfig, RemoteControlStatus, ServerHandle};
 
 static DEBUG_MODE: AtomicBool = AtomicBool::new(false);
 
@@ -61,6 +63,38 @@ fn open_devtools(window: tauri::WebviewWindow) {
 fn close_devtools(window: tauri::WebviewWindow) {
     window.close_devtools();
     log::info!("DevTools closed");
+}
+
+#[tauri::command]
+async fn start_remote_control(
+    app: tauri::AppHandle,
+    port: u16,
+    password: Option<String>,
+) -> Result<u16, String> {
+    let token_hash = password.as_deref().map(web_server::auth::sha256_hex);
+    let config = RemoteControlConfig {
+        enabled: true,
+        port,
+        token_hash,
+    };
+    web_server::start_and_register(app, config).await
+}
+
+#[tauri::command]
+async fn stop_remote_control(app: tauri::AppHandle) -> Result<(), String> {
+    let handle = app.state::<ServerHandle>();
+    web_server::stop(&handle);
+    log::info!("Remote Control server stopped");
+    Ok(())
+}
+
+#[tauri::command]
+fn get_remote_control_status(app: tauri::AppHandle) -> RemoteControlStatus {
+    let handle = app.state::<ServerHandle>();
+    let running = handle.is_running();
+    let port = handle.port();
+    let url = port.map(|p| format!("http://{}:{}", web_server::get_local_ip(), p));
+    RemoteControlStatus { running, port, url }
 }
 
 #[derive(Parser, Debug)]
@@ -127,9 +161,11 @@ pub fn run() {
         .manage(commands::QueryCancellationState::default())
         .manage(export::ExportCancellationState::default())
         .manage(dump_commands::DumpCancellationState::default())
+        .manage(ServerHandle::default())
         .manage(log_buffer)
         .setup(move |app| {
             // Register built-in drivers
+            let app_handle = app.handle().clone();
             tauri::async_runtime::block_on(async {
                 drivers::registry::register_driver(drivers::mysql::MysqlDriver::new()).await;
                 drivers::registry::register_driver(drivers::postgres::PostgresDriver::new()).await;
@@ -137,6 +173,17 @@ pub fn run() {
 
                 // Load external plugins
                 crate::plugins::manager::load_plugins().await;
+
+                // Auto-start Remote Control server if enabled in config
+                let app_config = config::load_config_internal(&app_handle);
+                if let Some(rc_config) = app_config.remote_control {
+                    if rc_config.enabled {
+                        match web_server::start_and_register(app_handle.clone(), rc_config).await {
+                            Ok(port) => log::info!("Remote Control auto-started on port {}", port),
+                            Err(e) => log::error!("Failed to auto-start Remote Control: {}", e),
+                        }
+                    }
+                }
             });
 
             // Open devtools automatically in debug mode
@@ -272,6 +319,10 @@ pub fn run() {
             plugins::commands::install_plugin,
             plugins::commands::uninstall_plugin,
             plugins::commands::get_installed_plugins,
+            // Remote Control
+            start_remote_control,
+            stop_remote_control,
+            get_remote_control_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../lib/invoke";
 import { listen } from "@tauri-apps/api/event";
 import { UpdateContext, type UpdateCheckResult } from "./UpdateContext";
 

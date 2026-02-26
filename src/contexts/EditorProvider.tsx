@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { Tab, SchemaCache, TableSchema } from "../types/editor";
 import { EditorContext } from "./EditorContext";
 import { useDatabase } from "../hooks/useDatabase";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../lib/invoke";
 import {
   generateTabId,
   loadTabsFromStorage,

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../lib/invoke";
 import {
   Github,
   CheckCircle2,
@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
+  Wifi,
 } from "lucide-react";
 import clsx from "clsx";
 import { useSettings } from "../hooks/useSettings";
@@ -42,6 +43,7 @@ import { usePluginRegistry } from "../hooks/usePluginRegistry";
 import type { PluginManifest } from "../types/plugins";
 import { SearchableSelect } from "../components/ui/SearchableSelect";
 import { useUpdate } from "../hooks/useUpdate";
+import { RemoteControlTab } from "../components/settings/RemoteControlTab";
 
 interface AiKeyStatus {
   configured: boolean;
@@ -423,7 +425,7 @@ export const Settings = () => {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const { checkForUpdates, isChecking, updateInfo, error: updateError, isUpToDate, installationSource } = useUpdate();
-  const [activeTab, setActiveTab] = useState<"general" | "appearance" | "localization" | "ai" | "logs" | "info" | "plugins">(
+  const [activeTab, setActiveTab] = useState<"general" | "appearance" | "localization" | "ai" | "logs" | "info" | "plugins" | "remote_control">(
     "general",
   );
   const [aiKeyStatus, setAiKeyStatus] = useState<Record<string, AiKeyStatus>>({});
@@ -664,6 +666,18 @@ export const Settings = () => {
         >
           <Database size={16} />
           {t("settings.plugins.title")}
+        </button>
+        <button
+          onClick={() => setActiveTab("remote_control")}
+          className={clsx(
+            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
+            activeTab === "remote_control"
+              ? "bg-surface-secondary text-primary"
+              : "text-muted hover:text-primary hover:bg-surface-secondary/50",
+          )}
+        >
+          <Wifi size={16} />
+          {t("settings.remoteControl.title")}
         </button>
         <button
           onClick={() => setActiveTab("info")}
@@ -1537,6 +1551,9 @@ export const Settings = () => {
             </div>
           </div>
         )}
+
+        {/* Remote Control Tab */}
+        {activeTab === "remote_control" && <RemoteControlTab />}
 
         {activeTab === "info" && (
             <div className="space-y-8">

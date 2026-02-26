@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../lib/invoke';
 import { useDatabase } from '../hooks/useDatabase';
 import { SavedQueriesContext, type SavedQuery } from './SavedQueriesContext';
 

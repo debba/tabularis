@@ -30,6 +30,7 @@ pub struct AppConfig {
     pub selected_schemas: Option<HashMap<String, Vec<String>>>,
     pub max_blob_size: Option<u64>,
     pub active_external_drivers: Option<Vec<String>>,
+    pub remote_control: Option<crate::web_server::RemoteControlConfig>,
 }
 
 pub fn get_config_dir<R: tauri::Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
@@ -127,6 +128,9 @@ pub fn save_config(app: AppHandle, config: AppConfig) -> Result<(), String> {
         }
         if config.active_external_drivers.is_some() {
             existing_config.active_external_drivers = config.active_external_drivers;
+        }
+        if config.remote_control.is_some() {
+            existing_config.remote_control = config.remote_control;
         }
 
         let content = serde_json::to_string_pretty(&existing_config).map_err(|e| e.to_string())?;

@@ -269,6 +269,24 @@
       "remove": "Remove",
       "removeTitle": "Remove Plugin",
       "confirmRemove": "Are you sure you want to remove \"{{name}}\"? This will delete the plugin files."
+    },
+    "remoteControl": {
+      "title": "Remote Control",
+      "description": "Access Tabularis from any browser on your local network",
+      "enable": "Enable Remote Control Server",
+      "port": "Port",
+      "password": "Password (optional)",
+      "passwordPlaceholder": "Leave empty for no authentication",
+      "status": {
+        "running": "Running",
+        "stopped": "Stopped"
+      },
+      "url": "Server URL",
+      "copyUrl": "Copy URL",
+      "warning": "Anyone on your local network can access your databases",
+      "startServer": "Start Server",
+      "stopServer": "Stop Server",
+      "saveAndRestart": "Save & Restart"
     }
   },
   "update": {
