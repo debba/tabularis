@@ -756,3 +756,7 @@ To make your plugin available in the official registry:
 4. Open a pull request to this repository adding your plugin entry to `plugins/registry.json`.
 
 See [README.md](./README.md) for the full `registry.json` format.
+
+> **Note:** `min_tabularis_version` is specified per-release inside the `releases[]` array,
+> not at the root plugin level. This allows older Tabularis installs to install an older
+> compatible release even when a newer release requires a higher app version.

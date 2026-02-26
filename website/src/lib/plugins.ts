@@ -3,6 +3,7 @@ import path from "path";
 
 export interface PluginRelease {
   version: string;
+  min_tabularis_version: string | null;
   assets: Record<string, string>;
 }
 
@@ -13,7 +14,6 @@ export interface Plugin {
   author: string;
   homepage: string;
   latest_version: string;
-  min_tabularis_version: string;
   releases: PluginRelease[];
 }
 
@@ -23,10 +23,8 @@ export interface PluginRegistry {
 }
 
 export function getPluginRegistry(): PluginRegistry {
-  // In Next.js App Router, process.cwd() is the root of the project during build if started from there,
-  // but we should be careful. Usually it's the 'website' directory.
   const registryPath = path.join(process.cwd(), "..", "plugins", "registry.json");
-  
+
   if (!fs.existsSync(registryPath)) {
     console.warn(`Plugin registry not found at ${registryPath}`);
     return { schema_version: 1, plugins: [] };
@@ -43,4 +41,8 @@ export function getPluginRegistry(): PluginRegistry {
 
 export function getAllPlugins(): Plugin[] {
   return getPluginRegistry().plugins;
+}
+
+export function getLatestRelease(plugin: Plugin): PluginRelease | undefined {
+  return plugin.releases.find((r) => r.version === plugin.latest_version);
 }

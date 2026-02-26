@@ -57,16 +57,26 @@ The registry file is fetched from this repository by the app to display availabl
       "description": "DuckDB local analytical database",
       "author": "Author Name <https://github.com/author>",
       "homepage": "https://github.com/author/repo",
-      "latest_version": "1.0.0",
-      "min_tabularis_version": "0.8.15",
+      "latest_version": "1.1.0",
       "releases": [
         {
           "version": "1.0.0",
+          "min_tabularis_version": "0.8.15",
           "assets": {
-            "linux-x64": "https://example.com/plugin-linux-x64.zip",
-            "darwin-arm64": "https://example.com/plugin-darwin-arm64.zip",
-            "darwin-x64": "https://example.com/plugin-darwin-x64.zip",
-            "win-x64": "https://example.com/plugin-win-x64.zip"
+            "linux-x64": "https://example.com/plugin-linux-x64-1.0.0.zip",
+            "darwin-arm64": "https://example.com/plugin-darwin-arm64-1.0.0.zip",
+            "darwin-x64": "https://example.com/plugin-darwin-x64-1.0.0.zip",
+            "win-x64": "https://example.com/plugin-win-x64-1.0.0.zip"
+          }
+        },
+        {
+          "version": "1.1.0",
+          "min_tabularis_version": "0.9.0",
+          "assets": {
+            "linux-x64": "https://example.com/plugin-linux-x64-1.1.0.zip",
+            "darwin-arm64": "https://example.com/plugin-darwin-arm64-1.1.0.zip",
+            "darwin-x64": "https://example.com/plugin-darwin-x64-1.1.0.zip",
+            "win-x64": "https://example.com/plugin-win-x64-1.1.0.zip"
           }
         }
       ]
@@ -85,8 +95,8 @@ The registry file is fetched from this repository by the app to display availabl
 | `author` | string | Author name and URL in the format `"Name <https://url>"` |
 | `homepage` | string | URL to the plugin repository or documentation |
 | `latest_version` | string | Latest released version (semver) |
-| `min_tabularis_version` | string | Minimum app version required to run this plugin |
 | `releases[].version` | string | Version string for this release |
+| `releases[].min_tabularis_version` | string | Minimum app version required for this specific release |
 | `releases[].assets` | object | Map of platform key → ZIP download URL |
 
 ### Platform Keys

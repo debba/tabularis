@@ -264,6 +264,8 @@
       "install": "Installa",
       "upToDate": "Aggiornato",
       "noPlugins": "Nessun plugin disponibile nel registro.",
+      "version": "Versione",
+      "requiresVersion": "Richiede Tabularis ≥ {{version}}",
       "installedPlugins": "Plugin Installati",
       "installedDesc": "Abilita o disabilita i driver database. I driver integrati non possono essere disabilitati.",
       "remove": "Rimuovi",

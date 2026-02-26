@@ -264,6 +264,8 @@
       "install": "Instalar",
       "upToDate": "Actualizado",
       "noPlugins": "No hay plugins disponibles en el registro.",
+      "version": "Versión",
+      "requiresVersion": "Requiere Tabularis ≥ {{version}}",
       "installedPlugins": "Plugins Instalados",
       "installedDesc": "Habilita o deshabilita los drivers de base de datos. Los drivers integrados no se pueden deshabilitar.",
       "remove": "Eliminar",

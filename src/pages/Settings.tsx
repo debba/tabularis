@@ -432,6 +432,7 @@ export const Settings = () => {
   const { allDrivers, refresh: refreshDrivers } = useDrivers();
   const { plugins: registryPlugins, loading: registryLoading, error: registryError, refresh: refreshRegistry } = usePluginRegistry();
   const [installingPluginId, setInstallingPluginId] = useState<string | null>(null);
+  const [selectedVersions, setSelectedVersions] = useState<Record<string, string>>({});
   const [uninstallingPluginId, setUninstallingPluginId] = useState<string | null>(null);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [explainPrompt, setExplainPrompt] = useState("");
@@ -1381,74 +1382,91 @@ export const Settings = () => {
 
               {!registryLoading && !registryError && (
                 <div className="space-y-3">
-                  {registryPlugins.map((plugin) => (
-                    <PluginCard
-                      key={plugin.id}
-                      name={plugin.name}
-                      description={plugin.description}
-                      version={plugin.latest_version}
-                      author={plugin.author}
-                      homepage={plugin.homepage}
-                      badges={plugin.installed_version ? (
-                        <span className="text-[10px] bg-green-900/30 text-green-400 px-1.5 py-0.5 rounded uppercase">{t("settings.plugins.installed")}</span>
-                      ) : undefined}
-                      actions={
-                        !plugin.platform_supported ? (
-                          <span className="text-xs text-muted italic">{t("settings.plugins.platformNotSupported")}</span>
-                        ) : plugin.update_available ? (
-                          <button
-                            onClick={async () => {
-                              setInstallingPluginId(plugin.id);
-                              try {
-                                await invoke("install_plugin", { pluginId: plugin.id });
-                                refreshRegistry();
-                                refreshDrivers();
-                              } catch (err) {
-                                await message(String(err), { title: t("common.error"), kind: "error" });
-                              } finally {
-                                setInstallingPluginId(null);
-                              }
-                            }}
-                            disabled={installingPluginId === plugin.id}
-                            className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-                          >
-                            {installingPluginId === plugin.id ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <RefreshCw size={12} />
-                            )}
-                            {t("settings.plugins.update")}
-                          </button>
-                        ) : !plugin.installed_version ? (
-                          <button
-                            onClick={async () => {
-                              setInstallingPluginId(plugin.id);
-                              try {
-                                await invoke("install_plugin", { pluginId: plugin.id });
-                                refreshRegistry();
-                                refreshDrivers();
-                              } catch (err) {
-                                await message(String(err), { title: t("common.error"), kind: "error" });
-                              } finally {
-                                setInstallingPluginId(null);
-                              }
-                            }}
-                            disabled={installingPluginId === plugin.id}
-                            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-                          >
-                            {installingPluginId === plugin.id ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <Download size={12} />
-                            )}
-                            {t("settings.plugins.install")}
-                          </button>
-                        ) : (
-                          <span className="text-xs text-green-400">{t("settings.plugins.upToDate")}</span>
-                        )
+                  {registryPlugins.map((plugin) => {
+                    const platformReleases = plugin.releases.filter((r) => r.platform_supported);
+                    const selectedVer = selectedVersions[plugin.id] ?? plugin.latest_version;
+                    const selectedRelease = plugin.releases.find((r) => r.version === selectedVer);
+                    const selectedPlatformSupported = selectedRelease?.platform_supported ?? false;
+                    const isSelectedInstalled = plugin.installed_version === selectedVer;
+                    const isLatestSelected = selectedVer === plugin.latest_version;
+
+                    const doInstall = async () => {
+                      setInstallingPluginId(plugin.id);
+                      try {
+                        await invoke("install_plugin", { pluginId: plugin.id, version: selectedVer });
+                        refreshRegistry();
+                        refreshDrivers();
+                      } catch (err) {
+                        await message(String(err), { title: t("common.error"), kind: "error" });
+                      } finally {
+                        setInstallingPluginId(null);
                       }
-                    />
-                  ))}
+                    };
+
+                    return (
+                      <PluginCard
+                        key={plugin.id}
+                        name={plugin.name}
+                        description={plugin.description}
+                        version={selectedVer}
+                        author={plugin.author}
+                        homepage={plugin.homepage}
+                        badges={plugin.installed_version ? (
+                          <span className="text-[10px] bg-green-900/30 text-green-400 px-1.5 py-0.5 rounded uppercase">{t("settings.plugins.installed")}</span>
+                        ) : undefined}
+                        actions={
+                          <div className="flex items-center gap-2">
+                            {platformReleases.length > 1 && (
+                              <select
+                                value={selectedVer}
+                                onChange={(e) =>
+                                  setSelectedVersions((prev) => ({ ...prev, [plugin.id]: e.target.value }))
+                                }
+                                className="text-xs bg-surface-secondary border border-surface-tertiary text-secondary rounded px-2 py-1 cursor-pointer"
+                              >
+                                {[...platformReleases].reverse().map((r) => (
+                                  <option key={r.version} value={r.version}>
+                                    v{r.version}{r.version === plugin.latest_version ? " (latest)" : ""}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                            {!selectedPlatformSupported ? (
+                              <span className="text-xs text-muted italic">{t("settings.plugins.platformNotSupported")}</span>
+                            ) : isSelectedInstalled ? (
+                              <span className="text-xs text-green-400">{t("settings.plugins.upToDate")}</span>
+                            ) : (
+                              <button
+                                onClick={doInstall}
+                                disabled={installingPluginId === plugin.id}
+                                className={`flex items-center gap-1.5 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                                  plugin.update_available && isLatestSelected
+                                    ? "bg-green-600 hover:bg-green-700"
+                                    : "bg-blue-600 hover:bg-blue-700"
+                                }`}
+                              >
+                                {installingPluginId === plugin.id ? (
+                                  <Loader2 size={12} className="animate-spin" />
+                                ) : plugin.update_available && isLatestSelected ? (
+                                  <RefreshCw size={12} />
+                                ) : (
+                                  <Download size={12} />
+                                )}
+                                {plugin.update_available && isLatestSelected
+                                  ? t("settings.plugins.update")
+                                  : t("settings.plugins.install")}
+                              </button>
+                            )}
+                            {selectedRelease?.min_tabularis_version && (
+                              <span className="text-[10px] text-muted italic">
+                                {t("settings.plugins.requiresVersion", { version: selectedRelease.min_tabularis_version })}
+                              </span>
+                            )}
+                          </div>
+                        }
+                      />
+                    );
+                  })}
                   {registryPlugins.length === 0 && (
                     <p className="text-sm text-muted py-4">{t("settings.plugins.noPlugins")}</p>
                   )}

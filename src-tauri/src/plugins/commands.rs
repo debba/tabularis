@@ -1,6 +1,6 @@
 use crate::plugins::installer::{self, InstalledPluginInfo};
 use crate::plugins::registry::{
-    self, RegistryPluginWithStatus,
+    self, RegistryPluginWithStatus, RegistryReleaseWithStatus,
 };
 
 #[tauri::command]
@@ -23,10 +23,23 @@ pub async fn fetch_plugin_registry() -> Result<Vec<RegistryPluginWithStatus>, St
                 .map(|iv| iv != &plugin.latest_version)
                 .unwrap_or(false);
 
-            let platform_supported = plugin
+            let releases: Vec<RegistryReleaseWithStatus> = plugin
                 .releases
                 .iter()
-                .any(|r| r.version == plugin.latest_version && (r.assets.contains_key(&platform) || r.assets.contains_key("universal")));
+                .map(|r| {
+                    let platform_supported =
+                        r.assets.contains_key(&platform) || r.assets.contains_key("universal");
+                    RegistryReleaseWithStatus {
+                        version: r.version.clone(),
+                        min_tabularis_version: r.min_tabularis_version.clone(),
+                        platform_supported,
+                    }
+                })
+                .collect();
+
+            let platform_supported = releases
+                .iter()
+                .any(|r| r.version == plugin.latest_version && r.platform_supported);
 
             RegistryPluginWithStatus {
                 id: plugin.id,
@@ -35,7 +48,7 @@ pub async fn fetch_plugin_registry() -> Result<Vec<RegistryPluginWithStatus>, St
                 author: plugin.author,
                 homepage: plugin.homepage,
                 latest_version: plugin.latest_version,
-                min_tabularis_version: plugin.min_tabularis_version,
+                releases,
                 installed_version,
                 update_available,
                 platform_supported,
@@ -47,7 +60,7 @@ pub async fn fetch_plugin_registry() -> Result<Vec<RegistryPluginWithStatus>, St
 }
 
 #[tauri::command]
-pub async fn install_plugin(plugin_id: String) -> Result<(), String> {
+pub async fn install_plugin(plugin_id: String, version: Option<String>) -> Result<(), String> {
     let remote = registry::fetch_registry().await?;
     let platform = registry::get_current_platform();
 
@@ -57,16 +70,13 @@ pub async fn install_plugin(plugin_id: String) -> Result<(), String> {
         .find(|p| p.id == plugin_id)
         .ok_or_else(|| format!("Plugin '{}' not found in registry", plugin_id))?;
 
+    let target_version = version.as_deref().unwrap_or(&plugin.latest_version);
+
     let release = plugin
         .releases
         .iter()
-        .find(|r| r.version == plugin.latest_version)
-        .ok_or_else(|| {
-            format!(
-                "No release found for version {}",
-                plugin.latest_version
-            )
-        })?;
+        .find(|r| r.version == target_version)
+        .ok_or_else(|| format!("No release found for version {}", target_version))?;
 
     let download_url = release
         .assets
