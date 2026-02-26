@@ -22,6 +22,8 @@ A lot has happened.
 
 ## The Numbers
 
+[![RepoStars](https://repostars.dev/api/embed?repo=debba%2Ftabularis&theme=dark)](https://repostars.dev/?repos=debba%2Ftabularis&theme=dark)
+
 ~**270 stars**. **5 contributors**. Around **1,000 downloads**. Around twenty issues opened by people who actually tried the product, pull requests reviewed, bugs squashed.
 
 For a one-month-old open source project, that's not nothing — that's a community. And communities don't happen by accident. They happen because people show up.
@@ -78,4 +80,4 @@ Here's to month two.
 
 ---
 
-*The Tabularis Team*
+_The Tabularis Team_
