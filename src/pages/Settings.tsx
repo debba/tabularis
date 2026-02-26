@@ -1880,10 +1880,10 @@ export const Settings = () => {
                     </div>
                     <div>
                       <h3 className="text-sm font-semibold text-primary">
-                        Task Manager
+                        {t("taskManager.header.title")}
                       </h3>
                       <p className="text-xs text-muted">
-                        Monitor plugin processes, CPU, RAM and disk usage in real time
+                        {t("taskManager.header.description")}
                       </p>
                     </div>
                   </div>
@@ -1892,7 +1892,7 @@ export const Settings = () => {
                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-blue-500/15 border border-blue-500/25 text-blue-400 hover:bg-blue-500/25 transition-colors"
                   >
                     <Activity size={14} />
-                    Open Task Manager
+                    {t("taskManager.header.open")}
                   </button>
                 </div>
               </div>

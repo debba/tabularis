@@ -33,7 +33,7 @@ export interface TabularisSelfStats {
   disk_read_bytes: number;
   disk_write_bytes: number;
   child_count: number;
-  children: TabularisChildProcess[];
+  // children are fetched on-demand via get_tabularis_children
 }
 
 export interface SystemStats {

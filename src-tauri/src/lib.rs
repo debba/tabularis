@@ -295,6 +295,7 @@ pub fn run() {
             // Task Manager
             task_manager::get_process_list,
             task_manager::get_system_stats,
+            task_manager::get_tabularis_children,
             task_manager::kill_plugin_process,
             task_manager::restart_plugin_process,
             task_manager::open_task_manager_window,

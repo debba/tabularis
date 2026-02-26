@@ -73,7 +73,7 @@ pub struct TabularisSelfStats {
     pub disk_read_bytes: u64,
     pub disk_write_bytes: u64,
     pub child_count: usize,
-    pub children: Vec<TabularisChildProcess>,
+    // children are fetched on-demand via get_tabularis_children, not on every poll
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -229,19 +229,6 @@ fn refresh_and_collect_system_stats() -> SystemStats {
             }
         }
 
-        let mut children: Vec<TabularisChildProcess> = descendants
-            .iter()
-            .filter_map(|pid| {
-                sys.process(*pid).map(|proc| TabularisChildProcess {
-                    pid: pid.as_u32(),
-                    name: proc.name().to_string_lossy().to_string(),
-                    cpu_percent: proc.cpu_usage(),
-                    memory_bytes: proc.memory(),
-                })
-            })
-            .collect();
-        children.sort_by_key(|c| c.pid);
-
         TabularisSelfStats {
             pid: self_pid.as_u32(),
             self_memory_bytes,
@@ -250,7 +237,6 @@ fn refresh_and_collect_system_stats() -> SystemStats {
             disk_read_bytes: total_dr,
             disk_write_bytes: total_dw,
             child_count: descendants.len(),
-            children,
         }
     });
 
@@ -263,6 +249,45 @@ fn refresh_and_collect_system_stats() -> SystemStats {
         process_count,
         tabularis,
     }
+}
+
+fn collect_tabularis_children() -> Vec<TabularisChildProcess> {
+    let mut sys = SYSTEM.lock().expect("system mutex poisoned");
+    sys.refresh_processes_specifics(
+        ProcessesToUpdate::All,
+        true,
+        ProcessRefreshKind::new().with_cpu().with_memory(),
+    );
+
+    let self_pid = match get_current_pid() {
+        Ok(p) => p,
+        Err(_) => return vec![],
+    };
+
+    let mut descendants: HashSet<Pid> = HashSet::new();
+    let mut queue = vec![self_pid];
+    while let Some(current) = queue.pop() {
+        for (pid, proc) in sys.processes() {
+            if proc.parent() == Some(current) && !descendants.contains(pid) {
+                descendants.insert(*pid);
+                queue.push(*pid);
+            }
+        }
+    }
+
+    let mut children: Vec<TabularisChildProcess> = descendants
+        .iter()
+        .filter_map(|pid| {
+            sys.process(*pid).map(|proc| TabularisChildProcess {
+                pid: pid.as_u32(),
+                name: proc.name().to_string_lossy().to_string(),
+                cpu_percent: proc.cpu_usage(),
+                memory_bytes: proc.memory(),
+            })
+        })
+        .collect();
+    children.sort_by_key(|c| c.pid);
+    children
 }
 
 // ---------------------------------------------------------------------------
@@ -294,6 +319,13 @@ pub async fn get_system_stats() -> Result<SystemStats, String> {
     tokio::task::spawn_blocking(refresh_and_collect_system_stats)
         .await
         .map_err(|e| format!("Failed to collect system stats: {}", e))
+}
+
+#[tauri::command]
+pub async fn get_tabularis_children() -> Result<Vec<TabularisChildProcess>, String> {
+    tokio::task::spawn_blocking(collect_tabularis_children)
+        .await
+        .map_err(|e| format!("Failed to collect tabularis children: {}", e))
 }
 
 #[tauri::command]
