@@ -58,6 +58,13 @@ jobs:
         run: pnpm build
         working-directory: website
 
+      - name: Fix opengraph-image extension for GitHub Pages
+        run: |
+          find website/out -name "opengraph-image" | while read f; do
+            cp "$f" "${f}.png"
+          done
+          find website/out -name "*.html" -exec sed -i 's|/opengraph-image?|/opengraph-image.png?|g' {} \;
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
