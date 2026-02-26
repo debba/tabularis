@@ -1319,13 +1319,13 @@ pre {
     font-style: normal;
 }
 
-.post-content a {
+.post-content a:not(.post-tag) {
     color: var(--accent);
     text-decoration: none;
     transition: filter 0.15s ease;
 }
 
-.post-content a:hover {
+.post-content a:not(.post-tag):hover {
     filter: brightness(1.25);
     text-decoration: underline;
 }
