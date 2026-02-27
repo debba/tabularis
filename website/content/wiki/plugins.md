@@ -81,6 +81,9 @@ Every plugin must include a `manifest.json` that tells Tabularis its capabilitie
 | `file_based` | bool | `true` for local file databases (e.g. SQLite, DuckDB). Replaces host/port with a file path field. |
 | `identifier_quote` | string | Character used to quote SQL identifiers: `"\""` (ANSI) or `` "`" `` (MySQL). |
 | `alter_primary_key` | bool | `true` if the database supports altering primary keys after table creation. |
+| `alter_column` | bool | `true` to enable ALTER TABLE MODIFY COLUMN operations in the schema editor. |
+| `create_foreign_keys` | bool | `true` to enable FK constraint creation in the schema editor. |
+| `folder_based` | bool | `true` for databases that target a folder rather than a file or host (e.g., CSV plugin). Replaces host/port with a folder picker. |
 
 ### Data Type Categories
 
@@ -324,6 +327,18 @@ You should see a valid JSON-RPC response on `stdout`.
 2. Place your `manifest.json` and the compiled executable there.
 3. On Linux/macOS, make it executable: `chmod +x myplugin`
 4. Open Tabularis **Settings → Available Plugins** and install it — no restart required.
+
+## Using a Custom Plugin Registry
+
+By default, Tabularis fetches the plugin list from the official registry. You can point the app to a different registry (e.g., a self-hosted or company-internal one) by setting `customRegistryUrl` in your `config.json`:
+
+```json
+{
+  "customRegistryUrl": "https://example.com/my-registry.json"
+}
+```
+
+The custom registry must expose a JSON file that follows the same schema as the [official registry](https://github.com/debba/tabularis/blob/main/plugins/registry.json). When this key is set, both the plugin browser and the install command will use your URL instead of the default one.
 
 ## Publishing to the Registry
 

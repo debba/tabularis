@@ -129,7 +129,8 @@
     "failDisconnect": "No se pudo desconectar de la base de datos",
     "failDuplicate": "Error al duplicar la conexión",
     "connecting": "Conectando...",
-    "open": "Abierta"
+    "open": "Abierta",
+    "pluginDisabled": "Plugin desactivado"
   },
   "settings": {
     "title": "Configuración",
@@ -263,12 +264,18 @@
       "update": "Actualizar",
       "install": "Instalar",
       "upToDate": "Actualizado",
+      "downgrade": "Degradar a",
+      "olderVersions": "Versiones anteriores",
       "noPlugins": "No hay plugins disponibles en el registro.",
+      "version": "Versión",
+      "requiresVersion": "Requiere Tabularis ≥ {{version}}",
       "installedPlugins": "Plugins Instalados",
       "installedDesc": "Habilita o deshabilita los drivers de base de datos. Los drivers integrados no se pueden deshabilitar.",
       "remove": "Eliminar",
       "removeTitle": "Eliminar Plugin",
-      "confirmRemove": "¿Estás seguro de que deseas eliminar \"{{name}}\"? Los archivos del plugin serán eliminados."
+      "confirmRemove": "¿Estás seguro de que deseas eliminar \"{{name}}\"? Los archivos del plugin serán eliminados.",
+      "enabled": "Habilitado",
+      "disabled": "Deshabilitado"
     },
     "remoteControl": {
       "title": "Control Remoto",
@@ -457,7 +464,9 @@
     "rowsRetrieved": "{{count}} filas obtenidas",
     "autoPaginated": "Paginación automática",
     "pageOf": "Página {{current}} de {{total}}",
+    "page": "Página {{current}}",
     "jumpToPage": "Clic para ir a la página",
+    "loadRowCount": "Cargar conteo de filas",
     "executePrompt": "Ejecuta una consulta para ver resultados",
     "closeTab": "Cerrar Pestaña",
     "closeOthers": "Cerrar Otras Pestañas",
@@ -664,5 +673,74 @@
     "uploading": "Subiendo...",
     "openSidebar": "Abrir en el editor",
     "imagePreview": "Vista previa de imagen"
+  },
+  "taskManager": {
+    "header": {
+      "title": "Administrador de Tareas",
+      "subtitle": "Procesos de complementos y recursos del sistema",
+      "description": "Monitoriza los procesos de complementos, CPU, RAM y uso de disco en tiempo real",
+      "open": "Abrir Administrador de Tareas",
+      "refresh": "Actualizar"
+    },
+    "killModal": {
+      "title": "Forzar Cierre del Proceso",
+      "subtitle": "Esta acción no se puede deshacer inmediatamente",
+      "descriptionBefore": "Cerrar",
+      "descriptionAfter": "detendrá forzosamente su proceso. Todas las conexiones de base de datos activas que usen este complemento dejarán de funcionar hasta que se reinicie el complemento.",
+      "warning": "Las consultas activas y las conexiones a través de este complemento serán interrumpidas.",
+      "cancel": "Cancelar",
+      "confirm": "Forzar Cierre"
+    },
+    "systemResources": {
+      "title": "Recursos del Sistema",
+      "cpu": "CPU",
+      "ram": "RAM",
+      "diskRead": "Lectura Disco/s",
+      "diskWrite": "Escritura Disco/s",
+      "processCount_one": "{{count}} proceso del sistema en ejecución",
+      "processCount_other": "{{count}} procesos del sistema en ejecución"
+    },
+    "tabularisProcess": {
+      "title": "Proceso Tabularis",
+      "cpu": "CPU",
+      "ram": "RAM",
+      "diskRead": "Lectura Disco/s",
+      "diskWrite": "Escritura Disco/s",
+      "childCount_one": "{{count}} proceso hijo",
+      "childCount_other": "{{count}} procesos hijos",
+      "noChildren": "Sin procesos hijos",
+      "treeTotal": "Total árbol: {{size}}",
+      "treeTotalTooltip": "Suma de RSS del árbol de procesos — puede sobreestimar la memoria compartida",
+      "loadingProcesses": "Cargando procesos…",
+      "colPid": "PID",
+      "colName": "Nombre",
+      "colCpu": "CPU",
+      "colRam": "RAM",
+      "refresh": "Actualizar"
+    },
+    "pluginProcesses": {
+      "title": "Procesos de Complementos",
+      "loading": "Cargando procesos…",
+      "empty": "No hay procesos de complementos en ejecución",
+      "emptyHint": "Instala y activa complementos para verlos aquí",
+      "colPlugin": "Complemento",
+      "colPid": "PID",
+      "colCpu": "CPU",
+      "colRam": "RAM",
+      "colDiskRw": "Disco L/E",
+      "colStatus": "Estado",
+      "colActions": "Acciones",
+      "restart": "Reiniciar",
+      "kill": "Terminar",
+      "collapseChildren": "Contraer procesos hijos",
+      "childCount_one": "{{count}} proceso hijo",
+      "childCount_other": "{{count}} procesos hijos",
+      "childProcess": "proceso hijo",
+      "status": {
+        "running": "en ejecución",
+        "stopped": "detenido",
+        "unknown": "desconocido"
+      }
+    }
   }
 }

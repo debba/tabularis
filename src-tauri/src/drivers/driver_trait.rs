@@ -103,6 +103,16 @@ pub trait DatabaseDriver: Send + Sync {
     /// Builds the connection URL string for this driver.
     fn build_connection_url(&self, params: &ConnectionParams) -> Result<String, String>;
 
+    /// Shuts down any background resources held by this driver (e.g. a plugin subprocess).
+    /// Built-in sqlx-based drivers hold no background process; the default is a no-op.
+    async fn shutdown(&self) {}
+
+    /// Returns the OS process ID of the subprocess backing this driver, if any.
+    /// Built-in drivers always return `None`.
+    fn pid(&self) -> Option<u32> {
+        None
+    }
+
     /// Tests connectivity. Default implementation uses `build_connection_url` + sqlx.
     /// Plugin drivers that manage their own connections should override this.
     async fn test_connection(&self, params: &ConnectionParams) -> Result<(), String> {

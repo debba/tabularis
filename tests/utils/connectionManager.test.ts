@@ -6,6 +6,7 @@ import {
   getStatusDotClass,
   getConnectionCardClass,
   getConnectionIconClass,
+  findConnectionsForDrivers,
   type ConnectionStatus,
 } from '../../src/utils/connectionManager';
 import type { SavedConnection, ConnectionData } from '../../src/contexts/DatabaseContext';
@@ -286,6 +287,69 @@ describe('connectionManager', () => {
       const result = getConnectionIconClass(true, true);
       expect(result).toContain('bg-blue-600');
       expect(result).not.toContain('bg-green-900/30');
+    });
+  });
+
+  describe('findConnectionsForDrivers', () => {
+    const makeDataMap = (entries: Record<string, string>) =>
+      Object.fromEntries(Object.entries(entries).map(([id, driver]) => [id, { driver }]));
+
+    it('should return IDs of open connections matching any given driver', () => {
+      const openIds = ['a', 'b', 'c'];
+      const dataMap = makeDataMap({ a: 'my-plugin', b: 'postgres', c: 'my-plugin' });
+
+      expect(findConnectionsForDrivers(openIds, dataMap, ['my-plugin'])).toEqual(['a', 'c']);
+    });
+
+    it('should match across multiple driver IDs', () => {
+      const openIds = ['a', 'b', 'c', 'd'];
+      const dataMap = makeDataMap({ a: 'plugin-a', b: 'plugin-b', c: 'postgres', d: 'plugin-a' });
+
+      expect(findConnectionsForDrivers(openIds, dataMap, ['plugin-a', 'plugin-b'])).toEqual(['a', 'b', 'd']);
+    });
+
+    it('should return empty array when no connections match', () => {
+      const openIds = ['a', 'b'];
+      const dataMap = makeDataMap({ a: 'postgres', b: 'mysql' });
+
+      expect(findConnectionsForDrivers(openIds, dataMap, ['my-plugin'])).toEqual([]);
+    });
+
+    it('should return empty array when openConnectionIds is empty', () => {
+      const dataMap = makeDataMap({ a: 'my-plugin' });
+
+      expect(findConnectionsForDrivers([], dataMap, ['my-plugin'])).toEqual([]);
+    });
+
+    it('should return empty array when driverIds is empty', () => {
+      const openIds = ['a', 'b'];
+      const dataMap = makeDataMap({ a: 'my-plugin', b: 'postgres' });
+
+      expect(findConnectionsForDrivers(openIds, dataMap, [])).toEqual([]);
+    });
+
+    it('should ignore open connection IDs not present in dataMap', () => {
+      const openIds = ['a', 'orphan'];
+      const dataMap = makeDataMap({ a: 'my-plugin' });
+
+      expect(findConnectionsForDrivers(openIds, dataMap, ['my-plugin'])).toEqual(['a']);
+    });
+
+    it('should handle undefined entries in dataMap gracefully', () => {
+      const openIds = ['a', 'b'];
+      const dataMap: Record<string, { driver: string } | undefined> = {
+        a: { driver: 'my-plugin' },
+        b: undefined,
+      };
+
+      expect(findConnectionsForDrivers(openIds, dataMap, ['my-plugin'])).toEqual(['a']);
+    });
+
+    it('should not return connections whose driver is not in the list', () => {
+      const openIds = ['a'];
+      const dataMap = makeDataMap({ a: 'postgres' });
+
+      expect(findConnectionsForDrivers(openIds, dataMap, ['mysql', 'sqlite'])).toEqual([]);
     });
   });
 });

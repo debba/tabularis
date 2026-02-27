@@ -71,8 +71,8 @@ body {
     padding-bottom: 5rem;
 }
 
-#download {
-    scroll-margin-top: 6rem;
+section[id] {
+    scroll-margin-top: calc(var(--header-height) + 1.5rem);
 }
 
 .section {
@@ -350,7 +350,7 @@ pre {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 1.25rem;
-    margin: 3rem 0;
+    margin: 1.5rem 0;
 }
 
 .btn-download {
@@ -802,6 +802,60 @@ pre {
 
 .plugin-platforms {
     opacity: 0.65;
+}
+
+.plugin-badge-old {
+    background: rgba(100, 100, 100, 0.1);
+    border-color: rgba(100, 100, 100, 0.25);
+    color: var(--text-muted);
+}
+
+.plugin-releases {
+    margin-top: 0.75rem;
+}
+
+.plugin-releases-toggle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+    opacity: 0.75;
+}
+
+.plugin-releases-toggle:hover {
+    opacity: 1;
+}
+
+.plugin-releases-table {
+    margin-top: 0.5rem;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.plugin-releases-table th {
+    text-align: left;
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+    opacity: 0.7;
+}
+
+.plugin-releases-table td {
+    padding: 0.3rem 0.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: middle;
+}
+
+.plugin-platform-tag {
+    display: inline-block;
+    font-size: 0.68rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    margin: 0.1rem 0.2rem 0.1rem 0;
 }
 
 .plugin-cta {
@@ -1265,13 +1319,13 @@ pre {
     font-style: normal;
 }
 
-.post-content a {
+.post-content a:not(.post-tag) {
     color: var(--accent);
     text-decoration: none;
     transition: filter 0.15s ease;
 }
 
-.post-content a:hover {
+.post-content a:not(.post-tag):hover {
     filter: brightness(1.25);
     text-decoration: underline;
 }

@@ -18,6 +18,7 @@ pub mod saved_queries;
 pub mod ssh_tunnel;
 pub mod theme_commands;
 pub mod theme_models;
+pub mod task_manager;
 pub mod updater;
 pub mod plugins;
 pub mod web_server;
@@ -111,6 +112,17 @@ struct Args {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // On Linux + Wayland, disable the DMA-BUF renderer in WebKitGTK to prevent
+    // "Protocol error dispatching to Wayland display" crashes.
+    // This targets the specific protocol causing the error while keeping GPU
+    // compositing and rendering intact.
+    #[cfg(target_os = "linux")]
+    {
+        if std::env::var("WAYLAND_DISPLAY").is_ok() || std::env::var("XDG_SESSION_TYPE").map_or(false, |v| v == "wayland") {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
+    }
+
     // Check for CLI args first
     // We use try_parse because on some platforms (like GUI launch) args might be weird
     // or Tauri might want to handle them. But for --mcp we need priority.
@@ -164,6 +176,11 @@ pub fn run() {
         .manage(ServerHandle::default())
         .manage(log_buffer)
         .setup(move |app| {
+            // Read persisted config to know which external plugins are enabled.
+            // `None` means no preference has been saved yet → load all installed plugins.
+            let active_ext_drivers = crate::config::load_config_internal(&app.handle())
+                .active_external_drivers;
+
             // Register built-in drivers
             let app_handle = app.handle().clone();
             tauri::async_runtime::block_on(async {
@@ -171,8 +188,8 @@ pub fn run() {
                 drivers::registry::register_driver(drivers::postgres::PostgresDriver::new()).await;
                 drivers::registry::register_driver(drivers::sqlite::SqliteDriver::new()).await;
 
-                // Load external plugins
-                crate::plugins::manager::load_plugins().await;
+                // Load only enabled external plugins (or all if no preference saved).
+                crate::plugins::manager::load_plugins(active_ext_drivers.as_deref()).await;
 
                 // Auto-start Remote Control server if enabled in config
                 let app_config = config::load_config_internal(&app_handle);
@@ -232,6 +249,7 @@ pub fn run() {
             commands::get_file_stats,
             commands::read_file_as_data_url,
             commands::execute_query,
+            commands::count_query,
             commands::cancel_query,
             commands::get_views,
             commands::get_view_definition,
@@ -319,6 +337,15 @@ pub fn run() {
             plugins::commands::install_plugin,
             plugins::commands::uninstall_plugin,
             plugins::commands::get_installed_plugins,
+            plugins::commands::disable_plugin,
+            plugins::commands::enable_plugin,
+            // Task Manager
+            task_manager::get_process_list,
+            task_manager::get_system_stats,
+            task_manager::get_tabularis_children,
+            task_manager::kill_plugin_process,
+            task_manager::restart_plugin_process,
+            task_manager::open_task_manager_window,
             // Remote Control
             start_remote_control,
             stop_remote_control,

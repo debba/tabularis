@@ -16,22 +16,34 @@ use crate::models::{
 };
 use crate::plugins::rpc::{JsonRpcRequest, JsonRpcResponse};
 
-struct PluginProcess {
+pub struct PluginProcess {
     sender: mpsc::Sender<(JsonRpcRequest, oneshot::Sender<Result<Value, String>>)>,
     next_id: AtomicU64,
+    shutdown_tx: tokio::sync::Mutex<Option<oneshot::Sender<()>>>,
+    pub pid: Option<u32>,
 }
 
 impl PluginProcess {
-    fn new(executable_path: PathBuf) -> Self {
-        let (tx, mut rx) = mpsc::channel::<(JsonRpcRequest, oneshot::Sender<Result<Value, String>>)>(100);
+    async fn new(executable_path: PathBuf) -> Result<Self, String> {
+        let (tx, rx) = mpsc::channel::<(JsonRpcRequest, oneshot::Sender<Result<Value, String>>)>(100);
+        let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
 
+        // Spawn the child process directly in the async context so that any
+        // spawn failure is immediately propagated as an error (no silent panic).
+        let child = Command::new(&executable_path)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::inherit())
+            .spawn()
+            .map_err(|e| format!("Failed to start plugin process {:?}: {}", executable_path, e))?;
+
+        let pid = child.id();
+
+        // Hand the running child off to the management task.
         tokio::spawn(async move {
-            let mut child = Command::new(&executable_path)
-                .stdin(std::process::Stdio::piped())
-                .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::inherit())
-                .spawn()
-                .expect("Failed to start plugin process");
+            let mut child = child;
+            let mut rx = rx;
+            let mut shutdown_rx = shutdown_rx;
 
             let mut stdin = child.stdin.take().expect("Failed to open stdin");
             let stdout = child.stdout.take().expect("Failed to open stdout");
@@ -42,17 +54,32 @@ impl PluginProcess {
 
             loop {
                 tokio::select! {
-                    Some((req, resp_tx)) = rx.recv() => {
-                        let id = req.id;
-                        pending_requests.insert(id, resp_tx);
+                    _ = &mut shutdown_rx => {
+                        log::info!("Plugin process shutdown requested, terminating child");
+                        let _ = child.kill().await;
+                        break;
+                    }
+                    msg = rx.recv() => {
+                        match msg {
+                            Some((req, resp_tx)) => {
+                                let id = req.id;
+                                pending_requests.insert(id, resp_tx);
 
-                        let mut req_str = serde_json::to_string(&req).unwrap();
-                        req_str.push('\n');
+                                let mut req_str = serde_json::to_string(&req).unwrap();
+                                req_str.push('\n');
 
-                        if let Err(e) = stdin.write_all(req_str.as_bytes()).await {
-                            log::error!("Failed to write to plugin stdin: {}", e);
-                            if let Some(tx) = pending_requests.remove(&id) {
-                                let _ = tx.send(Err(format!("Plugin communication error: {}", e)));
+                                if let Err(e) = stdin.write_all(req_str.as_bytes()).await {
+                                    log::error!("Failed to write to plugin stdin: {}", e);
+                                    if let Some(tx) = pending_requests.remove(&id) {
+                                        let _ = tx.send(Err(format!("Plugin communication error: {}", e)));
+                                    }
+                                }
+                            }
+                            None => {
+                                // Channel closed without explicit shutdown — kill the process anyway.
+                                log::warn!("Plugin process channel closed without shutdown signal, terminating child");
+                                let _ = child.kill().await;
+                                break;
                             }
                         }
                     }
@@ -90,9 +117,18 @@ impl PluginProcess {
             }
         });
 
-        Self {
+        Ok(Self {
             sender: tx,
             next_id: AtomicU64::new(1),
+            shutdown_tx: tokio::sync::Mutex::new(Some(shutdown_tx)),
+            pid,
+        })
+    }
+
+    async fn shutdown(&self) {
+        let mut guard = self.shutdown_tx.lock().await;
+        if let Some(tx) = guard.take() {
+            let _ = tx.send(());
         }
     }
 
@@ -119,12 +155,12 @@ pub struct RpcDriver {
 }
 
 impl RpcDriver {
-    pub fn new(manifest: PluginManifest, executable_path: PathBuf, data_types: Vec<DataTypeInfo>) -> Self {
-        Self {
+    pub async fn new(manifest: PluginManifest, executable_path: PathBuf, data_types: Vec<DataTypeInfo>) -> Result<Self, String> {
+        Ok(Self {
             manifest,
-            process: Arc::new(PluginProcess::new(executable_path)),
+            process: Arc::new(PluginProcess::new(executable_path).await?),
             data_types,
-        }
+        })
     }
 }
 
@@ -132,6 +168,14 @@ impl RpcDriver {
 impl DatabaseDriver for RpcDriver {
     fn manifest(&self) -> &PluginManifest {
         &self.manifest
+    }
+
+    async fn shutdown(&self) {
+        self.process.shutdown().await;
+    }
+
+    fn pid(&self) -> Option<u32> {
+        self.process.pid
     }
 
     fn get_data_types(&self) -> Vec<DataTypeInfo> {

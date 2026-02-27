@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { invoke } from '../lib/invoke';
 import {
   DatabaseContext,
@@ -11,6 +11,8 @@ import {
 import type { ReactNode } from 'react';
 import type { PluginManifest } from '../types/plugins';
 import { clearAutocompleteCache } from '../utils/autocomplete';
+import { useSettings } from '../hooks/useSettings';
+import { findConnectionsForDrivers } from '../utils/connectionManager';
 
 const createEmptyConnectionData = (driver: string = '', name: string = '', dbName: string = ''): ConnectionData => ({
   driver,
@@ -34,12 +36,20 @@ const createEmptyConnectionData = (driver: string = '', name: string = '', dbNam
 });
 
 export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
+  const { settings } = useSettings();
   const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
   const [openConnectionIds, setOpenConnectionIds] = useState<string[]>([]);
   const [connectionDataMap, setConnectionDataMap] = useState<Record<string, ConnectionData>>({});
   const [activeTable, setActiveTable] = useState<string | null>(null);
   const [connections, setConnections] = useState<SavedConnection[]>([]);
   const [isLoadingConnections, setIsLoadingConnections] = useState(false);
+
+  // Refs used in the plugin-disable effect to avoid stale closures
+  const openConnectionIdsRef = useRef(openConnectionIds);
+  openConnectionIdsRef.current = openConnectionIds;
+  const connectionDataMapRef = useRef(connectionDataMap);
+  connectionDataMapRef.current = connectionDataMap;
+  const prevActiveExtRef = useRef<string[] | undefined>(undefined);
 
   const getActiveConnectionData = useCallback((): ConnectionData | undefined => {
     if (!activeConnectionId) return undefined;
@@ -513,6 +523,27 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
   const isConnectionOpen = useCallback((connectionId: string): boolean => {
     return openConnectionIds.includes(connectionId);
   }, [openConnectionIds]);
+
+  // Auto-disconnect open connections when their plugin is disabled
+  useEffect(() => {
+    const currActiveExt = settings.activeExternalDrivers ?? [];
+    const prevActiveExt = prevActiveExtRef.current;
+    prevActiveExtRef.current = currActiveExt;
+
+    // Skip on first render — no change to detect
+    if (prevActiveExt === undefined) return;
+
+    const removedDrivers = prevActiveExt.filter(id => !currActiveExt.includes(id));
+    if (removedDrivers.length === 0) return;
+
+    const toDisconnect = findConnectionsForDrivers(
+      openConnectionIdsRef.current,
+      connectionDataMapRef.current,
+      removedDrivers,
+    );
+    toDisconnect.forEach(id => disconnect(id));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.activeExternalDrivers]);
 
   return (
     <DatabaseContext.Provider value={{

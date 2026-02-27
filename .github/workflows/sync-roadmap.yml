@@ -13,9 +13,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Check actor permission
+        id: perms
+        if: github.event.action == 'labeled' && github.event.label.name == 'roadmap'
+        run: |
+          PERM=$(gh api repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission --jq '.permission')
+          echo "permission=$PERM" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Protect Roadmap Label
         id: protect
-        if: github.event.action == 'labeled' && github.event.label.name == 'roadmap' && !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.sender.author_association)
+        if: github.event.action == 'labeled' && github.event.label.name == 'roadmap' && !contains(fromJSON('["admin", "write"]'), steps.perms.outputs.permission)
         run: |
           gh issue edit ${{ github.event.issue.number }} --remove-label "roadmap"
           gh issue comment ${{ github.event.issue.number }} --body "The 'roadmap' label is reserved for project maintainers. If you believe this issue should be part of the roadmap, please suggest it in the comments."

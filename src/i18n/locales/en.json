@@ -129,7 +129,8 @@
     "failDisconnect": "Failed to disconnect from database",
     "failDuplicate": "Failed to duplicate connection",
     "connecting": "Connecting...",
-    "open": "Open"
+    "open": "Open",
+    "pluginDisabled": "Plugin disabled"
   },
   "settings": {
     "title": "Settings",
@@ -263,12 +264,18 @@
       "update": "Update",
       "install": "Install",
       "upToDate": "Up to date",
+      "downgrade": "Downgrade to",
+      "olderVersions": "Older versions",
       "noPlugins": "No plugins available in the registry.",
+      "version": "Version",
+      "requiresVersion": "Requires Tabularis ≥ {{version}}",
       "installedPlugins": "Installed Plugins",
       "installedDesc": "Enable or disable database drivers. Built-in drivers cannot be disabled.",
       "remove": "Remove",
       "removeTitle": "Remove Plugin",
-      "confirmRemove": "Are you sure you want to remove \"{{name}}\"? This will delete the plugin files."
+      "confirmRemove": "Are you sure you want to remove \"{{name}}\"? This will delete the plugin files.",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
     },
     "remoteControl": {
       "title": "Remote Control",
@@ -463,7 +470,9 @@
     "rowsRetrieved": "{{count}} rows retrieved",
     "autoPaginated": "Auto paginated",
     "pageOf": "Page {{current}} of {{total}}",
+    "page": "Page {{current}}",
     "jumpToPage": "Click to jump to page",
+    "loadRowCount": "Load row count",
     "executePrompt": "Execute a query to see results",
     "tableRunPrompt": "Press Run (Ctrl/Command+F5) to load table data",
     "closeTab": "Close Tab",
@@ -684,5 +693,74 @@
     "uploading": "Uploading...",
     "openSidebar": "Open in editor",
     "imagePreview": "Image preview"
+  },
+  "taskManager": {
+    "header": {
+      "title": "Task Manager",
+      "subtitle": "Plugin processes & system resources",
+      "description": "Monitor plugin processes, CPU, RAM and disk usage in real time",
+      "open": "Open Task Manager",
+      "refresh": "Refresh"
+    },
+    "killModal": {
+      "title": "Force Kill Plugin Process",
+      "subtitle": "This action cannot be undone immediately",
+      "descriptionBefore": "Killing",
+      "descriptionAfter": "will forcefully stop its process. Any active database connections using this plugin will stop working until the plugin is restarted.",
+      "warning": "Active queries and connections through this plugin will be interrupted.",
+      "cancel": "Cancel",
+      "confirm": "Force Kill"
+    },
+    "systemResources": {
+      "title": "System Resources",
+      "cpu": "CPU",
+      "ram": "RAM",
+      "diskRead": "Disk Read/s",
+      "diskWrite": "Disk Write/s",
+      "processCount_one": "{{count}} system process running",
+      "processCount_other": "{{count}} system processes running"
+    },
+    "tabularisProcess": {
+      "title": "Tabularis Process",
+      "cpu": "CPU",
+      "ram": "RAM",
+      "diskRead": "Disk Read/s",
+      "diskWrite": "Disk Write/s",
+      "childCount_one": "{{count}} child process",
+      "childCount_other": "{{count}} child processes",
+      "noChildren": "No child processes",
+      "treeTotal": "Tree total: {{size}}",
+      "treeTotalTooltip": "Sum of RSS across the process tree — may overcount shared memory",
+      "loadingProcesses": "Loading processes…",
+      "colPid": "PID",
+      "colName": "Name",
+      "colCpu": "CPU",
+      "colRam": "RAM",
+      "refresh": "Refresh"
+    },
+    "pluginProcesses": {
+      "title": "Plugin Processes",
+      "loading": "Loading processes…",
+      "empty": "No plugin processes are running",
+      "emptyHint": "Install and enable plugins to see them here",
+      "colPlugin": "Plugin",
+      "colPid": "PID",
+      "colCpu": "CPU",
+      "colRam": "RAM",
+      "colDiskRw": "Disk R/W",
+      "colStatus": "Status",
+      "colActions": "Actions",
+      "restart": "Restart",
+      "kill": "Kill",
+      "collapseChildren": "Collapse child processes",
+      "childCount_one": "{{count}} child process",
+      "childCount_other": "{{count}} child processes",
+      "childProcess": "child process",
+      "status": {
+        "running": "running",
+        "stopped": "stopped",
+        "unknown": "unknown"
+      }
+    }
   }
 }

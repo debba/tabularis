@@ -882,45 +882,30 @@ pub async fn execute_query(
         let l = limit.unwrap();
         let offset = (page - 1) * l;
 
-        // Count total rows
-        let count_q = format!("SELECT COUNT(*) FROM ({}) as count_wrapper", query);
-        // We use fetch_one directly
-        let count_res = sqlx::query(&count_q).fetch_one(&mut *conn).await;
+        // Use LIMIT +1 trick to detect has_more without a COUNT query
+        let order_by_clause = extract_order_by(query);
 
-        let total_rows: u64 = if let Ok(row) = count_res {
-            row.try_get::<i64, _>(0).unwrap_or(0) as u64
+        if !order_by_clause.is_empty() {
+            let query_without_order = remove_order_by(query);
+            final_query = format!(
+                "SELECT * FROM ({}) as data_wrapper {} LIMIT {} OFFSET {}",
+                query_without_order, order_by_clause, l + 1, offset
+            );
         } else {
-            0
-        };
+            final_query = format!(
+                "SELECT * FROM ({}) as data_wrapper LIMIT {} OFFSET {}",
+                query, l + 1, offset
+            );
+        }
 
         pagination = Some(Pagination {
             page,
             page_size: l,
-            total_rows,
+            total_rows: None,
+            has_more: false, // will be updated after streaming
         });
 
-        // Set truncated if there are more results than shown
-        truncated = total_rows > l as u64;
-
-        // Extract ORDER BY clause from the original query to preserve sorting
-        let order_by_clause = extract_order_by(query);
-
-        if !order_by_clause.is_empty() {
-            // Remove ORDER BY from inner query and add it to outer query
-            let query_without_order = remove_order_by(query);
-            final_query = format!(
-                "SELECT * FROM ({}) as data_wrapper {} LIMIT {} OFFSET {}",
-                query_without_order, order_by_clause, l, offset
-            );
-        } else {
-            // Wrap query for pagination
-            final_query = format!(
-                "SELECT * FROM ({}) as data_wrapper LIMIT {} OFFSET {}",
-                query, l, offset
-            );
-        }
-
-        manual_limit = None; // Disable manual limit since SQL handles it
+        manual_limit = None;
     } else {
         final_query = query.to_string();
     }
@@ -959,6 +944,16 @@ pub async fn execute_query(
             }
             Err(e) => return Err(e.to_string()),
         }
+    }
+
+    // Apply LIMIT +1 result: if we got page_size+1 rows, has_more=true
+    if let Some(ref mut p) = pagination {
+        let has_more = json_rows.len() > p.page_size as usize;
+        if has_more {
+            json_rows.truncate(p.page_size as usize);
+        }
+        p.has_more = has_more;
+        truncated = has_more;
     }
 
     Ok(QueryResult {

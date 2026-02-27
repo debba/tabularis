@@ -30,6 +30,7 @@ pub struct AppConfig {
     pub selected_schemas: Option<HashMap<String, Vec<String>>>,
     pub max_blob_size: Option<u64>,
     pub active_external_drivers: Option<Vec<String>>,
+    pub custom_registry_url: Option<String>,
     pub remote_control: Option<crate::web_server::RemoteControlConfig>,
 }
 

@@ -11,6 +11,7 @@ import { APP_VERSION } from "@/lib/version";
 import { getAllPlugins } from "@/lib/plugins";
 
 import { SiteHeader } from "@/components/SiteHeader";
+import { DownloadButtons } from "@/components/DownloadButtons";
 
 const GITHUB_EDIT_HOME_URL =
   "https://github.com/debba/tabularis/edit/main/website/content/home.md";
@@ -74,6 +75,11 @@ const GALLERY_ITEMS = [
     caption: "Visual Query Builder",
   },
   { src: "/img/screenshot-9.png", alt: "Plugins", caption: "Plugins" },
+  {
+    src: "/img/screenshot-10.png",
+    alt: "Task Manager",
+    caption: "Task Manager",
+  },
 ];
 
 const THEMES = [
@@ -109,7 +115,14 @@ const THEMES = [
 
 export default function HomePage() {
   const posts = getAllPosts();
-  const plugins = getAllPlugins().slice(0, 3);
+  const plugins = getAllPlugins()
+    .slice(0, 3)
+    .map((plugin) => ({
+      ...plugin,
+      min_tabularis_version: plugin.releases.find(
+        (release) => release.version === plugin.latest_version,
+      )?.min_tabularis_version,
+    }));
   const home = getHomeContent();
 
   return (
@@ -139,32 +152,8 @@ export default function HomePage() {
           Built for speed, security, and aesthetics.
         </p>
 
-        <div className="download-grid">
-          <a
-            href={`https://github.com/debba/tabularis/releases/download/v${APP_VERSION}/tabularis_${APP_VERSION}_x64-setup.exe`}
-            className="btn-download"
-          >
-            <span>
-              Download for <strong>Windows</strong> (.exe)
-            </span>
-          </a>
-          <a
-            href={`https://github.com/debba/tabularis/releases/download/v${APP_VERSION}/tabularis_${APP_VERSION}_x64.dmg`}
-            className="btn-download"
-          >
-            <span>
-              Download for <strong>macOS</strong> (.dmg)
-            </span>
-          </a>
-          <a
-            href={`https://github.com/debba/tabularis/releases/download/v${APP_VERSION}/tabularis_${APP_VERSION}_amd64.AppImage`}
-            className="btn-download"
-          >
-            <span>
-              Download for <strong>Linux</strong> (.AppImage)
-            </span>
-          </a>
-        </div>
+        <DownloadButtons showInstallLink />
+
       </header>
 
       {/* MAIN SCREENSHOT */}
@@ -374,6 +363,15 @@ export default function HomePage() {
               or download the latest release from GitHub.
             </p>
           </article>
+          <article className="feature-card">
+            <h3>📈 Task Manager</h3>
+            <p>
+              Monitor <strong>plugin processes</strong> in real time. Track CPU,
+              RAM and disk usage for each plugin, inspect child processes, and
+              force-kill or restart any plugin directly from the built-in Task
+              Manager window.
+            </p>
+          </article>
         </div>
       </section>
 
@@ -453,9 +451,11 @@ export default function HomePage() {
                     plugin.author
                   )}{" "}
                   &middot;{" "}
-                  <span className="plugin-platforms">
-                    Supports Tabularis v{plugin.min_tabularis_version}+
-                  </span>
+                  {plugin?.min_tabularis_version && (
+                    <span className="plugin-platforms">
+                      Supports Tabularis v{plugin.min_tabularis_version}
+                    </span>
+                  )}
                 </div>
               </div>
               <a
@@ -600,29 +600,7 @@ export default function HomePage() {
           <p>Get the pre-compiled binaries for your operating system.</p>
         </div>
 
-        <div
-          className="download-grid"
-          style={{ marginTop: "1rem", marginBottom: "4rem" }}
-        >
-          <a
-            href={`https://github.com/debba/tabularis/releases/download/v${APP_VERSION}/tabularis_${APP_VERSION}_x64-setup.exe`}
-            className="btn-download"
-          >
-            <span>Windows (.exe)</span>
-          </a>
-          <a
-            href={`https://github.com/debba/tabularis/releases/download/v${APP_VERSION}/tabularis_${APP_VERSION}_x64.dmg`}
-            className="btn-download"
-          >
-            <span>macOS (.dmg)</span>
-          </a>
-          <a
-            href={`https://github.com/debba/tabularis/releases/download/v${APP_VERSION}/tabularis_${APP_VERSION}_amd64.AppImage`}
-            className="btn-download"
-          >
-            <span>Linux (.AppImage)</span>
-          </a>
-        </div>
+        <DownloadButtons />
 
         <div
           className="post-content"

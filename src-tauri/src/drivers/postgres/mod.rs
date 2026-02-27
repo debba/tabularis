@@ -734,6 +734,38 @@ pub async fn execute_query(
     schema: Option<&str>,
 ) -> Result<QueryResult, String> {
     let pool = get_postgres_pool(params).await?;
+
+    let is_select = query.trim_start().to_uppercase().starts_with("SELECT");
+    let mut manual_limit = limit;
+    let mut truncated = false;
+
+    // Build the paginated data query using LIMIT +1 trick to detect has_more.
+    // No COUNT query is issued; total_rows stays None until explicitly requested.
+    let (final_query, pagination_meta) = if is_select && limit.is_some() {
+        let l = limit.unwrap();
+        let offset = (page - 1) * l;
+
+        let order_by_clause = extract_order_by(query);
+        let data_query = if !order_by_clause.is_empty() {
+            let query_without_order = remove_order_by(query);
+            format!(
+                "SELECT * FROM ({}) as data_wrapper {} LIMIT {} OFFSET {}",
+                query_without_order, order_by_clause, l + 1, offset
+            )
+        } else {
+            format!(
+                "SELECT * FROM ({}) as data_wrapper LIMIT {} OFFSET {}",
+                query, l + 1, offset
+            )
+        };
+
+        manual_limit = None;
+        (data_query, Some((l, page)))
+    } else {
+        (query.to_string(), None)
+    };
+
+    // Acquire main connection for the data fetch (COUNT runs concurrently above)
     let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
 
     if let Some(schema) = schema {
@@ -744,57 +776,7 @@ pub async fn execute_query(
             .map_err(|e| e.to_string())?;
     }
 
-    let is_select = query.trim_start().to_uppercase().starts_with("SELECT");
-    let mut pagination: Option<Pagination> = None;
-    let final_query: String;
-    let mut manual_limit = limit;
-    let mut truncated = false;
-
-    if is_select && limit.is_some() {
-        let l = limit.unwrap();
-        let offset = (page - 1) * l;
-
-        let count_q = format!("SELECT COUNT(*) FROM ({}) as count_wrapper", query);
-        let count_res = sqlx::query(&count_q).fetch_one(&mut *conn).await;
-
-        let total_rows: u64 = if let Ok(row) = count_res {
-            row.try_get::<i64, _>(0).unwrap_or(0) as u64
-        } else {
-            0
-        };
-
-        pagination = Some(Pagination {
-            page,
-            page_size: l,
-            total_rows,
-        });
-
-        // Set truncated if there are more results than shown
-        truncated = total_rows > l as u64;
-
-        // Extract ORDER BY clause from the original query to preserve sorting
-        let order_by_clause = extract_order_by(query);
-
-        if !order_by_clause.is_empty() {
-            // Remove ORDER BY from inner query and add it to outer query
-            let query_without_order = remove_order_by(query);
-            final_query = format!(
-                "SELECT * FROM ({}) as data_wrapper {} LIMIT {} OFFSET {}",
-                query_without_order, order_by_clause, l, offset
-            );
-        } else {
-            final_query = format!(
-                "SELECT * FROM ({}) as data_wrapper LIMIT {} OFFSET {}",
-                query, l, offset
-            );
-        }
-
-        manual_limit = None;
-    } else {
-        final_query = query.to_string();
-    }
-
-    // Streaming
+    // Stream data rows while COUNT runs in the background
     let mut rows_stream = sqlx::query(&final_query).fetch(&mut *conn);
 
     let mut columns: Vec<String> = Vec::new();
@@ -826,6 +808,23 @@ pub async fn execute_query(
             Err(e) => return Err(e.to_string()),
         }
     }
+
+    // Build pagination using LIMIT +1 result: if we got l+1 rows, has_more=true.
+    let pagination = if let Some((page_size, p)) = pagination_meta {
+        let has_more = json_rows.len() > page_size as usize;
+        if has_more {
+            json_rows.truncate(page_size as usize);
+        }
+        truncated = has_more;
+        Some(Pagination {
+            page: p,
+            page_size,
+            total_rows: None,
+            has_more,
+        })
+    } else {
+        None
+    };
 
     Ok(QueryResult {
         columns,

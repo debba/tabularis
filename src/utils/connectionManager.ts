@@ -78,3 +78,18 @@ export function getConnectionIconClass(isActive: boolean, isOpen: boolean): stri
   if (isOpen) return 'bg-green-900/30 text-green-400';
   return 'bg-surface-secondary text-blue-400';
 }
+
+/**
+ * Returns the IDs of open connections whose driver matches any of the given driver IDs.
+ * Used when disabling or uninstalling a plugin to determine which connections must be closed.
+ */
+export function findConnectionsForDrivers(
+  openConnectionIds: string[],
+  connectionDataMap: Record<string, { driver: string } | undefined>,
+  driverIds: string[],
+): string[] {
+  return openConnectionIds.filter(id => {
+    const driver = connectionDataMap[id]?.driver;
+    return driver !== undefined && driverIds.includes(driver);
+  });
+}

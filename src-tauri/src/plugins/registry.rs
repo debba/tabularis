@@ -19,14 +19,21 @@ pub struct RegistryPlugin {
     pub author: String,
     pub homepage: String,
     pub latest_version: String,
-    pub min_tabularis_version: String,
     pub releases: Vec<PluginRelease>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PluginRelease {
     pub version: String,
+    pub min_tabularis_version: Option<String>,
     pub assets: HashMap<String, String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct RegistryReleaseWithStatus {
+    pub version: String,
+    pub min_tabularis_version: Option<String>,
+    pub platform_supported: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -37,7 +44,7 @@ pub struct RegistryPluginWithStatus {
     pub author: String,
     pub homepage: String,
     pub latest_version: String,
-    pub min_tabularis_version: String,
+    pub releases: Vec<RegistryReleaseWithStatus>,
     pub installed_version: Option<String>,
     pub update_available: bool,
     pub platform_supported: bool,
@@ -56,8 +63,10 @@ pub fn get_current_platform() -> String {
     }
 }
 
-pub async fn fetch_registry() -> Result<PluginRegistry, String> {
-    let response = reqwest::get(REGISTRY_URL)
+pub async fn fetch_registry(custom_url: Option<&str>) -> Result<PluginRegistry, String> {
+    let url = custom_url.unwrap_or(REGISTRY_URL);
+
+    let response = reqwest::get(url)
         .await
         .map_err(|e| format!("Failed to fetch plugin registry: {}", e))?;
 
@@ -65,9 +74,6 @@ pub async fn fetch_registry() -> Result<PluginRegistry, String> {
         .json()
         .await
         .map_err(|e| format!("Failed to parse plugin registry: {}", e))?;
-
-    // log registry for debugging
-    println!("Fetched plugin registry: {:#?}", registry);
 
     Ok(registry)
 }

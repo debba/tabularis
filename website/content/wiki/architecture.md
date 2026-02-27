@@ -25,9 +25,10 @@ const result = await invoke<QueryResponse>("execute_query", {
 async fn execute_query(
     connection_id: String,
     query: String,
-    state: tauri::State<'_, AppState>
+    page: u32,
+    page_size: u32,
 ) -> Result<QueryResponse, String> {
-    // Rust handles the thread-safe connection pool and execution
+    // Rust resolves the driver, runs the query, and returns a paginated result
 }
 ```
 
@@ -39,17 +40,17 @@ To support diverse database engines, Tabularis implements a strict trait (`Datab
 - **JSON-RPC Drivers**: For plugins, the Rust backend spawns child processes and implements the `DatabaseDriver` trait by proxying method calls to the plugin via stdin/stdout.
 
 ### 2. Connection State & Concurrency
-The application state is managed using `tokio` and thread-safe data structures.
+Connection pools are managed using `tokio` and thread-safe static globals. Each driver (PostgreSQL, MySQL, SQLite) has its own pool map:
 ```rust
-struct AppState {
-    pools: Arc<DashMap<String, PoolType>>,
-    tunnels: Arc<DashMap<String, SshTunnel>>,
-}
+// Three separate static globals, one per driver
+static POSTGRES_POOLS: Lazy<Arc<RwLock<HashMap<String, Pool<Postgres>>>>> = ...;
+static MYSQL_POOLS:    Lazy<Arc<RwLock<HashMap<String, Pool<MySql>>>>>    = ...;
+static SQLITE_POOLS:   Lazy<Arc<RwLock<HashMap<String, Pool<Sqlite>>>>>   = ...;
 ```
-Using `DashMap` prevents blocking the entire application when one connection is establishing a slow SSH tunnel, ensuring the UI remains perfectly fluid.
+Using `RwLock` allows multiple concurrent readers while ensuring exclusive access for writes, so the UI remains responsive while connections are being established or closed.
 
-### 3. Asynchronous Streaming
-When a query returns 100,000 rows, Tabularis doesn't attempt to send a massive 50MB JSON payload across the IPC bridge. Instead, the Rust backend serializes the results into chunks and streams them via Tauri events, populating the frontend Data Grid incrementally.
+### 3. Paginated Query Results
+When a query returns 100,000 rows, Tabularis doesn't attempt to load everything at once. The Rust backend executes queries with `LIMIT`/`OFFSET` pagination and returns one page at a time across the IPC bridge. The Data Grid fetches the next page on demand, keeping memory usage flat and the UI always responsive.
 
 ## Frontend Architecture
 

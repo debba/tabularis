@@ -32,7 +32,7 @@ A lightweight, developer-focused database management tool, built with Tauri and 
 
 ## Release Download:
 
-[![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/debba/tabularis/releases/download/v0.9.1/tabularis_0.9.1_x64-setup.exe) [![macOS](https://img.shields.io/badge/macOS-Download-black?logo=apple)](https://github.com/debba/tabularis/releases/download/v0.9.1/tabularis_0.9.1_x64.dmg) [![Linux](https://img.shields.io/badge/Linux-Download-green?logo=linux)](https://github.com/debba/tabularis/releases/download/v0.9.1/tabularis_0.9.1_amd64.AppImage)
+[![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/debba/tabularis/releases/download/v0.9.2/tabularis_0.9.2_x64-setup.exe) [![macOS](https://img.shields.io/badge/macOS-Download-black?logo=apple)](https://github.com/debba/tabularis/releases/download/v0.9.2/tabularis_0.9.2_x64.dmg) [![Linux](https://img.shields.io/badge/Linux-Download-green?logo=linux)](https://github.com/debba/tabularis/releases/download/v0.9.2/tabularis_0.9.2_amd64.AppImage)
 
 ## Table of Contents
 
@@ -258,6 +258,7 @@ This approach ensures fast startup times while preserving your workspace layout 
 - `language`: `"auto"`, `"en"` (English), `"it"` (Italian), `"es"` (Spanish).
 - `resultPageSize`: Default rows per page.
 - `aiEnabled`: Enable/Disable AI features.
+- `customRegistryUrl`: Custom URL for the plugin registry (overrides the default official registry).
 
 #### Custom AI Models override
 

@@ -1,7 +1,8 @@
 export interface Pagination {
   page: number;
   page_size: number;
-  total_rows: number;
+  total_rows: number | null;
+  has_more: boolean;
 }
 
 export interface TableColumn {

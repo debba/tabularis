@@ -29,42 +29,73 @@ sudo pacman -S webkit2gtk libsecret
 sudo dnf install webkit2gtk4.1-devel libsecret-devel
 ```
 
-## Download a binary
+## macOS
 
-Download the package for your platform from [GitHub Releases](https://github.com/debba/tabularis/releases):
+### Homebrew (recommended)
 
-| Platform | Package |
-| :--- | :--- |
-| **macOS** | `.dmg` |
-| **Windows** | `.msi` or `.exe` |
-| **Linux** | `.AppImage`, `.deb`, or `.rpm` |
+```bash
+brew tap debba/tabularis
+brew install --cask tabularis
+```
 
-### macOS
+[![Homebrew](https://img.shields.io/badge/Homebrew-Repository-orange?logo=homebrew)](https://github.com/debba/homebrew-tabularis)
 
-Open the `.dmg`, drag **tabularis** to your Applications folder, then launch it. On first run, macOS may ask you to confirm opening an app from the internet — click **Open**.
+### Direct download
 
-### Windows
+Download the `.dmg` from [GitHub Releases](https://github.com/debba/tabularis/releases), open it, drag **tabularis** to your Applications folder, then launch it.
 
-Run the `.msi` installer and follow the wizard, or use the standalone `.exe` if you prefer not to install. WebView2 is required; it ships pre-installed with Microsoft Edge and is present on all up-to-date Windows 10/11 machines.
+If macOS blocks the app with a "cannot be opened" warning (Gatekeeper quarantine), run:
 
-### Linux — AppImage
+```bash
+xattr -c /Applications/tabularis.app
+```
+
+> If you are **upgrading** and Tabularis was already in the Accessibility list in Privacy & Security, remove the old entry before granting access to the new version.
+
+## Windows
+
+Download `tabularis_x.x.x_x64-setup.exe` from [GitHub Releases](https://github.com/debba/tabularis/releases) and run it. Follow the on-screen instructions.
+
+WebView2 is required — it ships pre-installed with Microsoft Edge and is present on all up-to-date Windows 10/11 machines.
+
+## Linux
+
+### Snap (recommended for Ubuntu / Debian)
+
+```bash
+sudo snap install tabularis
+```
+
+[![Snap Store](https://img.shields.io/badge/snap-tabularis-blue?logo=snapcraft)](https://snapcraft.io/tabularis)
+
+### AppImage
+
+Download the `.AppImage` from [GitHub Releases](https://github.com/debba/tabularis/releases), make it executable and run it:
 
 ```bash
 chmod +x tabularis_*.AppImage
 ./tabularis_*.AppImage
 ```
 
-### Linux — .deb
+### .deb (Debian / Ubuntu)
 
 ```bash
 sudo dpkg -i tabularis_*.deb
 ```
 
-### Linux — .rpm
+### .rpm (Fedora / RHEL)
 
 ```bash
 sudo rpm -i tabularis_*.rpm
 ```
+
+### Arch Linux (AUR)
+
+```bash
+yay -S tabularis-bin
+```
+
+[![AUR](https://img.shields.io/badge/AUR-tabularis--bin-1793D1?logo=archlinux&logoColor=white)](https://aur.archlinux.org/packages/tabularis-bin)
 
 ## Updates
 

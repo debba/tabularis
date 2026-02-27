@@ -21,7 +21,7 @@ Unlike basic editors that simply suggest a static list of SQL keywords and table
 ### Caching Strategy
 To ensure the editor remains responsive even on databases with thousands of tables, Tabularis caches schema metadata:
 - **TTL**: Table metadata is cached in memory for 5 minutes.
-- **LRU Cache**: A Least Recently Used cache limits memory footprint to the 100 most recently accessed tables.
+- **Size limit**: The cache holds metadata for at most 50 tables. When the limit is exceeded, expired entries are evicted first; if still over the limit, the oldest entries are removed.
 - **Manual Invalidation**: You can force a cache clear by clicking the "Refresh Schema" button in the sidebar or via the Command Palette.
 
 ## Editor Features & Shortcuts
@@ -48,5 +48,5 @@ By default, queries are executed in auto-commit mode. However, you can manually 
 The results grid is heavily optimized to handle thousands of rows without dropping frames:
 - **Inline Editing**: Double-click any cell to modify its content. Changes are marked in yellow and can be committed back to the database with a single click (generating `UPDATE` statements securely via primary keys).
 - **Rich Data Types**: JSON columns include a built-in JSON viewer/formatter. Spatial data displays coordinates.
-- **Exporting**: Export the current view to CSV, JSON, or Markdown tables instantly.
+- **Exporting**: Export the current view to CSV or JSON instantly.
 - **Copy with Headers**: Highlight cells, right-click, and select "Copy with Headers" to easily paste data into Excel or Google Sheets.

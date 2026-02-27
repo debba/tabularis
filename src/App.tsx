@@ -7,6 +7,7 @@ import { Connections } from "./pages/Connections";
 import { Editor } from "./pages/Editor";
 import { Settings } from "./pages/Settings";
 import { SchemaDiagramPage } from "./pages/SchemaDiagramPage";
+import { TaskManagerPage } from "./pages/TaskManagerPage";
 import { UpdateNotificationModal } from "./components/modals/UpdateNotificationModal";
 import { CommunityModal } from "./components/modals/CommunityModal";
 import { useUpdate } from "./hooks/useUpdate";
@@ -75,6 +76,7 @@ function App() {
               <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="/schema-diagram" element={<SchemaDiagramPage />} />
+            <Route path="/task-manager" element={<TaskManagerPage />} />
           </Routes>
         </ConnectionLayoutProvider>
       </BrowserRouter>

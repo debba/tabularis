@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { DiscordIcon, MenuIcon, XIcon, SearchIcon, GitHubIcon } from "@/components/Icons";
 import { usePathname } from "next/navigation";
 
@@ -27,6 +27,13 @@ export function SiteHeader({ crumbs = [] }: SiteHeaderProps) {
     document.dispatchEvent(new CustomEvent("openSearch"));
   }
 
+  const handleLogoClick = (e: React.MouseEvent) => {
+    if (pathname === "/") {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   const navLinks = [
     { label: "Wiki", href: "/wiki" },
     { label: "Plugins", href: "/plugins" },
@@ -38,7 +45,7 @@ export function SiteHeader({ crumbs = [] }: SiteHeaderProps) {
     <header className={`site-header-unified ${isMobileMenuOpen ? "mobile-open" : ""}`}>
       <div className="header-container">
         <div className="header-main-row">
-          <Link href="/" className="brand-link">
+          <Link href="/" className="brand-link" onClick={handleLogoClick}>
             <img src="/img/logo.png" alt="Tabularis" className="header-logo" />
             <span className="brand-name">tabularis</span>
           </Link>
@@ -46,9 +53,9 @@ export function SiteHeader({ crumbs = [] }: SiteHeaderProps) {
           {/* DESKTOP NAV */}
           <nav className="desktop-nav">
             {navLinks.map((link) => (
-              <Link 
-                key={link.href} 
-                href={link.href} 
+              <Link
+                key={link.href}
+                href={link.href}
                 className={`nav-link ${pathname.startsWith(link.href) ? "active" : ""}`}
               >
                 {link.label}
@@ -80,8 +87,8 @@ export function SiteHeader({ crumbs = [] }: SiteHeaderProps) {
           </nav>
 
           {/* MOBILE TOGGLE */}
-          <button 
-            className="mobile-toggle" 
+          <button
+            className="mobile-toggle"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Toggle Menu"
           >
@@ -112,9 +119,9 @@ export function SiteHeader({ crumbs = [] }: SiteHeaderProps) {
       <div className={`mobile-menu ${isMobileMenuOpen ? "active" : ""}`}>
         <nav className="mobile-nav">
           {navLinks.map((link) => (
-            <Link 
-              key={link.href} 
-              href={link.href} 
+            <Link
+              key={link.href}
+              href={link.href}
               className={`mobile-nav-link ${pathname.startsWith(link.href) ? "active" : ""}`}
             >
               {link.label}

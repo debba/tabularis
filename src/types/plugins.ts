@@ -28,6 +28,12 @@ export interface PluginManifest {
   default_username?: string;
 }
 
+export interface RegistryReleaseWithStatus {
+  version: string;
+  min_tabularis_version: string | null;
+  platform_supported: boolean;
+}
+
 export interface RegistryPluginWithStatus {
   id: string;
   name: string;
@@ -35,7 +41,7 @@ export interface RegistryPluginWithStatus {
   author: string;
   homepage: string;
   latest_version: string;
-  min_tabularis_version: string;
+  releases: RegistryReleaseWithStatus[];
   installed_version: string | null;
   update_available: boolean;
   platform_supported: boolean;

@@ -1,11 +1,13 @@
 use crate::plugins::installer::{self, InstalledPluginInfo};
 use crate::plugins::registry::{
-    self, RegistryPluginWithStatus,
+    self, RegistryPluginWithStatus, RegistryReleaseWithStatus,
 };
+use tauri::AppHandle;
 
 #[tauri::command]
-pub async fn fetch_plugin_registry() -> Result<Vec<RegistryPluginWithStatus>, String> {
-    let remote = registry::fetch_registry().await?;
+pub async fn fetch_plugin_registry(app: AppHandle) -> Result<Vec<RegistryPluginWithStatus>, String> {
+    let config = crate::config::load_config_internal(&app);
+    let remote = registry::fetch_registry(config.custom_registry_url.as_deref()).await?;
     let installed = installer::list_installed()?;
     let platform = registry::get_current_platform();
 
@@ -23,10 +25,23 @@ pub async fn fetch_plugin_registry() -> Result<Vec<RegistryPluginWithStatus>, St
                 .map(|iv| iv != &plugin.latest_version)
                 .unwrap_or(false);
 
-            let platform_supported = plugin
+            let releases: Vec<RegistryReleaseWithStatus> = plugin
                 .releases
                 .iter()
-                .any(|r| r.version == plugin.latest_version && (r.assets.contains_key(&platform) || r.assets.contains_key("universal")));
+                .map(|r| {
+                    let platform_supported =
+                        r.assets.contains_key(&platform) || r.assets.contains_key("universal");
+                    RegistryReleaseWithStatus {
+                        version: r.version.clone(),
+                        min_tabularis_version: r.min_tabularis_version.clone(),
+                        platform_supported,
+                    }
+                })
+                .collect();
+
+            let platform_supported = releases
+                .iter()
+                .any(|r| r.version == plugin.latest_version && r.platform_supported);
 
             RegistryPluginWithStatus {
                 id: plugin.id,
@@ -35,7 +50,7 @@ pub async fn fetch_plugin_registry() -> Result<Vec<RegistryPluginWithStatus>, St
                 author: plugin.author,
                 homepage: plugin.homepage,
                 latest_version: plugin.latest_version,
-                min_tabularis_version: plugin.min_tabularis_version,
+                releases,
                 installed_version,
                 update_available,
                 platform_supported,
@@ -47,8 +62,9 @@ pub async fn fetch_plugin_registry() -> Result<Vec<RegistryPluginWithStatus>, St
 }
 
 #[tauri::command]
-pub async fn install_plugin(plugin_id: String) -> Result<(), String> {
-    let remote = registry::fetch_registry().await?;
+pub async fn install_plugin(app: AppHandle, plugin_id: String, version: Option<String>) -> Result<(), String> {
+    let config = crate::config::load_config_internal(&app);
+    let remote = registry::fetch_registry(config.custom_registry_url.as_deref()).await?;
     let platform = registry::get_current_platform();
 
     let plugin = remote
@@ -57,16 +73,13 @@ pub async fn install_plugin(plugin_id: String) -> Result<(), String> {
         .find(|p| p.id == plugin_id)
         .ok_or_else(|| format!("Plugin '{}' not found in registry", plugin_id))?;
 
+    let target_version = version.as_deref().unwrap_or(&plugin.latest_version);
+
     let release = plugin
         .releases
         .iter()
-        .find(|r| r.version == plugin.latest_version)
-        .ok_or_else(|| {
-            format!(
-                "No release found for version {}",
-                plugin.latest_version
-            )
-        })?;
+        .find(|r| r.version == target_version)
+        .ok_or_else(|| format!("No release found for version {}", target_version))?;
 
     let download_url = release
         .assets
@@ -84,7 +97,8 @@ pub async fn install_plugin(plugin_id: String) -> Result<(), String> {
     // Hot-register the new driver (no restart needed)
     let plugins_dir = installer::get_plugins_dir()?;
     let plugin_dir = plugins_dir.join(&plugin_id);
-    crate::plugins::manager::load_plugin_from_dir(&plugin_dir).await;
+    crate::plugins::manager::load_plugin_from_dir(&plugin_dir).await
+        .map_err(|e| format!("Plugin installed but failed to load: {}", e))?;
 
     Ok(())
 }
@@ -103,4 +117,24 @@ pub async fn uninstall_plugin(plugin_id: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn get_installed_plugins() -> Result<Vec<InstalledPluginInfo>, String> {
     installer::list_installed()
+}
+
+/// Stops the plugin process and removes the driver from the registry.
+/// The plugin files remain on disk and can be re-enabled with `enable_plugin`.
+#[tauri::command]
+pub async fn disable_plugin(plugin_id: String) -> Result<(), String> {
+    crate::drivers::registry::unregister_driver(&plugin_id).await;
+    Ok(())
+}
+
+/// Loads the plugin from disk and registers its driver, starting the plugin process.
+#[tauri::command]
+pub async fn enable_plugin(plugin_id: String) -> Result<(), String> {
+    let plugins_dir = installer::get_plugins_dir()?;
+    let plugin_dir = plugins_dir.join(&plugin_id);
+    if !plugin_dir.exists() {
+        return Err(format!("Plugin '{}' is not installed", plugin_id));
+    }
+    crate::plugins::manager::load_plugin_from_dir(&plugin_dir).await?;
+    Ok(())
 }

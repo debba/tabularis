@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { NewConnectionModal } from '../components/ui/NewConnectionModal';
 import { invoke } from '../lib/invoke';
 import { ask } from '@tauri-apps/plugin-dialog';
-import { Database, Plus, Power, Edit, Trash2, Shield, AlertCircle, Copy, Loader2 } from 'lucide-react';
+import { Database, Plus, Power, Edit, Trash2, Shield, AlertCircle, Copy, Loader2, PlugZap } from 'lucide-react';
 import { useDatabase } from '../hooks/useDatabase';
 import { useDrivers } from '../hooks/useDrivers';
 import { getConnectionCardClass, getConnectionIconClass } from '../utils/connectionManager';
@@ -33,7 +33,7 @@ export const Connections = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { connect, activeConnectionId, disconnect, isConnectionOpen, switchConnection } = useDatabase();
-  const { allDrivers } = useDrivers();
+  const { drivers, allDrivers } = useDrivers();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingConnection, setEditingConnection] = useState<SavedConnection | null>(null);
   const [connections, setConnections] = useState<SavedConnection[]>([]);
@@ -167,11 +167,12 @@ export const Connections = () => {
           {connections.map(conn => {
             const isActive = activeConnectionId === conn.id;
             const isOpen = isConnectionOpen(conn.id);
+            const isDriverEnabled = drivers.some(d => d.id === conn.params.driver);
             return (
               <div
                 key={conn.id}
-                onDoubleClick={() => handleConnect(conn)}
-                className={`p-4 border rounded-lg transition-all cursor-pointer group relative ${getConnectionCardClass(isActive, isOpen, connectingId === conn.id)} ${connectingId === conn.id ? 'pointer-events-none' : ''}`}
+                onDoubleClick={() => isDriverEnabled && handleConnect(conn)}
+                className={`p-4 border rounded-lg transition-all group relative ${isDriverEnabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'} ${getConnectionCardClass(isActive, isOpen, connectingId === conn.id)} ${connectingId === conn.id ? 'pointer-events-none' : ''}`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-3">
@@ -191,7 +192,12 @@ export const Connections = () => {
                       </p>
                     </div>
                   </div>
-                  {isActive ? (
+                  {!isDriverEnabled ? (
+                    <div className="flex items-center gap-1 text-xs text-amber-400 font-medium bg-amber-400/10 px-2 py-0.5 rounded">
+                      <PlugZap size={10} />
+                      {t('connections.pluginDisabled')}
+                    </div>
+                  ) : isActive ? (
                     <div className="flex items-center gap-1 text-xs text-green-400 font-medium bg-green-400/10 px-2 py-0.5 rounded">
                       <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                       {t('connections.active')}
@@ -220,10 +226,11 @@ export const Connections = () => {
                         <Power size={14} />
                       </button>
                     ) : (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleConnect(conn); }}
-                         className="p-1.5 hover:bg-green-900/50 text-secondary hover:text-green-400 rounded"
-                        title={t('connections.connect')}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); if (isDriverEnabled) handleConnect(conn); }}
+                        disabled={!isDriverEnabled}
+                        className="p-1.5 hover:bg-green-900/50 text-secondary hover:text-green-400 rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isDriverEnabled ? t('connections.connect') : t('connections.pluginDisabled')}
                       >
                         <Power size={14} />
                       </button>
@@ -231,16 +238,18 @@ export const Connections = () => {
                    
                     <div className="w-[1px] h-4 bg-strong mx-0.5 self-center" />
 
-                   <button 
-                       onClick={(e) => { e.stopPropagation(); openEdit(conn); }}
-                        className="p-1.5 hover:bg-blue-900/50 text-secondary hover:text-blue-400 rounded"
+                   <button
+                       onClick={(e) => { e.stopPropagation(); if (isDriverEnabled) openEdit(conn); }}
+                       disabled={!isDriverEnabled}
+                       className="p-1.5 hover:bg-blue-900/50 text-secondary hover:text-blue-400 rounded disabled:opacity-40 disabled:cursor-not-allowed"
                        title={t('connections.edit')}
                    >
                        <Edit size={14} />
                    </button>
-                   <button 
-                       onClick={(e) => { e.stopPropagation(); handleDuplicate(conn.id); }}
-                        className="p-1.5 hover:bg-purple-900/50 text-secondary hover:text-purple-400 rounded"
+                   <button
+                       onClick={(e) => { e.stopPropagation(); if (isDriverEnabled) handleDuplicate(conn.id); }}
+                       disabled={!isDriverEnabled}
+                       className="p-1.5 hover:bg-purple-900/50 text-secondary hover:text-purple-400 rounded disabled:opacity-40 disabled:cursor-not-allowed"
                        title={t('connections.clone')}
                    >
                        <Copy size={14} />

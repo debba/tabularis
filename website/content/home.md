@@ -49,27 +49,38 @@ Why stare at a dull interface? Tabularis brings a first-class theming experience
 
 # Installation
 
-### Arch Linux (AUR)
-
-Install via your favorite AUR helper:
+### macOS — Homebrew
 
 ```bash
-yay -S tabularis-bin
+brew tap debba/tabularis
+brew install --cask tabularis
 ```
 
-### Snap (Linux)
+If macOS blocks the app after a direct `.dmg` install, run:
+
+```bash
+xattr -c /Applications/tabularis.app
+```
+
+### Linux — Snap
 
 ```bash
 sudo snap install tabularis
 ```
 
+### Linux — Arch (AUR)
+
+```bash
+yay -S tabularis-bin
+```
+
 ### Build from Source
 
-Requires Node.js, pnpm, and Rust installed on your machine.
+Requires Node.js and Rust installed on your machine.
 
 ```bash
 git clone https://github.com/debba/tabularis.git
 cd tabularis
-pnpm install
-pnpm tauri build
+npm install
+npm run tauri build
 ```

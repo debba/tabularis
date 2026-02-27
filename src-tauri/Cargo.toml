@@ -1,6 +1,6 @@
 [package]
 name = "tabularis"
-version = "0.9.1"
+version = "0.9.2"
 description = "tabularis - A database manager for developers"
 authors = ["Debba"]
 edition = "2021"
@@ -44,6 +44,7 @@ reqwest = { version = "0.13.1", features = ["json"] }
 clap = { version = "4.5.56", features = ["derive"] }
 directories = "6.0.0"
 serde_yaml = "0.9.34"
+sysinfo = { version = "0.32", features = ["system"] }
 zip = "4.2.0"
 tauri-plugin-clipboard-manager = "2"
 axum = { version = "0.8", features = ["ws"] }
