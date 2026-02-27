@@ -40,7 +40,7 @@ plugins/
 |----------|------|
 | Linux | `~/.local/share/tabularis/plugins/` |
 | macOS | `~/Library/Application Support/com.debba.tabularis/plugins/` |
-| Windows | `%APPDATA%\com.debba.tabularis\plugins\` |
+| Windows | `%APPDATA%\com.debba\tabularis\plugins\` |
 
 ## The `manifest.json`
 

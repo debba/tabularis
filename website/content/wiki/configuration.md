@@ -1,7 +1,7 @@
 ---
 title: "Configuration"
 order: 3
-excerpt: "Adjust Tabularis to your workflow: language settings, SSH keys, and general application behavior."
+excerpt: "Adjust Tabularis to your workflow: language settings, AI providers, and general application behavior."
 ---
 
 # Configuration
@@ -11,14 +11,11 @@ Tabularis is designed to work perfectly out-of-the-box, but offers extensive con
 ## Accessing Settings
 
 Open the Settings panel from:
-- **Menu**: `Tabularis → Preferences` (macOS) or `File → Settings` (Windows/Linux)
-- **Keyboard shortcut**: `Cmd/Ctrl + ,`
 - **Sidebar**: Click the gear icon at the bottom of the left sidebar
 
 ## General Settings
 
 - **Language Support**: Native translations for **English**, **Italian**, and **Spanish**. The app defaults to your OS locale. Changing the language requires a restart.
-- **Startup Behavior**: Configure whether to launch with a blank slate or restore the exact tabs, split-pane layouts, and active connections from your previous session.
 - **Update Checks**: Enable or disable automatic update checks on startup. Checks query the GitHub Releases API — no version data is sent, only a GET request is made.
 
 ## Storage Paths & config.json
@@ -40,7 +37,6 @@ You can edit the file manually while **the application is closed**. Editing whil
 A minimal valid `config.json` looks like:
 ```json
 {
-  "theme": "tabularis-dark",
   "language": "auto",
   "fontSize": 14,
   "aiEnabled": false
@@ -53,22 +49,24 @@ Any key omitted from the file falls back to its default value. You do not need a
 
 | Key | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `theme` | `string` | `"tabularis-dark"` | Active UI theme ID. See [Themes](/wiki/themes). |
+| `theme` | `string` | `null` | Active UI theme ID. See [Themes](/wiki/themes). |
 | `language` | `string` | `"auto"` | Preferred locale: `en`, `it`, `es`, or `auto` (follows OS). |
-| `resultPageSize` | `number` | `100` | Rows fetched per pagination request in the Data Grid. |
-| `fontFamily` | `string` | `"JetBrains Mono"` | Editor font. Must be installed on the system. |
+| `resultPageSize` | `number` | `500` | Rows fetched per pagination request in the Data Grid. |
+| `fontFamily` | `string` | `"System"` | Editor font. Must be installed on the system. |
 | `fontSize` | `number` | `14` | Editor font size in pixels. |
 | `aiEnabled` | `boolean` | `false` | Master toggle for all AI features. |
-| `aiProvider` | `string` | `"openai"` | Active AI provider: `openai`, `anthropic`, `ollama`, `openrouter`, `custom-openai`. |
-| `aiModel` | `string` | `"gpt-4o"` | The model identifier string sent to the provider. |
+| `aiProvider` | `string` | `null` | Active AI provider: `openai`, `anthropic`, `ollama`, `openrouter`, `custom-openai`. |
+| `aiModel` | `string` | `null` | The model identifier string sent to the provider. |
 | `aiCustomModels` | `object` | `null` | Custom model lists per provider (map of provider ID → string[]). |
 | `aiOllamaPort` | `number` | `11434` | Local port for the Ollama daemon. |
 | `aiCustomOpenaiUrl` | `string` | `null` | Base URL for OpenAI-compatible endpoints (e.g., LM Studio, vLLM). |
 | `aiCustomOpenaiModel` | `string` | `null` | Model name to use with the custom OpenAI-compatible endpoint. |
+| `loggingEnabled` | `boolean` | `true` | Enable or disable the in-app log panel. |
+| `maxLogEntries` | `number` | `1000` | Maximum number of log entries retained in the UI log panel. |
 | `checkForUpdates` | `boolean` | `true` | Enable or disable update checks entirely. |
 | `autoCheckUpdatesOnStartup` | `boolean` | `true` | Checks GitHub Releases API on boot. |
 | `lastDismissedVersion` | `string` | `null` | Version string of the last dismissed update notification. |
-| `erDiagramDefaultLayout` | `string` | `"TB"` | `TB` (Top-Bottom) or `LR` (Left-Right) for Dagre layout. |
+| `erDiagramDefaultLayout` | `string` | `"LR"` | `TB` (Top-Bottom) or `LR` (Left-Right) for Dagre layout. |
 | `schemaPreferences` | `object` | `{}` | Per-connection active schema for DDL operations (map of connection ID → schema name). |
 | `selectedSchemas` | `object` | `{}` | Per-connection visible schemas in the sidebar (map of connection ID → string[]). |
 | `maxBlobSize` | `number` | `1048576` | Max bytes to load into UI for BLOB/bytea columns (default 1 MB). |
@@ -109,7 +107,7 @@ The `RUST_LOG` directive supports `error`, `warn`, `info`, `debug`, and `trace` 
 When troubleshooting a connection issue, search the log file for entries related to the connection UUID:
 
 ```bash
-grep "conn-" ~/Library/Logs/io.github.debba.tabularis/tabularis.log | tail -50
+grep "conn-" ~/Library/Logs/tabularis/tabularis.log | tail -50
 ```
 
 SSH tunnel events are prefixed with `[ssh]`, database driver events with `[driver]`, and plugin events with `[plugin:<plugin-id>]`.
@@ -137,4 +135,3 @@ To reset all settings to factory defaults:
 3. Relaunch Tabularis. A fresh `config.json` with all defaults will be created.
 
 **Important**: This does NOT delete saved connections. Connection metadata is stored in a separate `connections.json` file in the same directory. To also remove connections, delete `connections.json`. Passwords stored in the OS keychain must be removed manually (via Keychain Access on macOS, Credential Manager on Windows, or `secret-tool` on Linux).
-

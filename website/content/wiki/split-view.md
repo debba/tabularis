@@ -62,4 +62,4 @@ Open the same data in a native MySQL connection on the left and a DuckDB plugin 
 
 - Split View works with any combination of connection types: native drivers (PostgreSQL, MySQL, SQLite) and plugin drivers can coexist in the same split workspace.
 - Each pane maintains its own connection state, including active schema selection and open transactions.
-- Session restore (if enabled in settings) will restore the split layout and reopen the connections from the previous session.
+- Each pane maintains its own connection state independently of the other panes.

@@ -16,7 +16,7 @@ Double-click any table or view in the sidebar. The data grid opens in a new tab,
 
 ### Pagination
 
-Data is fetched in pages. The default page size is **100 rows**, configurable via `resultPageSize` in [Configuration](/wiki/configuration). Navigation controls at the bottom of the grid let you move forward and backward through pages.
+Data is fetched in pages. The default page size is **500 rows**, configurable via `resultPageSize` in [Configuration](/wiki/configuration). Navigation controls at the bottom of the grid let you move forward and backward through pages.
 
 The total row count is shown alongside the pagination controls, fetched via a `COUNT(*)` query when you open the table.
 

@@ -95,8 +95,3 @@ Tabularis stores all data locally. Nothing is sent to external servers except:
 | Logs | `~/Library/Logs/tabularis/` (macOS) |
 
 See [Configuration](/wiki/configuration) for platform-specific paths.
-
----
-
-![Tabularis Overview](/img/wiki-intro.png)
-_Tabularis — main interface showing the sidebar, tab bar, and data grid._

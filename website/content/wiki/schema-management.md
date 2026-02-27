@@ -34,4 +34,4 @@ Tabularis utilizes the **Dagre** layout engine to automatically calculate visual
 ### Interaction
 - **Zoom & Pan**: The canvas is infinite, easily handling schemas with hundreds of tables.
 - **Highlighting**: Hover over a specific table to highlight all its incoming and outgoing relationships, fading the rest of the diagram into the background.
-- **Export**: Export the generated diagram as a high-resolution SVG or PNG for use in documentation or presentations.
+- **Export**: Use your OS screenshot tool to capture the diagram. No dedicated export button is available in this release.

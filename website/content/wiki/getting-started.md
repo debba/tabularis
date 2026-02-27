@@ -54,7 +54,7 @@ Click the **SQL Editor** tab or open a new editor tab. Type your SQL, then execu
 
 If you have multiple statements in the editor and no text is selected, Tabularis prompts you to choose which statement to run. Select text first to execute only that portion.
 
-Results stream into the Data Grid below the editor. Use the page controls to navigate large result sets. The page size defaults to 100 rows and can be changed via `resultPageSize` in [Configuration](/wiki/configuration).
+Results stream into the Data Grid below the editor. Use the page controls to navigate large result sets. The page size defaults to 500 rows and can be changed via `resultPageSize` in [Configuration](/wiki/configuration).
 
 ## 4. Edit data
 
