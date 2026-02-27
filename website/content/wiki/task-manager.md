@@ -8,7 +8,7 @@ excerpt: "Monitor and control plugin processes in real time — CPU, RAM, disk I
 
 The **Task Manager** is a built-in system monitor focused on Tabularis itself and the plugin processes it spawns. It lets you see resource consumption at a glance and take direct action — restart a misbehaving plugin or force-kill it — without leaving the application.
 
-Open it from the sidebar or via **Window → Task Manager**.
+Open it from **Settings → Plugins**, using the **Open Task Manager** button in the Task Manager section.
 
 ## Interface Overview
 

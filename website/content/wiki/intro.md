@@ -19,7 +19,7 @@ excerpt: "Welcome to the Tabularis Wiki. Learn how to get started with the most 
 - **Manages schema** — creates tables, alters columns, adds indexes and foreign keys — with a DDL preview before applying.
 - **Generates AI SQL** from natural language using OpenAI, Anthropic, OpenRouter, Ollama, or any OpenAI-compatible endpoint.
 - **Exports** query results to CSV or JSON (streamed, cancellable).
-- **Dumps and imports** databases to/from `.sql` or `.zip` files.
+- **Dumps and imports** databases to/from `.sql` files, with progress tracking and cancellation support.
 - **Extends** via plugins: any executable that speaks JSON-RPC over stdin/stdout becomes a new database driver.
 - **Runs as an MCP server** so external AI agents (Claude Desktop, Cursor) can query your local databases.
 

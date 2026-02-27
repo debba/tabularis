@@ -6,7 +6,7 @@ excerpt: "Work with multiple database connections simultaneously in a side-by-si
 
 # Split View
 
-**Split View** lets you open two or more database connections side by side in the same window. Each pane is fully independent — it has its own sidebar, tab bar, SQL editor, and data grid. This is useful for comparing query results across environments, migrating data, or working on two databases at the same time.
+**Split View** lets you open two or more database connections side by side in the same window. Each pane has its own SQL editor and data grid. The left sidebar is shared — clicking inside a pane makes that connection the active one in the explorer. This is useful for comparing query results across environments, migrating data, or working on two databases at the same time.
 
 ## Activating Split View
 
@@ -61,5 +61,4 @@ Open the same data in a native MySQL connection on the left and a DuckDB plugin 
 ## Notes
 
 - Split View works with any combination of connection types: native drivers (PostgreSQL, MySQL, SQLite) and plugin drivers can coexist in the same split workspace.
-- Each pane maintains its own connection state, including active schema selection and open transactions.
-- Each pane maintains its own connection state independently of the other panes.
+- Each pane maintains its own connection state independently — active schema selection, open transactions, and query history are not shared between panes.

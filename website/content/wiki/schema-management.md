@@ -21,17 +21,8 @@ The left sidebar is a fully interactive management suite. Right-click any table 
 ### Safe DDL Generation
 When you make visual changes, Tabularis does not apply them blindly. It compiles your actions into a set of precise DDL (`CREATE`, `ALTER`, `DROP`) statements and presents them in a preview window. You can review the exact SQL that will run, copy it for version control migrations, or click "Apply" to execute it.
 
-## Auto-Generated ER Diagrams
+## ER Diagrams
 
-Understanding a new, undocumented database can be daunting. Tabularis includes a powerful ER (Entity-Relationship) Diagram generator that maps out complex databases in seconds.
+Right-click any database or schema in the sidebar and choose **Open ER Diagram** to open a live, interactive entity-relationship diagram for that schema. Tables appear as nodes, foreign keys as directed edges. The layout is computed automatically using the **Dagre** engine.
 
-### The Layout Engine
-Tabularis utilizes the **Dagre** layout engine to automatically calculate visually pleasing representations of your schema.
-- Tables are rendered as nodes, showing primary keys and column types.
-- Foreign keys are rendered as directional edges connecting the exact columns.
-- The engine uses a Sugiyama-style hierarchical layout to minimize crossing lines, making the data flow visually obvious.
-
-### Interaction
-- **Zoom & Pan**: The canvas is infinite, easily handling schemas with hundreds of tables.
-- **Highlighting**: Hover over a specific table to highlight all its incoming and outgoing relationships, fading the rest of the diagram into the background.
-- **Export**: Use your OS screenshot tool to capture the diagram. No dedicated export button is available in this release.
+For full details — navigation, layout options, export, and per-driver FK support — see the dedicated [ER Diagram](/wiki/er-diagram) page.

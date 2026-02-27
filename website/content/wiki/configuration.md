@@ -61,8 +61,8 @@ Any key omitted from the file falls back to its default value. You do not need a
 | `aiOllamaPort` | `number` | `11434` | Local port for the Ollama daemon. |
 | `aiCustomOpenaiUrl` | `string` | `null` | Base URL for OpenAI-compatible endpoints (e.g., LM Studio, vLLM). |
 | `aiCustomOpenaiModel` | `string` | `null` | Model name to use with the custom OpenAI-compatible endpoint. |
-| `loggingEnabled` | `boolean` | `true` | Enable or disable the in-app log panel. |
-| `maxLogEntries` | `number` | `1000` | Maximum number of log entries retained in the UI log panel. |
+| `loggingEnabled` | `boolean` | `true` | Enable or disable the in-app log panel (UI preference only). |
+| `maxLogEntries` | `number` | `1000` | Maximum number of log entries retained in the UI log panel (UI preference only). |
 | `checkForUpdates` | `boolean` | `true` | Enable or disable update checks entirely. |
 | `autoCheckUpdatesOnStartup` | `boolean` | `true` | Checks GitHub Releases API on boot. |
 | `lastDismissedVersion` | `string` | `null` | Version string of the last dismissed update notification. |

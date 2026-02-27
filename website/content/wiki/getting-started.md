@@ -71,6 +71,8 @@ Right-click on the Data Grid result to export the current result set to **CSV** 
 | [Connection Management](/wiki/connections) | SSH tunnels, read-only mode, connection groups |
 | [SQL Editor](/wiki/editor) | Autocomplete, query history, the Monaco command palette |
 | [Visual Query Builder](/wiki/visual-query-builder) | Build `JOIN` queries without writing SQL |
-| [Schema Management & ER Diagrams](/wiki/schema-management) | Alter tables, manage indexes and foreign keys, visualise relations |
+| [Schema Management](/wiki/schema-management) | Alter tables, manage indexes and foreign keys |
+| [ER Diagram](/wiki/er-diagram) | Visualise table relationships as an interactive diagram |
+| [Dump & Import](/wiki/dump-import) | Export a database to SQL and restore it |
 | [AI Assistant](/wiki/ai-assistant) | Generate SQL from natural language using OpenAI, Anthropic, Ollama, or any compatible endpoint |
 | [Configuration](/wiki/configuration) | Themes, font, page size, AI provider settings |

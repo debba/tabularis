@@ -40,7 +40,7 @@ plugins/
 |----------|------|
 | Linux | `~/.local/share/tabularis/plugins/` |
 | macOS | `~/Library/Application Support/com.debba.tabularis/plugins/` |
-| Windows | `%APPDATA%\com.debba\tabularis\plugins\` |
+| Windows | `%APPDATA%\com.debba.tabularis\plugins\` |
 
 ## The `manifest.json`
 
@@ -81,6 +81,9 @@ Every plugin must include a `manifest.json` that tells Tabularis its capabilitie
 | `file_based` | bool | `true` for local file databases (e.g. SQLite, DuckDB). Replaces host/port with a file path field. |
 | `identifier_quote` | string | Character used to quote SQL identifiers: `"\""` (ANSI) or `` "`" `` (MySQL). |
 | `alter_primary_key` | bool | `true` if the database supports altering primary keys after table creation. |
+| `alter_column` | bool | `true` to enable ALTER TABLE MODIFY COLUMN operations in the schema editor. |
+| `create_foreign_keys` | bool | `true` to enable FK constraint creation in the schema editor. |
+| `folder_based` | bool | `true` for databases that target a folder rather than a file or host (e.g., CSV plugin). Replaces host/port with a folder picker. |
 
 ### Data Type Categories
 
