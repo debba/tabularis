@@ -264,6 +264,8 @@
       "update": "Aggiorna",
       "install": "Installa",
       "upToDate": "Aggiornato",
+      "downgrade": "Effettua downgrade a",
+      "olderVersions": "Versioni precedenti",
       "noPlugins": "Nessun plugin disponibile nel registro.",
       "version": "Versione",
       "requiresVersion": "Richiede Tabularis ≥ {{version}}",

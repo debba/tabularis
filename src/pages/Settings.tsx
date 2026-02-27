@@ -1385,10 +1385,14 @@ export const Settings = () => {
                     const platformReleases = plugin.releases.filter((r) => r.platform_supported);
                     // Versions that can actually be installed: exclude the one already installed
                     const installableReleases = platformReleases.filter((r) => r.version !== plugin.installed_version);
-                    // selectedVer: default latest installable, can be changed via rollback select
-                    const defaultVer = installableReleases.find((r) => r.version === plugin.latest_version)?.version
-                      ?? installableReleases[0]?.version
-                      ?? plugin.latest_version;
+                    const isAtLatest = !!plugin.installed_version && plugin.installed_version === plugin.latest_version;
+                    // selectedVer: when already at latest, default to latest (shows "up to date");
+                    // otherwise default to the latest installable version
+                    const defaultVer = isAtLatest
+                      ? plugin.latest_version
+                      : installableReleases.find((r) => r.version === plugin.latest_version)?.version
+                        ?? installableReleases[0]?.version
+                        ?? plugin.latest_version;
                     const selectedVer = selectedVersions[plugin.id] ?? defaultVer;
                     const selectedRelease = plugin.releases.find((r) => r.version === selectedVer);
                     const selectedPlatformSupported = selectedRelease?.platform_supported ?? false;
@@ -1396,8 +1400,10 @@ export const Settings = () => {
                     const minVersion = selectedRelease?.min_tabularis_version ?? null;
                     const isCompatible = !minVersion || versionGte(APP_VERSION, minVersion);
                     const isUpdate = !!plugin.installed_version && !isSelectedInstalled;
-                    // Show rollback select only if there are 2+ installable versions to choose from
-                    const showVersionPicker = installableReleases.length > 1;
+                    const isDowngrade = isUpdate && !versionGte(selectedVer, plugin.installed_version!);
+                    // Show version picker: always when at latest (for optional downgrade),
+                    // otherwise only when 2+ installable versions exist
+                    const showVersionPicker = isAtLatest ? installableReleases.length >= 1 : installableReleases.length > 1;
 
                     const doInstall = async () => {
                       setInstallingPluginId(plugin.id);
@@ -1431,54 +1437,73 @@ export const Settings = () => {
                         actions={
                           !selectedPlatformSupported ? (
                             <span className="text-xs text-muted italic text-right">{t("settings.plugins.platformNotSupported")}</span>
-                          ) : isSelectedInstalled && selectedVer === plugin.latest_version ? (
-                            /* Up to date */
-                            <span className="text-xs text-green-400 font-medium">{t("settings.plugins.upToDate")}</span>
                           ) : (
                             <>
-                              {/* Primary action button */}
-                              {isCompatible ? (
-                                <button
-                                  onClick={doInstall}
-                                  disabled={installingPluginId === plugin.id}
-                                  className={`w-full flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium text-white transition-colors disabled:opacity-50 ${
-                                    isUpdate ? "bg-green-600 hover:bg-green-500" : "bg-blue-600 hover:bg-blue-500"
-                                  }`}
-                                >
-                                  {installingPluginId === plugin.id ? (
-                                    <Loader2 size={12} className="animate-spin" />
-                                  ) : isUpdate ? (
-                                    <RefreshCw size={12} />
-                                  ) : (
-                                    <Download size={12} />
-                                  )}
-                                  {isUpdate
-                                    ? `${t("settings.plugins.update")} v${selectedVer}`
-                                    : `${t("settings.plugins.install")} v${selectedVer}`}
-                                </button>
-                              ) : (
-                                /* Incompatible: disabled button + requirement note */
-                                <div className="w-full flex flex-col items-end gap-1">
-                                  <button
-                                    disabled
-                                    title={t("settings.plugins.requiresVersion", { version: minVersion })}
-                                    className="w-full flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium text-muted bg-surface-tertiary cursor-not-allowed opacity-50"
-                                  >
-                                    <Download size={12} />
-                                    {t("settings.plugins.install")} v{selectedVer}
-                                  </button>
-                                  <span className="text-[10px] text-amber-400/80 text-right">
-                                    {t("settings.plugins.requiresVersion", { version: minVersion })}
-                                  </span>
+                              {/* Up to date indicator */}
+                              {isSelectedInstalled && selectedVer === plugin.latest_version && (
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <CheckCircle2 size={12} className="text-green-400" />
+                                  <span className="text-xs text-green-400 font-medium">{t("settings.plugins.upToDate")}</span>
                                 </div>
                               )}
 
-                              {/* Rollback / version picker — only when 2+ installable versions */}
+                              {/* Action button — only when a non-installed version is selected */}
+                              {!isSelectedInstalled && (
+                                isCompatible ? (
+                                  <button
+                                    onClick={doInstall}
+                                    disabled={installingPluginId === plugin.id}
+                                    className={`w-full flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium text-white transition-colors disabled:opacity-50 ${
+                                      isDowngrade
+                                        ? "bg-amber-600 hover:bg-amber-500"
+                                        : isUpdate
+                                        ? "bg-green-600 hover:bg-green-500"
+                                        : "bg-blue-600 hover:bg-blue-500"
+                                    }`}
+                                  >
+                                    {installingPluginId === plugin.id ? (
+                                      <Loader2 size={12} className="animate-spin" />
+                                    ) : isDowngrade ? (
+                                      <RotateCcw size={12} />
+                                    ) : isUpdate ? (
+                                      <RefreshCw size={12} />
+                                    ) : (
+                                      <Download size={12} />
+                                    )}
+                                    {isDowngrade
+                                      ? `${t("settings.plugins.downgrade")} v${selectedVer}`
+                                      : isUpdate
+                                      ? `${t("settings.plugins.update")} v${selectedVer}`
+                                      : `${t("settings.plugins.install")} v${selectedVer}`}
+                                  </button>
+                                ) : (
+                                  /* Incompatible: disabled button + requirement note */
+                                  <div className="w-full flex flex-col items-end gap-1">
+                                    <button
+                                      disabled
+                                      title={t("settings.plugins.requiresVersion", { version: minVersion })}
+                                      className="w-full flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium text-muted bg-surface-tertiary cursor-not-allowed opacity-50"
+                                    >
+                                      <Download size={12} />
+                                      {t("settings.plugins.install")} v{selectedVer}
+                                    </button>
+                                    <span className="text-[10px] text-amber-400/80 text-right">
+                                      {t("settings.plugins.requiresVersion", { version: minVersion })}
+                                    </span>
+                                  </div>
+                                )
+                              )}
+
+                              {/* Version picker — for downgrades when at latest, or between multiple installable versions */}
                               {showVersionPicker && (
                                 <div className="relative inline-flex items-center">
-                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-surface-quaternary text-[11px] text-secondary bg-surface-tertiary hover:border-blue-500/50 hover:text-primary transition-colors pointer-events-none select-none">
+                                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[11px] bg-surface-tertiary transition-colors pointer-events-none select-none ${
+                                    isDowngrade
+                                      ? "border-amber-500/30 text-amber-400/80"
+                                      : "border-surface-quaternary text-secondary hover:border-blue-500/50 hover:text-primary"
+                                  }`}>
                                     <RotateCcw size={9} />
-                                    <span>v{selectedVer}</span>
+                                    <span>{isAtLatest && isSelectedInstalled ? t("settings.plugins.olderVersions") : `v${selectedVer}`}</span>
                                     <ChevronDown size={9} />
                                   </div>
                                   <select
@@ -1488,6 +1513,11 @@ export const Settings = () => {
                                     }
                                     className="absolute inset-0 w-full opacity-0 cursor-pointer"
                                   >
+                                    {isAtLatest && (
+                                      <option value={plugin.latest_version} className="bg-surface-secondary text-primary">
+                                        v{plugin.latest_version} (installed, latest)
+                                      </option>
+                                    )}
                                     {[...installableReleases].reverse().map((r) => (
                                       <option key={r.version} value={r.version} className="bg-surface-secondary text-primary">
                                         v{r.version}{r.version === plugin.latest_version ? " (latest)" : ""}
