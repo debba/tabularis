@@ -6,8 +6,8 @@ import {
   type SshConnection,
 } from "../../src/utils/ssh";
 
-// Mock Tauri's invoke
-vi.mock("@tauri-apps/api/core", () => ({
+// Mock the invoke wrapper (ssh.ts uses src/lib/invoke, not @tauri-apps/api/core directly)
+vi.mock("../../src/lib/invoke", () => ({
   invoke: vi.fn(),
 }));
 
@@ -394,7 +394,7 @@ describe("ssh", () => {
     });
 
     it("should call invoke with correct parameters", async () => {
-      const { invoke } = await import("@tauri-apps/api/core");
+      const { invoke } = await import("../../src/lib/invoke");
       vi.mocked(invoke).mockResolvedValue("SSH connection successful");
 
       const ssh: Partial<SshConnection> = {
@@ -419,7 +419,7 @@ describe("ssh", () => {
     });
 
     it("should normalize empty password to undefined", async () => {
-      const { invoke } = await import("@tauri-apps/api/core");
+      const { invoke } = await import("../../src/lib/invoke");
       vi.mocked(invoke).mockResolvedValue("SSH connection successful");
 
       const ssh: Partial<SshConnection> = {
@@ -440,7 +440,7 @@ describe("ssh", () => {
     });
 
     it("should propagate errors from invoke", async () => {
-      const { invoke } = await import("@tauri-apps/api/core");
+      const { invoke } = await import("../../src/lib/invoke");
       const errorMessage = "Connection refused";
       vi.mocked(invoke).mockRejectedValue(new Error(errorMessage));
 
@@ -456,7 +456,7 @@ describe("ssh", () => {
     });
 
     it("should handle ssh_key authentication", async () => {
-      const { invoke } = await import("@tauri-apps/api/core");
+      const { invoke } = await import("../../src/lib/invoke");
       vi.mocked(invoke).mockResolvedValue("SSH connection successful");
 
       const ssh: Partial<SshConnection> = {

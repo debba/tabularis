@@ -18,6 +18,9 @@ import { PanelDatabaseProvider } from "./PanelDatabaseProvider";
 
 // Hooks & Utils
 import { useSidebarResize } from "../../hooks/useSidebarResize";
+
+const isTauri = (): boolean =>
+  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 import { useConnectionManager } from "../../hooks/useConnectionManager";
 import { useConnectionLayoutContext } from "../../contexts/useConnectionLayoutContext";
 import { isConnectionGrouped } from "../../utils/connectionLayout";
@@ -167,11 +170,13 @@ export const Sidebar = () => {
             </span>
           </button>
 
-          <NavItem
-            to="/settings"
-            icon={Settings}
-            label={t("sidebar.settings")}
-          />
+          {isTauri() && (
+            <NavItem
+              to="/settings"
+              icon={Settings}
+              label={t("sidebar.settings")}
+            />
+          )}
         </div>
       </aside>
 

@@ -5,8 +5,8 @@ import {
 } from '../../src/utils/autocomplete';
 import type { TableInfo } from '../../src/contexts/DatabaseContext';
 
-// Mock @tauri-apps/api/core
-vi.mock('@tauri-apps/api/core', () => ({
+// Mock the invoke wrapper (autocomplete.ts uses src/lib/invoke, not @tauri-apps/api/core directly)
+vi.mock('../../src/lib/invoke', () => ({
   invoke: vi.fn(),
 }));
 
@@ -16,7 +16,7 @@ vi.mock('../../src/utils/sqlAnalysis', () => ({
   parseTablesFromQuery: vi.fn(() => new Map()),
 }));
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../../src/lib/invoke';
 
 // Create a mock Monaco object
 const createMockMonaco = () => ({

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { invoke } from "./lib/invoke";
 import { MainLayout } from "./components/layout/MainLayout";
 import { ConnectionLayoutProvider } from "./contexts/ConnectionLayoutProvider";
@@ -34,6 +34,28 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
     () => isTauri() || !!localStorage.getItem("rc_token"),
   );
+
+  // In web/remote mode: auto-attempt login with empty password on mount.
+  // If the server has no password configured it returns a token immediately,
+  // skipping the login page entirely.
+  useEffect(() => {
+    if (isTauri() || isAuthenticated) return;
+    fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "" }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { token: string } | null) => {
+        if (data?.token) {
+          localStorage.setItem("rc_token", data.token);
+          setIsAuthenticated(true);
+        }
+      })
+      .catch(() => {
+        // Server unreachable — stay on login page
+      });
+  }, [isAuthenticated]);
 
   const dismissCommunityModal = useCallback(() => {
     localStorage.setItem(COMMUNITY_MODAL_KEY, "1");
@@ -73,7 +95,10 @@ function App() {
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Connections />} />
               <Route path="editor" element={<Editor />} />
-              <Route path="settings" element={<Settings />} />
+              <Route
+                path="settings"
+                element={isTauri() ? <Settings /> : <Navigate to="/" replace />}
+              />
             </Route>
             <Route path="/schema-diagram" element={<SchemaDiagramPage />} />
             <Route path="/task-manager" element={<TaskManagerPage />} />
