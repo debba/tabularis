@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import MonacoEditor, { type BeforeMount } from "@monaco-editor/react";
+import type * as MonacoTypes from "monaco-editor";
 import { useTheme } from "../../hooks/useTheme";
 import { loadMonacoTheme } from "../../themes/themeUtils";
 
@@ -17,17 +18,17 @@ export const SqlPreview: React.FC<SqlPreviewProps> = ({
   showLineNumbers = false,
 }) => {
   const { currentTheme } = useTheme();
-  const editorRef = useRef<Parameters<BeforeMount>[0] | null>(null);
+  const monacoRef = useRef<typeof MonacoTypes | null>(null);
 
   // Update Monaco theme when theme changes
   useEffect(() => {
-    if (editorRef.current) {
-      loadMonacoTheme(currentTheme);
+    if (monacoRef.current) {
+      loadMonacoTheme(currentTheme, monacoRef.current);
     }
   }, [currentTheme]);
 
   const handleBeforeMount: BeforeMount = (monaco) => {
-    editorRef.current = monaco;
+    monacoRef.current = monaco;
     // Load Monaco theme before editor is created
     loadMonacoTheme(currentTheme, monaco);
   };

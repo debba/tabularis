@@ -1,5 +1,5 @@
 import type { Theme, MonacoThemeDefinition } from "../types/theme";
-import * as monaco from "monaco-editor";
+import type * as monaco from "monaco-editor";
 import { lighten } from "./colorUtils";
 
 // Static imports for monaco-themes (copied locally for Vite compatibility)
@@ -14,16 +14,16 @@ import OneDarkProTheme from "./monaco/One Dark Pro.json";
 import NightOwlTheme from "./monaco/Night Owl.json";
 
 // Map of theme names to imported theme data
-const MONACO_THEMES_MAP: Record<string, monaco.editor.IStandaloneThemeData> = {
-  Monokai: MonokaiTheme as monaco.editor.IStandaloneThemeData,
-  Dracula: DraculaTheme as monaco.editor.IStandaloneThemeData,
-  Nord: NordTheme as monaco.editor.IStandaloneThemeData,
-  "GitHub Dark": GitHubDarkTheme as monaco.editor.IStandaloneThemeData,
-  "GitHub Light": GitHubLightTheme as monaco.editor.IStandaloneThemeData,
-  "Solarized-dark": SolarizedDarkTheme as monaco.editor.IStandaloneThemeData,
-  "Solarized-light": SolarizedLightTheme as monaco.editor.IStandaloneThemeData,
-  "One Dark Pro": OneDarkProTheme as monaco.editor.IStandaloneThemeData,
-  "Night Owl": NightOwlTheme as monaco.editor.IStandaloneThemeData,
+const MONACO_THEMES_MAP: Record<string, unknown> = {
+  Monokai: MonokaiTheme,
+  Dracula: DraculaTheme,
+  Nord: NordTheme,
+  "GitHub Dark": GitHubDarkTheme,
+  "GitHub Light": GitHubLightTheme,
+  "Solarized-dark": SolarizedDarkTheme,
+  "Solarized-light": SolarizedLightTheme,
+  "One Dark Pro": OneDarkProTheme,
+  "Night Owl": NightOwlTheme,
 };
 
 // Track which themes have been defined
@@ -35,10 +35,9 @@ const definedThemes = new Set<string>();
  */
 export function loadMonacoTheme(
   theme: Theme,
-  monacoInstance?: typeof monaco,
+  monacoInstance: typeof monaco,
 ): void {
   const themeName = theme.monacoTheme.themeName;
-  const monacoToUse = monacoInstance || monaco;
 
   try {
     // If theme has a themeName, use the predefined Monaco theme
@@ -47,28 +46,28 @@ export function loadMonacoTheme(
 
       // Define the theme with our theme ID if not already defined
       if (!definedThemes.has(theme.id)) {
-        monacoToUse.editor.defineTheme(theme.id, themeData);
+        monacoInstance.editor.defineTheme(theme.id, themeData as monaco.editor.IStandaloneThemeData);
         definedThemes.add(theme.id);
       }
 
       // Set it as the active theme
-      monacoToUse.editor.setTheme(theme.id);
+      monacoInstance.editor.setTheme(theme.id);
     } else {
       // No themeName or not found, use fallback generated theme
       const fallbackTheme = generateMonacoTheme(theme);
       if (!definedThemes.has(theme.id)) {
-        monacoToUse.editor.defineTheme(
+        monacoInstance.editor.defineTheme(
           theme.id,
           fallbackTheme as monaco.editor.IStandaloneThemeData,
         );
         definedThemes.add(theme.id);
       }
-      monacoToUse.editor.setTheme(theme.id);
+      monacoInstance.editor.setTheme(theme.id);
     }
   } catch (error) {
     console.error(`Failed to load Monaco theme for "${theme.name}":`, error);
     // Final fallback to vs-dark
-    monacoToUse.editor.setTheme(theme.monacoTheme.base || "vs-dark");
+    monacoInstance.editor.setTheme(theme.monacoTheme.base || "vs-dark");
   }
 }
 

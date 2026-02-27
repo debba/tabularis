@@ -26,6 +26,7 @@ const SqlEditorInternal: React.FC<SqlEditorWrapperProps & { editorKey: string }>
 }) => {
   const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const monacoRef = useRef<typeof Monaco | null>(null);
   const { currentTheme } = useTheme();
 
   // Sync editor value only when initialValue changes externally (e.g., tab switch)
@@ -37,8 +38,8 @@ const SqlEditorInternal: React.FC<SqlEditorWrapperProps & { editorKey: string }>
 
   // Update Monaco theme when theme changes
   useEffect(() => {
-    if (editorRef.current) {
-      loadMonacoTheme(currentTheme);
+    if (editorRef.current && monacoRef.current) {
+      loadMonacoTheme(currentTheme, monacoRef.current);
     }
   }, [currentTheme]);
 
@@ -88,6 +89,7 @@ const SqlEditorInternal: React.FC<SqlEditorWrapperProps & { editorKey: string }>
 
     const handleEditorMount: OnMount = (editor, monaco) => {
       editorRef.current = editor;
+      monacoRef.current = monaco;
 
       // Bind Ctrl+Enter to Run
       editor.addCommand(
