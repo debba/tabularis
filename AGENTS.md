@@ -11,7 +11,7 @@ Adhere to the rules defined in the [rules directory](./.rules/):
 <!-- gitnexus:start -->
 # GitNexus MCP
 
-This project is indexed by GitNexus as **tabularis** (2303 symbols, 5822 relationships, 176 execution flows).
+This project is indexed by GitNexus as **tabularis** (2310 symbols, 5791 relationships, 175 execution flows).
 
 GitNexus provides a knowledge graph over this codebase — call chains, blast radius, execution flows, and semantic search.
 
