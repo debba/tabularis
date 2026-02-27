@@ -1,12 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '../../lib/invoke';
-import { Wifi, Copy, Power, AlertTriangle, Loader2, Check } from 'lucide-react';
+import { Wifi, Copy, Power, AlertTriangle, Loader2, Check, Globe } from 'lucide-react';
 import clsx from 'clsx';
 
 interface RemoteControlStatus {
   running: boolean;
   port: number | null;
+  url: string | null;
+}
+
+interface TunnelStatus {
+  running: boolean;
   url: string | null;
 }
 
@@ -23,6 +28,11 @@ export const RemoteControlTab = () => {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const [tunnel, setTunnel] = useState<TunnelStatus>({ running: false, url: null });
+  const [tunnelLoading, setTunnelLoading] = useState(false);
+  const [tunnelCopied, setTunnelCopied] = useState(false);
+  const [tunnelError, setTunnelError] = useState<string | null>(null);
+
   const fetchStatus = useCallback(async () => {
     try {
       const s = await invoke<RemoteControlStatus>('get_remote_control_status');
@@ -33,9 +43,19 @@ export const RemoteControlTab = () => {
     }
   }, []);
 
+  const fetchTunnelStatus = useCallback(async () => {
+    try {
+      const s = await invoke<TunnelStatus>('get_tunnel_status');
+      setTunnel(s);
+    } catch (e) {
+      console.error('Failed to get tunnel status', e);
+    }
+  }, []);
+
   useEffect(() => {
     fetchStatus();
-  }, [fetchStatus]);
+    fetchTunnelStatus();
+  }, [fetchStatus, fetchTunnelStatus]);
 
   const handleStart = async () => {
     setLoading(true);
@@ -44,6 +64,7 @@ export const RemoteControlTab = () => {
         port,
         password: password.trim() || null,
       });
+      setTunnel({ running: false, url: null });
       await fetchStatus();
     } catch (e) {
       console.error('Failed to start remote control', e);
@@ -57,6 +78,7 @@ export const RemoteControlTab = () => {
     try {
       await invoke('stop_remote_control');
       setStatus({ running: false, port: null, url: null });
+      setTunnel({ running: false, url: null });
     } catch (e) {
       console.error('Failed to stop remote control', e);
     } finally {
@@ -71,8 +93,43 @@ export const RemoteControlTab = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleStartTunnel = async () => {
+    setTunnelLoading(true);
+    setTunnelError(null);
+    try {
+      const url = await invoke<string>('start_tunnel', { port });
+      setTunnel({ running: true, url });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setTunnelError(msg);
+    } finally {
+      setTunnelLoading(false);
+    }
+  };
+
+  const handleStopTunnel = async () => {
+    setTunnelLoading(true);
+    try {
+      await invoke('stop_tunnel');
+      setTunnel({ running: false, url: null });
+      setTunnelError(null);
+    } catch (e) {
+      console.error('Failed to stop tunnel', e);
+    } finally {
+      setTunnelLoading(false);
+    }
+  };
+
+  const handleCopyTunnelUrl = async () => {
+    if (!tunnel.url) return;
+    await navigator.clipboard.writeText(tunnel.url);
+    setTunnelCopied(true);
+    setTimeout(() => setTunnelCopied(false), 2000);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Remote Control Server */}
       <div className="bg-elevated border border-default rounded-xl p-6">
         <h3 className="text-lg font-semibold text-primary mb-1 flex items-center gap-2">
           <Wifi size={20} className="text-blue-400" />
@@ -183,6 +240,80 @@ export const RemoteControlTab = () => {
           </div>
         </div>
       </div>
+
+      {/* Cloudflare Tunnel — only available when server is running */}
+      {status.running && (
+        <div className="bg-elevated border border-default rounded-xl p-6">
+          <h3 className="text-lg font-semibold text-primary mb-1 flex items-center gap-2">
+            <Globe size={20} className="text-green-400" />
+            {t('settings.remoteControl.tunnel.title')}
+          </h3>
+          <p className="text-xs text-muted mb-4">
+            {t('settings.remoteControl.tunnel.description')}
+          </p>
+
+          {/* Tunnel URL */}
+          {tunnel.running && tunnel.url && (
+            <div className="flex items-center gap-2 mb-4">
+              <span className="h-2.5 w-2.5 rounded-full bg-green-400 shrink-0" />
+              <span className="text-sm font-mono text-blue-400 break-all">{tunnel.url}</span>
+            </div>
+          )}
+
+          {/* Error */}
+          {tunnelError && (
+            <p className="text-xs text-red-400 mb-4 break-all">{tunnelError}</p>
+          )}
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {!tunnel.running ? (
+              <button
+                onClick={handleStartTunnel}
+                disabled={tunnelLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {tunnelLoading ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Globe size={14} />
+                )}
+                {tunnelLoading
+                  ? t('settings.remoteControl.tunnel.generating')
+                  : t('settings.remoteControl.tunnel.generate')}
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={handleStopTunnel}
+                  disabled={tunnelLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {tunnelLoading ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Power size={14} />
+                  )}
+                  {t('settings.remoteControl.tunnel.stop')}
+                </button>
+
+                {tunnel.url && (
+                  <button
+                    onClick={handleCopyTunnelUrl}
+                    className="flex items-center gap-2 px-4 py-2 bg-surface-secondary hover:bg-surface-tertiary text-primary rounded-lg text-sm font-medium transition-colors border border-default"
+                  >
+                    {tunnelCopied ? (
+                      <Check size={14} className="text-green-400" />
+                    ) : (
+                      <Copy size={14} />
+                    )}
+                    {tunnelCopied ? 'Copied!' : t('settings.remoteControl.copyUrl')}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Warning */}
       <div className="flex items-start gap-3 px-4 py-3 bg-yellow-900/20 border border-yellow-700/40 rounded-lg text-sm text-yellow-400">

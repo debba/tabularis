@@ -293,7 +293,14 @@
       "warning": "Chiunque nella tua rete locale può accedere ai tuoi database",
       "startServer": "Avvia Server",
       "stopServer": "Ferma Server",
-      "saveAndRestart": "Salva e Riavvia"
+      "saveAndRestart": "Salva e Riavvia",
+      "tunnel": {
+        "title": "Accesso Pubblico (Cloudflare Tunnel)",
+        "description": "Genera un URL pubblico temporaneo accessibile da qualsiasi rete. Richiede cloudflared installato su questa macchina.",
+        "generate": "Genera URL Pubblico",
+        "generating": "Generazione in corso...",
+        "stop": "Ferma Tunnel"
+      }
     }
   },
   "update": {

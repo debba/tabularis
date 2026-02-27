@@ -2,6 +2,7 @@ pub mod auth;
 pub mod handler;
 pub mod router;
 pub mod static_files;
+pub mod tunnel;
 
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};

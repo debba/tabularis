@@ -293,7 +293,14 @@
       "warning": "Cualquier persona en tu red local puede acceder a tus bases de datos",
       "startServer": "Iniciar Servidor",
       "stopServer": "Detener Servidor",
-      "saveAndRestart": "Guardar y Reiniciar"
+      "saveAndRestart": "Guardar y Reiniciar",
+      "tunnel": {
+        "title": "Acceso Público (Cloudflare Tunnel)",
+        "description": "Genera una URL pública temporal accesible desde cualquier red. Requiere cloudflared instalado en esta máquina.",
+        "generate": "Generar URL Pública",
+        "generating": "Generando...",
+        "stop": "Detener Túnel"
+      }
     }
   },
   "update": {

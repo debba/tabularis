@@ -35,7 +35,7 @@ use clap::Parser;
 use logger::{create_log_buffer, init_logger, SharedLogBuffer};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Manager;
-use web_server::{RemoteControlConfig, RemoteControlStatus, ServerHandle};
+use web_server::{tunnel::TunnelHandle, RemoteControlConfig, RemoteControlStatus, ServerHandle};
 
 static DEBUG_MODE: AtomicBool = AtomicBool::new(false);
 
@@ -72,6 +72,10 @@ async fn start_remote_control(
     port: u16,
     password: Option<String>,
 ) -> Result<u16, String> {
+    // Stop any running tunnel since port may change
+    let tunnel_handle = app.state::<TunnelHandle>();
+    tunnel_handle.stop();
+
     let token_hash = password.as_deref().map(web_server::auth::sha256_hex);
     let config = RemoteControlConfig {
         enabled: true,
@@ -85,6 +89,11 @@ async fn start_remote_control(
 async fn stop_remote_control(app: tauri::AppHandle) -> Result<(), String> {
     let handle = app.state::<ServerHandle>();
     web_server::stop(&handle);
+
+    // Also stop tunnel (tunnel without server is useless)
+    let tunnel_handle = app.state::<TunnelHandle>();
+    tunnel_handle.stop();
+
     log::info!("Remote Control server stopped");
     Ok(())
 }
@@ -96,6 +105,35 @@ fn get_remote_control_status(app: tauri::AppHandle) -> RemoteControlStatus {
     let port = handle.port();
     let url = port.map(|p| format!("http://{}:{}", web_server::get_local_ip(), p));
     RemoteControlStatus { running, port, url }
+}
+
+#[tauri::command]
+async fn start_tunnel(app: tauri::AppHandle, port: u16) -> Result<String, String> {
+    let tunnel_handle = app.state::<TunnelHandle>();
+    tunnel_handle.stop();
+
+    let (child, url) = web_server::tunnel::start(port).await?;
+    tunnel_handle.store(child, url.clone());
+
+    log::info!("Cloudflare Tunnel started: {}", url);
+    Ok(url)
+}
+
+#[tauri::command]
+async fn stop_tunnel(app: tauri::AppHandle) -> Result<(), String> {
+    let tunnel_handle = app.state::<TunnelHandle>();
+    tunnel_handle.stop();
+    log::info!("Cloudflare Tunnel stopped");
+    Ok(())
+}
+
+#[tauri::command]
+fn get_tunnel_status(app: tauri::AppHandle) -> web_server::tunnel::TunnelStatus {
+    let tunnel_handle = app.state::<TunnelHandle>();
+    web_server::tunnel::TunnelStatus {
+        running: tunnel_handle.is_running(),
+        url: tunnel_handle.url(),
+    }
 }
 
 #[derive(Parser, Debug)]
@@ -174,6 +212,7 @@ pub fn run() {
         .manage(export::ExportCancellationState::default())
         .manage(dump_commands::DumpCancellationState::default())
         .manage(ServerHandle::default())
+        .manage(TunnelHandle::default())
         .manage(log_buffer)
         .setup(move |app| {
             // Read persisted config to know which external plugins are enabled.
@@ -350,6 +389,10 @@ pub fn run() {
             start_remote_control,
             stop_remote_control,
             get_remote_control_status,
+            // Tunnel
+            start_tunnel,
+            stop_tunnel,
+            get_tunnel_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

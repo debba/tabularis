@@ -293,7 +293,14 @@
       "warning": "Anyone on your local network can access your databases",
       "startServer": "Start Server",
       "stopServer": "Stop Server",
-      "saveAndRestart": "Save & Restart"
+      "saveAndRestart": "Save & Restart",
+      "tunnel": {
+        "title": "Public Access (Cloudflare Tunnel)",
+        "description": "Generate a temporary public URL accessible from anywhere. Requires cloudflared to be installed on this machine.",
+        "generate": "Generate Public URL",
+        "generating": "Generating...",
+        "stop": "Stop Tunnel"
+      }
     }
   },
   "update": {
