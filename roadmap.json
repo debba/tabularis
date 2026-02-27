@@ -5,6 +5,11 @@
     "url": "https://github.com/debba/tabularis/issues/19"
   },
   {
+    "label": "Feature: Remote Control",
+    "done": false,
+    "url": "https://github.com/debba/tabularis/issues/46"
+  },
+  {
     "label": "Command Palette",
     "done": false,
     "url": "https://github.com/debba/tabularis/issues/25"

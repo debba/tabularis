@@ -333,6 +333,7 @@ npm run tauri build
 ## Roadmap
 
 - [x] [Plugin System](https://github.com/debba/tabularis/issues/19)
+- [ ] [Feature: Remote Control](https://github.com/debba/tabularis/issues/46)
 - [ ] [Command Palette](https://github.com/debba/tabularis/issues/25)
 - [ ] [JSON/JSONB Editor & Viewer](https://github.com/debba/tabularis/issues/24)
 - [ ] [SQL Formatting / Prettier](https://github.com/debba/tabularis/issues/23)
