@@ -54,7 +54,7 @@ Click the **SQL Editor** tab or open a new editor tab. Type your SQL, then execu
 
 If you have multiple statements in the editor and no text is selected, Tabularis prompts you to choose which statement to run. Select text first to execute only that portion.
 
-Results stream into the Data Grid below the editor. Use the page controls to navigate large result sets. The page size defaults to 100 rows and can be changed via `resultPageSize` in [Configuration](/wiki/configuration).
+Results stream into the Data Grid below the editor. Use the page controls to navigate large result sets. The page size defaults to 500 rows and can be changed via `resultPageSize` in [Configuration](/wiki/configuration).
 
 ## 4. Edit data
 
@@ -71,6 +71,8 @@ Right-click on the Data Grid result to export the current result set to **CSV** 
 | [Connection Management](/wiki/connections) | SSH tunnels, read-only mode, connection groups |
 | [SQL Editor](/wiki/editor) | Autocomplete, query history, the Monaco command palette |
 | [Visual Query Builder](/wiki/visual-query-builder) | Build `JOIN` queries without writing SQL |
-| [Schema Management & ER Diagrams](/wiki/schema-management) | Alter tables, manage indexes and foreign keys, visualise relations |
+| [Schema Management](/wiki/schema-management) | Alter tables, manage indexes and foreign keys |
+| [ER Diagram](/wiki/er-diagram) | Visualise table relationships as an interactive diagram |
+| [Dump & Import](/wiki/dump-import) | Export a database to SQL and restore it |
 | [AI Assistant](/wiki/ai-assistant) | Generate SQL from natural language using OpenAI, Anthropic, Ollama, or any compatible endpoint |
 | [Configuration](/wiki/configuration) | Themes, font, page size, AI provider settings |
