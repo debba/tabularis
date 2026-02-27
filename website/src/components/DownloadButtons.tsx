@@ -1,6 +1,15 @@
+"use client";
+
 import { APP_VERSION } from "@/lib/version";
 
-export function DownloadButtons() {
+function scrollTo(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.history.pushState(null, "", `#${id}`);
+}
+
+export function DownloadButtons({ showInstallLink = false }: { showInstallLink?: boolean }) {
   return (
     <>
       <div className="download-grid">
@@ -30,7 +39,16 @@ export function DownloadButtons() {
         </a>
       </div>
 
-      <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.75rem" }}>
+      <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.75rem", display: "flex", gap: "1.25rem", flexWrap: "wrap" }}>
+        {showInstallLink && (
+          <a
+            href="#download"
+            onClick={(e) => { e.preventDefault(); scrollTo("download"); }}
+            style={{ color: "var(--text-muted)", textDecoration: "none" }}
+          >
+            Homebrew, Snap, AUR and more ↓
+          </a>
+        )}
         <a
           href="https://github.com/debba/tabularis/releases"
           target="_blank"

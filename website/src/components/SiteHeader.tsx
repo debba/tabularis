@@ -46,9 +46,9 @@ export function SiteHeader({ crumbs = [] }: SiteHeaderProps) {
           {/* DESKTOP NAV */}
           <nav className="desktop-nav">
             {navLinks.map((link) => (
-              <Link 
-                key={link.href} 
-                href={link.href} 
+              <Link
+                key={link.href}
+                href={link.href}
                 className={`nav-link ${pathname.startsWith(link.href) ? "active" : ""}`}
               >
                 {link.label}
@@ -80,8 +80,8 @@ export function SiteHeader({ crumbs = [] }: SiteHeaderProps) {
           </nav>
 
           {/* MOBILE TOGGLE */}
-          <button 
-            className="mobile-toggle" 
+          <button
+            className="mobile-toggle"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Toggle Menu"
           >
@@ -112,9 +112,9 @@ export function SiteHeader({ crumbs = [] }: SiteHeaderProps) {
       <div className={`mobile-menu ${isMobileMenuOpen ? "active" : ""}`}>
         <nav className="mobile-nav">
           {navLinks.map((link) => (
-            <Link 
-              key={link.href} 
-              href={link.href} 
+            <Link
+              key={link.href}
+              href={link.href}
               className={`mobile-nav-link ${pathname.startsWith(link.href) ? "active" : ""}`}
             >
               {link.label}

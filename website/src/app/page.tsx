@@ -152,7 +152,7 @@ export default function HomePage() {
           Built for speed, security, and aesthetics.
         </p>
 
-        <DownloadButtons />
+        <DownloadButtons showInstallLink />
 
       </header>
 
