@@ -282,15 +282,13 @@
       "description": "Access Tabularis from any browser on your local network",
       "enable": "Enable Remote Control Server",
       "port": "Port",
-      "password": "Password (optional)",
-      "passwordPlaceholder": "Leave empty for no authentication",
       "status": {
         "running": "Running",
         "stopped": "Stopped"
       },
       "url": "Server URL",
       "copyUrl": "Copy URL",
-      "warning": "Anyone on your local network can access your databases",
+      "warning": "Anyone on your local network can access your databases. Access requires explicit approval.",
       "startServer": "Start Server",
       "stopServer": "Stop Server",
       "saveAndRestart": "Save & Restart",
@@ -300,6 +298,34 @@
         "generate": "Generate Public URL",
         "generating": "Generating...",
         "stop": "Stop Tunnel"
+      },
+      "sessions": {
+        "title": "Sessions",
+        "pendingRequests": "Pending Requests",
+        "activeSessions": "Active Sessions",
+        "accept": "Accept",
+        "deny": "Deny",
+        "disconnect": "Disconnect",
+        "noRequests": "No pending requests",
+        "noSessions": "No active sessions",
+        "connectedAt": "Connected at"
+      },
+      "request": {
+        "title": "Request Access",
+        "namePlaceholder": "Your name (optional)",
+        "submit": "Request Access",
+        "waiting": "Waiting for approval...",
+        "denied": "Access denied by the administrator",
+        "expired": "Request expired. Please try again."
+      },
+      "revoked": {
+        "title": "Access Revoked",
+        "message": "Your access has been revoked by the administrator.",
+        "close": "Close"
+      },
+      "toast": {
+        "newRequest": "wants to connect",
+        "sessionDisconnected": "disconnected"
       }
     }
   },

@@ -1,8 +1,11 @@
+pub mod access;
 pub mod auth;
 pub mod handler;
 pub mod router;
 pub mod static_files;
 pub mod tunnel;
+
+pub use access::AccessControlState;
 
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
@@ -14,8 +17,6 @@ use tokio::task::JoinHandle;
 pub struct RemoteControlConfig {
     pub enabled: bool,
     pub port: u16,
-    /// SHA-256 hex of the password, or None if no auth
-    pub token_hash: Option<String>,
 }
 
 impl Default for RemoteControlConfig {
@@ -23,7 +24,6 @@ impl Default for RemoteControlConfig {
         Self {
             enabled: false,
             port: 4321,
-            token_hash: None,
         }
     }
 }
@@ -62,29 +62,6 @@ impl Default for ServerHandle {
     }
 }
 
-/// Start the remote control HTTP server. Returns the bound port.
-pub async fn start(
-    app: AppHandle,
-    config: RemoteControlConfig,
-) -> Result<u16, String> {
-    let port = config.port;
-    let router = router::build_router(app, config);
-
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
-        .await
-        .map_err(|e| format!("Failed to bind port {}: {}", port, e))?;
-
-    let actual_port = listener.local_addr().map_err(|e| e.to_string())?.port();
-
-    tokio::spawn(async move {
-        axum::serve(listener, router)
-            .await
-            .expect("HTTP server error");
-    });
-
-    Ok(actual_port)
-}
-
 /// Stop the remote control HTTP server.
 pub fn stop(handle: &ServerHandle) {
     let mut guard = handle.inner.lock().unwrap();
@@ -97,6 +74,7 @@ pub fn stop(handle: &ServerHandle) {
 pub async fn start_and_register(
     app: AppHandle,
     config: RemoteControlConfig,
+    access: AccessControlState,
 ) -> Result<u16, String> {
     let handle = app.state::<ServerHandle>();
 
@@ -104,7 +82,8 @@ pub async fn start_and_register(
     stop(&handle);
 
     let port = config.port;
-    let router = router::build_router(app.clone(), config);
+    let router = router::build_router(app.clone(), access)
+        .into_make_service_with_connect_info::<std::net::SocketAddr>();
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
         .await
@@ -129,9 +108,7 @@ pub async fn start_and_register(
 
 /// Get the local network IP address (best guess).
 pub fn get_local_ip() -> String {
-    // Try to find a non-loopback IPv4 address
     if let Ok(socket) = std::net::UdpSocket::bind("0.0.0.0:0") {
-        // Connect to a public address (doesn't actually send data)
         if socket.connect("8.8.8.8:80").is_ok() {
             if let Ok(addr) = socket.local_addr() {
                 return addr.ip().to_string();

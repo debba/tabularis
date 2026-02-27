@@ -282,15 +282,13 @@
       "description": "Accede a Tabularis desde cualquier navegador en tu red local",
       "enable": "Habilitar Servidor de Control Remoto",
       "port": "Puerto",
-      "password": "Contraseña (opcional)",
-      "passwordPlaceholder": "Dejar vacío para sin autenticación",
       "status": {
         "running": "Activo",
         "stopped": "Detenido"
       },
       "url": "URL del Servidor",
       "copyUrl": "Copiar URL",
-      "warning": "Cualquier persona en tu red local puede acceder a tus bases de datos",
+      "warning": "Cualquier persona en tu red local puede acceder a tus bases de datos. El acceso requiere aprobación explícita.",
       "startServer": "Iniciar Servidor",
       "stopServer": "Detener Servidor",
       "saveAndRestart": "Guardar y Reiniciar",
@@ -300,6 +298,34 @@
         "generate": "Generar URL Pública",
         "generating": "Generando...",
         "stop": "Detener Túnel"
+      },
+      "sessions": {
+        "title": "Sesiones",
+        "pendingRequests": "Solicitudes Pendientes",
+        "activeSessions": "Sesiones Activas",
+        "accept": "Aceptar",
+        "deny": "Denegar",
+        "disconnect": "Desconectar",
+        "noRequests": "No hay solicitudes pendientes",
+        "noSessions": "No hay sesiones activas",
+        "connectedAt": "Conectado a las"
+      },
+      "request": {
+        "title": "Solicitar Acceso",
+        "namePlaceholder": "Tu nombre (opcional)",
+        "submit": "Solicitar Acceso",
+        "waiting": "Esperando aprobación...",
+        "denied": "Acceso denegado por el administrador",
+        "expired": "Solicitud expirada. Inténtalo de nuevo."
+      },
+      "revoked": {
+        "title": "Acceso Revocado",
+        "message": "Tu acceso ha sido revocado por el administrador.",
+        "close": "Cerrar"
+      },
+      "toast": {
+        "newRequest": "quiere conectarse",
+        "sessionDisconnected": "se ha desconectado"
       }
     }
   },

@@ -35,7 +35,11 @@ use clap::Parser;
 use logger::{create_log_buffer, init_logger, SharedLogBuffer};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Manager;
-use web_server::{tunnel::TunnelHandle, RemoteControlConfig, RemoteControlStatus, ServerHandle};
+use web_server::{
+    access::{start_heartbeat_monitor, AccessControlState, PendingRequest, SessionInfo},
+    tunnel::TunnelHandle,
+    RemoteControlConfig, RemoteControlStatus, ServerHandle,
+};
 
 static DEBUG_MODE: AtomicBool = AtomicBool::new(false);
 
@@ -70,19 +74,27 @@ fn close_devtools(window: tauri::WebviewWindow) {
 async fn start_remote_control(
     app: tauri::AppHandle,
     port: u16,
-    password: Option<String>,
 ) -> Result<u16, String> {
     // Stop any running tunnel since port may change
     let tunnel_handle = app.state::<TunnelHandle>();
     tunnel_handle.stop();
 
-    let token_hash = password.as_deref().map(web_server::auth::sha256_hex);
     let config = RemoteControlConfig {
         enabled: true,
         port,
-        token_hash,
     };
-    web_server::start_and_register(app, config).await
+
+    let access = {
+        let state = app.state::<AccessControlState>();
+        state.inner().clone()
+    };
+
+    let actual_port = web_server::start_and_register(app.clone(), config, access.clone()).await?;
+
+    // Start background heartbeat monitor
+    start_heartbeat_monitor(app, access);
+
+    Ok(actual_port)
 }
 
 #[tauri::command]
@@ -136,6 +148,103 @@ fn get_tunnel_status(app: tauri::AppHandle) -> web_server::tunnel::TunnelStatus 
     }
 }
 
+// ── Access Control Commands ───────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_access_requests(
+    access: tauri::State<'_, AccessControlState>,
+) -> Vec<PendingRequest> {
+    use web_server::access::RequestStatus;
+    let requests = access.requests.lock().unwrap();
+    requests
+        .values()
+        .filter(|r| r.status == RequestStatus::Pending)
+        .cloned()
+        .collect()
+}
+
+#[tauri::command]
+fn get_active_sessions(
+    access: tauri::State<'_, AccessControlState>,
+) -> Vec<SessionInfo> {
+    let sessions = access.sessions.lock().unwrap();
+    sessions
+        .values()
+        .filter(|s| !s.revoked)
+        .cloned()
+        .collect()
+}
+
+#[tauri::command]
+fn approve_access_request(
+    id: String,
+    access: tauri::State<'_, AccessControlState>,
+) -> Result<(), String> {
+    use chrono::Utc;
+    use uuid::Uuid;
+
+    let mut requests = access.requests.lock().unwrap();
+    let req = requests
+        .get_mut(&id)
+        .ok_or_else(|| format!("Request {} not found", id))?;
+
+    let token = Uuid::new_v4().to_string();
+    req.status = web_server::access::RequestStatus::Approved;
+    req.token = Some(token.clone());
+
+    let now = Utc::now().timestamp();
+    let session = SessionInfo {
+        token: token.clone(),
+        name: req.name.clone(),
+        ip: req.ip.clone(),
+        connected_at: now,
+        last_heartbeat: now,
+        revoked: false,
+    };
+
+    drop(requests);
+
+    let mut sessions = access.sessions.lock().unwrap();
+    sessions.insert(token, session);
+
+    log::info!("Access request {} approved", id);
+    Ok(())
+}
+
+#[tauri::command]
+fn deny_access_request(
+    id: String,
+    access: tauri::State<'_, AccessControlState>,
+) -> Result<(), String> {
+    let mut requests = access.requests.lock().unwrap();
+    let req = requests
+        .get_mut(&id)
+        .ok_or_else(|| format!("Request {} not found", id))?;
+
+    req.status = web_server::access::RequestStatus::Denied;
+
+    log::info!("Access request {} denied", id);
+    Ok(())
+}
+
+#[tauri::command]
+fn revoke_session(
+    token: String,
+    access: tauri::State<'_, AccessControlState>,
+) -> Result<(), String> {
+    let mut sessions = access.sessions.lock().unwrap();
+    let session = sessions
+        .get_mut(&token)
+        .ok_or_else(|| "Session not found".to_string())?;
+
+    session.revoked = true;
+
+    log::info!("Session revoked: {}", &token[..8.min(token.len())]);
+    Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
@@ -152,8 +261,6 @@ struct Args {
 pub fn run() {
     // On Linux + Wayland, disable the DMA-BUF renderer in WebKitGTK to prevent
     // "Protocol error dispatching to Wayland display" crashes.
-    // This targets the specific protocol causing the error while keeping GPU
-    // compositing and rendering intact.
     #[cfg(target_os = "linux")]
     {
         if std::env::var("WAYLAND_DISPLAY").is_ok() || std::env::var("XDG_SESSION_TYPE").map_or(false, |v| v == "wayland") {
@@ -161,9 +268,6 @@ pub fn run() {
         }
     }
 
-    // Check for CLI args first
-    // We use try_parse because on some platforms (like GUI launch) args might be weird
-    // or Tauri might want to handle them. But for --mcp we need priority.
     let args = Args::try_parse().unwrap_or_else(|_| Args {
         mcp: false,
         debug: false,
@@ -175,23 +279,17 @@ pub fn run() {
         return;
     }
 
-    // Configure log level based on debug flag
-    // Default to Info level so users can see application logs
     let log_level = log::LevelFilter::Info;
 
-    // Store debug flag in global state
     DEBUG_MODE.store(args.debug, Ordering::Relaxed);
 
-    // Create and initialize log buffer - MUST be before sqlx to capture all logs
     let log_buffer = create_log_buffer(1000);
     LOG_BUFFER
         .set(log_buffer.clone())
         .expect("Failed to initialize log buffer");
 
-    // Initialize custom logger that captures logs to buffer and prints to stderr
     init_logger(log_buffer.clone(), log_level);
 
-    // Log startup message
     log::info!("Tabularis application starting...");
     if args.debug {
         log::info!("Debug mode enabled - verbose logging active");
@@ -199,10 +297,10 @@ pub fn run() {
         log::info!("Debug mode disabled - standard logging active");
     }
 
-    // Install default drivers for sqlx::Any
     sqlx::any::install_default_drivers();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -213,36 +311,39 @@ pub fn run() {
         .manage(dump_commands::DumpCancellationState::default())
         .manage(ServerHandle::default())
         .manage(TunnelHandle::default())
+        .manage(AccessControlState::default())
         .manage(log_buffer)
         .setup(move |app| {
-            // Read persisted config to know which external plugins are enabled.
-            // `None` means no preference has been saved yet → load all installed plugins.
             let active_ext_drivers = crate::config::load_config_internal(&app.handle())
                 .active_external_drivers;
 
-            // Register built-in drivers
             let app_handle = app.handle().clone();
             tauri::async_runtime::block_on(async {
                 drivers::registry::register_driver(drivers::mysql::MysqlDriver::new()).await;
                 drivers::registry::register_driver(drivers::postgres::PostgresDriver::new()).await;
                 drivers::registry::register_driver(drivers::sqlite::SqliteDriver::new()).await;
 
-                // Load only enabled external plugins (or all if no preference saved).
                 crate::plugins::manager::load_plugins(active_ext_drivers.as_deref()).await;
 
                 // Auto-start Remote Control server if enabled in config
                 let app_config = config::load_config_internal(&app_handle);
                 if let Some(rc_config) = app_config.remote_control {
                     if rc_config.enabled {
-                        match web_server::start_and_register(app_handle.clone(), rc_config).await {
-                            Ok(port) => log::info!("Remote Control auto-started on port {}", port),
+                        let access = {
+                            let state = app_handle.state::<AccessControlState>();
+                            state.inner().clone()
+                        };
+                        match web_server::start_and_register(app_handle.clone(), rc_config, access.clone()).await {
+                            Ok(port) => {
+                                log::info!("Remote Control auto-started on port {}", port);
+                                start_heartbeat_monitor(app_handle.clone(), access);
+                            }
                             Err(e) => log::error!("Failed to auto-start Remote Control: {}", e),
                         }
                     }
                 }
             });
 
-            // Open devtools automatically in debug mode
             if args.debug {
                 if let Some(window) = app.get_webview_window("main") {
                     window.open_devtools();
@@ -393,6 +494,12 @@ pub fn run() {
             start_tunnel,
             stop_tunnel,
             get_tunnel_status,
+            // Access Control
+            get_access_requests,
+            get_active_sessions,
+            approve_access_request,
+            deny_access_request,
+            revoke_session,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
