@@ -1,13 +1,13 @@
 [
   {
+    "label": "[Feat]: Allow loading of multiple Databases per connection",
+    "done": true,
+    "url": "https://github.com/debba/tabularis/issues/47"
+  },
+  {
     "label": "Plugin System",
     "done": true,
     "url": "https://github.com/debba/tabularis/issues/19"
-  },
-  {
-    "label": "[Feat]: Allow loading of multiple Databases per connection",
-    "done": false,
-    "url": "https://github.com/debba/tabularis/issues/47"
   },
   {
     "label": "Feature: Remote Control",
