@@ -2136,6 +2136,21 @@ footer {
     color: var(--text-main);
 }
 
+.footer-manage-cookies {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+.footer-manage-cookies:hover {
+    color: var(--text-main);
+}
+
 /* ─── COOKIE BANNER ─────────────────────────────────────────────────────── */
 
 .cookie-banner {

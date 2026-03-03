@@ -10,13 +10,19 @@ type CookiePrefs = {
 };
 
 const STORAGE_KEY = 'tabularis-cookie-consent';
+const MATOMO_URL = '//analytics.debbaweb.it/';
+const MATOMO_SITE_ID = '4';
 
 /**
- * Initialises Matomo with two-level privacy:
- * - Always: cookieless tracking with anonymised IP (no consent required)
- * - If cookieConsent=true: enables persistent cookies via setCookieConsentGiven()
+ * Loads the Matomo script and configures consent-based cookie behaviour.
  *
- * If the script is already loaded, only the consent state is updated.
+ * Without measurement consent → disableCookies() (cookieless tracking, GDPR
+ * legitimate-interest basis). IP anonymisation must be enabled server-side in
+ * Matomo → Settings › Privacy › Anonymize data.
+ *
+ * With measurement consent → full cookie-based tracking.
+ *
+ * If the script is already loaded, only the cookie consent state is updated.
  */
 function initMatomo(cookieConsent: boolean) {
   if (typeof window === 'undefined') return;
@@ -25,36 +31,37 @@ function initMatomo(cookieConsent: boolean) {
     (window as any)._paq || []);
 
   if ((window as any).__matomoLoaded) {
-    // Script already running — update consent state only
+    // Script already running — only update cookie consent state
     if (cookieConsent) {
       _paq.push(['setCookieConsentGiven']);
     } else {
       _paq.push(['forgetCookieConsentGiven']);
+      _paq.push(['disableCookies']);
     }
     return;
   }
 
   (window as any).__matomoLoaded = true;
 
-  // Require cookie consent by default → cookieless until granted
-  _paq.push(['requireCookieConsent']);
-  // Grant immediately if consent already stored
   if (cookieConsent) {
+    // Full tracking with cookies
     _paq.push(['setCookieConsentGiven']);
+  } else {
+    // Cookieless tracking — disableCookies() is widely supported and
+    // definitively prevents any cookie from being set
+    _paq.push(['disableCookies']);
   }
 
   _paq.push(['trackPageView']);
   _paq.push(['enableLinkTracking']);
-
-  const u = '//analytics.debbaweb.it/';
-  _paq.push(['setTrackerUrl', u + 'matomo.php']);
-  _paq.push(['setSiteId', '4']);
+  _paq.push(['setTrackerUrl', MATOMO_URL + 'matomo.php']);
+  _paq.push(['setSiteId', MATOMO_SITE_ID]);
 
   const d = document;
   const g = d.createElement('script');
   const s = d.getElementsByTagName('script')[0];
   g.async = true;
-  g.src = u + 'matomo.js';
+  g.src = MATOMO_URL + 'matomo.js';
   s.parentNode!.insertBefore(g, s);
 }
 
@@ -64,22 +71,41 @@ export function CookieConsent() {
   const [marketing, setMarketing] = useState(false);
 
   useEffect(() => {
+    // Initialise Matomo on mount
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      // No stored prefs — start cookieless tracking, show banner
       initMatomo(false);
       setVisible(true);
-      return;
+    } else {
+      try {
+        const prefs: CookiePrefs = JSON.parse(raw);
+        setMeasurement(prefs.measurement);
+        setMarketing(prefs.marketing);
+        initMatomo(prefs.measurement);
+      } catch {
+        initMatomo(false);
+        setVisible(true);
+      }
     }
-    try {
-      const prefs: CookiePrefs = JSON.parse(raw);
-      setMeasurement(prefs.measurement);
-      setMarketing(prefs.marketing);
-      initMatomo(prefs.measurement);
-    } catch {
-      initMatomo(false);
+
+    // Allow any part of the page to re-open the banner
+    function handleManage() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          const prefs: CookiePrefs = JSON.parse(raw);
+          setMeasurement(prefs.measurement);
+          setMarketing(prefs.marketing);
+        } catch {
+          // leave current state
+        }
+      }
       setVisible(true);
     }
+
+    window.addEventListener('tabularis:manage-cookies', handleManage);
+    return () =>
+      window.removeEventListener('tabularis:manage-cookies', handleManage);
   }, []);
 
   function save(measurementVal: boolean, marketingVal: boolean) {
