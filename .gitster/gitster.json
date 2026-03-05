@@ -2,12 +2,12 @@
   "description": "A lightweight, developer-focused database management tool",
   "tagline": "",
   "website": "https://tabularis.dev",
-  "coverImage": "https://github.com/debba/tabularis/blob/main/website/img/og.png?raw=true",
-  "logoImage": "https://github.com/debba/tabularis/blob/main/website/img/logo.png?raw=true",
+  "coverImage": "https://github.com/debba/tabularis/blob/main/website/public/img/og.png?raw=true",
+  "logoImage": "https://github.com/debba/tabularis/blob/main/website/public/img/logo.png?raw=true",
   "youtubeUrl": "https://youtu.be/bGAMfRuonKI",
   "screenshots": [
-    "https://github.com/debba/tabularis/blob/main/website/img/screenshot-2.png?raw=true",
-    "https://github.com/debba/tabularis/blob/main/website/img/screenshot-7.png?raw=true",
-    "https://github.com/debba/tabularis/blob/main/website/img/screenshot-8.png?raw=true"
+    "https://github.com/debba/tabularis/blob/main/website/public/img/screenshot-2.png?raw=true",
+    "https://github.com/debba/tabularis/blob/main/website/public/img/screenshot-7.png?raw=true",
+    "https://github.com/debba/tabularis/blob/main/website/public/img/screenshot-8.png?raw=true"
   ]
 }

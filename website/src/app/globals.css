@@ -1311,7 +1311,8 @@ pre {
 }
 
 /* Inline badge images (e.g. shields.io wrapped in a link) */
-.post-content a > img {
+.post-content a > img[src*="img.shields.io"],
+.post-content a > img[src*="badge"] {
     width: auto;
     height: 20px;
     display: inline;

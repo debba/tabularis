@@ -667,6 +667,13 @@ export const Editor = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!focused) return;
 
+      if (matchesShortcut(e, "close_tab")) {
+        e.preventDefault();
+        const currentTabId = activeTabIdRef.current;
+        if (currentTabId) closeTab(currentTabId);
+        return;
+      }
+
       if (matchesShortcut(e, "new_tab")) {
         e.preventDefault();
         addTab({ type: "console" });
@@ -693,7 +700,7 @@ export const Editor = () => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [explorerConnectionId, activeConnectionId, matchesShortcut, addTab, runQuery]);
+  }, [explorerConnectionId, activeConnectionId, matchesShortcut, addTab, closeTab, runQuery]);
 
   const handleRefresh = useCallback(() => {
     const currentTab = tabsRef.current.find(

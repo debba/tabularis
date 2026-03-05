@@ -30,6 +30,16 @@
     "overridable": true
   },
   {
+    "id": "close_tab",
+    "category": "editor",
+    "defaultMac": "⌘+W",
+    "defaultWin": "Ctrl+W",
+    "macMatch": { "metaKey": true, "key": "w" },
+    "winMatch": { "ctrlKey": true, "key": "w" },
+    "i18nKey": "settings.shortcuts.closeTab",
+    "overridable": true
+  },
+  {
     "id": "next_page",
     "category": "data_grid",
     "defaultMac": "⌘+→",
