@@ -1068,12 +1068,13 @@ impl DatabaseDriver for MysqlDriver {
 
     fn build_connection_url(&self, params: &crate::models::ConnectionParams) -> Result<String, String> {
         use urlencoding::encode;
+        use crate::pool_manager::normalize_host;
         let user = encode(params.username.as_deref().unwrap_or_default());
         let pass = encode(params.password.as_deref().unwrap_or_default());
         Ok(format!(
             "mysql://{}:{}@{}:{}/{}",
             user, pass,
-            params.host.as_deref().unwrap_or("localhost"),
+            normalize_host(params.host.as_deref()),
             params.port.unwrap_or(3306),
             params.database
         ))

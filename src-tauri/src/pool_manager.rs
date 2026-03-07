@@ -13,6 +13,17 @@ static POSTGRES_POOLS: Lazy<PoolMap<Postgres>> =
     Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 static SQLITE_POOLS: Lazy<PoolMap<Sqlite>> = Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 
+/// Normalize a database host value to avoid DNS resolution issues.
+/// - Maps `localhost` to `127.0.0.1` to prevent IPv6 `::1` resolution on macOS,
+///   which breaks tools like `kubectl port-forward` that only bind to IPv4.
+/// - Treats empty/blank strings as missing, defaulting to `127.0.0.1`.
+pub fn normalize_host<'a>(host: Option<&'a str>) -> &'a str {
+    match host {
+        Some(h) if !h.trim().is_empty() && h.trim() != "localhost" => h,
+        _ => "127.0.0.1",
+    }
+}
+
 /// Build a stable connection key that works with SSH tunnels.
 /// If connection_id is provided (from saved connections), use it for stable pooling.
 /// Otherwise fall back to host:port:database (for ad-hoc connections).
@@ -25,7 +36,7 @@ fn build_connection_key(params: &ConnectionParams, connection_id: Option<&str>) 
         format!(
             "{}:{}:{}:{}",
             params.driver,
-            params.host.as_deref().unwrap_or("localhost"),
+            normalize_host(params.host.as_deref()),
             params.port.unwrap_or(0),
             params.database
         )
@@ -39,7 +50,7 @@ fn build_mysql_url(params: &ConnectionParams) -> String {
         "mysql://{}:{}@{}:{}/{}?maxAllowedPacket=1073741824&socketTimeout=600000&connectTimeout=60000",
         user,
         pass,
-        params.host.as_deref().unwrap_or("localhost"),
+        normalize_host(params.host.as_deref()),
         params.port.unwrap_or(3306),
         params.database
     )
@@ -52,7 +63,7 @@ fn build_postgres_url(params: &ConnectionParams) -> String {
         "postgres://{}:{}@{}:{}/{}",
         user,
         pass,
-        params.host.as_deref().unwrap_or("localhost"),
+        normalize_host(params.host.as_deref()),
         params.port.unwrap_or(5432),
         params.database
     )

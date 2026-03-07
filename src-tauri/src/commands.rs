@@ -2046,7 +2046,7 @@ pub async fn open_er_diagram_window(
 pub async fn build_connection_url(params: &ConnectionParams) -> Result<String, String> {
     let user = encode(params.username.as_deref().unwrap_or_default());
     let pass = encode(params.password.as_deref().unwrap_or_default());
-    let host = params.host.as_deref().unwrap_or("localhost");
+    let host = crate::pool_manager::normalize_host(params.host.as_deref());
 
     match params.driver.as_str() {
         "sqlite" => Ok(format!("sqlite://{}", params.database)),
