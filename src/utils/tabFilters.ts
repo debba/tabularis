@@ -37,20 +37,14 @@ export function getActiveTabForConnection(
   connectionId: string | null,
   activeTabId: string | null
 ): Tab | null {
-  if (!connectionId) return null;
+  if (!connectionId || !activeTabId) return null;
 
-  // If we have an activeTabId, try to find that specific tab
-  if (activeTabId) {
-    const tab = findTabById(tabs, activeTabId);
-    if (tab && tab.connectionId === connectionId) {
-      return tab;
-    }
+  const tab = findTabById(tabs, activeTabId);
+  if (tab && tab.connectionId === connectionId) {
+    return tab;
   }
 
-  // Fallback: return the first tab for this connection
-  // This handles the race condition where tabs are created before activeTabIds is updated
-  const connectionTabs = filterTabsByConnection(tabs, connectionId);
-  return connectionTabs.length > 0 ? connectionTabs[0] : null;
+  return null;
 }
 
 /**

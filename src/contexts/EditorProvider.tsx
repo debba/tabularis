@@ -57,12 +57,10 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
             const tabsFromOtherConnections = prev.filter(t => t.connectionId !== activeConnectionId);
             return [...tabsFromOtherConnections, ...loadedTabs];
           });
-          if (loadedActiveTabId) {
-            setActiveTabIds((prev) => ({
-              ...prev,
-              [activeConnectionId]: loadedActiveTabId,
-            }));
-          }
+          setActiveTabIds((prev) => ({
+            ...prev,
+            [activeConnectionId]: loadedActiveTabId || loadedTabs[0].id,
+          }));
         } else {
           // Create initial tab if no tabs exist, preserving other connections' tabs
           const initialTab = createInitialTabState(activeConnectionId);
