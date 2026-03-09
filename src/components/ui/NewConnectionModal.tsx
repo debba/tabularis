@@ -90,7 +90,7 @@ const FieldInput = ({
       autoCapitalize="off"
       autoComplete="off"
       spellCheck={false}
-      className="w-full px-2.5 py-1.5 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
+      className="w-full px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
     />
   </div>
 );
@@ -328,7 +328,7 @@ export const NewConnectionModal = ({
               autoCapitalize="off"
               autoComplete="off"
               spellCheck={false}
-              className="flex-1 px-2.5 py-1.5 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
+              className="flex-1 px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
               placeholder={activeDriver.capabilities.folder_based ? t("newConnection.folderPathPlaceholder") : t("newConnection.filePathPlaceholder")}
             />
             <button
@@ -337,7 +337,7 @@ export const NewConnectionModal = ({
                 const selected = await open({ multiple: false, directory: activeDriver.capabilities.folder_based });
                 if (selected) updateField("database", selected);
               }}
-              className="px-2.5 py-1.5 bg-base hover:bg-surface-secondary border border-strong rounded-md text-muted hover:text-primary transition-colors"
+              className="px-3 py-2 bg-base hover:bg-surface-secondary border border-strong rounded-md text-muted hover:text-primary transition-colors"
               title={activeDriver.capabilities.folder_based ? t("newConnection.browseFolder") : t("newConnection.browseFile")}
             >
               <FolderOpen size={15} />
@@ -367,18 +367,11 @@ export const NewConnectionModal = ({
                 <label className="text-[10px] uppercase font-semibold tracking-wider text-muted">
                   {t("newConnection.sslMode", { defaultValue: "SSL Mode" })}
                 </label>
-                <select
+                <SearchableSelect
                   value={formData.ssl_mode || "prefer"}
-                  onChange={(v) => updateField("ssl_mode", v.target.value)}
-                  className="w-full px-2.5 py-1.5 border border-strong rounded-md text-sm text-primary"
-                >
-                  <option value="disable">disable</option>
-                  <option value="allow">allow</option>
-                  <option value="prefer">prefer</option>
-                  <option value="require">require</option>
-                  {/* <option value="verify-ca">verify-ca</option> */}
-                  {/* <option value="verify-full">verify-full</option> */}
-                </select>
+                  options={["disable", "allow", "prefer", "require"]}
+                  onChange={(v) => updateField("ssl_mode", v)}
+                />
               </div>
             )}
           </div>
@@ -435,7 +428,7 @@ export const NewConnectionModal = ({
                   autoCapitalize="off"
                   autoComplete="off"
                   spellCheck={false}
-                  className="w-full px-2.5 py-1.5 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
+                  className="w-full px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
                   placeholder={t("newConnection.dbNamePlaceholder")}
                 />
               )}
@@ -626,7 +619,7 @@ export const NewConnectionModal = ({
                 <select
                   value={formData.ssh_connection_id || ""}
                   onChange={(e) => updateField("ssh_connection_id", e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-base border border-strong rounded-md text-sm text-primary focus:border-blue-500 focus:outline-none appearance-auto cursor-pointer transition-colors"
+                  className="w-full px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary focus:border-blue-500 focus:outline-none appearance-auto cursor-pointer transition-colors"
                 >
                   <option value="">
                     {sshConnections.length === 0
@@ -690,7 +683,7 @@ export const NewConnectionModal = ({
                     autoCapitalize="off"
                     autoComplete="off"
                     spellCheck={false}
-                    className="w-full px-2.5 py-1.5 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
+                    className="w-full px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
                   />
                   {formData.save_in_keychain && sshPasswordDirty && !formData.ssh_password && (
                     <p className="text-[10px] text-amber-500 flex items-center gap-1 mt-0.5">

@@ -178,7 +178,7 @@ export const SearchableSelect = ({
         onClick={handleToggle}
         disabled={disabled}
         className={clsx(
-          "w-full bg-base border rounded px-3 py-2 text-primary flex items-center justify-between transition-colors",
+          "w-full bg-base border rounded px-3 py-2 text-sm text-primary flex items-center justify-between transition-colors",
           disabled
             ? "opacity-50 cursor-not-allowed border-default"
             : hasError
