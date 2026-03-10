@@ -1,6 +1,8 @@
 "use client";
 
-import { APP_VERSION } from "@/lib/version";
+import { useState } from "react";
+import { DownloadModal } from "./DownloadModal";
+import type { Platform } from "./DownloadModal";
 
 function scrollTo(id: string) {
   const el = document.getElementById(id);
@@ -10,33 +12,26 @@ function scrollTo(id: string) {
 }
 
 export function DownloadButtons({ showInstallLink = false }: { showInstallLink?: boolean }) {
+  const [platform, setPlatform] = useState<Platform | null>(null);
+
   return (
     <>
       <div className="download-grid">
-        <a
-          href={`https://github.com/debba/tabularis/releases/download/v${APP_VERSION}/tabularis_${APP_VERSION}_x64-setup.exe`}
-          className="btn-download"
-        >
+        <button className="btn-download" onClick={() => setPlatform("windows")}>
           <span>
-            Download for <strong>Windows</strong> (.exe)
+            Download for <strong>Windows</strong>
           </span>
-        </a>
-        <a
-          href={`https://github.com/debba/tabularis/releases/download/v${APP_VERSION}/tabularis_${APP_VERSION}_x64.dmg`}
-          className="btn-download"
-        >
+        </button>
+        <button className="btn-download" onClick={() => setPlatform("macos")}>
           <span>
-            Download for <strong>macOS</strong> (.dmg)
+            Download for <strong>macOS</strong>
           </span>
-        </a>
-        <a
-          href={`https://github.com/debba/tabularis/releases/download/v${APP_VERSION}/tabularis_${APP_VERSION}_amd64.AppImage`}
-          className="btn-download"
-        >
+        </button>
+        <button className="btn-download" onClick={() => setPlatform("linux")}>
           <span>
-            Download for <strong>Linux</strong> (.AppImage)
+            Download for <strong>Linux</strong>
           </span>
-        </a>
+        </button>
       </div>
 
       <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.75rem", display: "flex", gap: "1.25rem", flexWrap: "wrap" }}>
@@ -58,6 +53,8 @@ export function DownloadButtons({ showInstallLink = false }: { showInstallLink?:
           View all releases on GitHub →
         </a>
       </p>
+
+      <DownloadModal platform={platform} onClose={() => setPlatform(null)} />
     </>
   );
 }

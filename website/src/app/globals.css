@@ -363,8 +363,11 @@ pre {
     border: 1px solid var(--border);
     border-radius: 10px;
     color: var(--text-bright);
+    font-family: inherit;
+    font-size: inherit;
     font-weight: 600;
     box-shadow: var(--shadow-sm);
+    cursor: pointer;
 }
 
 .btn-download:hover {
@@ -372,6 +375,208 @@ pre {
     background-color: var(--card-hover);
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
+}
+
+/* DOWNLOAD MODAL */
+.dl-overlay {
+    position: fixed;
+    z-index: 1000;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(4, 5, 6, 0.9);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+}
+
+.dl-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.dl-overlay.open .dl-modal {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+.dl-modal {
+    width: 100%;
+    max-width: 480px;
+    background: #0d0f11;
+    border: 1px solid var(--border-bright);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        0 2px 8px rgba(0, 0, 0, 0.6),
+        0 20px 60px rgba(0, 0, 0, 0.9),
+        0 0 80px rgba(59, 130, 246, 0.04);
+    transform: translateY(-12px) scale(0.98);
+    opacity: 0;
+    transition:
+        transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.18s ease;
+}
+
+.dl-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.dl-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-bright);
+}
+
+.dl-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.dl-modal-close:hover {
+    color: var(--text-bright);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.dl-modal-body {
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.dl-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-bright);
+    text-decoration: none;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.dl-option:hover {
+    border-color: var(--accent);
+    background: var(--card-hover);
+    transform: translateY(-1px);
+}
+
+.dl-option-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.dl-option-label {
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.dl-option-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.dl-option-ext {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.15rem 0.45rem;
+}
+
+.dl-option--command {
+    cursor: default;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.dl-option--command:hover {
+    border-color: var(--border-bright);
+    transform: none;
+}
+
+.dl-option-cmd {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--accent);
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 5px;
+    padding: 0.2rem 0.55rem;
+    white-space: nowrap;
+    user-select: all;
+}
+
+.dl-modal-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+    padding: 0.65rem 0.85rem;
+    background: rgba(245, 158, 11, 0.06);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: 8px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.dl-modal-note svg {
+    color: var(--warning);
+}
+
+.dl-modal-note code {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-bright);
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 3px;
+    padding: 0.1rem 0.3rem;
+}
+
+.dl-modal-footer {
+    padding: 0.75rem 1.25rem;
+    border-top: 1px solid var(--border);
+}
+
+.dl-modal-footer a {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.dl-modal-footer a:hover {
+    color: var(--accent);
 }
 
 /* GRID & CARDS */
