@@ -58,6 +58,7 @@ The manifest tells Tabularis everything about your plugin.
     "views": true,
     "routines": false,
     "file_based": true,
+    "connection_string": false,
     "identifier_quote": "\"",
     "alter_primary_key": false
   },
@@ -101,6 +102,8 @@ The manifest tells Tabularis everything about your plugin.
 | `file_based` | bool | `true` for local file databases (e.g., SQLite, DuckDB). Replaces host/port with a file path input in the connection form. |
 | `folder_based` | bool | `true` for plugins that connect to a directory rather than a single file (e.g. CSV plugin). Replaces host/port with a folder picker. |
 | `no_connection_required` | bool | `true` for API-based plugins that need no host, port, or credentials (e.g. a public REST API). Hides the entire connection form — the user only fills in the connection name. |
+| `connection_string` | bool | Set `false` to hide the connection string import UI for this driver. Defaults to `true` for network drivers. `file_based` and `folder_based` drivers skip the import UI automatically regardless of this flag. |
+| `connection_string_example` | string | Optional placeholder example shown in the connection string import field (e.g. `"clickhouse://user:pass@localhost:9000/db"`). Also accepted as camelCase `connectionStringExample`. |
 | `identifier_quote` | string | Character used to quote SQL identifiers. Use `"\""` for ANSI standard or `` "`" `` for MySQL style. |
 | `alter_primary_key` | bool | `true` if the database supports altering primary keys after table creation. |
 

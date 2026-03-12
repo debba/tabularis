@@ -85,6 +85,8 @@ Every plugin must include a `manifest.json` that tells Tabularis its capabilitie
 | `create_foreign_keys` | bool | `true` to enable FK constraint creation in the schema editor. |
 | `folder_based` | bool | `true` for databases that target a folder rather than a file or host (e.g., CSV plugin). Replaces host/port with a folder picker. |
 | `no_connection_required` | bool | `true` for API-based plugins that need no host, port, or credentials (e.g. a public REST API). Hides the entire connection form — the user only fills in the connection name. |
+| `connection_string` | bool | Set `false` to hide the connection string import UI for this driver. Defaults to `true` for network drivers; automatically skipped for `file_based` and `folder_based` drivers. |
+| `connection_string_example` | string | Optional placeholder example shown in the connection string import field (e.g. `"clickhouse://user:pass@localhost:9000/db"`). |
 
 ### Data Type Categories
 
