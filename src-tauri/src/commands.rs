@@ -550,6 +550,10 @@ pub async fn update_connection<R: Runtime>(
 
     persistence::save_connections_file(&path, &conn_file)?;
 
+    // Invalidate the cached pool so reconnecting picks up any changed settings
+    // (e.g. max_connections). Only affects this specific connection.
+    crate::pool_manager::close_pool_with_id(&params, Some(&id)).await;
+
     let mut returned_conn = updated;
     returned_conn.params = params;
     Ok(returned_conn)

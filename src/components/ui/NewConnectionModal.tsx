@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   X,
@@ -51,6 +51,7 @@ interface ConnectionParams {
   ssh_key_file?: string;
   ssh_key_passphrase?: string;
   save_in_keychain?: boolean;
+  max_connections?: number;
 }
 
 interface SavedConnection {
@@ -124,6 +125,10 @@ export const NewConnectionModal = ({
     ssh_enabled: false,
     ssh_port: 22,
   });
+  // Stores form data per driver so switching tabs preserves per-driver values
+  const driverFormDataRef = useRef<Record<string, Partial<ConnectionParams>>>(
+    {},
+  );
   const [selectedDatabasesState, setSelectedDatabasesState] = useState<
     string[]
   >([]);
@@ -320,7 +325,25 @@ export const NewConnectionModal = ({
   }, [isOpen, initialConnection]);
 
   const handleDriverChange = (newDriver: string) => {
+    // Save current driver's form data before switching
+    driverFormDataRef.current[driver] = formData;
+
+    const saved = driverFormDataRef.current[newDriver];
+    if (saved) {
+      setFormData(saved);
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        driver: newDriver,
+        port:
+          drivers.find((d) => d.id === newDriver)?.default_port ?? undefined,
+        username:
+          drivers.find((d) => d.id === newDriver)?.default_username ?? "",
+        max_connections: undefined,
+      }));
+    }
     setDriver(newDriver);
+
     setFormData({
       driver: newDriver,
       host: "",
@@ -772,6 +795,32 @@ export const NewConnectionModal = ({
               {t("newConnection.saveKeychain")}
             </span>
           </label>
+
+          {/* Max connections */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase font-semibold tracking-wider text-muted">
+              {t("newConnection.maxConnections")}
+            </label>
+            <p className="text-xs text-muted">
+              {t("newConnection.maxConnectionsDesc")}
+            </p>
+            <input
+              type="number"
+              value={formData.max_connections ?? ""}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                updateField("max_connections", isNaN(val) ? undefined : val);
+              }}
+              min="1"
+              max="100"
+              placeholder="10"
+              autoCorrect="off"
+              autoCapitalize="off"
+              autoComplete="off"
+              spellCheck={false}
+              className="w-32 px-2.5 py-1.5 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
+            />
+          </div>
         </>
       )}
     </div>

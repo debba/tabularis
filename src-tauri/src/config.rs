@@ -142,6 +142,10 @@ pub fn save_config(app: AppHandle, config: AppConfig) -> Result<(), String> {
             existing_config.plugins = config.plugins;
         }
 
+        if config.plugins.is_some() {
+            existing_config.plugins = config.plugins;
+        }
+
         let content = serde_json::to_string_pretty(&existing_config).map_err(|e| e.to_string())?;
         fs::write(config_path, content).map_err(|e| e.to_string())?;
         Ok(())
@@ -224,6 +228,9 @@ pub fn set_ai_key(provider: String, key: String) -> Result<(), String> {
 pub fn delete_ai_key(provider: String) -> Result<(), String> {
     keychain_utils::delete_ai_key(&provider)
 }
+
+pub const DEFAULT_MAX_CONNECTIONS: u32 = 10;
+
 
 /// Get the configured maximum BLOB size in bytes, or DEFAULT_MAX_BLOB_SIZE if not set
 pub fn get_max_blob_size<R: tauri::Runtime>(app: &AppHandle<R>) -> u64 {

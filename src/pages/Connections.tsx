@@ -667,6 +667,7 @@ export const Connections = () => {
       </div>
 
       <NewConnectionModal
+        key={editingConnection?.id ?? "new"}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);

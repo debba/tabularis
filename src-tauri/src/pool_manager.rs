@@ -13,6 +13,8 @@ static POSTGRES_POOLS: Lazy<PoolMap<Postgres>> =
     Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 static SQLITE_POOLS: Lazy<PoolMap<Sqlite>> = Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 
+const SQLITE_MAX_CONNECTIONS_CAP: u32 = 5;
+
 /// Build a stable connection key that works with SSH tunnels.
 /// If connection_id is provided (from saved connections), use it for stable pooling.
 /// Otherwise fall back to host:port:database (for ad-hoc connections).
@@ -76,7 +78,6 @@ pub async fn get_mysql_pool_with_id(
     connection_id: Option<&str>,
 ) -> Result<Pool<MySql>, String> {
     let key = build_connection_key(params, connection_id);
-
     // Try to get existing pool
     {
         let pools = MYSQL_POOLS.read().await;
@@ -99,14 +100,13 @@ pub async fn get_mysql_pool_with_id(
     );
     let url = build_mysql_url(params);
     let pool = sqlx::mysql::MySqlPoolOptions::new()
-        .max_connections(10)
+        .max_connections(params.max_connections.unwrap_or(crate::config::DEFAULT_MAX_CONNECTIONS))
         .connect(&url)
         .await
         .map_err(|e| {
             log::error!("Failed to create MySQL connection pool: {}", e);
             e.to_string()
         })?;
-
     log::info!(
         "MySQL connection pool created successfully for: {} (key: {})",
         params.database,
@@ -155,14 +155,14 @@ pub async fn get_postgres_pool_with_id(
     );
     let copts = build_postgres_connectoptions(params);
     let pool = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(10)
+        .max_connections(params.max_connections.unwrap_or(crate::config::DEFAULT_MAX_CONNECTIONS))
         .connect_with(copts)
         .await
         .map_err(|e| {
             log::error!("Failed to create PostgreSQL connection pool: {}", e);
             e.to_string()
         })?;
-
+    log::info!("Max connections: {}", params.max_connections.unwrap_or(crate::config::DEFAULT_MAX_CONNECTIONS));
     log::info!(
         "PostgreSQL connection pool created successfully for: {} (key: {})",
         params.database,
@@ -210,7 +210,7 @@ pub async fn get_sqlite_pool_with_id(
     );
     let options = build_sqlite_connectoptions(params);
     let pool = sqlx::sqlite::SqlitePoolOptions::new()
-        .max_connections(5) // SQLite has lower concurrency needs
+        .max_connections(SQLITE_MAX_CONNECTIONS_CAP)
         .connect_with(options)
         .await
         .map_err(|e| {
