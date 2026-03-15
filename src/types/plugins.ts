@@ -55,6 +55,15 @@ export interface PluginManifest {
   icon?: string;
   /** Plugin-declared setting definitions. Empty/absent for built-in drivers. */
   settings?: PluginSettingDefinition[];
+  /** UI extension declarations for slot-based rendering (Phase 2). */
+  ui_extensions?: UIExtensionManifestEntry[];
+}
+
+/** Manifest-level entry for a UI extension slot. */
+export interface UIExtensionManifestEntry {
+  slot: string;
+  module: string;
+  order?: number;
 }
 
 export interface RegistryReleaseWithStatus {

@@ -19,6 +19,7 @@ import {
 } from "../../utils/filterBar";
 import type { StructuredFilter } from "../../utils/filterBar";
 import { FilterRow } from "./FilterRow";
+import { SlotAnchor } from "./SlotAnchor";
 
 interface TableToolbarProps {
   initialFilter?: string;
@@ -514,6 +515,13 @@ const TableToolbarInternal: React.FC<TableToolbarInternalProps> = ({
             placeholder={String(defaultLimit)}
           />
         </div>
+
+        {/* Plugin extension slot */}
+        <SlotAnchor
+          name="data-grid.toolbar.actions"
+          context={{}}
+          className="flex items-center gap-1"
+        />
       </div>
 
       {/* Overlay filter panel */}

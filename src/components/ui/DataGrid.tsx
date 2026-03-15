@@ -14,6 +14,7 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
+import { SlotAnchor } from "./SlotAnchor";
 import {
   ArrowUp,
   ArrowDown,
@@ -1262,7 +1263,20 @@ export const DataGrid = React.memo(
                 y={contextMenu.y}
                 onClose={() => setContextMenu(null)}
                 items={menuItems}
-              />
+              >
+                <SlotAnchor
+                  name="data-grid.context-menu.items"
+                  context={{
+                    connectionId,
+                    tableName,
+                    schema: activeSchema,
+                    columnName: contextMenu.colName,
+                    rowIndex: contextMenu.rowIndex,
+                    rowData: mergedRows[contextMenu.rowIndex]?.rowData,
+                  }}
+                  className="border-t border-default mt-1 pt-1"
+                />
+              </ContextMenu>
             );
           })()}
 
