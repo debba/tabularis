@@ -1,0 +1,12 @@
+{
+  "name": "debba/tabularis",
+  "description": "A lightweight, developer-focused database management tool. Supports MySQL, PostgreSQL and SQLite. Hackable with plugins. Built for speed, security, and aesthetics.",
+  "accepts": [
+    {
+      "network": "eip155:8453",
+      "asset": "USDC",
+      "address": "YOUR_WALLET_ADDRESS"
+    }
+  ],
+  "resources": []
+}
