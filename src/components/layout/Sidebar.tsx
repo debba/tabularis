@@ -20,7 +20,7 @@ import { PanelDatabaseProvider } from "./PanelDatabaseProvider";
 // Hooks & Utils
 import { useSidebarResize } from "../../hooks/useSidebarResize";
 import { useConnectionManager } from "../../hooks/useConnectionManager";
-import { useConnectionLayoutContext } from "../../contexts/useConnectionLayoutContext";
+import { useConnectionLayoutContext } from "../../hooks/useConnectionLayoutContext";
 import { isConnectionGrouped } from "../../utils/connectionLayout";
 import { useDrivers } from "../../hooks/useDrivers";
 import type { ConnectionStatus } from "../../hooks/useConnectionManager";

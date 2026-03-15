@@ -166,7 +166,20 @@ export function formatMatch(match: KeyMatch, isMac: boolean): string {
 
 function formatKey(key: string, isMac: boolean): string {
   if (isMac && MAC_SYMBOL_MAP[key]) return MAC_SYMBOL_MAP[key];
-  if (MAC_SYMBOL_MAP[key]) return MAC_SYMBOL_MAP[key];
+  // Common display names for all platforms
+  const COMMON_DISPLAY: Record<string, string> = {
+    ArrowRight: "→",
+    ArrowLeft: "←",
+    ArrowUp: "↑",
+    ArrowDown: "↓",
+    Enter: "Enter",
+    Tab: "Tab",
+    Escape: "Esc",
+    Backspace: "Backspace",
+    Delete: "Del",
+    " ": "Space",
+  };
+  if (COMMON_DISPLAY[key]) return COMMON_DISPLAY[key];
   // Uppercase single letter keys for display
   if (key.length === 1) return key.toUpperCase();
   return key;

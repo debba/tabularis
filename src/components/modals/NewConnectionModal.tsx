@@ -17,10 +17,10 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import clsx from "clsx";
-import { SshConnectionsModal } from "../modals/SshConnectionsModal";
-import { Select } from "./Select";
+import { SshConnectionsModal } from "./SshConnectionsModal";
+import { Select } from "../ui/Select";
 import { useDrivers } from "../../hooks/useDrivers";
-import { Modal } from "./Modal";
+import { Modal } from "../ui/Modal";
 import type { PluginManifest } from "../../types/plugins";
 import { loadSshConnections, type SshConnection } from "../../utils/ssh";
 import { isMultiDatabaseCapable } from "../../utils/database";

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useDatabase } from './useDatabase';
 import { buildConnectionStatus, partitionConnections } from '../utils/connectionManager';
+import { toErrorMessage } from '../utils/errors';
 
 export type { ConnectionStatus } from '../utils/connectionManager';
 
@@ -42,7 +43,7 @@ export function useConnectionManager() {
     try {
       await connect(connectionId);
     } catch (e) {
-      const errorMsg = typeof e === 'string' ? e : (e as Error).message || String(e);
+      const errorMsg = toErrorMessage(e);
       setError(errorMsg);
       throw e;
     } finally {
@@ -55,7 +56,7 @@ export function useConnectionManager() {
     try {
       await disconnect(connectionId);
     } catch (e) {
-      const errorMsg = typeof e === 'string' ? e : (e as Error).message || String(e);
+      const errorMsg = toErrorMessage(e);
       setError(errorMsg);
       throw e;
     }

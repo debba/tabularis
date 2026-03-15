@@ -1,6 +1,6 @@
 import { useContext } from 'react';
-import { ConnectionLayoutContext } from './ConnectionLayoutContext';
-import type { ConnectionLayoutState } from '../hooks/useConnectionLayout';
+import { ConnectionLayoutContext } from '../contexts/ConnectionLayoutContext';
+import type { ConnectionLayoutState } from './useConnectionLayout';
 
 export const useConnectionLayoutContext = (): ConnectionLayoutState => {
   const ctx = useContext(ConnectionLayoutContext);

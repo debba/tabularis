@@ -212,6 +212,7 @@
     "version": "Versione",
     "starOnGithub": "Star su GitHub",
     "ai": {
+      "tab": "AI",
       "title": "Configurazione AI",
       "description": "Configura i provider AI per abilitare la generazione di SQL da linguaggio naturale. Le chiavi sono salvate in modo sicuro nel portachiavi di sistema.",
       "enable": "Abilita Funzionalità AI",

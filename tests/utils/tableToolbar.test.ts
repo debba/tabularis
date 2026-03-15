@@ -7,7 +7,6 @@ import {
   formatLimitInput,
   generateWherePlaceholder,
   generateOrderByPlaceholder,
-  isEnterKey,
 } from '../../src/utils/tableToolbar';
 
 describe('tableToolbar utils', () => {
@@ -208,15 +207,4 @@ describe('tableToolbar utils', () => {
     });
   });
 
-  describe('isEnterKey', () => {
-    it('should return true for Enter key', () => {
-      expect(isEnterKey({ key: 'Enter' })).toBe(true);
-    });
-
-    it('should return false for other keys', () => {
-      expect(isEnterKey({ key: 'Escape' })).toBe(false);
-      expect(isEnterKey({ key: 'Tab' })).toBe(false);
-      expect(isEnterKey({ key: 'a' })).toBe(false);
-    });
-  });
 });

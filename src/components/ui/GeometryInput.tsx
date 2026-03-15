@@ -40,7 +40,7 @@ export const GeometryInput: React.FC<GeometryInputProps> = ({
   onSqlFunctionsClick,
 }) => {
   const { t } = useTranslation();
-  const [isRawSqlMode, setIsRawSqlMode] = useState(() => isRawSqlFunction(value));
+  const isRawSqlMode = isRawSqlFunction(value);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<DropdownPosition | null>(null);
@@ -48,11 +48,6 @@ export const GeometryInput: React.FC<GeometryInputProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const actualRef = inputRef || internalRef;
-
-  // Update mode when value changes externally
-  useEffect(() => {
-    setIsRawSqlMode(isRawSqlFunction(value));
-  }, [value]);
 
   // Update dropdown position when it opens
   useEffect(() => {
@@ -88,14 +83,12 @@ export const GeometryInput: React.FC<GeometryInputProps> = ({
 
   const handleToggleMode = () => {
     const newMode = !isRawSqlMode;
-    setIsRawSqlMode(newMode);
     const newValue = toggleGeometryMode(value, newMode);
     onChange(newValue, newMode);
   };
 
   const handleInsertFunction = (funcTemplate: string) => {
     onChange(funcTemplate, true);
-    setIsRawSqlMode(true);
     setShowDropdown(false);
     if (actualRef.current) {
       actualRef.current.focus();
@@ -249,4 +242,3 @@ export const GeometryInput: React.FC<GeometryInputProps> = ({
   );
 };
 
-export default GeometryInput;

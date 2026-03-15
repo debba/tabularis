@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { quoteTableRef } from "../utils/identifiers";
+import { reconstructTableQuery } from "../utils/editor";
 import {
   generateTempId,
   initializeNewRow,
@@ -68,7 +68,7 @@ import { useDatabase } from "../hooks/useDatabase";
 import { useSavedQueries } from "../hooks/useSavedQueries";
 import { useSettings } from "../hooks/useSettings";
 import { useEditor } from "../hooks/useEditor";
-import { useConnectionLayoutContext } from "../contexts/useConnectionLayoutContext";
+import { useConnectionLayoutContext } from "../hooks/useConnectionLayoutContext";
 import { useKeybindings } from "../hooks/useKeybindings";
 import type { QueryResult, Tab, PendingInsertion, TableColumn } from "../types/editor";
 import { getTabScrollState, getAdjacentTabIndex, resolveNextTabId, isFocusedPane } from "../utils/tabScroll";
@@ -118,14 +118,12 @@ export const Editor = () => {
   } | null>(null);
 
   const [exportState, setExportState] = useState<{
-    isExporting: boolean; // Keep for backward compat or refactor logic
     isOpen: boolean;
     status: ExportStatus;
     rowsProcessed: number;
     fileName: string;
     errorMessage?: string;
   }>({
-    isExporting: false,
     isOpen: false,
     status: "exporting",
     rowsProcessed: 0,
@@ -155,23 +153,11 @@ export const Editor = () => {
       const tab = tabsRef.current.find((t) => t.id === tabId);
       if (!tab) return;
 
-      let query = tab.query;
-
-      // Reconstruct query for table tabs (respecting active filters)
-      if (tab.type === "table" && tab.activeTable) {
-        const filter = tab.filterClause ? `WHERE ${tab.filterClause}` : "";
-        const sort = tab.sortClause ? `ORDER BY ${tab.sortClause}` : "";
-        const schemaPrefix = activeCapabilities?.schemas === true ? tab.schema : undefined;
-        const quotedTable = quoteTableRef(tab.activeTable, activeDriver, schemaPrefix);
-
-        let baseQuery = `SELECT * FROM ${quotedTable} ${filter} ${sort}`;
-
-        if (tab.limitClause && tab.limitClause > 0) {
-          baseQuery = `${baseQuery} LIMIT ${tab.limitClause}`;
-        }
-
-        query = baseQuery;
-      }
+      const effectiveSchema = activeCapabilities?.schemas === true ? tab.schema : undefined;
+      const tabForQuery = { ...tab, schema: effectiveSchema };
+      const query = tab.type === "table" && tab.activeTable
+        ? reconstructTableQuery(tabForQuery, activeDriver ?? undefined)
+        : tab.query;
 
       addTab({
         type: "console",
@@ -419,29 +405,14 @@ export const Editor = () => {
       let textToRun = sql?.trim() || targetTab?.query;
       // For Table Tabs, reconstruct query if filter/sort are present
       if (targetTab?.type === "table" && targetTab.activeTable) {
-        // Use overrides if provided, otherwise use tab values
-        const filterClause =
-          filterOverride !== undefined
-            ? filterOverride
-            : targetTab.filterClause;
-        const sortClause =
-          sortOverride !== undefined ? sortOverride : targetTab.sortClause;
-        const limitClause =
-          limitOverride !== undefined ? limitOverride : targetTab.limitClause;
-
-        const filter = filterClause ? `WHERE ${filterClause}` : "";
-        const sort = sortClause ? `ORDER BY ${sortClause}` : "";
-        const schemaPrefix = activeCapabilities?.schemas === true ? targetTab.schema : undefined;
-        const quotedTable = quoteTableRef(targetTab.activeTable, activeDriver, schemaPrefix);
-
-        const baseQuery = `SELECT * FROM ${quotedTable} ${filter} ${sort}`;
-
-        if (limitClause && limitClause > 0) {
-          // Wrap in subquery to apply "Total Limit" while allowing pagination (Page Size) via backend
-          textToRun = `SELECT * FROM (${baseQuery} LIMIT ${limitClause}) AS limited_subset`;
-        } else {
-          textToRun = baseQuery;
-        }
+        const effectiveSchema = activeCapabilities?.schemas === true ? targetTab.schema : undefined;
+        const tabForQuery = { ...targetTab, schema: effectiveSchema };
+        textToRun = reconstructTableQuery(tabForQuery, activeDriver ?? undefined, {
+          filterOverride: filterOverride !== undefined ? filterOverride : undefined,
+          sortOverride: sortOverride !== undefined ? sortOverride : undefined,
+          limitOverride: limitOverride !== undefined ? limitOverride : undefined,
+          wrapLimitSubquery: true,
+        });
       }
 
       if (!textToRun || !textToRun.trim()) return;
@@ -1519,7 +1490,6 @@ export const Editor = () => {
       setExportState((prev) => ({
         ...prev,
         isOpen: false,
-        isExporting: false,
       }));
     } catch (e) {
       console.error("Failed to cancel export", e);
@@ -1527,35 +1497,17 @@ export const Editor = () => {
   }, [activeConnectionId]);
 
   const closeExportModal = useCallback(() => {
-    setExportState((prev) => ({ ...prev, isOpen: false, isExporting: false }));
+    setExportState((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
   const handleExportCommon = async (format: "csv" | "json") => {
     if (!activeTab || !activeConnectionId) return;
 
-    let query = activeTab.query;
-
-    // For Table Tabs, reconstruct query (ignoring Page Size limit, but respecting User Limit)
-    if (activeTab.type === "table" && activeTab.activeTable) {
-      const filter = activeTab.filterClause
-        ? `WHERE ${activeTab.filterClause}`
-        : "";
-      const sort = activeTab.sortClause
-        ? `ORDER BY ${activeTab.sortClause}`
-        : "";
-      const schemaPrefix = activeCapabilities?.schemas === true ? activeTab.schema : undefined;
-      const quotedTable = quoteTableRef(activeTab.activeTable, activeDriver, schemaPrefix);
-
-      // Base query
-      let baseQuery = `SELECT * FROM ${quotedTable} ${filter} ${sort}`;
-
-      // Apply user manual limit if present
-      if (activeTab.limitClause && activeTab.limitClause > 0) {
-        baseQuery = `${baseQuery} LIMIT ${activeTab.limitClause}`;
-      }
-
-      query = baseQuery;
-    }
+    const effectiveSchema = activeCapabilities?.schemas === true ? activeTab.schema : undefined;
+    const tabForQuery = { ...activeTab, schema: effectiveSchema };
+    const query = activeTab.type === "table" && activeTab.activeTable
+      ? reconstructTableQuery(tabForQuery, activeDriver ?? undefined)
+      : activeTab.query;
 
     if (!query || !query.trim()) return;
 
@@ -1569,7 +1521,6 @@ export const Editor = () => {
 
       setExportState({
         isOpen: true,
-        isExporting: true,
         status: "exporting",
         rowsProcessed: 0,
         fileName: filePath.split(/[/\\]/).pop() || filePath, // Show only filename
@@ -1586,14 +1537,12 @@ export const Editor = () => {
       // Success: update modal state instead of showing toast
       setExportState((prev) => ({
         ...prev,
-        isExporting: false,
         status: "completed",
       }));
     } catch (e) {
       // Error: update modal state
       setExportState((prev) => ({
         ...prev,
-        isExporting: false,
         status: "error",
         errorMessage: String(e),
       }));

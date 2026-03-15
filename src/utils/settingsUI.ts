@@ -56,21 +56,12 @@ export function isPresetFont(
 }
 
 /**
- * Sanitize API key input by trimming whitespace
- * @param key - Raw API key input
- * @returns Sanitized API key
- */
-export function sanitizeApiKey(key: string): string {
-  return key.trim();
-}
-
-/**
  * Check if an API key appears to be valid (basic format check)
  * @param key - API key to validate
  * @returns True if key appears valid
  */
 export function isValidApiKeyFormat(key: string): boolean {
-  const trimmed = sanitizeApiKey(key);
+  const trimmed = key.trim();
   // API keys should be at least 10 characters and contain alphanumeric/special chars
   return trimmed.length >= 10 && /^[A-Za-z0-9_\-:.]+$/.test(trimmed);
 }

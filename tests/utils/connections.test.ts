@@ -4,7 +4,6 @@ import {
   getDefaultPort,
   validateConnectionParams,
   getDriverLabel,
-  hasSSH,
   generateConnectionName,
   connectionSubtitle,
   hasConnectionMenuItems,
@@ -289,40 +288,6 @@ describe('connections', () => {
 
     it('should return human-readable label for SQLite', () => {
       expect(getDriverLabel('sqlite')).toBe('SQLite');
-    });
-  });
-
-  describe('hasSSH', () => {
-    it('should return true when SSH is enabled', () => {
-      const params: ConnectionParams = {
-        driver: 'postgres',
-        database: 'mydb',
-        host: 'localhost',
-        ssh_enabled: true,
-      };
-
-      expect(hasSSH(params)).toBe(true);
-    });
-
-    it('should return false when SSH is disabled', () => {
-      const params: ConnectionParams = {
-        driver: 'postgres',
-        database: 'mydb',
-        host: 'localhost',
-        ssh_enabled: false,
-      };
-
-      expect(hasSSH(params)).toBe(false);
-    });
-
-    it('should return false when SSH is undefined', () => {
-      const params: ConnectionParams = {
-        driver: 'postgres',
-        database: 'mydb',
-        host: 'localhost',
-      };
-
-      expect(hasSSH(params)).toBe(false);
     });
   });
 

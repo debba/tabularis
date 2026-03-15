@@ -15,7 +15,7 @@ import { useUpdate } from "./hooks/useUpdate";
 
 const COMMUNITY_MODAL_KEY = "tabularis_community_modal_dismissed";
 
-function App() {
+export function App() {
   const {
     updateInfo,
     isDownloading,
@@ -91,4 +91,3 @@ function App() {
   );
 }
 
-export default App;

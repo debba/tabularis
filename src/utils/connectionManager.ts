@@ -60,25 +60,6 @@ export function getStatusDotClass(isActive: boolean, hasError: boolean): string 
   return isActive ? 'bg-green-400' : 'bg-green-400/70';
 }
 
-/** CSS classes for the connection card in the Connections page */
-export function getConnectionCardClass(
-  isActive: boolean,
-  isOpen: boolean,
-  isConnecting: boolean,
-): string {
-  if (isConnecting) return 'bg-blue-900/10 border-blue-400/30 animate-pulse';
-  if (isActive) return 'bg-blue-900/20 border-blue-500/50';
-  if (isOpen) return 'bg-green-900/10 border-green-500/30 hover:border-green-500/50';
-  return 'bg-elevated border-default hover:border-strong';
-}
-
-/** CSS class for the connection icon in the Connections page */
-export function getConnectionIconClass(isActive: boolean, isOpen: boolean): string {
-  if (isActive) return 'bg-blue-600 text-white';
-  if (isOpen) return 'bg-green-900/30 text-green-400';
-  return 'bg-surface-secondary text-blue-400';
-}
-
 /**
  * Returns the IDs of open connections whose driver matches any of the given driver IDs.
  * Used when disabling or uninstalling a plugin to determine which connections must be closed.

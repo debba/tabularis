@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   isLocalDriver,
-  isRemoteDriver,
-  supportsSchemas,
-  supportsViews,
-  supportsRoutines,
   supportsAlterColumn,
   supportsCreateForeignKeys,
   findDriverManifest,
@@ -61,74 +57,6 @@ describe('driverCapabilities', () => {
     it('should return false for a typical remote driver (postgres-like)', () => {
       const caps = makeCapabilities({ schemas: true, views: true, routines: true });
       expect(isLocalDriver(caps)).toBe(false);
-    });
-  });
-
-  describe('isRemoteDriver', () => {
-    it('should return false when file_based is true', () => {
-      expect(isRemoteDriver(makeCapabilities({ file_based: true }))).toBe(false);
-    });
-
-    it('should return false when folder_based is true', () => {
-      expect(isRemoteDriver(makeCapabilities({ folder_based: true }))).toBe(false);
-    });
-
-    it('should return true for remote driver with no file/folder based', () => {
-      expect(isRemoteDriver(makeCapabilities({ file_based: false, folder_based: false }))).toBe(true);
-    });
-
-    it('should return true when capabilities are null (safe default: assume remote)', () => {
-      expect(isRemoteDriver(null)).toBe(true);
-    });
-
-    it('should return true when capabilities are undefined', () => {
-      expect(isRemoteDriver(undefined)).toBe(true);
-    });
-  });
-
-  describe('supportsSchemas', () => {
-    it('should return true when schemas is true', () => {
-      expect(supportsSchemas(makeCapabilities({ schemas: true }))).toBe(true);
-    });
-
-    it('should return false when schemas is false', () => {
-      expect(supportsSchemas(makeCapabilities({ schemas: false }))).toBe(false);
-    });
-
-    it('should return false when capabilities are null', () => {
-      expect(supportsSchemas(null)).toBe(false);
-    });
-
-    it('should return false when capabilities are undefined', () => {
-      expect(supportsSchemas(undefined)).toBe(false);
-    });
-  });
-
-  describe('supportsViews', () => {
-    it('should return true when views is true', () => {
-      expect(supportsViews(makeCapabilities({ views: true }))).toBe(true);
-    });
-
-    it('should return false when views is false', () => {
-      expect(supportsViews(makeCapabilities({ views: false }))).toBe(false);
-    });
-
-    it('should return false when capabilities are null', () => {
-      expect(supportsViews(null)).toBe(false);
-    });
-  });
-
-  describe('supportsRoutines', () => {
-    it('should return true when routines is true', () => {
-      expect(supportsRoutines(makeCapabilities({ routines: true }))).toBe(true);
-    });
-
-    it('should return false when routines is false', () => {
-      expect(supportsRoutines(makeCapabilities({ routines: false }))).toBe(false);
-    });
-
-    it('should return false when capabilities are null', () => {
-      expect(supportsRoutines(null)).toBe(false);
     });
   });
 
@@ -240,10 +168,7 @@ describe('driverCapabilities', () => {
       serial_type: 'SERIAL',
     });
 
-    it('is remote', () => expect(isRemoteDriver(postgresCaps)).toBe(true));
-    it('supports schemas', () => expect(supportsSchemas(postgresCaps)).toBe(true));
-    it('supports views', () => expect(supportsViews(postgresCaps)).toBe(true));
-    it('supports routines', () => expect(supportsRoutines(postgresCaps)).toBe(true));
+    it('is not local', () => expect(isLocalDriver(postgresCaps)).toBe(false));
     it('supports alter column', () => expect(supportsAlterColumn(postgresCaps)).toBe(true));
     it('supports foreign keys', () => expect(supportsCreateForeignKeys(postgresCaps)).toBe(true));
   });
@@ -257,8 +182,6 @@ describe('driverCapabilities', () => {
     });
 
     it('is local', () => expect(isLocalDriver(sqliteCaps)).toBe(true));
-    it('is not remote', () => expect(isRemoteDriver(sqliteCaps)).toBe(false));
-    it('does not support schemas', () => expect(supportsSchemas(sqliteCaps)).toBe(false));
     it('does not support alter column (default false)', () => expect(supportsAlterColumn(sqliteCaps)).toBe(false));
     it('does not support foreign keys (default false)', () => expect(supportsCreateForeignKeys(sqliteCaps)).toBe(false));
   });
@@ -269,6 +192,5 @@ describe('driverCapabilities', () => {
     it('is not local by default', () => expect(isLocalDriver(unknownCaps)).toBe(false));
     it('does not support alter column by default', () => expect(supportsAlterColumn(unknownCaps)).toBe(false));
     it('does not support foreign keys by default', () => expect(supportsCreateForeignKeys(unknownCaps)).toBe(false));
-    it('does not support schemas by default', () => expect(supportsSchemas(unknownCaps)).toBe(false));
   });
 });

@@ -6,7 +6,7 @@ import { PanelDatabaseProvider } from './PanelDatabaseProvider';
 import { EditorProvider } from '../../contexts/EditorProvider';
 import { Editor } from '../../pages/Editor';
 import { useSplitPaneResize } from '../../hooks/useSplitPaneResize';
-import { useConnectionLayoutContext } from '../../contexts/useConnectionLayoutContext';
+import { useConnectionLayoutContext } from '../../hooks/useConnectionLayoutContext';
 import { useDatabase } from '../../hooks/useDatabase';
 import type { SplitView } from '../../utils/connectionLayout';
 

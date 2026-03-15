@@ -61,10 +61,6 @@ export function isValidLimit(value: string): boolean {
   if (!value || value.trim() === "") {
     return true; // Empty is valid (means no limit)
   }
-  // Check if it contains a decimal point (reject decimals)
-  if (value.includes(".")) {
-    return false;
-  }
   // Check if the entire string is a valid positive integer (no extra characters)
   const trimmed = value.trim();
   if (!/^\d+$/.test(trimmed)) {
@@ -95,11 +91,4 @@ export function generateWherePlaceholder(column: string): string {
  */
 export function generateOrderByPlaceholder(column: string): string {
   return `${column} DESC`;
-}
-
-/**
- * Checks if Enter key was pressed
- */
-export function isEnterKey(e: { key: string }): boolean {
-  return e.key === "Enter";
 }

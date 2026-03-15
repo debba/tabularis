@@ -5,6 +5,10 @@
  */
 
 import type { DriverCapabilities } from "../types/plugins";
+import type { ForeignKey, Index } from "../types/schema";
+import type { DatabaseDriver } from "./connections";
+
+export type { ForeignKey, Index, DatabaseDriver };
 
 export interface TableColumn {
   name: string;
@@ -14,22 +18,6 @@ export interface TableColumn {
   is_auto_increment: boolean;
   default_value: string | null;
 }
-
-export interface ForeignKey {
-  name: string;
-  column_name: string;
-  ref_table: string;
-  ref_column: string;
-}
-
-export interface Index {
-  name: string;
-  column_name: string;
-  is_unique: boolean;
-  is_primary: boolean;
-}
-
-export type DatabaseDriver = 'mysql' | 'mariadb' | 'postgresql' | 'sqlite';
 
 interface ResolvedSqlCapabilities {
   quote: string;
@@ -82,16 +70,14 @@ export function getIdentifierQuote(driver: DriverCapabilities | DatabaseDriver):
 /**
  * Generates column definition SQL for a single column.
  * Accepts either a DriverCapabilities object or a legacy string driver ID.
- * When driver is a DriverCapabilities object, the quote parameter is derived from
- * driver.identifier_quote; the passed quote is used only for legacy string drivers.
+ * The identifier quote character is derived internally from the driver.
  */
 export function generateColumnDefinition(
   column: TableColumn,
   driver: DriverCapabilities | DatabaseDriver,
-  quote: string,
 ): string {
   const caps = resolveSqlCapabilities(driver);
-  const q = typeof driver === 'object' ? caps.quote : quote;
+  const q = caps.quote;
 
   if (column.is_auto_increment) {
     if (caps.inline_pk) {
@@ -133,14 +119,14 @@ export function generateColumnDefinition(
  * Generates the PRIMARY KEY constraint clause.
  * When inline_pk is true (e.g. SQLite), returns null because the PK is in the column def.
  * Accepts either a DriverCapabilities object or a legacy string driver ID.
+ * The identifier quote character is derived internally from the driver.
  */
 export function generatePrimaryKeyConstraint(
   columns: TableColumn[],
   driver: DriverCapabilities | DatabaseDriver,
-  quote: string,
 ): string | null {
   const caps = resolveSqlCapabilities(driver);
-  const q = typeof driver === 'object' ? caps.quote : quote;
+  const q = caps.quote;
   const pkColumns = columns.filter(c => c.is_pk).map(c => `${q}${c.name}${q}`);
 
   if (pkColumns.length === 0) return null;
@@ -211,10 +197,10 @@ export function generateCreateTableSQL(
   lines.push(`CREATE TABLE ${quote}${tableName}${quote} (`);
 
   // Column definitions
-  const columnDefs = columns.map(col => generateColumnDefinition(col, driver, quote));
+  const columnDefs = columns.map(col => generateColumnDefinition(col, driver));
 
   // Primary key constraint (if not handled in column def)
-  const pkConstraint = generatePrimaryKeyConstraint(columns, driver, quote);
+  const pkConstraint = generatePrimaryKeyConstraint(columns, driver);
   if (pkConstraint) {
     columnDefs.push(pkConstraint);
   }

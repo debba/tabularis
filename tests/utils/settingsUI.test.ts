@@ -5,7 +5,6 @@ import {
   validateFontSize,
   getProviderLabel,
   isPresetFont,
-  sanitizeApiKey,
   isValidApiKeyFormat,
   formatRoadmapFeature,
 } from '../../src/utils/settingsUI';
@@ -84,29 +83,6 @@ describe('settingsUI', () => {
 
     it('should handle empty font list', () => {
       expect(isPresetFont('System', [])).toBe(false);
-    });
-  });
-
-  describe('sanitizeApiKey', () => {
-    it('should trim leading whitespace', () => {
-      expect(sanitizeApiKey('  sk-1234')).toBe('sk-1234');
-    });
-
-    it('should trim trailing whitespace', () => {
-      expect(sanitizeApiKey('sk-1234  ')).toBe('sk-1234');
-    });
-
-    it('should trim both sides', () => {
-      expect(sanitizeApiKey('  sk-1234  ')).toBe('sk-1234');
-    });
-
-    it('should handle empty strings', () => {
-      expect(sanitizeApiKey('')).toBe('');
-      expect(sanitizeApiKey('   ')).toBe('');
-    });
-
-    it('should not modify keys without whitespace', () => {
-      expect(sanitizeApiKey('sk-1234abcd')).toBe('sk-1234abcd');
     });
   });
 

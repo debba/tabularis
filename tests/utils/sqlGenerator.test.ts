@@ -51,64 +51,64 @@ describe('sqlGenerator utils', () => {
     };
 
     it('should generate basic column definition', () => {
-      const result = generateColumnDefinition(baseColumn, 'mysql', '`');
+      const result = generateColumnDefinition(baseColumn, 'mysql');
       expect(result).toBe('  `id` INT NOT NULL');
     });
 
     it('should handle nullable columns', () => {
       const column = { ...baseColumn, is_nullable: true };
-      const result = generateColumnDefinition(column, 'mysql', '`');
+      const result = generateColumnDefinition(column, 'mysql');
       expect(result).toBe('  `id` INT');
       expect(result).not.toContain('NOT NULL');
     });
 
     it('should add DEFAULT clause', () => {
       const column = { ...baseColumn, default_value: '0' };
-      const result = generateColumnDefinition(column, 'mysql', '`');
+      const result = generateColumnDefinition(column, 'mysql');
       expect(result).toBe('  `id` INT NOT NULL DEFAULT 0');
     });
 
     it('should handle string default values', () => {
       const column = { ...baseColumn, default_value: "'active'" };
-      const result = generateColumnDefinition(column, 'mysql', '`');
+      const result = generateColumnDefinition(column, 'mysql');
       expect(result).toBe("  `id` INT NOT NULL DEFAULT 'active'");
     });
 
     it('should add AUTO_INCREMENT for MySQL', () => {
       const column = { ...baseColumn, is_auto_increment: true };
-      const result = generateColumnDefinition(column, 'mysql', '`');
+      const result = generateColumnDefinition(column, 'mysql');
       expect(result).toBe('  `id` INT NOT NULL AUTO_INCREMENT');
     });
 
     it('should add AUTO_INCREMENT for MariaDB', () => {
       const column = { ...baseColumn, is_auto_increment: true };
-      const result = generateColumnDefinition(column, 'mariadb', '`');
+      const result = generateColumnDefinition(column, 'mariadb');
       expect(result).toBe('  `id` INT NOT NULL AUTO_INCREMENT');
     });
 
     it('should convert to INTEGER PRIMARY KEY AUTOINCREMENT for SQLite', () => {
       const column = { ...baseColumn, is_auto_increment: true };
-      const result = generateColumnDefinition(column, 'sqlite', '"');
+      const result = generateColumnDefinition(column, 'sqlite');
       expect(result).toContain('INTEGER PRIMARY KEY AUTOINCREMENT');
       expect(result).not.toContain('INT NOT NULL AUTO_INCREMENT');
     });
 
     it('should convert to SERIAL for PostgreSQL', () => {
       const column = { ...baseColumn, is_auto_increment: true };
-      const result = generateColumnDefinition(column, 'postgresql', '"');
+      const result = generateColumnDefinition(column, 'postgresql');
       expect(result).toContain('SERIAL');
       expect(result).not.toContain('INT NOT NULL AUTO_INCREMENT');
     });
 
     it('should handle VARCHAR with length', () => {
       const column = { ...baseColumn, data_type: 'VARCHAR(255)' };
-      const result = generateColumnDefinition(column, 'mysql', '`');
+      const result = generateColumnDefinition(column, 'mysql');
       expect(result).toBe('  `id` VARCHAR(255) NOT NULL');
     });
 
     it('should handle custom column names with special characters', () => {
       const column = { ...baseColumn, name: 'user_name' };
-      const result = generateColumnDefinition(column, 'postgresql', '"');
+      const result = generateColumnDefinition(column, 'postgresql');
       expect(result).toBe('  "user_name" INT NOT NULL');
     });
 
@@ -118,13 +118,13 @@ describe('sqlGenerator utils', () => {
         is_nullable: false,
         default_value: 'CURRENT_TIMESTAMP',
       };
-      const result = generateColumnDefinition(column, 'mysql', '`');
+      const result = generateColumnDefinition(column, 'mysql');
       expect(result).toBe('  `id` INT NOT NULL DEFAULT CURRENT_TIMESTAMP');
     });
 
     it('should preserve data type case', () => {
       const column = { ...baseColumn, data_type: 'datetime' };
-      const result = generateColumnDefinition(column, 'mysql', '`');
+      const result = generateColumnDefinition(column, 'mysql');
       expect(result).toBe('  `id` datetime NOT NULL');
     });
   });
@@ -134,21 +134,21 @@ describe('sqlGenerator utils', () => {
       const columns: TableColumn[] = [
         { name: 'name', data_type: 'VARCHAR(100)', is_pk: false, is_nullable: true, is_auto_increment: false, default_value: null },
       ];
-      expect(generatePrimaryKeyConstraint(columns, 'mysql', '`')).toBeNull();
+      expect(generatePrimaryKeyConstraint(columns, 'mysql')).toBeNull();
     });
 
     it('should return null for SQLite', () => {
       const columns: TableColumn[] = [
         { name: 'id', data_type: 'INT', is_pk: true, is_nullable: false, is_auto_increment: false, default_value: null },
       ];
-      expect(generatePrimaryKeyConstraint(columns, 'sqlite', '"')).toBeNull();
+      expect(generatePrimaryKeyConstraint(columns, 'sqlite')).toBeNull();
     });
 
     it('should generate single column primary key for MySQL', () => {
       const columns: TableColumn[] = [
         { name: 'id', data_type: 'INT', is_pk: true, is_nullable: false, is_auto_increment: false, default_value: null },
       ];
-      const result = generatePrimaryKeyConstraint(columns, 'mysql', '`');
+      const result = generatePrimaryKeyConstraint(columns, 'mysql');
       expect(result).toBe('  PRIMARY KEY (`id`)');
     });
 
@@ -157,7 +157,7 @@ describe('sqlGenerator utils', () => {
         { name: 'order_id', data_type: 'INT', is_pk: true, is_nullable: false, is_auto_increment: false, default_value: null },
         { name: 'product_id', data_type: 'INT', is_pk: true, is_nullable: false, is_auto_increment: false, default_value: null },
       ];
-      const result = generatePrimaryKeyConstraint(columns, 'mysql', '`');
+      const result = generatePrimaryKeyConstraint(columns, 'mysql');
       expect(result).toBe('  PRIMARY KEY (`order_id`, `product_id`)');
     });
 
@@ -165,7 +165,7 @@ describe('sqlGenerator utils', () => {
       const columns: TableColumn[] = [
         { name: 'id', data_type: 'INT', is_pk: true, is_nullable: false, is_auto_increment: false, default_value: null },
       ];
-      const result = generatePrimaryKeyConstraint(columns, 'postgresql', '"');
+      const result = generatePrimaryKeyConstraint(columns, 'postgresql');
       expect(result).toBe('  PRIMARY KEY ("id")');
     });
 
@@ -175,7 +175,7 @@ describe('sqlGenerator utils', () => {
         { name: 'name', data_type: 'VARCHAR(100)', is_pk: false, is_nullable: true, is_auto_increment: false, default_value: null },
         { name: 'code', data_type: 'VARCHAR(50)', is_pk: true, is_nullable: false, is_auto_increment: false, default_value: null },
       ];
-      const result = generatePrimaryKeyConstraint(columns, 'mysql', '`');
+      const result = generatePrimaryKeyConstraint(columns, 'mysql');
       expect(result).toBe('  PRIMARY KEY (`id`, `code`)');
     });
   });
@@ -397,21 +397,21 @@ describe('sqlGenerator utils', () => {
 
     it('should use identifier_quote from capabilities', () => {
       const caps = makeCaps({ identifier_quote: '`' });
-      const result = generateColumnDefinition(baseColumn, caps, '"');
+      const result = generateColumnDefinition(baseColumn, caps);
       expect(result).toBe('  `id` INT NOT NULL');
     });
 
     it('should append auto_increment_keyword when set', () => {
       const caps = makeCaps({ identifier_quote: '`', auto_increment_keyword: 'AUTO_INCREMENT' });
       const col = { ...baseColumn, is_auto_increment: true };
-      const result = generateColumnDefinition(col, caps, '"');
+      const result = generateColumnDefinition(col, caps);
       expect(result).toContain('AUTO_INCREMENT');
     });
 
     it('should replace type with serial_type for auto-increment', () => {
       const caps = makeCaps({ identifier_quote: '"', serial_type: 'SERIAL' });
       const col = { ...baseColumn, is_auto_increment: true };
-      const result = generateColumnDefinition(col, caps, '"');
+      const result = generateColumnDefinition(col, caps);
       expect(result).toContain('SERIAL');
       expect(result).not.toContain('INT');
     });
@@ -421,14 +421,14 @@ describe('sqlGenerator utils', () => {
         identifier_quote: '"', inline_pk: true, auto_increment_keyword: 'AUTOINCREMENT',
       });
       const col = { ...baseColumn, is_auto_increment: true };
-      const result = generateColumnDefinition(col, caps, '"');
+      const result = generateColumnDefinition(col, caps);
       expect(result).toContain('INTEGER PRIMARY KEY AUTOINCREMENT');
     });
 
     it('should produce no auto-increment syntax when all capabilities are empty', () => {
       const caps = makeCaps({ identifier_quote: '"' });
       const col = { ...baseColumn, is_auto_increment: true };
-      const result = generateColumnDefinition(col, caps, '"');
+      const result = generateColumnDefinition(col, caps);
       expect(result).not.toContain('AUTO_INCREMENT');
       expect(result).not.toContain('SERIAL');
       expect(result).not.toContain('AUTOINCREMENT');
@@ -442,18 +442,18 @@ describe('sqlGenerator utils', () => {
 
     it('should return null when inline_pk is true', () => {
       const caps = makeCaps({ identifier_quote: '"', inline_pk: true });
-      expect(generatePrimaryKeyConstraint(pkColumns, caps, '"')).toBeNull();
+      expect(generatePrimaryKeyConstraint(pkColumns, caps)).toBeNull();
     });
 
     it('should return constraint when inline_pk is false', () => {
       const caps = makeCaps({ identifier_quote: '"', inline_pk: false });
-      const result = generatePrimaryKeyConstraint(pkColumns, caps, '"');
+      const result = generatePrimaryKeyConstraint(pkColumns, caps);
       expect(result).toBe('  PRIMARY KEY ("id")');
     });
 
     it('should use identifier_quote from capabilities for PK constraint', () => {
       const caps = makeCaps({ identifier_quote: '`', inline_pk: false });
-      const result = generatePrimaryKeyConstraint(pkColumns, caps, '"');
+      const result = generatePrimaryKeyConstraint(pkColumns, caps);
       expect(result).toBe('  PRIMARY KEY (`id`)');
     });
 
@@ -462,7 +462,7 @@ describe('sqlGenerator utils', () => {
         { name: 'name', data_type: 'VARCHAR', is_pk: false, is_nullable: true, is_auto_increment: false, default_value: null },
       ];
       const caps = makeCaps({ identifier_quote: '"' });
-      expect(generatePrimaryKeyConstraint(noPkCols, caps, '"')).toBeNull();
+      expect(generatePrimaryKeyConstraint(noPkCols, caps)).toBeNull();
     });
   });
 

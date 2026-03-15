@@ -284,14 +284,10 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
       const cacheKey = schema ? `${connectionId}:${schema}` : connectionId;
       const cached = schemaCacheRef.current[cacheKey];
 
-      // Cache hit: same version, less than 5 minutes old
       if (shouldUseCachedSchema(cached, schemaVersion)) {
-        console.log("Using cached schema for", cacheKey);
         return cached!.data;
       }
 
-      // Cache miss: fetch from backend
-      console.log("Fetching schema from backend for", cacheKey);
       const data = await invoke<TableSchema[]>("get_schema_snapshot", {
         connectionId,
         ...(schema ? { schema } : {}),

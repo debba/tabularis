@@ -657,4 +657,3 @@ export const TaskManagerPage = () => {
   );
 };
 
-export default TaskManagerPage;

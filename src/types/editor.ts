@@ -1,3 +1,7 @@
+import type { ForeignKey } from "./schema";
+
+export type { ForeignKey };
+
 export interface Pagination {
   page: number;
   page_size: number;
@@ -13,13 +17,6 @@ export interface TableColumn {
   is_auto_increment: boolean;
   default_value?: string;
   character_maximum_length?: number;
-}
-
-export interface ForeignKey {
-  name: string;
-  column_name: string;
-  ref_table: string;
-  ref_column: string;
 }
 
 export interface TableSchema {

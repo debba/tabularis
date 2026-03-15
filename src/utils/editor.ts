@@ -330,25 +330,53 @@ export function createSchemaCacheEntry(
   };
 }
 
+export interface ReconstructQueryOptions {
+  filterOverride?: string | null;
+  sortOverride?: string | null;
+  limitOverride?: number | null;
+  wrapLimitSubquery?: boolean;
+}
+
 /**
- * Reconstruct a SELECT query for a table tab with filters, sort, and limit
- * @param tab - Tab containing table state
- * @param driver - Database driver for proper identifier quoting
- * @returns Reconstructed SQL query
+ * Reconstruct a SELECT query for a table tab with filters, sort, and limit.
+ * Optional overrides replace the tab's own clause values when provided.
+ * When wrapLimitSubquery is true, the LIMIT is applied via a subquery wrapper
+ * instead of appending directly.
  */
-export function reconstructTableQuery(tab: Tab, driver?: string): string {
+export function reconstructTableQuery(
+  tab: Tab,
+  driver?: string,
+  options?: ReconstructQueryOptions,
+): string {
   if (!tab.activeTable) {
     return tab.query;
   }
 
-  const filter = tab.filterClause ? `WHERE ${tab.filterClause}` : "";
-  const sort = tab.sortClause ? `ORDER BY ${tab.sortClause}` : "";
+  const filterClause =
+    options?.filterOverride !== undefined
+      ? options.filterOverride
+      : tab.filterClause;
+  const sortClause =
+    options?.sortOverride !== undefined
+      ? options.sortOverride
+      : tab.sortClause;
+  const limitClause =
+    options?.limitOverride !== undefined
+      ? options.limitOverride
+      : tab.limitClause;
+
+  const filter = filterClause ? `WHERE ${filterClause}` : "";
+  const sort = sortClause ? `ORDER BY ${sortClause}` : "";
   const quotedTable = quoteTableRef(tab.activeTable, driver, tab.schema);
 
   let baseQuery = `SELECT * FROM ${quotedTable} ${filter} ${sort}`.trim();
 
-  if (tab.limitClause && tab.limitClause > 0) {
-    baseQuery = `${baseQuery} LIMIT ${tab.limitClause}`;
+  if (limitClause && limitClause > 0) {
+    if (options?.wrapLimitSubquery) {
+      baseQuery = `SELECT * FROM (${baseQuery} LIMIT ${limitClause}) AS limited_subset`;
+    } else {
+      baseQuery = `${baseQuery} LIMIT ${limitClause}`;
+    }
   }
 
   return baseQuery.replace(/\s+/g, " ").trim();

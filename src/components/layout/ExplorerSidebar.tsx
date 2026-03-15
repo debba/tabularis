@@ -30,6 +30,7 @@ import {
   X,
 } from "lucide-react";
 import { ask, message, open } from "@tauri-apps/plugin-dialog";
+import { toErrorMessage } from "../../utils/errors";
 import { useDatabase } from "../../hooks/useDatabase";
 import { useSavedQueries } from "../../hooks/useSavedQueries";
 import type { SavedQuery } from "../../contexts/SavedQueriesContext";
@@ -50,7 +51,7 @@ import { SidebarViewItem } from "./sidebar/SidebarViewItem";
 import { SidebarRoutineItem } from "./sidebar/SidebarRoutineItem";
 import { SidebarSchemaItem } from "./sidebar/SidebarSchemaItem";
 import { SidebarDatabaseItem } from "./sidebar/SidebarDatabaseItem";
-import { useConnectionLayoutContext } from "../../contexts/useConnectionLayoutContext";
+import { useConnectionLayoutContext } from "../../hooks/useConnectionLayoutContext";
 import type { TableColumn } from "../../types/schema";
 import type { ContextMenuData } from "../../types/sidebar";
 import type { RoutineInfo } from "../../contexts/DatabaseContext";
@@ -695,13 +696,17 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                                 { title: t("sidebar.deleteIndex"), kind: "warning" },
                               )
                             ) {
-                              await invoke("drop_index_action", {
-                                connectionId: activeConnectionId,
-                                table: t_name,
-                                indexName: name,
-                                ...(schemaName ? { schema: schemaName } : {}),
-                              }).catch(console.error);
-                              setSchemaVersion((v) => v + 1);
+                              try {
+                                await invoke("drop_index_action", {
+                                  connectionId: activeConnectionId,
+                                  table: t_name,
+                                  indexName: name,
+                                  ...(schemaName ? { schema: schemaName } : {}),
+                                });
+                                setSchemaVersion((v) => v + 1);
+                              } catch (e) {
+                                await message(t("sidebar.failDeleteIndex") + toErrorMessage(e), { title: t("common.error"), kind: "error" });
+                              }
                             }
                           }}
                           onAddForeignKey={(t_name) =>
@@ -714,13 +719,17 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                                 { title: t("sidebar.deleteFk"), kind: "warning" },
                               )
                             ) {
-                              await invoke("drop_foreign_key_action", {
-                                connectionId: activeConnectionId,
-                                table: t_name,
-                                fkName: name,
-                                ...(schemaName ? { schema: schemaName } : {}),
-                              }).catch(console.error);
-                              setSchemaVersion((v) => v + 1);
+                              try {
+                                await invoke("drop_foreign_key_action", {
+                                  connectionId: activeConnectionId,
+                                  table: t_name,
+                                  fkName: name,
+                                  ...(schemaName ? { schema: schemaName } : {}),
+                                });
+                                setSchemaVersion((v) => v + 1);
+                              } catch (e) {
+                                await message(toErrorMessage(e), { title: t("common.error"), kind: "error" });
+                              }
                             }
                           }}
                           onCreateTable={() => setIsCreateTableModalOpen(true)}
@@ -908,13 +917,17 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                             { title: t("sidebar.deleteIndex"), kind: "warning" },
                           )
                         ) {
-                          await invoke("drop_index_action", {
-                            connectionId: activeConnectionId,
-                            table: t_name,
-                            indexName: name,
-                            schema: dbName,
-                          }).catch(console.error);
-                          setSchemaVersion((v) => v + 1);
+                          try {
+                            await invoke("drop_index_action", {
+                              connectionId: activeConnectionId,
+                              table: t_name,
+                              indexName: name,
+                              schema: dbName,
+                            });
+                            setSchemaVersion((v) => v + 1);
+                          } catch (e) {
+                            await message(t("sidebar.failDeleteIndex") + toErrorMessage(e), { title: t("common.error"), kind: "error" });
+                          }
                         }
                       }}
                       onAddForeignKey={(t_name) =>
@@ -927,13 +940,17 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                             { title: t("sidebar.deleteFk"), kind: "warning" },
                           )
                         ) {
-                          await invoke("drop_foreign_key_action", {
-                            connectionId: activeConnectionId,
-                            table: t_name,
-                            fkName: name,
-                            schema: dbName,
-                          }).catch(console.error);
-                          setSchemaVersion((v) => v + 1);
+                          try {
+                            await invoke("drop_foreign_key_action", {
+                              connectionId: activeConnectionId,
+                              table: t_name,
+                              fkName: name,
+                              schema: dbName,
+                            });
+                            setSchemaVersion((v) => v + 1);
+                          } catch (e) {
+                            await message(toErrorMessage(e), { title: t("common.error"), kind: "error" });
+                          }
                         }
                       }}
                       onCreateTable={() => setIsCreateTableModalOpen(true)}
@@ -1056,12 +1073,16 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                                     { title: t("sidebar.deleteIndex"), kind: "warning" },
                                   )
                                 ) {
-                                  await invoke("drop_index_action", {
-                                    connectionId: activeConnectionId,
-                                    table: t_name,
-                                    indexName: name,
-                                  }).catch(console.error);
-                                  setSchemaVersion((v) => v + 1);
+                                  try {
+                                    await invoke("drop_index_action", {
+                                      connectionId: activeConnectionId,
+                                      table: t_name,
+                                      indexName: name,
+                                    });
+                                    setSchemaVersion((v) => v + 1);
+                                  } catch (e) {
+                                    await message(t("sidebar.failDeleteIndex") + toErrorMessage(e), { title: t("common.error"), kind: "error" });
+                                  }
                                 }
                               }}
                               onAddForeignKey={(t_name) =>
@@ -1074,12 +1095,16 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                                     { title: t("sidebar.deleteFk"), kind: "warning" },
                                   )
                                 ) {
-                                  await invoke("drop_foreign_key_action", {
-                                    connectionId: activeConnectionId,
-                                    table: t_name,
-                                    fkName: name,
-                                  }).catch(console.error);
-                                  setSchemaVersion((v) => v + 1);
+                                  try {
+                                    await invoke("drop_foreign_key_action", {
+                                      connectionId: activeConnectionId,
+                                      table: t_name,
+                                      fkName: name,
+                                    });
+                                    setSchemaVersion((v) => v + 1);
+                                  } catch (e) {
+                                    await message(toErrorMessage(e), { title: t("common.error"), kind: "error" });
+                                  }
                                 }
                               }}
                               schemaVersion={schemaVersion}

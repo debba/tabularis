@@ -12,18 +12,6 @@ export type DatabaseDriver = string;
 export const BUILTIN_DRIVER_IDS = ["postgres", "mysql", "sqlite"] as const;
 export type BuiltinDriverId = (typeof BUILTIN_DRIVER_IDS)[number];
 
-export interface SshConnection {
-  id: string;
-  name: string;
-  host: string;
-  port: number;
-  user: string;
-  password?: string;
-  key_file?: string;
-  key_passphrase?: string;
-  save_in_keychain?: boolean;
-}
-
 export interface ConnectionParams {
   driver: DatabaseDriver;
   host?: string;
@@ -186,15 +174,6 @@ export function getDriverLabel(driver: DatabaseDriver): string {
     default:
       return String(driver).toUpperCase();
   }
-}
-
-/**
- * Check if a connection has SSH enabled
- * @param params - Connection parameters
- * @returns True if SSH is enabled
- */
-export function hasSSH(params: ConnectionParams): boolean {
-  return params.ssh_enabled === true;
 }
 
 /**

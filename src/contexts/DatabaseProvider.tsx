@@ -13,6 +13,7 @@ import {
 import type { ReactNode } from 'react';
 import type { PluginManifest } from '../types/plugins';
 import { clearAutocompleteCache } from '../utils/autocomplete';
+import { toErrorMessage } from '../utils/errors';
 import { useSettings } from '../hooks/useSettings';
 import { findConnectionsForDrivers } from '../utils/connectionManager';
 import { isMultiDatabaseCapable, getEffectiveDatabase, getDatabaseList } from '../utils/database';
@@ -118,7 +119,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       updateConnectionData(connId, { tables: result, isLoadingTables: false });
     } catch (e) {
       console.error('Failed to refresh tables:', e);
-      updateConnectionData(connId, { isLoadingTables: false });
+      updateConnectionData(connId, { isLoadingTables: false, error: toErrorMessage(e) });
     }
   };
 
@@ -131,7 +132,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       updateConnectionData(connId, { views: result, isLoadingViews: false });
     } catch (e) {
       console.error('Failed to refresh views:', e);
-      updateConnectionData(connId, { isLoadingViews: false });
+      updateConnectionData(connId, { isLoadingViews: false, error: toErrorMessage(e) });
     }
   };
 
@@ -144,7 +145,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       updateConnectionData(connId, { routines: result, isLoadingRoutines: false });
     } catch (e) {
       console.error('Failed to refresh routines:', e);
-      updateConnectionData(connId, { isLoadingRoutines: false });
+      updateConnectionData(connId, { isLoadingRoutines: false, error: toErrorMessage(e) });
     }
   };
 
@@ -479,7 +480,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
           },
         });
       } catch (testError) {
-        const errorMsg = typeof testError === 'string' ? testError : (testError as Error).message || String(testError);
+        const errorMsg = toErrorMessage(testError);
         updateConnectionData(connectionId, {
           isConnecting: false,
           isConnected: false,
@@ -641,13 +642,10 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     const targetId = connectionId || activeConnectionId;
     if (!targetId) return;
 
-    console.log(`[DatabaseProvider] Disconnecting from connection: ${targetId}`);
-
     clearAutocompleteCache(targetId);
 
     try {
       await invoke('disconnect_connection', { connectionId: targetId });
-      console.log(`[DatabaseProvider] Successfully disconnected from: ${targetId}`);
     } catch (error) {
       console.error(`[DatabaseProvider] Failed to disconnect from ${targetId}:`, error);
     }

@@ -187,6 +187,3 @@ export const Select = ({
     </div>
   );
 };
-
-/** @deprecated Use `Select` instead */
-export const SearchableSelect = Select;

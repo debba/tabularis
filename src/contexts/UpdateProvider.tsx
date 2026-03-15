@@ -2,6 +2,7 @@ import { useState, useEffect, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { UpdateContext, type UpdateCheckResult } from "./UpdateContext";
+import { toErrorMessage } from "../utils/errors";
 
 export const UpdateProvider = ({ children }: { children: ReactNode }) => {
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
@@ -56,7 +57,7 @@ export const UpdateProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (err) {
       console.error("Failed to check for updates:", err);
-      setError(err as string);
+      setError(toErrorMessage(err));
       setIsUpToDate(false);
     } finally {
       setIsChecking(false);
@@ -72,7 +73,7 @@ export const UpdateProvider = ({ children }: { children: ReactNode }) => {
       // L'app si riavvierà automaticamente dopo l'installazione
     } catch (err) {
       console.error("Failed to download/install update:", err);
-      setError(err as string);
+      setError(toErrorMessage(err));
       setIsDownloading(false);
     }
   };

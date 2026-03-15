@@ -19,6 +19,7 @@ import {
   validateSshConnection,
   type SshConnection,
 } from "../../utils/ssh";
+import { toErrorMessage } from "../../utils/errors";
 import { Modal } from "../ui/Modal";
 
 interface SshConnectionsModalProps {
@@ -173,13 +174,7 @@ export function SshConnectionsModal({
     } catch (error) {
       console.error("SSH test failed:", error);
       setTestStatus("error");
-      const msg =
-        typeof error === "string"
-          ? error
-          : error instanceof Error
-            ? error.message
-            : JSON.stringify(error);
-      setTestMessage(msg);
+      setTestMessage(toErrorMessage(error));
     }
   };
 
@@ -263,7 +258,8 @@ export function SshConnectionsModal({
       await loadConnections();
     } catch (error) {
       console.error("Failed to delete SSH connection:", error);
-      alert(t("sshConnections.failDelete"));
+      setTestStatus("error");
+      setTestMessage(`${t("sshConnections.failDelete")}: ${toErrorMessage(error)}`);
     }
   };
 
@@ -286,16 +282,11 @@ export function SshConnectionsModal({
       }, 3000);
     } catch (error) {
       console.error("SSH quick test failed:", error);
-      const msg =
-        typeof error === "string"
-          ? error
-          : error instanceof Error
-            ? error.message
-            : JSON.stringify(error);
 
       // Show error feedback
       setTestResults((prev) => ({ ...prev, [conn.id]: "error" }));
-      alert(`${t("sshConnections.testFailed")}: ${msg}`);
+      setTestStatus("error");
+      setTestMessage(`${t("sshConnections.testFailed")}: ${toErrorMessage(error)}`);
 
       // Clear the error indicator after 3 seconds
       setTimeout(() => {

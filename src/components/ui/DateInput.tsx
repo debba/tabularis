@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   clamp,
@@ -163,27 +163,20 @@ export const DateInput: React.FC<DateInputProps> = ({
   inputRef,
   className = "",
 }) => {
-  const [dt, setDt] = useState<ParsedDateTime>(() => parseDateTime(value));
+  const dt = parseDateTime(value);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Sync external value changes
-  useEffect(() => {
-    setDt(parseDateTime(value));
-  }, [value]);
 
   // Propagate changes upward
   const update = useCallback(
     (partial: Partial<ParsedDateTime>) => {
-      setDt((prev) => {
-        const next = { ...prev, ...partial };
-        // Clamp day to valid range after month/year change
-        const maxDay = daysInMonth(next.month, next.year);
-        if (next.day > maxDay) next.day = maxDay;
-        onChange(formatDateTime(next, mode));
-        return next;
-      });
+      const current = parseDateTime(value);
+      const next = { ...current, ...partial };
+      // Clamp day to valid range after month/year change
+      const maxDay = daysInMonth(next.month, next.year);
+      if (next.day > maxDay) next.day = maxDay;
+      onChange(formatDateTime(next, mode));
     },
-    [mode, onChange],
+    [value, mode, onChange],
   );
 
   // Expose a focusable element via inputRef (first focusable child)

@@ -4,8 +4,6 @@ import {
   partitionConnections,
   getConnectionItemClass,
   getStatusDotClass,
-  getConnectionCardClass,
-  getConnectionIconClass,
   findConnectionsForDrivers,
   type ConnectionStatus,
 } from '../../src/utils/connectionManager';
@@ -223,70 +221,6 @@ describe('connectionManager', () => {
     it('should prioritize error over active state', () => {
       const result = getStatusDotClass(true, true);
       expect(result).toBe('bg-red-400');
-    });
-  });
-
-  describe('getConnectionCardClass', () => {
-    it('should return pulse class when connecting', () => {
-      const result = getConnectionCardClass(false, false, true);
-      expect(result).toContain('animate-pulse');
-      expect(result).toContain('border-blue-400/30');
-    });
-
-    it('should return active class when active (not connecting)', () => {
-      const result = getConnectionCardClass(true, false, false);
-      expect(result).toContain('bg-blue-900/20');
-      expect(result).toContain('border-blue-500/50');
-    });
-
-    it('should return open class when open but not active', () => {
-      const result = getConnectionCardClass(false, true, false);
-      expect(result).toContain('bg-green-900/10');
-      expect(result).toContain('border-green-500/30');
-    });
-
-    it('should return default class when closed and inactive', () => {
-      const result = getConnectionCardClass(false, false, false);
-      expect(result).toContain('bg-elevated');
-      expect(result).toContain('border-default');
-    });
-
-    it('should prioritize connecting over active', () => {
-      const result = getConnectionCardClass(true, true, true);
-      expect(result).toContain('animate-pulse');
-      expect(result).not.toContain('bg-blue-900/20');
-    });
-
-    it('should prioritize active over open', () => {
-      const result = getConnectionCardClass(true, true, false);
-      expect(result).toContain('bg-blue-900/20');
-      expect(result).not.toContain('bg-green-900/10');
-    });
-  });
-
-  describe('getConnectionIconClass', () => {
-    it('should return white/blue for active connection', () => {
-      const result = getConnectionIconClass(true, false);
-      expect(result).toContain('bg-blue-600');
-      expect(result).toContain('text-white');
-    });
-
-    it('should return green tint for open but not active connection', () => {
-      const result = getConnectionIconClass(false, true);
-      expect(result).toContain('bg-green-900/30');
-      expect(result).toContain('text-green-400');
-    });
-
-    it('should return default grey for closed connection', () => {
-      const result = getConnectionIconClass(false, false);
-      expect(result).toContain('bg-surface-secondary');
-      expect(result).toContain('text-blue-400');
-    });
-
-    it('should prioritize active over open', () => {
-      const result = getConnectionIconClass(true, true);
-      expect(result).toContain('bg-blue-600');
-      expect(result).not.toContain('bg-green-900/30');
     });
   });
 

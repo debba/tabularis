@@ -784,11 +784,24 @@ const VersionDropdown = ({
   );
 };
 
+type SettingsTab = "general" | "appearance" | "localization" | "ai" | "logs" | "shortcuts" | "plugins" | "info";
+
+const tabItems: Array<{ id: SettingsTab; icon: React.ComponentType<{ size: number }>; labelKey: string }> = [
+  { id: "general", icon: SettingsIcon, labelKey: "settings.general" },
+  { id: "appearance", icon: Palette, labelKey: "settings.appearance" },
+  { id: "localization", icon: Languages, labelKey: "settings.localization" },
+  { id: "ai", icon: Sparkles, labelKey: "settings.ai.tab" },
+  { id: "logs", icon: ScrollText, labelKey: "settings.logs" },
+  { id: "shortcuts", icon: Keyboard, labelKey: "settings.shortcuts.title" },
+  { id: "plugins", icon: Database, labelKey: "settings.plugins.title" },
+  { id: "info", icon: Info, labelKey: "settings.info" },
+];
+
 export const Settings = () => {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const { checkForUpdates, isChecking, updateInfo, error: updateError, isUpToDate, installationSource } = useUpdate();
-  const [activeTab, setActiveTab] = useState<"general" | "appearance" | "localization" | "ai" | "logs" | "shortcuts" | "plugins" | "info">(
+  const [activeTab, setActiveTab] = useState<SettingsTab>(
     "general",
   );
   const [aiKeyStatus, setAiKeyStatus] = useState<Record<string, AiKeyStatus>>({});
@@ -1014,102 +1027,21 @@ export const Settings = () => {
     <div className="h-full flex flex-col bg-base">
       {/* Header Tabs */}
       <div className="flex items-center gap-1 p-2 border-b border-default bg-elevated">
-        <button
-          onClick={() => setActiveTab("general")}
-          className={clsx(
-            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
-            activeTab === "general"
-              ? "bg-surface-secondary text-primary"
-              : "text-muted hover:text-primary hover:bg-surface-secondary/50",
-          )}
-        >
-          <SettingsIcon size={16} />
-          {t("settings.general")}
-        </button>
-        <button
-          onClick={() => setActiveTab("appearance")}
-          className={clsx(
-            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
-            activeTab === "appearance"
-              ? "bg-surface-secondary text-primary"
-              : "text-muted hover:text-primary hover:bg-surface-secondary/50",
-          )}
-        >
-          <Palette size={16} />
-          {t("settings.appearance")}
-        </button>
-        <button
-          onClick={() => setActiveTab("localization")}
-          className={clsx(
-            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
-            activeTab === "localization"
-              ? "bg-surface-secondary text-primary"
-              : "text-muted hover:text-primary hover:bg-surface-secondary/50",
-          )}
-        >
-          <Languages size={16} />
-          {t("settings.localization")}
-        </button>
-        <button
-          onClick={() => setActiveTab("ai")}
-          className={clsx(
-            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
-            activeTab === "ai"
-              ? "bg-surface-secondary text-primary"
-              : "text-muted hover:text-primary hover:bg-surface-secondary/50",
-          )}
-        >
-          <Sparkles size={16} />
-          AI
-        </button>
-        <button
-          onClick={() => setActiveTab("logs")}
-          className={clsx(
-            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
-            activeTab === "logs"
-              ? "bg-surface-secondary text-primary"
-              : "text-muted hover:text-primary hover:bg-surface-secondary/50",
-          )}
-        >
-          <ScrollText size={16} />
-          {t("settings.logs")}
-        </button>
-        <button
-          onClick={() => setActiveTab("shortcuts")}
-          className={clsx(
-            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
-            activeTab === "shortcuts"
-              ? "bg-surface-secondary text-primary"
-              : "text-muted hover:text-primary hover:bg-surface-secondary/50",
-          )}
-        >
-          <Keyboard size={16} />
-          {t("settings.shortcuts.title")}
-        </button>
-        <button
-          onClick={() => setActiveTab("plugins")}
-          className={clsx(
-            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
-            activeTab === "plugins"
-              ? "bg-surface-secondary text-primary"
-              : "text-muted hover:text-primary hover:bg-surface-secondary/50",
-          )}
-        >
-          <Database size={16} />
-          {t("settings.plugins.title")}
-        </button>
-        <button
-          onClick={() => setActiveTab("info")}
-          className={clsx(
-            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
-            activeTab === "info"
-              ? "bg-surface-secondary text-primary"
-              : "text-muted hover:text-primary hover:bg-surface-secondary/50",
-          )}
-        >
-          <Info size={16} />
-          {t("settings.info")}
-        </button>
+        {tabItems.map(({ id, icon: Icon, labelKey }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={clsx(
+              "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors",
+              activeTab === id
+                ? "bg-surface-secondary text-primary"
+                : "text-muted hover:text-primary hover:bg-surface-secondary/50",
+            )}
+          >
+            <Icon size={16} />
+            {t(labelKey)}
+          </button>
+        ))}
       </div>
 
       <div className="flex-1 overflow-auto p-8">

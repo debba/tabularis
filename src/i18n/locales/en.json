@@ -212,6 +212,7 @@
     "version": "Version",
     "starOnGithub": "Star on GitHub",
     "ai": {
+      "tab": "AI",
       "title": "AI Configuration",
       "description": "Configure AI providers to enable natural language to SQL generation. Keys are stored securely in your system's keychain.",
       "enable": "Enable AI Features",

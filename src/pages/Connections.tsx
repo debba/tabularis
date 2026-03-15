@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { NewConnectionModal } from "../components/ui/NewConnectionModal";
+import { NewConnectionModal } from "../components/modals/NewConnectionModal";
 import { ConfirmModal } from "../components/modals/ConfirmModal";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -23,6 +23,7 @@ import clsx from "clsx";
 import { ContextMenu } from "../components/ui/ContextMenu";
 import type { SavedConnection } from "../contexts/DatabaseContext";
 import { hasConnectionMenuItems } from "../utils/connections";
+import { toErrorMessage } from "../utils/errors";
 import { GroupHeader } from "../components/connections/GroupHeader";
 import { ConnectionCard } from "../components/connections/ConnectionCard";
 import { ConnectionListItem } from "../components/connections/ConnectionListItem";
@@ -158,6 +159,7 @@ export const Connections = () => {
       await loadConnections();
     } catch (e) {
       console.error("Failed to rename group:", e);
+      setError(t("groups.renameError", { defaultValue: "Failed to rename group" }) + `: ${toErrorMessage(e)}`);
     }
   };
 
@@ -173,6 +175,7 @@ export const Connections = () => {
           await loadConnections();
         } catch (e) {
           console.error("Failed to delete group:", e);
+          setError(t("groups.deleteError", { defaultValue: "Failed to delete group" }) + `: ${toErrorMessage(e)}`);
         }
       },
     });
@@ -187,6 +190,7 @@ export const Connections = () => {
       await loadConnections();
     } catch (e) {
       console.error("Failed to move connection:", e);
+      setError(t("groups.moveError", { defaultValue: "Failed to move connection" }) + `: ${toErrorMessage(e)}`);
     }
   };
 
@@ -215,9 +219,8 @@ export const Connections = () => {
       await connect(conn.id);
       navigate("/editor");
     } catch (e) {
-      const msg = typeof e === "string" ? e : (e as Error).message || String(e);
       setError(
-        `${t("connections.failConnect", { name: conn.name })}\n\nError: ${msg}`,
+        `${t("connections.failConnect", { name: conn.name })}\n\nError: ${toErrorMessage(e)}`,
       );
     } finally {
       setConnectingId(null);
@@ -229,8 +232,7 @@ export const Connections = () => {
     try {
       await disconnect(connId);
     } catch (e) {
-      const msg = typeof e === "string" ? e : (e as Error).message || String(e);
-      setError(`${t("connections.failDisconnect")}\n\nError: ${msg}`);
+      setError(`${t("connections.failDisconnect")}\n\nError: ${toErrorMessage(e)}`);
     }
   };
 
