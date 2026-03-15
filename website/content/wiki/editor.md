@@ -2,6 +2,7 @@
 title: "SQL Editor"
 order: 4
 excerpt: "How to use the modern SQL editor in Tabularis with syntax highlighting, autocomplete, and multi-tab support."
+category: "Core Features"
 ---
 
 # SQL Editor

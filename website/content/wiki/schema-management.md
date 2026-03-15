@@ -2,6 +2,7 @@
 title: "Schema Management & ER Diagrams"
 order: 6
 excerpt: "Modify your database schema without writing DDL. Create tables, edit columns, and manage indexes."
+category: "Database Objects"
 ---
 
 # Schema Management & ER Diagrams

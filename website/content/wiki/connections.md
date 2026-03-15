@@ -2,6 +2,7 @@
 title: "Connection Management"
 order: 2
 excerpt: "Learn how to manage your database connections securely with SSH tunneling and keychain integration."
+category: "Database Objects"
 ---
 
 # Connection Management

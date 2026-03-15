@@ -2,6 +2,7 @@
 title: "Split View"
 order: 11
 excerpt: "Work with multiple database connections simultaneously in a side-by-side layout."
+category: "Core Features"
 ---
 
 # Split View

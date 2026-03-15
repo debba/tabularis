@@ -2,6 +2,7 @@
 title: "Visual Query Builder"
 order: 5
 excerpt: "Construct complex SQL queries visually by dragging tables and drawing JOINs."
+category: "Core Features"
 ---
 
 # Visual Query Builder

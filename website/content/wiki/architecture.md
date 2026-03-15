@@ -2,6 +2,7 @@
 title: "Technical Architecture"
 order: 10
 excerpt: "A deep dive into the Tabularis core: Tauri, Rust drivers, and the React frontend bridge."
+category: "Reference"
 ---
 
 # Technical Architecture

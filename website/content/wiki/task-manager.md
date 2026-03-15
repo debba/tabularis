@@ -2,6 +2,7 @@
 title: "Task Manager"
 order: 10
 excerpt: "Monitor and control plugin processes in real time — CPU, RAM, disk I/O, kill, and restart."
+category: "Reference"
 ---
 
 # Task Manager

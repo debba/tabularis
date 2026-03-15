@@ -2,6 +2,7 @@
 title: "Configuration"
 order: 3
 excerpt: "Adjust Tabularis to your workflow: language settings, AI providers, and general application behavior."
+category: "Customization"
 ---
 
 # Configuration

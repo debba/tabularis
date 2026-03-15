@@ -2,6 +2,7 @@
 title: "Keyboard Shortcuts"
 order: 7
 excerpt: "Full reference of keyboard shortcuts available in Tabularis, with instructions for customizing your own bindings."
+category: "Customization"
 ---
 
 # Keyboard Shortcuts

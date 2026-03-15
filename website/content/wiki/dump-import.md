@@ -2,6 +2,7 @@
 title: "Dump & Import"
 order: 6.5
 excerpt: "Export a full database snapshot to SQL and restore it — with progress tracking and cancellation support."
+category: "Database Objects"
 ---
 
 # Dump & Import

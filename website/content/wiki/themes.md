@@ -2,6 +2,7 @@
 title: "Themes & Customization"
 order: 9
 excerpt: "Personalize your workspace with 10 built-in themes and full typography control."
+category: "Customization"
 ---
 
 # Themes & Customization

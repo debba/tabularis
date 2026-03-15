@@ -2,6 +2,7 @@
 title: "MCP Server"
 order: 9
 excerpt: "Use Tabularis as an MCP server to let Claude Desktop, Claude Code, Cursor, Windsurf, Antigravity, and other AI agents query your local databases."
+category: "AI & Integration"
 ---
 
 # MCP Server

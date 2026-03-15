@@ -2,6 +2,7 @@
 title: "ER Diagram"
 order: 12
 excerpt: "Visualize your database schema as an interactive entity-relationship diagram using the Dagre layout engine."
+category: "Database Objects"
 ---
 
 # ER Diagram

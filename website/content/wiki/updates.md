@@ -2,6 +2,7 @@
 title: "Updates"
 order: 14
 excerpt: "Keep Tabularis up to date — automatic checks on startup, manual check from settings, and package-manager-managed installs."
+category: "Reference"
 ---
 
 # Updates

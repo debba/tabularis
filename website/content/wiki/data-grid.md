@@ -2,6 +2,7 @@
 title: "Data Grid"
 order: 13
 excerpt: "Browse, edit, filter, and export table data with a high-performance virtualized grid."
+category: "Core Features"
 ---
 
 # Data Grid

@@ -1,8 +1,10 @@
 ---
+category: "Getting Started"
 title: "Getting Started"
 order: 1.8
 excerpt: "Connect to your first database, explore the schema, and run your first query."
 ---
+category: "Getting Started"
 
 # Getting Started
 

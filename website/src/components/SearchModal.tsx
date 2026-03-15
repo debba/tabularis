@@ -33,6 +33,7 @@ const SUGGESTIONS: ({ label: string; query: string } | { label: string; href: st
 
 export function SearchModal({ posts, wikiPages, plugins }: SearchModalProps) {
   const [open, setOpen] = useState(false);
+  const [wikiOnly, setWikiOnly] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -42,6 +43,22 @@ export function SearchModal({ posts, wikiPages, plugins }: SearchModalProps) {
   const results = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
+
+    const wikiResults: SearchResult[] = wikiPages
+      .filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.excerpt.toLowerCase().includes(q)
+      )
+      .map((p) => ({
+        type: "wiki" as const,
+        slug: p.slug,
+        title: p.title,
+        excerpt: p.excerpt,
+        meta: "Wiki",
+      }));
+
+    if (wikiOnly) return wikiResults;
 
     const postResults: SearchResult[] = posts
       .filter(
@@ -58,20 +75,6 @@ export function SearchModal({ posts, wikiPages, plugins }: SearchModalProps) {
         excerpt: p.excerpt,
         meta: p.date,
         badge: p.release,
-      }));
-
-    const wikiResults: SearchResult[] = wikiPages
-      .filter(
-        (p) =>
-          p.title.toLowerCase().includes(q) ||
-          p.excerpt.toLowerCase().includes(q)
-      )
-      .map((p) => ({
-        type: "wiki" as const,
-        slug: p.slug,
-        title: p.title,
-        excerpt: p.excerpt,
-        meta: "Wiki",
       }));
 
     const pluginResults: SearchResult[] = plugins
@@ -91,7 +94,7 @@ export function SearchModal({ posts, wikiPages, plugins }: SearchModalProps) {
       }));
 
     return [...postResults, ...wikiResults, ...pluginResults];
-  }, [query, posts, wikiPages, plugins]);
+  }, [query, posts, wikiPages, plugins, wikiOnly]);
 
   const closeModal = useCallback(() => {
     setOpen(false);
@@ -115,6 +118,7 @@ export function SearchModal({ posts, wikiPages, plugins }: SearchModalProps) {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "k" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
+        setWikiOnly(window.location.pathname.startsWith("/wiki"));
         setOpen(true);
         setQuery("");
         setActiveIndex(-1);
@@ -126,7 +130,9 @@ export function SearchModal({ posts, wikiPages, plugins }: SearchModalProps) {
   }, [closeModal]);
 
   useEffect(() => {
-    function handleOpen() {
+    function handleOpen(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      setWikiOnly(!!detail?.wikiOnly);
       setOpen(true);
       setQuery("");
       setActiveIndex(-1);
@@ -170,7 +176,7 @@ export function SearchModal({ posts, wikiPages, plugins }: SearchModalProps) {
   }
 
   const isEmpty = query.trim() && results.length === 0;
-  const showSuggestions = !query.trim();
+  const showSuggestions = !query.trim() && !wikiOnly;
 
   return (
     <div
@@ -190,7 +196,7 @@ export function SearchModal({ posts, wikiPages, plugins }: SearchModalProps) {
             ref={inputRef}
             className="search-input"
             type="text"
-            placeholder="Search wiki, blog, plugins..."
+            placeholder={wikiOnly ? "Search docs..." : "Search wiki, blog, plugins..."}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyboardNav}

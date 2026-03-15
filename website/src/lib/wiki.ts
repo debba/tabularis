@@ -3,14 +3,44 @@ import path from "path";
 import matter from "gray-matter";
 import { marked } from "@/lib/markdown";
 
+export type WikiCategory =
+  | "Getting Started"
+  | "Core Features"
+  | "Database Objects"
+  | "Security & Networking"
+  | "AI & Integration"
+  | "Customization"
+  | "Reference";
+
+export const WIKI_CATEGORIES: WikiCategory[] = [
+  "Getting Started",
+  "Core Features",
+  "Database Objects",
+  "Security & Networking",
+  "AI & Integration",
+  "Customization",
+  "Reference",
+];
+
 export interface WikiMeta {
   slug: string;
   title: string;
   order: number;
   excerpt: string;
+  category: WikiCategory;
 }
 
 const WIKI_DIR = path.join(process.cwd(), "content", "wiki");
+
+function parseWikiMeta(slug: string, data: Record<string, unknown>): WikiMeta {
+  return {
+    slug,
+    title: (data.title as string) ?? "",
+    order: (data.order as number) ?? 99,
+    excerpt: (data.excerpt as string) ?? "",
+    category: (data.category as WikiCategory) ?? "Reference",
+  };
+}
 
 export function getAllWikiPages(): WikiMeta[] {
   if (!fs.existsSync(WIKI_DIR)) return [];
@@ -20,15 +50,20 @@ export function getAllWikiPages(): WikiMeta[] {
     const slug = file.replace(/\.md$/, "");
     const raw = fs.readFileSync(path.join(WIKI_DIR, file), "utf-8");
     const { data } = matter(raw);
-    return {
-      slug,
-      title: (data.title as string) ?? "",
-      order: (data.order as number) ?? 99,
-      excerpt: (data.excerpt as string) ?? "",
-    } satisfies WikiMeta;
+    return parseWikiMeta(slug, data);
   });
 
   return pages.sort((a, b) => a.order - b.order);
+}
+
+export function getWikiPagesByCategory(): Map<WikiCategory, WikiMeta[]> {
+  const all = getAllWikiPages();
+  const map = new Map<WikiCategory, WikiMeta[]>();
+  for (const cat of WIKI_CATEGORIES) {
+    const pages = all.filter((p) => p.category === cat);
+    if (pages.length > 0) map.set(cat, pages);
+  }
+  return map;
 }
 
 export function getWikiPageBySlug(
@@ -40,13 +75,7 @@ export function getWikiPageBySlug(
   const raw = fs.readFileSync(mdPath, "utf-8");
   const { data, content } = matter(raw);
 
-  const meta: WikiMeta = {
-    slug,
-    title: (data.title as string) ?? "",
-    order: (data.order as number) ?? 99,
-    excerpt: (data.excerpt as string) ?? "",
-  };
-
+  const meta = parseWikiMeta(slug, data);
   const html = marked.parse(content) as string;
   return { meta, html };
 }

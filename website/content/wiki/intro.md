@@ -1,8 +1,10 @@
 ---
+category: "Getting Started"
 title: "Introduction"
 order: 1
 excerpt: "Welcome to the Tabularis Wiki. Learn how to get started with the most modern database management tool."
 ---
+category: "Getting Started"
 
 # Introduction
 

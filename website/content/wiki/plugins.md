@@ -2,6 +2,7 @@
 title: "Plugin System"
 order: 8
 excerpt: "Extend Tabularis with new database drivers using any programming language."
+category: "AI & Integration"
 ---
 
 # Plugin System & Custom Drivers
