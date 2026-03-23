@@ -145,8 +145,8 @@
         },
         "manage_tables": {
           "type": "boolean",
-          "default": false,
-          "description": "true if the driver supports table and column management (CREATE TABLE, ADD/MODIFY/DROP COLUMN, DROP TABLE). Does not control index or foreign key operations. Defaults to false."
+          "default": true,
+          "description": "true if the driver supports table and column management (CREATE TABLE, ADD/MODIFY/DROP COLUMN, DROP TABLE). Does not control index or foreign key operations. Defaults to true."
         }
       }
     },

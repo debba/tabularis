@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { supportsManageTables } from "../../../utils/driverCapabilities";
 import { useTranslation } from "react-i18next";
 import {
   Loader2,
@@ -212,7 +213,7 @@ export const SidebarDatabaseItem = ({
                 isOpen={tablesOpen}
                 onToggle={() => setTablesOpen(!tablesOpen)}
                 actions={
-                  capabilities?.manage_tables === true ? (
+                  supportsManageTables(capabilities) ? (
                   <div className="flex items-center gap-1">
                     <button
                       onClick={(e) => {
@@ -267,7 +268,7 @@ export const SidebarDatabaseItem = ({
                         onContextMenu={onContextMenu}
                         connectionId={connectionId}
                         driver={driver}
-                        canManage={capabilities?.manage_tables === true}
+                        canManage={supportsManageTables(capabilities)}
                         onAddColumn={onAddColumn}
                         onEditColumn={onEditColumn}
                         onAddIndex={onAddIndex}

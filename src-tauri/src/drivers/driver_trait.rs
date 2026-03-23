@@ -65,8 +65,8 @@ pub struct DriverCapabilities {
     /// Whether the driver supports table and column management
     /// (CREATE TABLE, ALTER TABLE ADD/MODIFY/DROP COLUMN, DROP TABLE).
     /// Does NOT control index or foreign key operations (see `create_foreign_keys`).
-    /// Defaults to `false` for backward compatibility with plugins.
-    #[serde(default)]
+    /// Defaults to `true`.
+    #[serde(default = "default_true")]
     pub manage_tables: bool,
 }
 

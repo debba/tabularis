@@ -23,7 +23,7 @@ export interface DriverCapabilities {
   create_foreign_keys?: boolean;
   /** true for API-based plugins that need no host/port/credentials (e.g. public REST APIs). Hides the entire connection form. */
   no_connection_required?: boolean;
-  /** Whether the driver supports table and column management (CREATE TABLE, ADD/MODIFY/DROP COLUMN, DROP TABLE). Does not control index or FK operations. Defaults to false. */
+  /** Whether the driver supports table and column management (CREATE TABLE, ADD/MODIFY/DROP COLUMN, DROP TABLE). Does not control index or FK operations. Defaults to true. */
   manage_tables?: boolean;
 }
 

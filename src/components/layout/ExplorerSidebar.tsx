@@ -58,6 +58,7 @@ import type { RoutineInfo } from "../../contexts/DatabaseContext";
 import { groupRoutinesByType } from "../../utils/routines";
 import { formatObjectCount } from "../../utils/schema";
 import { isMultiDatabaseCapable } from "../../utils/database";
+import { supportsManageTables } from "../../utils/driverCapabilities";
 
 interface ExplorerSidebarProps {
   sidebarWidth: number;
@@ -1003,7 +1004,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                         >
                           <RefreshCw size={14} />
                         </button>
-                        {activeCapabilities?.manage_tables === true && (
+                        {supportsManageTables(activeCapabilities) && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1060,7 +1061,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                               onContextMenu={handleContextMenu}
                               connectionId={activeConnectionId!}
                               driver={activeDriver!}
-                              canManage={activeCapabilities?.manage_tables === true}
+                              canManage={supportsManageTables(activeCapabilities)}
                               onAddColumn={(t_name) =>
                                 setModifyColumnModal({ isOpen: true, tableName: t_name, column: null })
                               }
@@ -1305,7 +1306,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                         }
                       },
                     } : null,
-                    activeCapabilities?.manage_tables === true ? {
+                    supportsManageTables(activeCapabilities) ? {
                       label: t("sidebar.generateSQL"),
                       icon: FileCode,
                       action: () => setGenerateSQLModal(contextMenu.id),
@@ -1315,13 +1316,13 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                       icon: Copy,
                       action: () => navigator.clipboard.writeText(contextMenu.id),
                     },
-                    activeCapabilities?.manage_tables === true ? {
+                    supportsManageTables(activeCapabilities) ? {
                       label: t("sidebar.addColumn"),
                       icon: Plus,
                       action: () =>
                         setModifyColumnModal({ isOpen: true, tableName: contextMenu.id, column: null }),
                     } : null,
-                    activeCapabilities?.manage_tables === true ? {
+                    supportsManageTables(activeCapabilities) ? {
                       label: t("sidebar.deleteTable"),
                       icon: Trash2,
                       danger: true,
@@ -1356,7 +1357,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                       icon: Copy,
                       action: () => navigator.clipboard.writeText(contextMenu.id),
                     },
-                    activeCapabilities?.manage_tables === true ? {
+                    supportsManageTables(activeCapabilities) ? {
                       label: t("sidebar.deleteIndex"),
                       icon: Trash2,
                       danger: true,
@@ -1396,7 +1397,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                         icon: Copy,
                         action: () => navigator.clipboard.writeText(contextMenu.id),
                       },
-                      activeCapabilities?.manage_tables === true ? {
+                      supportsManageTables(activeCapabilities) ? {
                         label: t("sidebar.deleteFk"),
                         icon: Trash2,
                         danger: true,
@@ -1427,7 +1428,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                       } : null,
                     ].filter(Boolean) as ContextMenuItem[]
                   : contextMenu.type === "folder_indexes"
-                    ? activeCapabilities?.manage_tables === true
+                    ? supportsManageTables(activeCapabilities)
                       ? [
                           {
                             label: t("sidebar.addIndex"),
@@ -1441,7 +1442,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
                         ]
                       : []
                     : contextMenu.type === "folder_fks"
-                      ? activeCapabilities?.manage_tables === true
+                      ? supportsManageTables(activeCapabilities)
                         ? [
                             {
                               label: t("sidebar.addFk"),

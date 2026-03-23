@@ -30,7 +30,7 @@ export function findDriverManifest(
 export function supportsManageTables(
   capabilities?: DriverCapabilities | null,
 ): boolean {
-  return capabilities?.manage_tables === true;
+  return capabilities?.manage_tables !== false;
 }
 
 export function getCapabilitiesForDriver(
