@@ -225,6 +225,7 @@ fn get_simple_array_field_or_null(
     decode_if_compatible!(String,);
     decode_if_compatible!(JsonValue,);
     decode_if_compatible!(DateTime<Utc>, .format("%Y-%m-%d %H:%M:%S").to_string());
+    decode_if_compatible!(DateTime<Local>, .format("%Y-%m-%d %H:%M:%S").to_string());
     decode_if_compatible!(NaiveDateTime, .format("%Y-%m-%d %H:%M:%S").to_string());
     decode_if_compatible!(NaiveDate, .to_string());
     decode_if_compatible!(NaiveTime, .to_string());
@@ -275,6 +276,7 @@ fn get_simple_array_or_null(sub_ty: PgTypeInfo, val_ref: PgValueRef<'_>) -> Json
     decode_if_compatible!(String,);
     decode_if_compatible!(JsonValue,);
     decode_if_compatible!(DateTime<Utc>, .format("%Y-%m-%d %H:%M:%S").to_string());
+    decode_if_compatible!(DateTime<Local>, .format("%Y-%m-%d %H:%M:%S").to_string());
     decode_if_compatible!(NaiveDateTime, .format("%Y-%m-%d %H:%M:%S").to_string());
     decode_if_compatible!(NaiveDate, .to_string());
     decode_if_compatible!(NaiveTime, .to_string());
