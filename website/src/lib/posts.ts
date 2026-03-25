@@ -123,11 +123,13 @@ export async function getPostBySlug(
 
 async function fetchReleaseContributors(tag: string): Promise<string[]> {
   try {
+    const headers = { Accept: "application/vnd.github+json" };
     const relRes = await fetch(
       "https://api.github.com/repos/debba/tabularis/releases?per_page=100",
-      { headers: { Accept: "application/vnd.github+json" } },
+      { headers },
     );
-    const releases: { tag_name: string }[] = await relRes.json();
+    const releases: { tag_name: string; published_at: string }[] =
+      await relRes.json();
     const idx = releases.findIndex((r) => r.tag_name === tag);
     const prevTag =
       idx >= 0 && idx + 1 < releases.length
@@ -135,14 +137,15 @@ async function fetchReleaseContributors(tag: string): Promise<string[]> {
         : null;
     if (!prevTag) return [];
 
+    const users = new Set<string>();
+
     const cmpRes = await fetch(
       `https://api.github.com/repos/debba/tabularis/compare/${prevTag}...${tag}`,
-      { headers: { Accept: "application/vnd.github+json" } },
+      { headers },
     );
     const data: {
       commits: { author: { login: string; type: string } | null }[];
     } = await cmpRes.json();
-    const users = new Set<string>();
     for (const commit of data.commits ?? []) {
       const author = commit.author;
       if (
@@ -153,6 +156,29 @@ async function fetchReleaseContributors(tag: string): Promise<string[]> {
         users.add(author.login);
       }
     }
+
+    const prevDate = releases[idx + 1].published_at;
+    const curDate = releases[idx].published_at;
+    if (prevDate && curDate) {
+      const prsRes = await fetch(
+        `https://api.github.com/search/issues?q=repo:debba/tabularis+is:pr+is:merged+merged:${prevDate}..${curDate}&per_page=100`,
+        { headers },
+      );
+      const prsData: {
+        items: { user: { login: string; type: string } | null }[];
+      } = await prsRes.json();
+      for (const pr of prsData.items ?? []) {
+        const user = pr.user;
+        if (
+          user?.login &&
+          user.type !== "Bot" &&
+          !user.login.endsWith("[bot]")
+        ) {
+          users.add(user.login);
+        }
+      }
+    }
+
     return Array.from(users);
   } catch {
     return [];
