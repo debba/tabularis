@@ -14,6 +14,7 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
+import { SlotAnchor } from "./SlotAnchor";
 import {
   ArrowUp,
   ArrowDown,
@@ -28,7 +29,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { message } from "@tauri-apps/plugin-dialog";
+import { ErrorModal } from "../modals/ErrorModal";
 import {
   USE_DEFAULT_SENTINEL,
   formatCellValue,
@@ -88,6 +89,7 @@ interface DataGridProps {
   csvDelimiter?: string;
   sortClause?: string;
   onSort?: (colName: string) => void;
+  readonly?: boolean;
 }
 
 export const DataGrid = React.memo(
@@ -116,6 +118,7 @@ export const DataGrid = React.memo(
     csvDelimiter = ",",
     sortClause,
     onSort,
+    readonly: readonlyProp,
   }: DataGridProps) => {
     const { t } = useTranslation();
     const { activeSchema } = useDatabase();
@@ -151,6 +154,11 @@ export const DataGrid = React.memo(
       rowIndex: number;
       focusField?: string;
     } | null>(null);
+    const [errorModal, setErrorModal] = useState<{
+      isOpen: boolean;
+      message: string;
+    }>({ isOpen: false, message: "" });
+
     const [internalSelectedRowIndices, setInternalSelectedRowIndices] =
       useState<Set<number>>(new Set());
     const [lastSelectedRowIndex, setLastSelectedRowIndex] = useState<
@@ -279,7 +287,7 @@ export const DataGrid = React.memo(
       colIndex: number,
       value: unknown,
     ) => {
-      if (!tableName) return;
+      if (!tableName || readonlyProp) return;
 
       const mergedRow = mergedRows[rowIndex];
       if (!mergedRow) return;
@@ -401,10 +409,7 @@ export const DataGrid = React.memo(
           if (onRefresh) onRefresh();
         } catch (e) {
           console.error("Update failed:", e);
-          await message(t("dataGrid.updateFailed") + e, {
-            title: t("common.error"),
-            kind: "error",
-          });
+          setErrorModal({ isOpen: true, message: t("dataGrid.updateFailed") + e });
         }
         setEditingCell(null);
       } finally {
@@ -742,13 +747,10 @@ export const DataGrid = React.memo(
           // await message(t("dataGrid.copied"), { title: t("common.success"), kind: "info" });
         } catch (e) {
           console.error("Copy failed:", e);
-          await message(t("common.error") + ": " + e, {
-            title: t("common.error"),
-            kind: "error",
-          });
+          setErrorModal({ isOpen: true, message: t("common.error") + ": " + e });
         }
       },
-      [t],
+      [t, setErrorModal],
     );
 
     const formatRows = useCallback(
@@ -822,6 +824,12 @@ export const DataGrid = React.memo(
     }
 
     return (
+      <>
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, message: "" })}
+        message={errorModal.message}
+      />
       <div
         ref={parentRef}
         className="h-full overflow-auto border border-default rounded bg-elevated relative"
@@ -1201,42 +1209,44 @@ export const DataGrid = React.memo(
             // Build menu items dynamically
             const menuItems: ContextMenuItem[] = [];
 
-            // Cell value manipulation options (shown first for cell context)
-            // SET GENERATED only for insertion rows, not for existing rows
-            if (isAutoIncrement && isInsertion) {
-              menuItems.push({
-                label: t("dataGrid.setGenerate"),
-                icon: Sparkles,
-                action: setCellGenerate,
-              });
-            }
-            if (isNullable) {
-              menuItems.push({
-                label: t("dataGrid.setNull"),
-                icon: Ban,
-                action: setCellNull,
-              });
-            }
-            if (hasDefault) {
-              menuItems.push({
-                label: t("dataGrid.setDefault"),
-                icon: FileDigit,
-                action: setCellDefault,
-              });
-            }
-            // Always allow setting empty string, except for BLOB columns
-            const colDataType = columnTypeMap?.get(colName) ?? "";
-            if (!isBlobColumn(colDataType, columnLengthMap?.get(colName))) {
-              menuItems.push({
-                label: t("dataGrid.setEmpty"),
-                icon: Copy,
-                action: setCellEmpty,
-              });
-            }
+            if (!readonlyProp) {
+              // Cell value manipulation options (shown first for cell context)
+              // SET GENERATED only for insertion rows, not for existing rows
+              if (isAutoIncrement && isInsertion) {
+                menuItems.push({
+                  label: t("dataGrid.setGenerate"),
+                  icon: Sparkles,
+                  action: setCellGenerate,
+                });
+              }
+              if (isNullable) {
+                menuItems.push({
+                  label: t("dataGrid.setNull"),
+                  icon: Ban,
+                  action: setCellNull,
+                });
+              }
+              if (hasDefault) {
+                menuItems.push({
+                  label: t("dataGrid.setDefault"),
+                  icon: FileDigit,
+                  action: setCellDefault,
+                });
+              }
+              // Always allow setting empty string, except for BLOB columns
+              const colDataType = columnTypeMap?.get(colName) ?? "";
+              if (!isBlobColumn(colDataType, columnLengthMap?.get(colName))) {
+                menuItems.push({
+                  label: t("dataGrid.setEmpty"),
+                  icon: Copy,
+                  action: setCellEmpty,
+                });
+              }
 
-            // Separator and row actions
-            if (menuItems.length > 0) {
-              menuItems.push({ separator: true });
+              // Separator before row actions
+              if (menuItems.length > 0) {
+                menuItems.push({ separator: true });
+              }
             }
 
             menuItems.push(
@@ -1245,24 +1255,29 @@ export const DataGrid = React.memo(
                 icon: Copy,
                 action: copySelectedOrContextRow,
               },
-              {
-                label: t("contextMenu.openSidebar"),
-                icon: Edit,
-                action: openSidebarEditor,
-              },
-              {
-                label: t("dataGrid.deleteRow"),
-                icon: Trash2,
-                danger: true,
-                action: deleteSelectedRow,
-              },
-              {
-                label: t("dataGrid.revertSelected"),
-                icon: Undo,
-                action: revertSelectedRow,
-                disabled: !canRevert,
-              },
             );
+
+            if (!readonlyProp) {
+              menuItems.push(
+                {
+                  label: t("contextMenu.openSidebar"),
+                  icon: Edit,
+                  action: openSidebarEditor,
+                },
+                {
+                  label: t("dataGrid.deleteRow"),
+                  icon: Trash2,
+                  danger: true,
+                  action: deleteSelectedRow,
+                },
+                {
+                  label: t("dataGrid.revertSelected"),
+                  icon: Undo,
+                  action: revertSelectedRow,
+                  disabled: !canRevert,
+                },
+              );
+            }
 
             return (
               <ContextMenu
@@ -1270,7 +1285,20 @@ export const DataGrid = React.memo(
                 y={contextMenu.y}
                 onClose={() => setContextMenu(null)}
                 items={menuItems}
-              />
+              >
+                <SlotAnchor
+                  name="data-grid.context-menu.items"
+                  context={{
+                    connectionId,
+                    tableName,
+                    schema: activeSchema,
+                    columnName: contextMenu.colName,
+                    rowIndex: contextMenu.rowIndex,
+                    rowData: mergedRows[contextMenu.rowIndex]?.rowData as unknown as Record<string, unknown> | undefined,
+                  }}
+                  className="border-t border-default mt-1 pt-1"
+                />
+              </ContextMenu>
             );
           })()}
 
@@ -1363,6 +1391,7 @@ export const DataGrid = React.memo(
             );
           })()}
       </div>
+      </>
     );
   },
 );

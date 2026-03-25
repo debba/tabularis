@@ -6,8 +6,7 @@ import { useDatabase } from "../hooks/useDatabase";
 import { invoke } from "@tauri-apps/api/core";
 import {
   generateTabId,
-  loadTabsFromStorage,
-  loadActiveTabId,
+  loadEditorPreferences,
   saveTabsToStorage,
   createInitialTabState,
   generateTabTitle,
@@ -48,8 +47,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     const loadPreferences = async () => {
       setIsLoading(true);
       try {
-        const loadedTabs = await loadTabsFromStorage(activeConnectionId);
-        const loadedActiveTabId = await loadActiveTabId(activeConnectionId);
+        const { tabs: loadedTabs, activeTabId: loadedActiveTabId } = await loadEditorPreferences(activeConnectionId);
 
         if (loadedTabs.length > 0) {
           // Merge loaded tabs with tabs from other connections

@@ -1,7 +1,8 @@
-import React, { useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { FieldEditor } from "./FieldEditor";
+import { SlotAnchor } from "./SlotAnchor";
 import { useRowEditor } from "../../hooks/useRowEditor";
 
 interface RowEditorSidebarProps {
@@ -23,7 +24,7 @@ interface RowEditorSidebarProps {
   schema?: string | null;
 }
 
-export const RowEditorSidebar: React.FC<RowEditorSidebarProps> = ({
+export const RowEditorSidebar = ({
   isOpen,
   onClose,
   rowData,
@@ -39,7 +40,7 @@ export const RowEditorSidebar: React.FC<RowEditorSidebarProps> = ({
   tableName,
   pkColumn,
   schema,
-}) => {
+}: RowEditorSidebarProps) => {
   const { t } = useTranslation();
   const { editedData, updateField } = useRowEditor({
     initialData: rowData,
@@ -85,12 +86,26 @@ export const RowEditorSidebar: React.FC<RowEditorSidebarProps> = ({
               {t("rowEditor.subtitle", { row: rowIndex + 1 })}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-secondary hover:text-primary transition-colors"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <SlotAnchor
+              name="row-editor-sidebar.header.actions"
+              context={{
+                connectionId,
+                tableName,
+                schema,
+                rowData,
+                rowIndex,
+                isInsertion,
+              }}
+              className="flex items-center gap-1"
+            />
+            <button
+              onClick={onClose}
+              className="text-secondary hover:text-primary transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -131,6 +146,19 @@ export const RowEditorSidebar: React.FC<RowEditorSidebarProps> = ({
                   pkCol={pkColumn}
                   pkVal={pkColumn ? rowData[pkColumn] : undefined}
                   schema={schema}
+                />
+                <SlotAnchor
+                  name="row-editor-sidebar.field.after"
+                  context={{
+                    connectionId,
+                    tableName,
+                    schema,
+                    columnName: column.name,
+                    rowData: editedData,
+                    rowIndex,
+                    isInsertion,
+                    onFieldChange: (value: unknown) => updateField(column.name, value),
+                  }}
                 />
               </div>
             );

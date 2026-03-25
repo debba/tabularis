@@ -13,7 +13,7 @@ use crate::models::{
 
 /// Capabilities advertised by a driver.
 /// The frontend uses these flags to decide which UI sections to show.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct DriverCapabilities {
     /// Supports multiple named schemas (e.g. PostgreSQL).
     pub schemas: bool,
@@ -62,6 +62,18 @@ pub struct DriverCapabilities {
     /// When `true`, the connection form is hidden and database validation is skipped.
     #[serde(default)]
     pub no_connection_required: bool,
+    /// Whether the driver supports table and column management
+    /// (CREATE TABLE, ALTER TABLE ADD/MODIFY/DROP COLUMN, DROP TABLE).
+    /// Does NOT control index or foreign key operations (see `create_foreign_keys`).
+    /// Defaults to `true`.
+    #[serde(default = "default_true")]
+    pub manage_tables: bool,
+    /// When `true`, the driver is read-only: all data modification operations
+    /// (INSERT, UPDATE, DELETE) are disabled in the UI.
+    /// Table/column management is also hidden regardless of `manage_tables`.
+    /// Defaults to `false`.
+    #[serde(default)]
+    pub readonly: bool,
 }
 
 fn default_double_quote() -> String {
@@ -70,6 +82,18 @@ fn default_double_quote() -> String {
 
 fn default_true() -> bool {
     true
+}
+
+/// A UI extension slot entry declared in a plugin's manifest.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UIExtensionEntry {
+    /// Target slot name (e.g. `"row-edit-modal.field.after"`).
+    pub slot: String,
+    /// Module path relative to the plugin directory (e.g. `"dist/index.js"`).
+    pub module: String,
+    /// Ordering weight (lower = earlier).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<u32>,
 }
 
 /// A single user-configurable setting declared in a plugin's manifest.
@@ -121,6 +145,9 @@ pub struct PluginManifest {
     /// Plugin-declared settings definitions. Empty for built-in drivers.
     #[serde(default)]
     pub settings: Vec<PluginSettingDefinition>,
+    /// UI extension slot declarations. Absent for built-in drivers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ui_extensions: Option<Vec<UIExtensionEntry>>,
 }
 
 /// The complete interface every database driver plugin must implement.

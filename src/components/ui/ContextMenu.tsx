@@ -15,9 +15,11 @@ interface ContextMenuProps {
   y: number;
   items: ContextMenuItem[];
   onClose: () => void;
+  /** Optional additional content rendered after the menu items (e.g. plugin slot anchors) */
+  children?: React.ReactNode;
 }
 
-export const ContextMenu = ({ x, y, items, onClose }: ContextMenuProps) => {
+export const ContextMenu = ({ x, y, items, onClose, children }: ContextMenuProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuSize, setMenuSize] = useState<{ width: number; height: number } | null>(null);
 
@@ -113,6 +115,7 @@ export const ContextMenu = ({ x, y, items, onClose }: ContextMenuProps) => {
           </button>
         );
       })}
+      {children}
     </div>
   );
 };

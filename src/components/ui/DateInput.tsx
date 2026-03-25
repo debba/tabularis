@@ -19,13 +19,13 @@ interface SpinnerProps {
 }
 
 /** Numeric spinner with up/down arrows */
-const Spinner: React.FC<SpinnerProps> = ({
+const Spinner = ({
   value,
   min,
   max,
   onChange,
   width = "w-12",
-}) => {
+}: SpinnerProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const increment = useCallback(() => {
@@ -113,12 +113,12 @@ interface SelectDropdownProps {
 }
 
 /** Simple native select styled to match the design */
-const SelectDropdown: React.FC<SelectDropdownProps> = ({
+const SelectDropdown = ({
   value,
   options,
   onChange,
   width = "w-28",
-}) => {
+}: SelectDropdownProps) => {
   return (
     <div className={`relative ${width}`}>
       <select
@@ -154,7 +154,7 @@ export interface DateInputProps {
  * Date/datetime editor with day/month dropdowns and numeric spinners for year, hours, minutes, seconds.
  * Matches the visual design: day and month dropdowns on top row, time spinners on bottom row.
  */
-export const DateInput: React.FC<DateInputProps> = ({
+export const DateInput = ({
   value,
   mode,
   onChange,
@@ -162,7 +162,7 @@ export const DateInput: React.FC<DateInputProps> = ({
   onKeyDown,
   inputRef,
   className = "",
-}) => {
+}: DateInputProps) => {
   const dt = parseDateTime(value);
   const containerRef = useRef<HTMLDivElement>(null);
 

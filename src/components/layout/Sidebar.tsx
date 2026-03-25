@@ -8,6 +8,7 @@ import { DISCORD_URL } from "../../config/links";
 import { useDatabase } from "../../hooks/useDatabase";
 import { useTheme } from "../../hooks/useTheme";
 import { McpModal } from "../modals/McpModal";
+import { SlotAnchor } from "../ui/SlotAnchor";
 
 // Sub-components
 import { NavItem } from "./sidebar/NavItem";
@@ -282,6 +283,12 @@ export const Sidebar = () => {
             to="/settings"
             icon={Settings}
             label={t("sidebar.settings")}
+          />
+
+          <SlotAnchor
+            name="sidebar.footer.actions"
+            context={{}}
+            className="flex flex-col items-center gap-1 mt-1"
           />
         </div>
       </aside>

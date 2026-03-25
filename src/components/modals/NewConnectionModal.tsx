@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   X,
@@ -19,7 +19,9 @@ import { open } from "@tauri-apps/plugin-dialog";
 import clsx from "clsx";
 import { SshConnectionsModal } from "./SshConnectionsModal";
 import { Select } from "../ui/Select";
+import { SlotAnchor } from "../ui/SlotAnchor";
 import { useDrivers } from "../../hooks/useDrivers";
+import { usePluginSlotRegistry } from "../../hooks/usePluginSlotRegistry";
 import { Modal } from "../ui/Modal";
 import type { PluginManifest } from "../../types/plugins";
 import { loadSshConnections, type SshConnection } from "../../utils/ssh";
@@ -184,6 +186,21 @@ export const NewConnectionModal = ({
       defaultValue: "e.g. mysql://user:pass@localhost:3306/db",
     });
   const isMultiDb = isMultiDatabaseCapable(activeDriver?.capabilities);
+
+  // ── plugin slot: connection-modal.connection_content ──
+  const slotRegistry = usePluginSlotRegistry();
+  const onDatabaseChange = useCallback((value: string) => {
+    setFormData((prev) => ({ ...prev, database: value }));
+  }, []);
+  const dbFieldSlotContext = useMemo(() => ({
+    driver,
+    database: typeof formData.database === "string" ? formData.database : "",
+    onDatabaseChange,
+    connectionName: name,
+  }), [driver, formData.database, onDatabaseChange, name]);
+  const hasConnectionContentSlot =
+    noConnectionRequired &&
+    slotRegistry.getSlotContributions("connection-modal.connection_content", dbFieldSlotContext).length > 0;
 
   // ── helpers ──
   const loadSshConnectionsList = async () => {
@@ -524,16 +541,23 @@ export const NewConnectionModal = ({
   // ── rendered general tab content ──
   const generalTabContent = (
     <div className="space-y-4">
-      {/* API-based: no connection form needed */}
+      {/* API-based: no connection form needed — plugin may provide custom content via slot */}
       {noConnectionRequired ? (
-        <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted">
-          <Info size={22} className="opacity-40" />
-          <p className="text-xs text-center">
-            {t("newConnection.noGeneralSettings", {
-              defaultValue: "No general settings available for this driver.",
-            })}
-          </p>
-        </div>
+        hasConnectionContentSlot ? (
+          <SlotAnchor
+            name="connection-modal.connection_content"
+            context={dbFieldSlotContext}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted">
+            <Info size={22} className="opacity-40" />
+            <p className="text-xs text-center">
+              {t("newConnection.noGeneralSettings", {
+                defaultValue: "No general settings available for this driver.",
+              })}
+            </p>
+          </div>
+        )
       ) : activeDriver?.capabilities?.file_based === true ||
         activeDriver?.capabilities?.folder_based === true ? (
         <div className="flex flex-col gap-1">

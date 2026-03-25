@@ -88,6 +88,8 @@ Every plugin must include a `manifest.json` that tells Tabularis its capabilitie
 | `no_connection_required` | bool | `true` for API-based plugins that need no host, port, or credentials (e.g. a public REST API). Hides the entire connection form — the user only fills in the connection name. |
 | `connection_string` | bool | Set `false` to hide the connection string import UI for this driver. Defaults to `true` for network drivers; automatically skipped for `file_based` and `folder_based` drivers. |
 | `connection_string_example` | string | Optional placeholder example shown in the connection string import field (e.g. `"clickhouse://user:pass@localhost:9000/db"`). |
+| `manage_tables` | bool | `true` to enable table and column management UI (Create Table, Add/Modify/Drop Column, Drop Table). Does not control index or FK operations. Defaults to `true`. |
+| `readonly` | bool | When `true`, the driver is read-only: all data modification operations (INSERT, UPDATE, DELETE) are disabled in the UI. Table and column management is also hidden regardless of `manage_tables`. Defaults to `false`. |
 
 ### Data Type Categories
 
@@ -404,6 +406,93 @@ By default, Tabularis fetches the plugin list from the official registry. You ca
 ```
 
 The custom registry must expose a JSON file that follows the same schema as the [official registry](https://github.com/debba/tabularis/blob/main/plugins/registry.json). When this key is set, both the plugin browser and the install command will use your URL instead of the default one.
+
+## UI Extensions (Phase 2)
+
+Starting with v0.9.15, plugins can inject custom React components into the Tabularis UI through a **slot-based extension system**. This allows plugins to add buttons, fields, previews, and menu items directly into the interface without modifying host code.
+
+### How It Works
+
+The system has three layers:
+
+1. **SlotAnchor** — Host components placed at predefined insertion points that determine WHERE extensions render.
+2. **PluginSlotRegistry** — A React context that stores registered contributions and determines WHAT gets rendered.
+3. **Plugin Modules** — JavaScript/TypeScript code that registers components during plugin activation.
+
+### Available Slots
+
+Eight insertion points are available:
+
+| Slot Name | Location | Renders Per |
+|-----------|----------|-------------|
+| `row-edit-modal.field.after` | After each field in New Row modal | Each column |
+| `row-edit-modal.footer.before` | Before Save/Cancel buttons | Once per modal |
+| `row-editor-sidebar.field.after` | After each field in Row Editor sidebar | Each column |
+| `row-editor-sidebar.header.actions` | Sidebar header action area | Once per sidebar |
+| `data-grid.toolbar.actions` | Table toolbar (after LIMIT) | Once per table view |
+| `data-grid.context-menu.items` | Right-click context menu on grid rows | Each menu open |
+| `sidebar.footer.actions` | Main sidebar footer area | Once (global) |
+| `settings.plugin.actions` | Per-plugin actions in Settings | Each installed plugin |
+
+### Declaring UI Extensions in the Manifest
+
+Add an optional `ui_extensions` array to your `manifest.json`:
+
+```json
+{
+  "id": "postgis-toolkit",
+  "name": "PostGIS Toolkit",
+  "version": "1.0.0",
+  "ui_extensions": [
+    {
+      "slot": "row-editor-sidebar.field.after",
+      "module": "./ui/GeometryPreview.tsx",
+      "order": 50
+    },
+    {
+      "slot": "data-grid.toolbar.actions",
+      "module": "./ui/MapViewButton.tsx",
+      "order": 80
+    }
+  ]
+}
+```
+
+### Plugin API
+
+Slot components can import hooks from `@tabularis/plugin-api`:
+
+| Hook | Purpose |
+|------|---------|
+| `usePluginQuery()` | Execute read-only queries on the active connection |
+| `usePluginConnection()` | Access active connection metadata (ID, driver, schema) |
+| `usePluginToast()` | Show info/error/warning notification dialogs |
+| `usePluginSetting(pluginId)` | Read and write plugin-specific settings |
+| `usePluginTheme()` | Access theme information (dark/light, colors) |
+
+### Error Isolation
+
+Each slot contribution is wrapped in a `SlotErrorBoundary`. A crashing plugin component displays a compact error message without affecting the host application or other plugins.
+
+### Backward Compatibility
+
+The `ui_extensions` field is optional. Plugins without it continue to work identically. The slot anchors render nothing when no contributions are registered — zero overhead.
+
+### Built-in Example: JSON Viewer
+
+Tabularis ships with a built-in **JSON Viewer** plugin that demonstrates the slot system. It renders a formatted, collapsible JSON tree with syntax highlighting for JSON/JSONB columns in the row editor.
+
+**Slots used:** `row-editor-sidebar.field.after`, `row-edit-modal.field.after`
+
+Features:
+- Auto-detects JSON columns by name (contains "json") or by parsing the value
+- Syntax-highlighted tokens: strings (green), numbers (blue), booleans (yellow), null (red), keys (purple)
+- Collapsible objects and arrays with auto-expand for the first 2 depth levels
+- Copy-to-clipboard button for the formatted JSON
+
+Source code: [`src/plugins/examples/json-viewer/`](https://github.com/debba/tabularis/tree/main/src/plugins/examples/json-viewer)
+
+For the full specification, see the [Plugin UI Extensions Spec](/docs/plugin-ui-extensions-spec.md).
 
 ## Publishing to the Registry
 

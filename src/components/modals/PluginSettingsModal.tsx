@@ -4,6 +4,7 @@ import { Settings, X, FolderOpen } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Modal } from "../ui/Modal";
 import { Select } from "../ui/Select";
+import { SlotAnchor } from "../ui/SlotAnchor";
 import { resolvePluginConfig, getDisplayInterpreter, resolveSettingsWithDefaults, validateSettings } from "../../utils/pluginConfig";
 import type { PluginConfig } from "../../contexts/SettingsContext";
 import type { PluginManifest, PluginSettingDefinition } from "../../types/plugins";
@@ -169,6 +170,13 @@ export const PluginSettingsModal = ({
               </button>
             </div>
           </div>
+
+          {/* Plugin UI extension slot - before settings */}
+          <SlotAnchor
+            name="settings.plugin.before_settings"
+            context={{ targetPluginId: pluginId }}
+            className="flex flex-col gap-2"
+          />
 
           {/* Dynamic plugin settings */}
           {definitions.map((def) => (

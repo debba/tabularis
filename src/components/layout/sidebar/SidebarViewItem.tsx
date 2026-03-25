@@ -69,18 +69,12 @@ export const SidebarViewItem = ({
     }
   }, [isExpanded, refreshColumns]);
 
-  const handleExpand = async (e: React.MouseEvent) => {
+  const handleExpand = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isExpanded) {
-      setIsExpanded(false);
-      return;
-    }
-
-    setIsExpanded(true);
-    refreshColumns();
+    setIsExpanded((prev) => !prev);
   };
 
-  const showContextMenu = (e: React.MouseEvent) => {
+  const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     onContextMenu(e, "view", view.name, view.name, { tableName: view.name, schema });
@@ -91,7 +85,7 @@ export const SidebarViewItem = ({
       <div
         onClick={() => onViewClick(view.name)}
         onDoubleClick={() => onViewDoubleClick(view.name)}
-        onContextMenu={showContextMenu}
+        onContextMenu={handleContextMenu}
         className={clsx(
           "flex items-center gap-1 pl-1 pr-3 py-1.5 text-sm cursor-pointer group select-none transition-colors border-l-2",
           activeView === view.name
@@ -125,10 +119,7 @@ export const SidebarViewItem = ({
           ) : (
             <div className="flex flex-col">
               <div
-                className="flex items-center gap-2 px-2 py-1 text-xs text-muted hover:text-secondary cursor-pointer select-none"
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
+                className="flex items-center gap-2 px-2 py-1 text-xs text-muted select-none"
               >
                 <Folder size={12} className="text-blue-400/70" />
                 <span>{t("sidebar.columns")}</span>

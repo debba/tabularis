@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { supportsManageTables } from "../../../utils/driverCapabilities";
 import { useTranslation } from "react-i18next";
 import {
   Loader2,
@@ -20,6 +21,7 @@ import { SidebarRoutineItem } from "./SidebarRoutineItem";
 import type { SchemaData, RoutineInfo } from "../../../contexts/DatabaseContext";
 import type { TableColumn } from "../../../types/schema";
 import type { ContextMenuData } from "../../../types/sidebar";
+import type { DriverCapabilities } from "../../../types/plugins";
 import { groupRoutinesByType } from "../../../utils/routines";
 import { formatObjectCount } from "../../../utils/schema";
 
@@ -56,6 +58,7 @@ interface SidebarDatabaseItemProps {
   onDump?: (database: string) => void;
   onImport?: (database: string) => void;
   onViewDiagram?: (database: string) => void;
+  capabilities?: DriverCapabilities | null;
 }
 
 export const SidebarDatabaseItem = ({
@@ -85,6 +88,7 @@ export const SidebarDatabaseItem = ({
   onDump,
   onImport,
   onViewDiagram,
+  capabilities,
 }: SidebarDatabaseItemProps) => {
   const { t } = useTranslation();
 
@@ -209,6 +213,7 @@ export const SidebarDatabaseItem = ({
                 isOpen={tablesOpen}
                 onToggle={() => setTablesOpen(!tablesOpen)}
                 actions={
+                  supportsManageTables(capabilities) ? (
                   <div className="flex items-center gap-1">
                     <button
                       onClick={(e) => {
@@ -221,6 +226,7 @@ export const SidebarDatabaseItem = ({
                       <Plus size={14} />
                     </button>
                   </div>
+                  ) : undefined
                 }
               >
                 {tables.length > 0 && (
@@ -262,6 +268,7 @@ export const SidebarDatabaseItem = ({
                         onContextMenu={onContextMenu}
                         connectionId={connectionId}
                         driver={driver}
+                        canManage={supportsManageTables(capabilities)}
                         onAddColumn={onAddColumn}
                         onEditColumn={onEditColumn}
                         onAddIndex={onAddIndex}
@@ -277,6 +284,7 @@ export const SidebarDatabaseItem = ({
               </Accordion>
 
               {/* Views */}
+              {capabilities?.views !== false && (
               <Accordion
                 title={`${t("sidebar.views")} (${views.length})`}
                 isOpen={viewsOpen}
@@ -318,8 +326,10 @@ export const SidebarDatabaseItem = ({
                   </div>
                 )}
               </Accordion>
+              )}
 
               {/* Routines */}
+              {capabilities?.routines === true && (
               <Accordion
                 title={`${t("sidebar.routines")} (${routines.length})`}
                 isOpen={routinesOpen}
@@ -379,6 +389,7 @@ export const SidebarDatabaseItem = ({
                   </div>
                 )}
               </Accordion>
+              )}
             </>
           )}
         </div>

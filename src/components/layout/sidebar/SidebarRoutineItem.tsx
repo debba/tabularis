@@ -72,12 +72,12 @@ export const SidebarRoutineItem = ({
     }
   }, [isExpanded, refreshParameters]);
 
-  const handleExpand = async (e: React.MouseEvent) => {
+  const handleExpand = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsExpanded(!isExpanded);
+    setIsExpanded((prev) => !prev);
   };
 
-  const showContextMenu = (e: React.MouseEvent) => {
+  const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     onContextMenu(e, "routine", routine.name, routine.name, routine);
@@ -91,7 +91,7 @@ export const SidebarRoutineItem = ({
           e.stopPropagation();
           onDoubleClick(routine);
         }}
-        onContextMenu={showContextMenu}
+        onContextMenu={handleContextMenu}
         className={clsx(
           "flex items-center gap-1 pl-1 pr-3 py-1.5 text-sm cursor-pointer group select-none transition-colors border-l-2",
           "text-secondary hover:bg-surface-secondary border-transparent hover:text-primary",

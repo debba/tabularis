@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Download,
@@ -42,7 +42,7 @@ export interface BlobInputProps {
  * For truncated BLOBs, download fetches the full data from the database and
  * saves it via the native OS file dialog.
  */
-export const BlobInput: React.FC<BlobInputProps> = ({
+export const BlobInput = ({
   value,
   dataType,
   onChange,
@@ -54,7 +54,7 @@ export const BlobInput: React.FC<BlobInputProps> = ({
   pkVal,
   colName,
   schema,
-}) => {
+}: BlobInputProps) => {
   const { t } = useTranslation();
   const [isDownloading, setIsDownloading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);

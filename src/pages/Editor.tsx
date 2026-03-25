@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { reconstructTableQuery } from "../utils/editor";
 import { isMultiDatabaseCapable } from "../utils/database";
+import { isReadonly } from "../utils/driverCapabilities";
 import {
   generateTempId,
   initializeNewRow,
@@ -50,6 +51,7 @@ import { QuerySelectionModal } from "../components/modals/QuerySelectionModal";
 import { TabSwitcherModal } from "../components/modals/TabSwitcherModal";
 import { QueryModal } from "../components/modals/QueryModal";
 import { QueryParamsModal } from "../components/modals/QueryParamsModal";
+import { ErrorModal } from "../components/modals/ErrorModal";
 import { VisualQueryBuilder } from "../components/ui/VisualQueryBuilder";
 import { ContextMenu } from "../components/ui/ContextMenu";
 import {
@@ -65,7 +67,7 @@ import { formatDuration } from "../utils/formatTime";
 import { SqlEditorWrapper } from "../components/ui/SqlEditorWrapper";
 import { registerSqlAutocomplete } from "../utils/autocomplete";
 import { type OnMount, type Monaco } from "@monaco-editor/react";
-import { save, message } from "@tauri-apps/plugin-dialog";
+import { save } from "@tauri-apps/plugin-dialog";
 import { useDatabase } from "../hooks/useDatabase";
 import { useSavedQueries } from "../hooks/useSavedQueries";
 import { useSettings } from "../hooks/useSettings";
@@ -119,11 +121,18 @@ export const Editor = () => {
   const { matchesShortcut } = useKeybindings();
   const navigate = useNavigate();
 
+  const driverReadonly = isReadonly(activeCapabilities);
+
   const [tabContextMenu, setTabContextMenu] = useState<{
     x: number;
     y: number;
     tabId: string;
   } | null>(null);
+
+  const [errorModal, setErrorModal] = useState<{
+    isOpen: boolean;
+    message: string;
+  }>({ isOpen: false, message: "" });
 
   const [exportState, setExportState] = useState<{
     isOpen: boolean;
@@ -454,13 +463,6 @@ export const Editor = () => {
 
         // Interpolate parameters before execution
         textToRun = interpolateQueryParams(textToRun, storedParams);
-      }
-
-      // Log query from Visual Query Builder
-      if (targetTab?.type === "query_builder") {
-        console.log("🔍 Visual Query Builder - Executing Query:");
-        console.log(textToRun);
-        console.log("─".repeat(80));
       }
 
       // Automatically open results panel when running a query
@@ -1041,10 +1043,7 @@ export const Editor = () => {
       updateTab(activeTabIdRef.current, updates);
     } catch (err) {
       console.error("Failed to create new row:", err);
-      await message(t("editor.failedCreateRow") + String(err), {
-        title: t("general.error"),
-        kind: "error",
-      });
+      setErrorModal({ isOpen: true, message: t("editor.failedCreateRow") + String(err) });
     }
   }, [activeConnectionId, activeTab, updateTab, t, settings.resultPageSize, activeSchema]);
 
@@ -1154,10 +1153,7 @@ export const Editor = () => {
         }
       } catch (err) {
         console.error("Failed to process insertions:", err);
-        await message(t("editor.failedProcessInsertions") + String(err), {
-          title: t("common.error"),
-          kind: "error",
-        });
+        setErrorModal({ isOpen: true, message: t("editor.failedProcessInsertions") + String(err) });
         return;
       }
     }
@@ -1273,10 +1269,7 @@ export const Editor = () => {
     } catch (e) {
       console.error("Batch update failed", e);
       updateActiveTab({ isLoading: false });
-      await message(t("dataGrid.updateFailed") + String(e), {
-        title: t("common.error"),
-        kind: "error",
-      });
+      setErrorModal({ isOpen: true, message: t("dataGrid.updateFailed") + String(e) });
     }
   }, [activeTab, activeConnectionId, updateActiveTab, runQuery, t, applyToAll, activeSchema]);
 
@@ -2150,6 +2143,7 @@ export const Editor = () => {
                 {/* Data Manipulation Toolbar (Below Header) */}
                 {activeTab.activeTable && activeTab.result && (
                   <div className="p-1 px-2 bg-elevated border-b border-default flex items-center gap-2">
+                    {!driverReadonly && (
                     <div className="flex items-center gap-1">
                       <button
                         onClick={handleNewRow}
@@ -2170,6 +2164,7 @@ export const Editor = () => {
                         <Minus size={16} />
                       </button>
                     </div>
+                    )}
 
                     <div className="w-[1px] h-4 bg-surface-secondary mx-1"></div>
 
@@ -2279,6 +2274,7 @@ export const Editor = () => {
                     csvDelimiter={csvDelimiter}
                     sortClause={activeTab.sortClause}
                     onSort={activeTab.type === "table" && (activeTab.result?.rows.length ?? 0) > 0 ? handleSort : undefined}
+                    readonly={driverReadonly}
                   />
                 </div>
               </div>
@@ -2401,6 +2397,11 @@ export const Editor = () => {
           ]}
         />
       )}
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, message: "" })}
+        message={errorModal.message}
+      />
       <ExportProgressModal
         isOpen={exportState.isOpen}
         status={exportState.status}

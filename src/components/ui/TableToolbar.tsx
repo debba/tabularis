@@ -19,6 +19,7 @@ import {
 } from "../../utils/filterBar";
 import type { StructuredFilter } from "../../utils/filterBar";
 import { FilterRow } from "./FilterRow";
+import { SlotAnchor } from "./SlotAnchor";
 
 interface TableToolbarProps {
   initialFilter?: string;
@@ -44,7 +45,7 @@ interface TableToolbarInternalProps extends TableToolbarProps {
 
 // ─── Internal toolbar ─────────────────────────────────────────────────────────
 
-const TableToolbarInternal: React.FC<TableToolbarInternalProps> = ({
+const TableToolbarInternal = ({
   initialFilter,
   initialSort,
   initialLimit,
@@ -61,7 +62,7 @@ const TableToolbarInternal: React.FC<TableToolbarInternalProps> = ({
   onResetApplied,
   onResetAllApplied,
   onUpdate,
-}) => {
+}: TableToolbarInternalProps) => {
   const { t } = useTranslation();
   const [filterInput, setFilterInput] = useState(initialFilter || "");
   const [sortInput, setSortInput] = useState(initialSort || "");
@@ -514,6 +515,13 @@ const TableToolbarInternal: React.FC<TableToolbarInternalProps> = ({
             placeholder={String(defaultLimit)}
           />
         </div>
+
+        {/* Plugin extension slot */}
+        <SlotAnchor
+          name="data-grid.toolbar.actions"
+          context={{}}
+          className="flex items-center gap-1"
+        />
       </div>
 
       {/* Overlay filter panel */}
@@ -617,7 +625,7 @@ const TableToolbarInternal: React.FC<TableToolbarInternalProps> = ({
 
 // ─── Public wrapper — panel state and filters lifted here to survive key-driven remounts ─────
 
-export const TableToolbar: React.FC<TableToolbarProps> = (props) => {
+export const TableToolbar = (props: TableToolbarProps) => {
   const [panelOpen, setPanelOpen] = useState(false);
   const [structuredFilters, setStructuredFilters] = useState<StructuredFilter[]>([]);
   const [appliedFilters, setAppliedFilters] = useState<Record<string, boolean>>({});

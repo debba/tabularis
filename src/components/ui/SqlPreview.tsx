@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import MonacoEditor, { type BeforeMount } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor";
 import { useTheme } from "../../hooks/useTheme";
@@ -11,12 +11,12 @@ interface SqlPreviewProps {
   showLineNumbers?: boolean;
 }
 
-export const SqlPreview: React.FC<SqlPreviewProps> = ({
+export const SqlPreview = ({
   sql,
   className = "",
   height = "120px",
   showLineNumbers = false,
-}) => {
+}: SqlPreviewProps) => {
   const { currentTheme } = useTheme();
   const monacoRef = useRef<typeof MonacoTypes | null>(null);
 

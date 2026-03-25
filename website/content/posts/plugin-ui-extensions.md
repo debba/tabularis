@@ -34,9 +34,9 @@ With UI extensions, the PostGIS plugin could register a small map component in t
 
 Or think about export. Right now, exporting data to Parquet means copying queries to another tool. With a slot in `data-grid.toolbar.actions`, a plugin can drop an "Export" button right next to the filter controls. It gets the table name, current filters, column list, and connection ID as context. One click, done.
 
-## The seven slots
+## The eight slots
 
-I went through the UI and picked seven places where plugin content makes sense without cluttering the interface:
+I went through the UI and picked eight places where plugin content makes sense without cluttering the interface:
 
 **In the row editor (modal and sidebar):** After each field input. This is where validation hints, computed previews, and lookup widgets belong. There is also a slot before the modal footer buttons — good for batch actions like "fill from template."
 
@@ -48,7 +48,9 @@ I went through the UI and picked seven places where plugin content makes sense w
 
 **Main sidebar footer:** Global actions or status badges that persist across views.
 
-Seven slots. Not thirty. I would rather ship a small set that works well than scatter extension points everywhere and regret the maintenance cost.
+**Plugin settings:** Per-plugin action buttons in the Settings page, next to the enable/disable toggle and settings gear. Diagnostics, custom configuration shortcuts, plugin-specific status indicators.
+
+Eight slots. Not thirty. I would rather ship a small set that works well than scatter extension points everywhere and regret the maintenance cost.
 
 ## How it works for plugin authors
 

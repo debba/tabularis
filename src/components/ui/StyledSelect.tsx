@@ -1,4 +1,3 @@
-import React from "react";
 import { ChevronDown } from "lucide-react";
 
 export interface StyledSelectProps {
@@ -8,7 +7,7 @@ export interface StyledSelectProps {
   className?: string;
 }
 
-export const StyledSelect: React.FC<StyledSelectProps> = ({ value, onChange, options, className = "" }) => (
+export const StyledSelect = ({ value, onChange, options, className = "" }: StyledSelectProps) => (
   <div className={`relative shrink-0 ${className}`}>
     <select
       value={value}

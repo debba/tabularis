@@ -72,7 +72,12 @@ export function updateTheme(theme: Theme, updates: Partial<Theme>): Theme {
 }
 
 export function importTheme(themeJson: string, newId?: string): Theme {
-  const importedTheme: Theme = JSON.parse(themeJson);
+  let importedTheme: Theme;
+  try {
+    importedTheme = JSON.parse(themeJson) as Theme;
+  } catch (e) {
+    throw new Error(`Invalid theme JSON: ${e instanceof Error ? e.message : String(e)}`);
+  }
   
   return {
     ...importedTheme,

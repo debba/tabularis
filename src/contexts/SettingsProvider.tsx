@@ -6,6 +6,7 @@ import {
   DEFAULT_SETTINGS,
   type Settings,
 } from "./SettingsContext";
+import { getFontCSS } from "../utils/settings";
 
 export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const { i18n } = useTranslation();
@@ -101,23 +102,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
         // IMMEDIATELY apply font settings from backend config BEFORE setting state
         // This prevents flash if localStorage cache was stale
-        const fontMap: Record<string, string> = {
-          System:
-            "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Ubuntu, sans-serif",
-          "Open Sans": "Open Sans, system-ui, sans-serif",
-          Roboto: "Roboto, RobotoDraft, Helvetica, Arial, sans-serif",
-          "JetBrains Mono":
-            "JetBrains Mono, Menlo, Monaco, Consolas, monospace",
-          Hack: "Hack, Menlo, Monaco, Consolas, monospace",
-          Menlo: "Menlo, Monaco, Consolas, monospace",
-          "DejaVu Sans Mono":
-            "DejaVu Sans Mono, Menlo, Monaco, Consolas, monospace",
-        };
-
-        const fontFamily =
-          fontMap[finalSettings.fontFamily] ||
-          finalSettings.fontFamily ||
-          fontMap["System"];
+        const fontFamily = getFontCSS(finalSettings.fontFamily);
         const fontSize = finalSettings.fontSize || 14;
 
         // Apply immediately to override any stale cache from pre-load script
@@ -151,20 +136,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
   // Apply font family
   useEffect(() => {
-    const fontMap: Record<string, string> = {
-      System:
-        "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Ubuntu, sans-serif",
-      "Open Sans": "Open Sans, system-ui, sans-serif",
-      Roboto: "Roboto, RobotoDraft, Helvetica, Arial, sans-serif",
-      "JetBrains Mono": "JetBrains Mono, Menlo, Monaco, Consolas, monospace",
-      Hack: "Hack, Menlo, Monaco, Consolas, monospace",
-      Menlo: "Menlo, Monaco, Consolas, monospace",
-      "DejaVu Sans Mono":
-        "DejaVu Sans Mono, Menlo, Monaco, Consolas, monospace",
-    };
-
-    const fontFamily =
-      fontMap[settings.fontFamily] || settings.fontFamily || fontMap["System"];
+    const fontFamily = getFontCSS(settings.fontFamily);
 
     // Apply to CSS variable
     document.documentElement.style.setProperty("--font-base", fontFamily);

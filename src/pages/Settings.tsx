@@ -54,6 +54,7 @@ import { Select } from "../components/ui/Select";
 import { PluginInstallErrorModal } from "../components/modals/PluginInstallErrorModal";
 import { PluginRemoveModal } from "../components/modals/PluginRemoveModal";
 import { PluginSettingsModal } from "../components/modals/PluginSettingsModal";
+import { SlotAnchor } from "../components/ui/SlotAnchor";
 import { PluginStartErrorModal } from "../components/modals/PluginStartErrorModal";
 import { useUpdate } from "../hooks/useUpdate";
 import { useKeybindings } from "../hooks/useKeybindings";
@@ -2021,6 +2022,14 @@ export const Settings = () => {
                               <SettingsIcon size={15} />
                             </button>
                           )}
+                          {/* Plugin UI extension slot */}
+                          {!isBuiltin && (
+                            <SlotAnchor
+                              name="settings.plugin.actions"
+                              context={{ targetPluginId: driver.id }}
+                              className="flex flex-col items-end gap-1"
+                            />
+                          )}
                           {/* Remove link */}
                           {!isBuiltin && (
                             <button
@@ -2088,7 +2097,6 @@ export const Settings = () => {
                               >
                                 <span className="pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition duration-200 ease-in-out translate-x-0" />
                               </button>
-                            {/* Remove link */}
                             {/* Plugin settings */}
                             <button
                               onClick={() => handleOpenPluginSettings(plugin.id, plugin.name)}
@@ -2097,6 +2105,12 @@ export const Settings = () => {
                             >
                               <SettingsIcon size={15} />
                             </button>
+                            {/* Plugin UI extension slot */}
+                            <SlotAnchor
+                              name="settings.plugin.actions"
+                              context={{ targetPluginId: plugin.id }}
+                              className="flex flex-col items-end gap-1"
+                            />
                             {/* Remove link */}
                             <button
                               onClick={() => setPluginRemoveConfirm({
@@ -2128,6 +2142,7 @@ export const Settings = () => {
                       />
                     );
                   })}
+
               </div>
             </div>
           </div>

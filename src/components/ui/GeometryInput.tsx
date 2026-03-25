@@ -28,7 +28,7 @@ interface GeometryInputProps {
  * Input component for geometry values with support for SQL functions
  * Shows a dropdown menu with SQL function presets when clicking the button
  */
-export const GeometryInput: React.FC<GeometryInputProps> = ({
+export const GeometryInput = ({
   value,
   onChange,
   onBlur,
@@ -38,7 +38,7 @@ export const GeometryInput: React.FC<GeometryInputProps> = ({
   inputRef,
   className = "",
   onSqlFunctionsClick,
-}) => {
+}: GeometryInputProps) => {
   const { t } = useTranslation();
   const isRawSqlMode = isRawSqlFunction(value);
   const [showDropdown, setShowDropdown] = useState(false);

@@ -12,14 +12,14 @@ interface QueryParamsModalProps {
   mode?: "run" | "save";
 }
 
-export const QueryParamsModal: React.FC<QueryParamsModalProps> = ({
+export const QueryParamsModal = ({
   isOpen,
   onClose,
   onSubmit,
   parameters,
   initialValues,
   mode = "save",
-}) => {
+}: QueryParamsModalProps) => {
   return (
     <Modal key={isOpen ? 'open' : 'closed'} isOpen={isOpen} onClose={onClose} overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <QueryParamsForm
@@ -33,13 +33,13 @@ export const QueryParamsModal: React.FC<QueryParamsModalProps> = ({
   );
 };
 
-const QueryParamsForm: React.FC<{
+const QueryParamsForm = ({ parameters, initialValues, onSubmit, onClose, mode }: {
   parameters: string[];
   initialValues: Record<string, string>;
   onSubmit: (values: Record<string, string>) => void;
   onClose: () => void;
   mode: "run" | "save";
-}> = ({ parameters, initialValues, onSubmit, onClose, mode }) => {
+}) => {
   const { t } = useTranslation();
   const [values, setValues] = useState<Record<string, string>>(initialValues || {});
 

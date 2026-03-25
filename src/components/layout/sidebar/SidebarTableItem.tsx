@@ -39,6 +39,7 @@ interface SidebarTableItemProps {
   onDropForeignKey: (tableName: string, fkName: string) => void;
   schemaVersion: number;
   schema?: string;
+  canManage?: boolean;
 }
 
 export const SidebarTableItem = ({
@@ -49,6 +50,7 @@ export const SidebarTableItem = ({
   onContextMenu,
   connectionId,
   driver,
+  canManage,
   onAddColumn,
   onEditColumn,
   onAddIndex,
@@ -116,18 +118,12 @@ export const SidebarTableItem = ({
   const [expandKeys, setExpandKeys] = useState(false);
   const [expandIndexes, setExpandIndexes] = useState(false);
 
-  const handleExpand = async (e: React.MouseEvent) => {
+  const handleExpand = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isExpanded) {
-      setIsExpanded(false);
-      return;
-    }
-
-    setIsExpanded(true);
-    refreshMetadata();
+    setIsExpanded((prev) => !prev);
   };
 
-  const showContextMenu = (e: React.MouseEvent, type: string, name: string) => {
+  const handleContextMenu = (e: React.MouseEvent, type: string, name: string) => {
     e.preventDefault();
     e.stopPropagation();
     onContextMenu(e, type, name, name, { tableName: table.name, schema });
@@ -175,7 +171,7 @@ export const SidebarTableItem = ({
         }}
         onClick={() => onTableClick(table.name)}
         onDoubleClick={() => onTableDoubleClick(table.name)}
-        onContextMenu={(e) => showContextMenu(e, "table", table.name)}
+        onContextMenu={(e) => handleContextMenu(e, "table", table.name)}
         className={clsx(
           "flex items-center gap-1 pl-1 pr-3 py-1.5 text-sm cursor-pointer group select-none transition-colors border-l-2",
           activeTable === table.name
@@ -236,6 +232,7 @@ export const SidebarTableItem = ({
                         tableName={table.name}
                         connectionId={connectionId}
                         driver={driver}
+                        canManage={canManage}
                         onRefresh={refreshMetadata}
                         onEdit={(c) => onEditColumn(table.name, c)}
                         schema={schema}
@@ -268,9 +265,9 @@ export const SidebarTableItem = ({
                           key={k.name}
                           className="flex items-center gap-2 px-3 py-1 text-xs text-secondary hover:bg-surface-secondary hover:text-primary cursor-pointer group font-mono"
                           title={k.columns.join(", ")}
-                          onContextMenu={(e) => {
-                            showContextMenu(e, "index", k.name);
-                          }}
+                          onContextMenu={canManage !== false ? (e) => {
+                            handleContextMenu(e, "index", k.name);
+                          } : undefined}
                         >
                           <Key
                             size={12}
@@ -293,9 +290,9 @@ export const SidebarTableItem = ({
                   onClick={(e) => {
                     e.stopPropagation();
                   }}
-                  onContextMenu={(e) =>
-                    showContextMenu(e, "folder_fks", "foreign keys")
-                  }
+                  onContextMenu={canManage !== false ? (e) =>
+                    handleContextMenu(e, "folder_fks", "foreign keys")
+                  : undefined}
                 >
                   <Folder size={12} className="text-purple-400/70" />
                   <span>{t("sidebar.foreignKeys")}</span>
@@ -309,9 +306,9 @@ export const SidebarTableItem = ({
                       key={fk.name}
                       className="flex items-center gap-2 px-3 py-1 text-xs text-secondary hover:bg-surface-secondary hover:text-primary cursor-pointer group font-mono"
                       title={`${fk.column_name} -> ${fk.ref_table}.${fk.ref_column}`}
-                      onContextMenu={(e) =>
-                        showContextMenu(e, "foreign_key", fk.name)
-                      }
+                      onContextMenu={canManage !== false ? (e) =>
+                        handleContextMenu(e, "foreign_key", fk.name)
+                      : undefined}
                     >
                       <LinkIcon size={12} className="text-purple-400 shrink-0" />
                       <span className="truncate flex-1 min-w-0">{fk.name}</span>
@@ -328,9 +325,9 @@ export const SidebarTableItem = ({
                     e.stopPropagation();
                     setExpandIndexes(!expandIndexes);
                   }}
-                  onContextMenu={(e) =>
-                    showContextMenu(e, "folder_indexes", "indexes")
-                  }
+                  onContextMenu={canManage !== false ? (e) =>
+                    handleContextMenu(e, "folder_indexes", "indexes")
+                  : undefined}
                 >
                   <Folder size={12} className="text-green-400/70" />
                   <span>{t("sidebar.indexes")}</span>
@@ -345,9 +342,9 @@ export const SidebarTableItem = ({
                         key={idx.name}
                         className="flex items-center gap-2 px-3 py-1 text-xs text-secondary hover:bg-surface-secondary hover:text-primary cursor-pointer group font-mono"
                         title={idx.columns.join(", ")}
-                        onContextMenu={(e) =>
-                          showContextMenu(e, "index", idx.name)
-                        }
+                        onContextMenu={canManage !== false ? (e) =>
+                          handleContextMenu(e, "index", idx.name)
+                        : undefined}
                       >
                         <List
                           size={12}

@@ -23,45 +23,36 @@ export function generateTabId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
-export async function loadTabsFromStorage(
+export async function loadEditorPreferences(
   connectionId: string | null,
-): Promise<Tab[]> {
-  if (!connectionId) return [];
+): Promise<{ tabs: Tab[]; activeTabId: string | null }> {
+  if (!connectionId) return { tabs: [], activeTabId: null };
 
   try {
     const prefs = await invoke<EditorPreferences | null>(
       "load_editor_preferences",
-      {
-        connectionId,
-      },
+      { connectionId },
     );
-
-    // Restore tabs with default values for excluded fields
-    const tabs = prefs?.tabs || [];
-    return tabs.map(restoreTabFromStorage);
+    const tabs = (prefs?.tabs || []).map(restoreTabFromStorage);
+    return { tabs, activeTabId: prefs?.active_tab_id || null };
   } catch (e) {
-    console.error("Failed to load tabs from storage", e);
-    return [];
+    console.error("Failed to load editor preferences", e);
+    return { tabs: [], activeTabId: null };
   }
 }
 
+/** @deprecated Use loadEditorPreferences instead */
+export async function loadTabsFromStorage(
+  connectionId: string | null,
+): Promise<Tab[]> {
+  return (await loadEditorPreferences(connectionId)).tabs;
+}
+
+/** @deprecated Use loadEditorPreferences instead */
 export async function loadActiveTabId(
   connectionId: string | null,
 ): Promise<string | null> {
-  if (!connectionId) return null;
-
-  try {
-    const prefs = await invoke<EditorPreferences | null>(
-      "load_editor_preferences",
-      {
-        connectionId,
-      },
-    );
-    return prefs?.active_tab_id || null;
-  } catch (e) {
-    console.error("Failed to load active tab ID from storage", e);
-    return null;
-  }
+  return (await loadEditorPreferences(connectionId)).activeTabId;
 }
 
 export async function saveTabsToStorage(

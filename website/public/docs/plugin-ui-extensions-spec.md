@@ -1,7 +1,7 @@
 # Plugin UI Extensions Specification
 
-> **Status:** Draft
-> **Version:** 0.1
+> **Status:** Implemented
+> **Version:** 0.2
 > **Date:** 2026-03-15
 >
 > This document was drafted with the help of [Claude Code](https://claude.com/claude-code) after an initial design phase where I explored different approaches and defined the core requirements. Claude Code then analyzed the existing plugin architecture and component hierarchy across the codebase to turn those ideas into a structured specification.
@@ -53,107 +53,101 @@ The system has three layers:
 ### 3.1 Types
 
 ```typescript
-/** Unique key for a slot contribution. */
-interface SlotContributionKey {
-  slotName: string;
+/** All built-in slot locations where plugins can inject UI. */
+type SlotName =
+  | "row-edit-modal.field.after"
+  | "row-edit-modal.footer.before"
+  | "row-editor-sidebar.field.after"
+  | "row-editor-sidebar.header.actions"
+  | "data-grid.toolbar.actions"
+  | "data-grid.context-menu.items"
+  | "sidebar.footer.actions"
+  | "settings.plugin.actions";
+
+/** Context data provided to every slot component via props. */
+interface SlotContext {
+  connectionId?: string | null;
+  tableName?: string | null;
+  schema?: string | null;
+  driver?: string | null;
+  rowData?: Record<string, unknown>;
+  columnName?: string;
+  rowIndex?: number;
+  isInsertion?: boolean;
+  targetPluginId?: string;
+  [key: string]: unknown;
+}
+
+/** Standard props every slot component receives. */
+interface SlotComponentProps {
+  /** The slot context data from the host component. */
+  context: SlotContext;
+  /** The plugin that owns this component. */
   pluginId: string;
 }
 
-/** A single UI contribution from a plugin to a named slot. */
-interface SlotContribution<TContext = unknown> {
-  /** The plugin that owns this contribution. */
+/** A UI contribution registered by a plugin. */
+interface SlotContribution {
+  /** Plugin identifier. */
   pluginId: string;
-  /** Target slot name (must match a SlotAnchor in the host). */
-  slotName: string;
-  /** React component to render. Receives slot context as props. */
-  component: React.ComponentType<SlotComponentProps<TContext>>;
-  /**
-   * Ordering weight within the slot. Lower values render first.
-   * Defaults to 100. Host-provided components use 0–50.
-   */
+  /** Target slot name. */
+  slot: SlotName;
+  /** React component to render. */
+  component: ComponentType<SlotComponentProps>;
+  /** Ordering weight (lower = earlier). Defaults to 100. */
   order?: number;
-  /**
-   * Optional predicate evaluated at render time.
-   * Return `false` to hide this contribution for the current context.
-   */
-  when?: (context: TContext) => boolean;
-}
-
-/** Props passed to every slot component. */
-interface SlotComponentProps<TContext = unknown> {
-  /** The data provided by the host at this slot location. */
-  slotContext: TContext;
-  /** The ID of the plugin that owns this component. */
-  pluginId: string;
+  /** Optional predicate to conditionally show the component. */
+  when?: (context: SlotContext) => boolean;
 }
 ```
 
 ### 3.2 `PluginSlotRegistry` Context
 
 ```typescript
-interface PluginSlotRegistryValue {
-  /**
-   * Register one or more slot contributions.
-   * If a contribution with the same (slotName, pluginId) already exists,
-   * it is replaced.
-   */
-  register(contributions: SlotContribution[]): void;
-
-  /**
-   * Remove all contributions for a given plugin.
-   */
-  unregister(pluginId: string): void;
-
-  /**
-   * Retrieve contributions for a slot, sorted by `order` and
-   * filtered by each contribution's `when` predicate.
-   */
-  getContributions<TContext>(
-    slotName: string,
-    context: TContext
-  ): SlotContribution<TContext>[];
+interface PluginSlotRegistryType {
+  /** All registered contributions. */
+  contributions: SlotContribution[];
+  /** Register a new contribution. Returns an unregister function. */
+  register: (contribution: SlotContribution) => () => void;
+  /** Register multiple contributions at once. Returns an unregister-all function. */
+  registerAll: (contributions: SlotContribution[]) => () => void;
+  /** Get sorted, filtered contributions for a given slot. */
+  getSlotContributions: (slot: SlotName, context: SlotContext) => SlotContribution[];
 }
 ```
 
-The provider is placed near the root of the component tree, alongside existing providers (`DatabaseProvider`, `SettingsProvider`, etc.):
+The `PluginSlotProvider` is placed in `App.tsx` near the root of the component tree, alongside existing providers:
 
 ```tsx
-<SettingsProvider>
-  <DatabaseProvider>
-    <PluginSlotRegistryProvider>
-      <EditorProvider>
-        {/* app content */}
-      </EditorProvider>
-    </PluginSlotRegistryProvider>
-  </DatabaseProvider>
-</SettingsProvider>
+<KeybindingsProvider>
+  <PluginSlotProvider>
+    <ConnectionLayoutProvider>
+      {/* app content */}
+    </ConnectionLayoutProvider>
+  </PluginSlotProvider>
+</KeybindingsProvider>
 ```
 
 ### 3.3 `SlotAnchor` Component
 
 ```typescript
-interface SlotAnchorProps<TContext = unknown> {
-  /** The slot name. Must match a value from BuiltinSlotName. */
-  name: string;
-  /** Context data to pass to contributed components. */
-  context: TContext;
-  /**
-   * Wrapper element rendered around all contributions.
-   * Defaults to a plain `<div>`. Pass `React.Fragment` for no wrapper.
-   */
-  wrapper?: React.ElementType;
-  /** Additional className applied to the wrapper. */
+interface SlotAnchorProps {
+  /** The slot location name. */
+  name: SlotName;
+  /** Context data provided to slot components. */
+  context: SlotContext;
+  /** Optional CSS class for the wrapper div (only rendered when contributions exist). */
   className?: string;
 }
 ```
 
 Rendering behaviour:
 
-1. Read contributions from the registry for `props.name`.
-2. Evaluate each contribution's `when` predicate with `props.context`.
-3. Sort surviving contributions by `order`.
-4. Render each contribution's `component` inside an `ErrorBoundary`, passing `slotContext` and `pluginId` as props.
-5. If no contributions survive, render nothing (the anchor is invisible).
+1. Read contributions from the registry for `props.name` via `getSlotContributions()`.
+2. Contributions are already filtered by `when` predicate and sorted by `order`.
+3. Render each contribution's `component` inside a `SlotErrorBoundary`, passing `context` and `pluginId` as props.
+4. If no contributions survive, render nothing (`null`) — the anchor is invisible.
+5. When contributions exist, a `<div>` wrapper is rendered with a `data-slot` attribute for debugging.
 
 ---
 
@@ -360,6 +354,25 @@ interface SidebarFooterSlotContext {
 
 **Use cases:** Quick-action buttons, plugin status indicators, notification badges.
 
+### 4.8 `settings.plugin.actions`
+
+**Location:** `Settings` — rendered next to each installed plugin's action buttons (enable/disable toggle, settings gear, remove).
+
+| Property | Value |
+|----------|-------|
+| **Host component** | `src/pages/Settings.tsx` |
+| **Renders per** | Each installed plugin in the Settings plugin list |
+| **Context type** | `SettingsPluginSlotContext` |
+
+```typescript
+interface SettingsPluginSlotContext {
+  /** The ID of the plugin this action area belongs to. */
+  targetPluginId: string;
+}
+```
+
+**Use cases:** Custom plugin management actions, diagnostics buttons, configuration shortcuts, plugin-specific status indicators.
+
 ---
 
 ## 5. Plugin Manifest Extension
@@ -441,36 +454,48 @@ Every slot component receives props conforming to `SlotComponentProps<TContext>`
 
 ### 6.1 Common utilities available to slot components
 
-In addition to `slotContext`, plugin components can import from a `@tabularis/plugin-api` module (provided by the host at runtime):
+In addition to `context`, plugin components can import from `@tabularis/plugin-api` (re-exported from `src/pluginApi.ts`):
 
 ```typescript
 // @tabularis/plugin-api
 
-/** Execute a read-only query on the active connection. */
-export function usePluginQuery(
-  sql: string,
-  params?: unknown[]
-): { data: unknown[][] | null; error: string | null; loading: boolean };
+/**
+ * Execute a read-only query on the active connection.
+ * Returns { executeQuery, loading, error }.
+ */
+export function usePluginQuery(): {
+  executeQuery: (query: string) => Promise<{ columns: string[]; rows: unknown[][] }>;
+  loading: boolean;
+  error: string | null;
+};
 
 /** Access the current connection metadata. */
-export function useConnection(): {
+export function usePluginConnection(): {
   connectionId: string | null;
-  driverId: string | null;
-  capabilities: DriverCapabilities | null;
+  driver: string | null;
+  schema: string | null;
 };
 
-/** Show a toast notification. */
-export function useToast(): {
-  success(message: string): void;
-  error(message: string): void;
-  info(message: string): void;
+/** Show a notification dialog. */
+export function usePluginToast(): {
+  showInfo: (text: string) => Promise<void>;
+  showError: (text: string) => Promise<void>;
+  showWarning: (text: string) => Promise<void>;
 };
 
-/** Read a plugin setting value. */
-export function usePluginSetting<T = unknown>(key: string): T | undefined;
+/** Read/write a plugin's own settings. */
+export function usePluginSetting(pluginId: string): {
+  getSetting: <T = unknown>(key: string, defaultValue?: T) => T;
+  setSetting: (key: string, value: unknown) => void;
+};
 
 /** Access the current theme. */
-export function useTheme(): { isDark: boolean; colors: Record<string, string> };
+export function usePluginTheme(): {
+  themeId: string | null;
+  themeName: string | null;
+  isDark: boolean;
+  colors: Record<string, unknown> | null;
+};
 ```
 
 ### 6.2 Prohibited APIs
@@ -575,20 +600,15 @@ For plugin developers, the system supports hot module replacement:
 
 ### 8.5 Error boundaries
 
-Each slot contribution is wrapped in a per-plugin `ErrorBoundary`:
+Each slot contribution is wrapped in a per-plugin `SlotErrorBoundary`:
 
 ```tsx
-<ErrorBoundary
-  fallback={<PluginErrorFallback pluginId={contribution.pluginId} slotName={name} />}
-  onError={(error) => logPluginError(contribution.pluginId, name, error)}
->
-  <contribution.component slotContext={context} pluginId={contribution.pluginId} />
-</ErrorBoundary>
+<SlotErrorBoundary pluginId={contribution.pluginId} slotName={name}>
+  <Component context={context} pluginId={contribution.pluginId} />
+</SlotErrorBoundary>
 ```
 
-The `PluginErrorFallback` component shows a compact, non-intrusive message (e.g., a small warning icon with tooltip) and does not disrupt the host layout.
-
-If a plugin component errors **3 times within 60 seconds**, the slot contribution is automatically disabled for the remainder of the session and a toast notification informs the user.
+The `SlotErrorBoundary` is a React class component that catches rendering errors and displays a compact, non-intrusive fallback message (`"Plugin error: {pluginId}"`) styled as a small red badge. Errors are logged to the console with full component stack traces. The fallback does not disrupt the host layout, and other plugin contributions in the same slot continue rendering normally.
 
 ---
 
@@ -654,11 +674,12 @@ All types introduced in this specification:
 
 | Type | Section | Purpose |
 |------|---------|---------|
-| `SlotContributionKey` | 3.1 | Unique key for registry lookup |
-| `SlotContribution<T>` | 3.1 | A registered component + metadata |
-| `SlotComponentProps<T>` | 3.1 | Props received by every slot component |
-| `PluginSlotRegistryValue` | 3.2 | Registry context API |
-| `SlotAnchorProps<T>` | 3.3 | Props for the host-side anchor component |
+| `SlotName` | 3.1 | Union type of all valid slot names |
+| `SlotContext` | 3.1 | Context data passed to slot components |
+| `SlotContribution` | 3.1 | A registered component + metadata |
+| `SlotComponentProps` | 3.1 | Props received by every slot component |
+| `PluginSlotRegistryType` | 3.2 | Registry context API |
+| `SlotAnchorProps` | 3.3 | Props for the host-side anchor component |
 | `UIExtensionDeclaration` | 5 | Manifest entry for a UI extension |
 | `RowFieldSlotContext` | 4.1 | Context for field-level slots |
 | `RowModalFooterSlotContext` | 4.2 | Context for modal footer slot |
@@ -666,3 +687,4 @@ All types introduced in this specification:
 | `DataGridToolbarSlotContext` | 4.5 | Context for toolbar slot |
 | `DataGridContextMenuSlotContext` | 4.6 | Context for context menu slot |
 | `SidebarFooterSlotContext` | 4.7 | Context for sidebar footer slot |
+| `SettingsPluginSlotContext` | 4.8 | Context for plugin settings slot |

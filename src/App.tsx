@@ -4,6 +4,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { MainLayout } from "./components/layout/MainLayout";
 import { ConnectionLayoutProvider } from "./contexts/ConnectionLayoutProvider";
 import { KeybindingsProvider } from "./contexts/KeybindingsProvider";
+import { PluginSlotProvider } from "./contexts/PluginSlotProvider";
+import { PluginModalProvider } from "./contexts/PluginModalProvider";
 import { Connections } from "./pages/Connections";
 import { Editor } from "./pages/Editor";
 import { Settings } from "./pages/Settings";
@@ -58,6 +60,8 @@ export function App() {
     <>
       <BrowserRouter>
         <KeybindingsProvider>
+        <PluginSlotProvider>
+        <PluginModalProvider>
         <ConnectionLayoutProvider>
           <Routes>
             <Route path="/" element={<MainLayout />}>
@@ -70,6 +74,8 @@ export function App() {
             <Route path="/task-manager" element={<TaskManagerPage />} />
           </Routes>
         </ConnectionLayoutProvider>
+        </PluginModalProvider>
+        </PluginSlotProvider>
         </KeybindingsProvider>
       </BrowserRouter>
 

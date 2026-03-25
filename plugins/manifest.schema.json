@@ -142,6 +142,16 @@
           "type": "boolean",
           "default": false,
           "description": "true for API-based plugins that need no host/port/credentials (e.g. public REST APIs). Hides the entire connection form and skips database validation."
+        },
+        "manage_tables": {
+          "type": "boolean",
+          "default": true,
+          "description": "true if the driver supports table and column management (CREATE TABLE, ADD/MODIFY/DROP COLUMN, DROP TABLE). Does not control index or foreign key operations. Defaults to true."
+        },
+        "readonly": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, the driver is read-only: all data modification operations (INSERT, UPDATE, DELETE) are disabled in the UI. Table and column management is also hidden regardless of manage_tables. Defaults to false."
         }
       }
     },

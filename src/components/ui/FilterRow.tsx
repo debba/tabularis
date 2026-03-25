@@ -18,7 +18,7 @@ export interface FilterRowProps {
   onTriggerApplied: () => void;
 }
 
-export const FilterRow: React.FC<FilterRowProps> = ({
+export const FilterRow = ({
   filter,
   columns,
   onChange,
@@ -28,7 +28,7 @@ export const FilterRow: React.FC<FilterRowProps> = ({
   onEscape,
   isApplied,
   onTriggerApplied,
-}) => {
+}: FilterRowProps) => {
   const { t } = useTranslation();
   const selectedCol = columns.find((c) => c.name === filter.column);
   const operators = getOperatorsForType(selectedCol?.data_type ?? "");

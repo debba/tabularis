@@ -16,14 +16,14 @@ interface SqlEditorWrapperProps {
 }
 
 // Internal component that resets when key changes
-const SqlEditorInternal: React.FC<SqlEditorWrapperProps & { editorKey: string }> = ({
+const SqlEditorInternal = ({
   initialValue,
   onChange,
   onRun,
   onMount,
   height = "100%",
   options
-}) => {
+}: SqlEditorWrapperProps & { editorKey: string }) => {
   const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const monacoRef = useRef<typeof Monaco | null>(null);
@@ -124,7 +124,7 @@ const SqlEditorInternal: React.FC<SqlEditorWrapperProps & { editorKey: string }>
     );
 };
 
-export const SqlEditorWrapper: React.FC<SqlEditorWrapperProps> = React.memo((props) => {
+export const SqlEditorWrapper = React.memo((props: SqlEditorWrapperProps) => {
   // Use editorKey to control when component remounts (only on tab switch)
   return <SqlEditorInternal key={props.editorKey || "default"} editorKey={props.editorKey || "default"} {...props} />;
 });

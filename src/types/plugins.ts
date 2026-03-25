@@ -23,6 +23,10 @@ export interface DriverCapabilities {
   create_foreign_keys?: boolean;
   /** true for API-based plugins that need no host/port/credentials (e.g. public REST APIs). Hides the entire connection form. */
   no_connection_required?: boolean;
+  /** Whether the driver supports table and column management (CREATE TABLE, ADD/MODIFY/DROP COLUMN, DROP TABLE). Does not control index or FK operations. Defaults to true. */
+  manage_tables?: boolean;
+  /** When true, the driver is read-only: all data modification operations (INSERT, UPDATE, DELETE) are disabled in the UI. Table/column management is also hidden regardless of manage_tables. Defaults to false. */
+  readonly?: boolean;
 }
 
 export type PluginSettingType = "string" | "boolean" | "number" | "select";
@@ -55,6 +59,17 @@ export interface PluginManifest {
   icon?: string;
   /** Plugin-declared setting definitions. Empty/absent for built-in drivers. */
   settings?: PluginSettingDefinition[];
+  /** UI extension declarations for slot-based rendering (Phase 2). */
+  ui_extensions?: UIExtensionManifestEntry[];
+}
+
+/** Manifest-level entry for a UI extension slot. */
+export interface UIExtensionManifestEntry {
+  slot: string;
+  module: string;
+  order?: number;
+  /** If set, the contribution is only active when context.driver matches this value. */
+  driver?: string;
 }
 
 export interface RegistryReleaseWithStatus {

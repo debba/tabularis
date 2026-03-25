@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useState } from "react";
 
 import type { RegistryPluginWithStatus } from "../types/plugins";
+import { toErrorMessage } from "../utils/errors";
 
 export function usePluginRegistry(): {
   plugins: RegistryPluginWithStatus[];
@@ -20,7 +21,7 @@ export function usePluginRegistry(): {
         setError(null);
       })
       .catch((err: unknown) => {
-        setError(String(err));
+        setError(toErrorMessage(err));
       })
       .finally(() => setLoading(false));
   }, []);

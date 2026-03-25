@@ -1289,12 +1289,15 @@ impl PostgresDriver {
                     alter_column: true,
                     create_foreign_keys: true,
                     no_connection_required: false,
+                    manage_tables: true,
+                    readonly: false,
                 },
                 is_builtin: true,
                 default_username: "postgres".to_string(),
                 color: "#3b82f6".to_string(),
                 icon: "postgres".to_string(),
                 settings: vec![],
+                ui_extensions: None,
             },
         }
     }

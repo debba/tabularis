@@ -872,12 +872,15 @@ impl SqliteDriver {
                     alter_column: false,
                     create_foreign_keys: false,
                     no_connection_required: false,
+                    manage_tables: true,
+                    readonly: false,
                 },
                 is_builtin: true,
                 default_username: String::new(),
                 color: "#06b6d4".to_string(),
                 icon: "sqlite".to_string(),
                 settings: vec![],
+                ui_extensions: None,
             },
         }
     }
