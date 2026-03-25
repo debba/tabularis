@@ -32,6 +32,44 @@ fn is_wkt_geometry(s: &str) -> bool {
 /// Checks if a string value is a raw SQL function call (e.g., ST_GeomFromText(...))
 /// This is used to detect when user has entered a complete SQL function that should
 /// be inserted directly into the query without parameter binding
+/// Convert a JSON array to a PostgreSQL ARRAY[...] literal.
+/// Elements are safely formatted to prevent SQL injection.
+fn json_array_to_pg_literal(arr: &[serde_json::Value]) -> Result<String, String> {
+    if arr.is_empty() {
+        return Ok("'{}'".to_string());
+    }
+    let mut parts = Vec::new();
+    for val in arr {
+        match val {
+            serde_json::Value::Number(n) => parts.push(n.to_string()),
+            serde_json::Value::String(s) => {
+                let escaped = s.replace('\'', "''");
+                parts.push(format!("'{}'", escaped));
+            }
+            serde_json::Value::Bool(b) => {
+                parts.push(if *b { "TRUE" } else { "FALSE" }.to_string())
+            }
+            serde_json::Value::Null => parts.push("NULL".to_string()),
+            serde_json::Value::Array(nested) => {
+                parts.push(json_array_to_pg_literal(nested)?);
+            }
+            _ => return Err("Unsupported array element type".to_string()),
+        }
+    }
+    Ok(format!("ARRAY[{}]", parts.join(", ")))
+}
+
+/// Try to parse a string as a JSON array and convert to PostgreSQL array literal.
+fn try_parse_pg_array(s: &str) -> Option<Result<String, String>> {
+    let trimmed = s.trim();
+    if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        if let Ok(serde_json::Value::Array(arr)) = serde_json::from_str::<serde_json::Value>(trimmed) {
+            return Some(json_array_to_pg_literal(&arr));
+        }
+    }
+    None
+}
+
 fn is_raw_sql_function(s: &str) -> bool {
     let trimmed = s.trim().to_uppercase();
     // Check for common SQL spatial function patterns
@@ -596,6 +634,8 @@ pub async fn update_record(
                 qb.push("CAST(");
                 qb.push_bind(s);
                 qb.push(" AS uuid)");
+            } else if let Some(pg_arr) = try_parse_pg_array(&s) {
+                qb.push(pg_arr?);
             } else {
                 qb.push_bind(s);
             }
@@ -605,6 +645,9 @@ pub async fn update_record(
         }
         serde_json::Value::Null => {
             qb.push("NULL");
+        }
+        serde_json::Value::Array(arr) => {
+            qb.push(json_array_to_pg_literal(&arr)?);
         }
         _ => return Err("Unsupported Value type".into()),
     }
@@ -698,6 +741,8 @@ pub async fn insert_record(
                         separated.push_unseparated("CAST(");
                         separated.push_bind_unseparated(s);
                         separated.push_unseparated(" AS uuid)");
+                    } else if let Some(pg_arr) = try_parse_pg_array(&s) {
+                        separated.push_unseparated(&pg_arr?);
                     } else {
                         separated.push_bind(s);
                     }
@@ -707,6 +752,9 @@ pub async fn insert_record(
                 }
                 serde_json::Value::Null => {
                     separated.push("NULL");
+                }
+                serde_json::Value::Array(arr) => {
+                    separated.push_unseparated(&json_array_to_pg_literal(&arr)?);
                 }
                 _ => return Err("Unsupported value type".into()),
             }

@@ -83,5 +83,86 @@ pub fn extract_value(row: &sqlx::postgres::PgRow, index: usize) -> serde_json::V
         return v;
     }
 
+    // Array types
+    if let Ok(v) = row.try_get::<Vec<i64>, _>(index) {
+        return serde_json::Value::Array(v.into_iter().map(serde_json::Value::from).collect());
+    }
+    if let Ok(v) = row.try_get::<Vec<i32>, _>(index) {
+        return serde_json::Value::Array(v.into_iter().map(serde_json::Value::from).collect());
+    }
+    if let Ok(v) = row.try_get::<Vec<i16>, _>(index) {
+        return serde_json::Value::Array(v.into_iter().map(serde_json::Value::from).collect());
+    }
+    if let Ok(v) = row.try_get::<Vec<f64>, _>(index) {
+        return serde_json::Value::Array(
+            v.into_iter()
+                .map(|f| {
+                    serde_json::Number::from_f64(f)
+                        .map(serde_json::Value::Number)
+                        .unwrap_or(serde_json::Value::Null)
+                })
+                .collect(),
+        );
+    }
+    if let Ok(v) = row.try_get::<Vec<f32>, _>(index) {
+        return serde_json::Value::Array(
+            v.into_iter()
+                .map(|f| {
+                    serde_json::Number::from_f64(f as f64)
+                        .map(serde_json::Value::Number)
+                        .unwrap_or(serde_json::Value::Null)
+                })
+                .collect(),
+        );
+    }
+    if let Ok(v) = row.try_get::<Vec<Decimal>, _>(index) {
+        return serde_json::Value::Array(
+            v.into_iter()
+                .map(|d| serde_json::Value::String(d.to_string()))
+                .collect(),
+        );
+    }
+    if let Ok(v) = row.try_get::<Vec<bool>, _>(index) {
+        return serde_json::Value::Array(v.into_iter().map(serde_json::Value::from).collect());
+    }
+    if let Ok(v) = row.try_get::<Vec<String>, _>(index) {
+        return serde_json::Value::Array(v.into_iter().map(serde_json::Value::from).collect());
+    }
+    if let Ok(v) = row.try_get::<Vec<DateTime<Utc>>, _>(index) {
+        return serde_json::Value::Array(
+            v.into_iter()
+                .map(|dt| serde_json::Value::String(dt.format("%Y-%m-%d %H:%M:%S").to_string()))
+                .collect(),
+        );
+    }
+    if let Ok(v) = row.try_get::<Vec<NaiveDateTime>, _>(index) {
+        return serde_json::Value::Array(
+            v.into_iter()
+                .map(|dt| serde_json::Value::String(dt.format("%Y-%m-%d %H:%M:%S").to_string()))
+                .collect(),
+        );
+    }
+    if let Ok(v) = row.try_get::<Vec<NaiveDate>, _>(index) {
+        return serde_json::Value::Array(
+            v.into_iter()
+                .map(|d| serde_json::Value::String(d.to_string()))
+                .collect(),
+        );
+    }
+    if let Ok(v) = row.try_get::<Vec<NaiveTime>, _>(index) {
+        return serde_json::Value::Array(
+            v.into_iter()
+                .map(|t| serde_json::Value::String(t.to_string()))
+                .collect(),
+        );
+    }
+    if let Ok(v) = row.try_get::<Vec<Uuid>, _>(index) {
+        return serde_json::Value::Array(
+            v.into_iter()
+                .map(|u| serde_json::Value::String(u.to_string()))
+                .collect(),
+        );
+    }
+
     serde_json::Value::Null
 }
