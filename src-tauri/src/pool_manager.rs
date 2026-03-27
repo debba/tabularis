@@ -1,16 +1,20 @@
 use crate::models::ConnectionParams;
+use deadpool_postgres::{Manager as PgPoolManager, Pool as PgPool};
+use native_tls::TlsConnector;
 use once_cell::sync::Lazy;
-use sqlx::{postgres::PgConnectOptions, sqlite::SqliteConnectOptions, MySql, Pool, Postgres, Sqlite};
+use postgres_native_tls::MakeTlsConnector;
+use sqlx::{sqlite::SqliteConnectOptions, MySql, Pool, Sqlite};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use tokio_postgres::{config::SslMode as PgSslMode, Config as PgConfig};
 use urlencoding::encode;
 
 type PoolMap<T> = Arc<RwLock<HashMap<String, Pool<T>>>>;
+type PgPoolMap = Arc<RwLock<HashMap<String, PgPool>>>;
 
 static MYSQL_POOLS: Lazy<PoolMap<MySql>> = Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
-static POSTGRES_POOLS: Lazy<PoolMap<Postgres>> =
-    Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
+static POSTGRES_POOLS: Lazy<PgPoolMap> = Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 static SQLITE_POOLS: Lazy<PoolMap<Sqlite>> = Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 
 /// Build a stable connection key that works with SSH tunnels.
@@ -45,21 +49,30 @@ fn build_mysql_url(params: &ConnectionParams) -> String {
     )
 }
 
-fn build_postgres_connectoptions(params: &ConnectionParams) -> PgConnectOptions {
-    let mut options = PgConnectOptions::new()
-        .username(params.username.as_deref().unwrap_or_default())
+fn build_postgres_configurations(params: &ConnectionParams) -> PgConfig {
+    let mut cfg = PgConfig::new();
+    cfg.user(params.username.as_deref().unwrap_or_default())
         .password(params.password.as_deref().unwrap_or_default())
         .port(params.port.unwrap_or(5432))
         .host(params.host.as_deref().unwrap_or_default())
-        .database(&format!("{}", params.database));
+        .dbname(&format!("{}", params.database));
 
     if let Some(ssl_mode) = params.ssl_mode.as_deref() {
-        if let Ok(mode) = ssl_mode.parse() {
-            options = options.ssl_mode(mode);
-        }
+        match ssl_mode {
+            "disable" => {
+                cfg.ssl_mode(PgSslMode::Disable);
+            }
+            "require" => {
+                cfg.ssl_mode(PgSslMode::Require);
+            }
+            "prefer" => {
+                cfg.ssl_mode(PgSslMode::Prefer);
+            }
+            _ => {}
+        };
     }
 
-    options
+    cfg
 }
 
 fn build_sqlite_connectoptions(params: &ConnectionParams) -> SqliteConnectOptions {
@@ -122,7 +135,7 @@ pub async fn get_mysql_pool_with_id(
     Ok(pool)
 }
 
-pub async fn get_postgres_pool(params: &ConnectionParams) -> Result<Pool<Postgres>, String> {
+pub async fn get_postgres_pool(params: &ConnectionParams) -> Result<PgPool, String> {
     let connection_id = params.connection_id.as_deref();
     get_postgres_pool_with_id(params, connection_id).await
 }
@@ -130,7 +143,7 @@ pub async fn get_postgres_pool(params: &ConnectionParams) -> Result<Pool<Postgre
 pub async fn get_postgres_pool_with_id(
     params: &ConnectionParams,
     connection_id: Option<&str>,
-) -> Result<Pool<Postgres>, String> {
+) -> Result<PgPool, String> {
     let key = build_connection_key(params, connection_id);
 
     // Try to get existing pool
@@ -153,11 +166,17 @@ pub async fn get_postgres_pool_with_id(
         params.host,
         key
     );
-    let copts = build_postgres_connectoptions(params);
-    let pool = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(10)
-        .connect_with(copts)
-        .await
+
+    let cfg = build_postgres_configurations(params);
+
+    let tls_connector = MakeTlsConnector::new(TlsConnector::new().map_err(|e| {
+        log::error!("Failed to create Tls Connector for PostgreSQL pool: {}", e);
+        e.to_string()
+    })?);
+
+    let pool = PgPool::builder(PgPoolManager::new(cfg, tls_connector))
+        .max_size(10)
+        .build()
         .map_err(|e| {
             log::error!("Failed to create PostgreSQL connection pool: {}", e);
             e.to_string()
@@ -268,7 +287,7 @@ pub async fn close_pool_with_id(params: &ConnectionParams, connection_id: Option
                     params.database,
                     key
                 );
-                pool.close().await;
+                pool.close();
                 log::info!(
                     "PostgreSQL connection pool closed for: {} (key: {})",
                     params.database,
@@ -307,7 +326,7 @@ pub async fn close_all_pools() {
     {
         let mut pools = POSTGRES_POOLS.write().await;
         for (_, pool) in pools.drain() {
-            pool.close().await;
+            pool.close();
         }
     }
     {
