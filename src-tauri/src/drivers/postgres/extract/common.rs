@@ -1,3 +1,12 @@
+#[inline]
+pub fn advance_buf(buf: &mut &[u8], n: usize) -> Result<(), ()> {
+    if buf.len() < n {
+        return Err(());
+    }
+    *buf = &buf[n..];
+    Ok(())
+}
+
 pub fn split_at_value_len<'a>(buf: &mut &'a [u8]) -> Result<&'a [u8], ()> {
     let len = i32::from_be_bytes(match buf[..4].try_into() {
         Ok(bytes) => bytes,
