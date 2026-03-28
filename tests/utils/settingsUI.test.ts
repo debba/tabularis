@@ -52,6 +52,10 @@ describe('settingsUI', () => {
       expect(getProviderLabel('openrouter' as AiProvider)).toBe('OpenRouter');
     });
 
+    it('should return correct label for MiniMax', () => {
+      expect(getProviderLabel('minimax' as AiProvider)).toBe('MiniMax');
+    });
+
     it('should capitalize unknown providers', () => {
       expect(getProviderLabel('custom' as AiProvider)).toBe('Custom');
       expect(getProviderLabel('test' as AiProvider)).toBe('Test');

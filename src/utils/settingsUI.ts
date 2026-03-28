@@ -37,6 +37,8 @@ export function getProviderLabel(id: AiProvider): string {
       return 'Ollama';
     case 'custom-openai':
       return 'OpenAI Compatible';
+    case 'minimax':
+      return 'MiniMax';
     default:
       return String(id).charAt(0).toUpperCase() + String(id).slice(1);
   }

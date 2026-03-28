@@ -1020,6 +1020,7 @@ export const Settings = () => {
   const providers: Array<{ id: AiProvider; label: string }> = [
     { id: "openai", label: "OpenAI" },
     { id: "anthropic", label: "Anthropic" },
+    { id: "minimax", label: "MiniMax" },
     { id: "openrouter", label: "OpenRouter" },
     { id: "ollama", label: "Ollama" },
     { id: "custom-openai", label: "OpenAI Compatible" },

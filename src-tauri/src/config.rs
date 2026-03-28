@@ -255,6 +255,7 @@ pub fn get_ai_api_key(provider: &str) -> Result<String, String> {
         "anthropic" => "ANTHROPIC_API_KEY",
         "openrouter" => "OPENROUTER_API_KEY",
         "custom-openai" => "CUSTOM_OPENAI_API_KEY",
+        "minimax" => "MINIMAX_API_KEY",
         _ => "",
     };
 
@@ -289,6 +290,7 @@ pub fn get_ai_api_key_status(provider: &str) -> AiKeyStatus {
         "anthropic" => "ANTHROPIC_API_KEY",
         "openrouter" => "OPENROUTER_API_KEY",
         "custom-openai" => "CUSTOM_OPENAI_API_KEY",
+        "minimax" => "MINIMAX_API_KEY",
         _ => "",
     };
 

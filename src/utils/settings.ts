@@ -128,7 +128,7 @@ export function detectAIProviderFromKeys(
   keyStatus: Record<AiProvider, boolean>,
   availableModels: Record<string, string[]>,
 ): DetectedAIConfig {
-  const providers: AiProvider[] = ["openai", "anthropic", "openrouter"];
+  const providers: AiProvider[] = ["openai", "anthropic", "openrouter", "minimax"];
 
   for (const provider of providers) {
     if (keyStatus[provider]) {
