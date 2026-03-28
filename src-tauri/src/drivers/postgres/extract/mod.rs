@@ -9,7 +9,7 @@ use tokio_postgres::{
     Row,
 };
 
-pub fn extract_value(row: &Row, index: usize) -> JsonValue {
+pub fn extract_value(row: &Row, index: usize, _known_type: Option<&str>) -> JsonValue {
     match row.try_get::<_, Extractor>(index) {
         Ok(extractor) => extractor.value,
         Err(_) => JsonValue::Null,

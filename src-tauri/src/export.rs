@@ -92,7 +92,7 @@ macro_rules! export_rows {
                 let columns = row.columns();
                 for i in 0..columns.len() {
                     let name = columns[i].name().to_string();
-                    let val = $extract_fn(&row, i);
+                    let val = $extract_fn(&row, i, None);
                     obj.insert(name, val);
                 }
                 serde_json::to_writer(&mut writer, &obj).map_err(|e| e.to_string())?;
