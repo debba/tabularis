@@ -241,6 +241,7 @@
       "fromEnvTooltip": "This key is loaded from an environment variable",
       "envVariableDetected": "An environment variable is present, but you can override it by setting a key above.",
       "reset": "Reset",
+      "changeKey": "Change",
       "resetKey": "Delete custom key and revert to environment variable (if present)",
       "keyResetSuccess": "Custom key deleted successfully",
       "systemPrompt": "System Prompt",

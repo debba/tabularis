@@ -241,6 +241,7 @@
       "fromEnvTooltip": "此密钥从环境变量加载",
       "envVariableDetected": "检测到环境变量，但您可以通过在上方设置密钥来覆盖它。",
       "reset": "重置",
+      "changeKey": "更改",
       "resetKey": "删除自定义密钥并恢复到环境变量（如果有）",
       "keyResetSuccess": "自定义密钥删除成功",
       "systemPrompt": "系统提示词",

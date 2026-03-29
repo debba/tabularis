@@ -241,6 +241,7 @@
       "fromEnvTooltip": "Questa chiave è caricata da una variabile d'ambiente",
       "envVariableDetected": "È presente una variabile d'ambiente, ma puoi sovrascriverla impostando una chiave qui sopra.",
       "reset": "Ripristina",
+      "changeKey": "Cambia",
       "resetKey": "Elimina chiave personalizzata e ripristina variabile d'ambiente (se presente)",
       "keyResetSuccess": "Chiave personalizzata eliminata con successo",
       "systemPrompt": "Prompt di Sistema",

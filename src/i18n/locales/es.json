@@ -241,6 +241,7 @@
       "fromEnvTooltip": "Esta clave se carga desde una variable de entorno",
       "envVariableDetected": "Se detectó una variable de entorno, pero puedes sobrescribirla estableciendo una clave arriba.",
       "reset": "Restablecer",
+      "changeKey": "Cambiar",
       "resetKey": "Eliminar clave personalizada y volver a la variable de entorno (si existe)",
       "keyResetSuccess": "Clave personalizada eliminada correctamente",
       "systemPrompt": "Prompt del Sistema",

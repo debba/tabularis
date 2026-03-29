@@ -13,7 +13,6 @@ import {
   Database, Settings as SettingsIcon,
   Languages,
   Sparkles,
-  Power,
   Palette,
   Type,
   ZoomIn,
@@ -35,6 +34,7 @@ import {
   X,
 } from "lucide-react";
 import clsx from "clsx";
+import { OpenAIIcon, AnthropicIcon, MiniMaxIcon, OpenRouterIcon, OllamaIcon } from "../components/icons/ClientIcons";
 import { useSettings } from "../hooks/useSettings";
 import { useTheme } from "../hooks/useTheme";
 import type { AiProvider, PluginConfig } from "../contexts/SettingsContext";
@@ -810,6 +810,7 @@ export const Settings = () => {
   const [aiKeyStatus, setAiKeyStatus] = useState<Record<string, AiKeyStatus>>({});
   const [availableModels, setAvailableModels] = useState<Record<string, string[]>>({});
   const [keyInput, setKeyInput] = useState("");
+  const [editingKey, setEditingKey] = useState(false);
   const { allDrivers, installedPlugins, refresh: refreshDrivers } = useDrivers();
   const { plugins: registryPlugins, loading: registryLoading, error: registryError, refresh: refreshRegistry } = usePluginRegistry();
   const { openConnectionIds, connectionDataMap, disconnect } = useDatabase();
@@ -823,6 +824,7 @@ export const Settings = () => {
   const [pluginRemoveConfirm, setPluginRemoveConfirm] = useState<{ pluginId: string; pluginName: string; onConfirm: () => Promise<void> } | null>(null);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [explainPrompt, setExplainPrompt] = useState("");
+  const [promptSectionOpen, setPromptSectionOpen] = useState<"system" | "explain" | null>(null);
   
   const { currentTheme, allThemes, setTheme } = useTheme();
   const { showAlert } = useAlert();
@@ -978,6 +980,7 @@ export const Settings = () => {
       await invoke("set_ai_key", { provider, key: keyInput });
       await checkKeys();
       setKeyInput("");
+      setEditingKey(false);
       showAlert("API Key saved securely", {
         title: "Success",
         kind: "info",
@@ -1017,13 +1020,13 @@ export const Settings = () => {
     ...SUPPORTED_LANGUAGES.map(({ id, label }) => ({ id, label })),
   ];
 
-  const providers: Array<{ id: AiProvider; label: string }> = [
-    { id: "openai", label: "OpenAI" },
-    { id: "anthropic", label: "Anthropic" },
-    { id: "minimax", label: "MiniMax" },
-    { id: "openrouter", label: "OpenRouter" },
-    { id: "ollama", label: "Ollama" },
-    { id: "custom-openai", label: "OpenAI Compatible" },
+  const providers: Array<{ id: AiProvider; label: string; icon: ReactNode }> = [
+    { id: "openai", label: "OpenAI", icon: <OpenAIIcon size={18} className="text-[#10a37f]" /> },
+    { id: "anthropic", label: "Anthropic", icon: <AnthropicIcon size={18} /> },
+    { id: "minimax", label: "MiniMax", icon: <MiniMaxIcon size={18} className="text-[#6c6cff]" /> },
+    { id: "openrouter", label: "OpenRouter", icon: <OpenRouterIcon size={18} className="text-[#9b6dff]" /> },
+    { id: "ollama", label: "Ollama", icon: <OllamaIcon size={18} className="text-current" /> },
+    { id: "custom-openai", label: "OpenAI Compatible", icon: <OpenAIIcon size={18} className="text-muted" /> },
   ];
 
   return (
@@ -1430,344 +1433,388 @@ export const Settings = () => {
           {/* AI Tab */}
           {activeTab === "ai" && (
             <div className="space-y-6">
+              {/* Card 1: Header + Enable Toggle */}
               <div className="bg-elevated border border-default rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
-                  <Sparkles size={20} className="text-yellow-400" />
-                  AI Configuration
-                </h3>
-                <p className="text-sm text-secondary mb-6">
-                  Configure AI providers to enable natural language to SQL
-                  generation. Keys are stored securely in your system's
-                  keychain.
-                </p>
-
-                {/* Enable/Disable Toggle */}
-                <div className="flex items-center justify-between bg-base/50 p-4 rounded-lg border border-default mb-6">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={clsx("p-2 rounded-full", settings.aiEnabled ? "bg-green-900/20 text-green-400" : "bg-surface-secondary text-muted")}>
-                        <Power size={18} />
+                    <div className={clsx(
+                      "p-2.5 rounded-xl transition-colors",
+                      settings.aiEnabled ? "bg-yellow-500/10 text-yellow-400" : "bg-surface-secondary text-muted"
+                    )}>
+                      <Sparkles size={22} />
                     </div>
                     <div>
-                        <div className="text-sm font-medium text-primary">{t("settings.ai.enable")}</div>
-                        <div className="text-xs text-muted">{t("settings.ai.enableDesc")}</div>
+                      <h3 className="text-lg font-semibold text-primary">AI Configuration</h3>
+                      <p className="text-sm text-secondary mt-0.5">
+                        {t("settings.ai.enableDesc")}
+                      </p>
                     </div>
                   </div>
                   <button
                     onClick={() => updateSetting("aiEnabled", !settings.aiEnabled)}
                     className={clsx(
-                        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-elevated",
-                        settings.aiEnabled ? "bg-blue-600" : "bg-surface-secondary"
+                      "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-elevated shrink-0",
+                      settings.aiEnabled ? "bg-blue-600" : "bg-surface-secondary"
                     )}
                   >
                     <span
-                        className={clsx(
-                            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                            settings.aiEnabled ? "translate-x-6" : "translate-x-1"
-                        )}
+                      className={clsx(
+                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                        settings.aiEnabled ? "translate-x-6" : "translate-x-1"
+                      )}
                     />
                   </button>
                 </div>
+              </div>
 
-                <div className={clsx("space-y-6 transition-opacity", !settings.aiEnabled && "opacity-50 pointer-events-none")}>
-                  {/* Default Provider Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-secondary mb-2">
-                      {t("settings.ai.defaultProvider")}
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {providers.map((p) => (
+              <div className={clsx("space-y-6 transition-opacity", !settings.aiEnabled && "opacity-50 pointer-events-none")}>
+                {/* Card 2: Provider Selection Grid */}
+                <div className="bg-elevated border border-default rounded-xl p-6">
+                  <label className="block text-sm font-medium text-secondary mb-3">
+                    {t("settings.ai.defaultProvider")}
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {providers.map((p) => {
+                      const isSelected = settings.aiProvider === p.id;
+                      const isConfigured = aiKeyStatus[p.id]?.configured;
+                      return (
                         <button
                           key={p.id}
                           onClick={() => {
                             updateSetting("aiProvider", p.id);
                             setKeyInput("");
+                            setEditingKey(false);
                           }}
                           className={clsx(
-                            "px-4 py-2 rounded-lg text-sm font-medium transition-all border flex items-center gap-2",
-                            settings.aiProvider === p.id
-                              ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/20"
-                              : "bg-base border-default text-muted hover:border-strong hover:text-primary",
+                            "relative flex items-center gap-2.5 px-4 py-3 rounded-lg text-sm font-medium transition-all border",
+                            isSelected
+                              ? "bg-blue-600/10 border-blue-500 text-blue-400 ring-1 ring-blue-500/30"
+                              : "bg-base border-default text-secondary hover:border-strong hover:text-primary",
                           )}
                         >
-                          {p.label}
-                          {aiKeyStatus[p.id]?.configured && (
+                          <span className="shrink-0">{p.icon}</span>
+                          <span className="truncate">{p.label}</span>
+                          {isConfigured && (
                             <CheckCircle2
                               size={14}
-                              className="text-green-400"
+                              className={clsx("shrink-0 ml-auto", isSelected ? "text-blue-400" : "text-green-400")}
                             />
                           )}
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
+                </div>
 
-                  {/* Active Provider Configuration */}
-                  {settings.aiProvider && (
-                    <div className="bg-base/50 border border-default rounded-lg p-6 space-y-6">
-                      <div className="flex items-center gap-2 border-b border-default pb-4">
-                        <h4 className="font-semibold text-primary">
-                          {getProviderLabel(settings.aiProvider)}
-                        </h4>
+                {/* Card 3: Provider Configuration */}
+                {settings.aiProvider && (
+                  <div className="bg-elevated border border-default rounded-xl p-6 space-y-5">
+                    {/* Provider header with status */}
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-primary">
+                        {getProviderLabel(settings.aiProvider)}
+                      </h4>
+                      <div className="flex items-center gap-2">
                         {aiKeyStatus[settings.aiProvider]?.configured ? (
-                            <div className="flex items-center gap-2">
-                                <span className="text-green-400 flex items-center gap-1 text-xs bg-green-900/10 px-2 py-0.5 rounded-full border border-green-900/20">
-                                    <CheckCircle2 size={12} /> {t("settings.ai.configured")}
-                                </span>
-                                {aiKeyStatus[settings.aiProvider]?.fromEnv && (
-                                    <span className="text-blue-400 flex items-center gap-1 text-xs bg-blue-900/10 px-2 py-0.5 rounded-full border border-blue-900/20" title={t("settings.ai.fromEnvTooltip")}>
-                                        <Code2 size={12} /> {t("settings.ai.fromEnv")}
-                                    </span>
-                                )}
-                            </div>
-                        ) : settings.aiProvider !== 'ollama' && (
-                            <span className="text-muted text-xs bg-surface-secondary px-2 py-0.5 rounded-full border border-default">
-                            {t("settings.ai.notConfigured")}
+                          <>
+                            <span className="text-green-400 flex items-center gap-1 text-xs bg-green-900/10 px-2 py-0.5 rounded-full border border-green-900/20">
+                              <CheckCircle2 size={12} /> {t("settings.ai.configured")}
                             </span>
+                            {aiKeyStatus[settings.aiProvider]?.fromEnv && (
+                              <span className="text-blue-400 flex items-center gap-1 text-xs bg-blue-900/10 px-2 py-0.5 rounded-full border border-blue-900/20" title={t("settings.ai.fromEnvTooltip")}>
+                                <Code2 size={12} /> {t("settings.ai.fromEnv")}
+                              </span>
+                            )}
+                          </>
+                        ) : settings.aiProvider !== 'ollama' && (
+                          <span className="text-muted text-xs bg-surface-secondary px-2 py-0.5 rounded-full border border-default">
+                            {t("settings.ai.notConfigured")}
+                          </span>
                         )}
                       </div>
+                    </div>
 
-                      {/* API Key Input (Non-Ollama) */}
-                      {settings.aiProvider !== 'ollama' && (
-                        <div>
-                            <label className="block text-sm font-medium text-secondary mb-1">
-                                {t("settings.ai.apiKey", { provider: getProviderLabel(settings.aiProvider) })}
-                            </label>
-                            
+                    {/* API Key (Non-Ollama) */}
+                    {settings.aiProvider !== 'ollama' && (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-secondary">
+                          {t("settings.ai.apiKey", { provider: getProviderLabel(settings.aiProvider) })}
+                        </label>
+
+                        {/* Configured state */}
+                        {aiKeyStatus[settings.aiProvider]?.configured && !editingKey ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-3 bg-base border border-default rounded-lg px-4 py-3">
+                              <Lock size={14} className="text-green-400 shrink-0" />
+                              <span className="flex-1 text-sm text-primary font-mono tracking-widest">••••••••••••••••</span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {!aiKeyStatus[settings.aiProvider]?.fromEnv && (
+                                  <>
+                                    <button
+                                      onClick={() => { setEditingKey(true); setKeyInput(""); }}
+                                      className="px-3 py-1 text-xs font-medium text-secondary hover:text-primary bg-surface-secondary hover:bg-surface-tertiary border border-strong rounded-md transition-colors"
+                                    >
+                                      {t("settings.ai.changeKey")}
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          await invoke("delete_ai_key", { provider: settings.aiProvider });
+                                          await checkKeys();
+                                          showAlert(t("settings.ai.keyResetSuccess"), { title: t("common.success"), kind: "info" });
+                                        } catch (e) {
+                                          showAlert(String(e), { title: t("common.error"), kind: "error" });
+                                        }
+                                      }}
+                                      className="px-3 py-1 text-xs font-medium text-secondary hover:text-red-400 bg-surface-secondary hover:bg-red-900/20 border border-strong hover:border-red-900/30 rounded-md transition-colors"
+                                      title={t("settings.ai.resetKey")}
+                                    >
+                                      {t("settings.ai.reset")}
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            {aiKeyStatus[settings.aiProvider]?.fromEnv && (
+                              <p className="text-xs text-blue-400 flex items-center gap-1.5">
+                                <Info size={12} />
+                                {t("settings.ai.envVariableDetected")}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          /* Unconfigured / editing state */
+                          <div className="space-y-2">
                             <div className="flex gap-2">
-                                <input
+                              <input
                                 type="password"
                                 value={keyInput}
                                 placeholder={t("settings.ai.enterKey", { provider: getProviderLabel(settings.aiProvider) })}
-                                className="flex-1 bg-base border border-strong rounded px-3 py-2 text-primary text-sm focus:outline-none focus:border-blue-500"
+                                className="flex-1 bg-base border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:border-blue-500 transition-colors"
                                 onChange={(e) => setKeyInput(e.target.value)}
-                                />
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => handleSaveKey(settings.aiProvider!)}
-                                        disabled={!keyInput.trim()}
-                                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-surface-secondary disabled:text-muted text-white rounded text-sm font-medium transition-colors whitespace-nowrap"
-                                    >
-                                        {t("common.save")}
-                                    </button>
-                                    
-                                    {aiKeyStatus[settings.aiProvider]?.configured && !aiKeyStatus[settings.aiProvider]?.fromEnv && (
-                                        <button
-                                            onClick={async () => {
-                                                try {
-                                                    await invoke("delete_ai_key", { provider: settings.aiProvider });
-                                                    await checkKeys();
-                                                    showAlert(t("settings.ai.keyResetSuccess"), { title: t("common.success"), kind: "info" });
-                                                } catch (e) {
-                                                    showAlert(String(e), { title: t("common.error"), kind: "error" });
-                                                }
-                                            }}
-                                            className="px-3 py-2 bg-surface-secondary hover:bg-red-900/20 text-secondary hover:text-red-400 border border-strong hover:border-red-900/30 rounded text-sm font-medium transition-colors whitespace-nowrap"
-                                            title={t("settings.ai.resetKey")}
-                                        >
-                                            {t("settings.ai.reset")}
-                                        </button>
-                                    )}
-                                </div>
+                                autoFocus={editingKey}
+                              />
+                              <button
+                                onClick={() => handleSaveKey(settings.aiProvider!)}
+                                disabled={!keyInput.trim()}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-surface-secondary disabled:text-muted text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                              >
+                                {t("common.save")}
+                              </button>
+                              {editingKey && (
+                                <button
+                                  onClick={() => { setEditingKey(false); setKeyInput(""); }}
+                                  className="px-3 py-2 bg-surface-secondary hover:bg-surface-tertiary text-secondary border border-strong rounded-lg text-sm font-medium transition-colors"
+                                >
+                                  <X size={16} />
+                                </button>
+                              )}
                             </div>
-                            
-                            {aiKeyStatus[settings.aiProvider]?.fromEnv && (
-                                <p className="text-xs text-blue-400 mt-2 flex items-center gap-1.5">
-                                    <Info size={12} />
-                                    {t("settings.ai.envVariableDetected")}
-                                </p>
-                            )}
-                            
-                            <p className="text-xs text-muted mt-1">
-                                {t("settings.ai.keyStoredSecurely")}
+                            <p className="text-xs text-muted">
+                              {t("settings.ai.keyStoredSecurely")}
                             </p>
-                        </div>
-                      )}
-
-                       {/* Custom OpenAI Endpoint URL */}
-                       {settings.aiProvider === "custom-openai" && (
-                           <div>
-                               <label className="block text-sm font-medium text-secondary mb-1">
-                                   {t("settings.ai.endpointUrl")}
-                               </label>
-                               <input
-                                   type="text"
-                                   value={settings.aiCustomOpenaiUrl || ""}
-                                   onChange={(e) => updateSetting("aiCustomOpenaiUrl", e.target.value)}
-                                   placeholder="https://api.example.com/v1"
-                                   className="flex-1 bg-base border border-strong rounded px-3 py-2 text-primary text-sm focus:outline-none focus:border-blue-500 w-full"
-                               />
-                               <p className="text-xs text-muted mt-1">
-                                   {t("settings.ai.endpointUrlDesc")}
-                               </p>
-                           </div>
-                       )}
-
-                        {/* Ollama Configuration */}
-                       {settings.aiProvider === 'ollama' && (
-                            <div className="space-y-4">
-                                <div className={clsx(
-                                   "border rounded px-3 py-2 text-sm italic flex items-center gap-2",
-                                   (settings.aiCustomModels?.['ollama'] || availableModels['ollama'] || []).length > 0 
-                                       ? "bg-green-900/10 border-green-900/20 text-green-400" 
-                                       : "bg-red-900/10 border-red-900/20 text-red-400"
-                                )}>
-                                   {(settings.aiCustomModels?.['ollama'] || availableModels['ollama'] || []).length > 0 ? (
-                                       <>
-                                           <CheckCircle2 size={14} />
-                                           <span>{t("settings.ai.ollamaConnected", { count: (settings.aiCustomModels?.['ollama'] || availableModels['ollama'] || []).length })}</span>
-                                       </>
-                                   ) : (
-                                       <>
-                                           <AlertTriangle size={14} />
-                                           <span>{t("settings.ai.ollamaNotDetected", { port: settings.aiOllamaPort || 11434 })}</span>
-                                       </>
-                                   )}
-                                </div>
-                                
-                                <div className="flex items-center gap-2">
-                                   <label className="text-sm text-secondary whitespace-nowrap">
-                                       {t("settings.ai.ollamaPort")}:
-                                   </label>
-                                   <input 
-                                       type="number" 
-                                       value={settings.aiOllamaPort || 11434}
-                                       onChange={(e) => updateSetting("aiOllamaPort", parseInt(e.target.value) || 11434)}
-                                       className="w-24 bg-base border border-strong rounded px-2 py-1.5 text-sm text-primary focus:outline-none focus:border-blue-500 transition-colors"
-                                   />
-                                   <p className="text-xs text-muted">
-                                       (Default: 11434)
-                                   </p>
-                                </div>
-                            </div>
-                       )}
-                    </div>
-                  )}
-
-                  {/* Model Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-secondary mb-1">
-                      {t("settings.ai.defaultModel")}
-                    </label>
-                    {settings.aiProvider ? (
-                        (() => {
-                            const currentModels = settings.aiCustomModels?.[settings.aiProvider] || availableModels[settings.aiProvider] || [];
-                            const isModelValid = !settings.aiModel || currentModels.includes(settings.aiModel);
-
-                            return (
-                                <>
-                                    <div className="flex gap-2">
-                                        <div className="flex-1">
-                                            <Select
-                                                value={settings.aiModel}
-                                                onChange={(val) => updateSetting("aiModel", val)}
-                                                options={currentModels}
-                                                placeholder={t("settings.ai.modelPlaceholder")}
-                                                searchPlaceholder={t("settings.ai.searchPlaceholder")}
-                                                noResultsLabel={t("settings.ai.noResults")}
-                                                hasError={!isModelValid && !!settings.aiModel}
-                                            />
-                                        </div>
-                                        <button
-                                            onClick={() => loadModels(true)}
-                                            className="px-3 py-2 bg-surface-secondary hover:bg-surface-tertiary border border-default text-secondary hover:text-primary rounded transition-colors"
-                                            title={t("settings.ai.refresh")}
-                                        >
-                                            <RefreshCw size={18} />
-                                        </button>
-                                    </div>
-                                    {!isModelValid && settings.aiModel && (
-                                        <div className="flex items-center gap-1.5 mt-2 text-xs text-red-400 bg-red-900/10 p-2 rounded border border-red-900/20">
-                                            <AlertTriangle size={12} className="shrink-0" />
-                                            <span>
-                                                <Trans
-                                                    i18nKey="settings.ai.modelNotFound"
-                                                    values={{ model: settings.aiModel, provider: getProviderLabel(settings.aiProvider) }}
-                                                    components={{ strong: <strong className="font-semibold" /> }}
-                                                />
-                                            </span>
-                                        </div>
-                                    )}
-                                </>
-                            );
-                        })()
-                    ) : (
-                        <div className="text-sm text-muted italic px-3 py-2 border border-default rounded bg-base">
-                            {t("settings.ai.selectProviderFirst")}
-                        </div>
+                          </div>
+                        )}
+                      </div>
                     )}
-                    <div className="flex justify-between items-center mt-1">
+
+                    {/* Custom OpenAI Endpoint URL */}
+                    {settings.aiProvider === "custom-openai" && (
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-secondary">
+                          {t("settings.ai.endpointUrl")}
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.aiCustomOpenaiUrl || ""}
+                          onChange={(e) => updateSetting("aiCustomOpenaiUrl", e.target.value)}
+                          placeholder="https://api.example.com/v1"
+                          className="w-full bg-base border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                        />
                         <p className="text-xs text-muted">
-                            {settings.aiProvider === "custom-openai" 
-                                ? t("settings.ai.customOpenaiModelHelp") 
-                                : t("settings.ai.modelDesc")}
+                          {t("settings.ai.endpointUrlDesc")}
                         </p>
+                      </div>
+                    )}
+
+                    {/* Ollama Configuration */}
+                    {settings.aiProvider === 'ollama' && (
+                      <div className="space-y-4">
+                        <div className={clsx(
+                          "border rounded-lg px-3 py-2.5 text-sm flex items-center gap-2",
+                          (settings.aiCustomModels?.['ollama'] || availableModels['ollama'] || []).length > 0
+                            ? "bg-green-900/10 border-green-900/20 text-green-400"
+                            : "bg-red-900/10 border-red-900/20 text-red-400"
+                        )}>
+                          {(settings.aiCustomModels?.['ollama'] || availableModels['ollama'] || []).length > 0 ? (
+                            <>
+                              <CheckCircle2 size={14} />
+                              <span>{t("settings.ai.ollamaConnected", { count: (settings.aiCustomModels?.['ollama'] || availableModels['ollama'] || []).length })}</span>
+                            </>
+                          ) : (
+                            <>
+                              <AlertTriangle size={14} />
+                              <span>{t("settings.ai.ollamaNotDetected", { port: settings.aiOllamaPort || 11434 })}</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm text-secondary whitespace-nowrap">
+                            {t("settings.ai.ollamaPort")}:
+                          </label>
+                          <input
+                            type="number"
+                            value={settings.aiOllamaPort || 11434}
+                            onChange={(e) => updateSetting("aiOllamaPort", parseInt(e.target.value) || 11434)}
+                            className="w-24 bg-base border border-strong rounded-lg px-2 py-1.5 text-sm text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                          />
+                          <p className="text-xs text-muted">(Default: 11434)</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Model Selection - inside provider config card */}
+                    <div className="border-t border-default pt-5 space-y-1">
+                      <label className="block text-sm font-medium text-secondary">
+                        {t("settings.ai.defaultModel")}
+                      </label>
+                      {(() => {
+                        const currentModels = settings.aiCustomModels?.[settings.aiProvider] || availableModels[settings.aiProvider] || [];
+                        const isModelValid = !settings.aiModel || currentModels.includes(settings.aiModel);
+                        return (
+                          <>
+                            <div className="flex gap-2">
+                              <div className="flex-1">
+                                <Select
+                                  value={settings.aiModel}
+                                  onChange={(val) => updateSetting("aiModel", val)}
+                                  options={currentModels}
+                                  placeholder={t("settings.ai.modelPlaceholder")}
+                                  searchPlaceholder={t("settings.ai.searchPlaceholder")}
+                                  noResultsLabel={t("settings.ai.noResults")}
+                                  hasError={!isModelValid && !!settings.aiModel}
+                                />
+                              </div>
+                              <button
+                                onClick={() => loadModels(true)}
+                                className="px-3 py-2 bg-surface-secondary hover:bg-surface-tertiary border border-default text-secondary hover:text-primary rounded-lg transition-colors"
+                                title={t("settings.ai.refresh")}
+                              >
+                                <RefreshCw size={18} />
+                              </button>
+                            </div>
+                            {!isModelValid && settings.aiModel && (
+                              <div className="flex items-center gap-1.5 mt-2 text-xs text-red-400 bg-red-900/10 p-2 rounded-lg border border-red-900/20">
+                                <AlertTriangle size={12} className="shrink-0" />
+                                <span>
+                                  <Trans
+                                    i18nKey="settings.ai.modelNotFound"
+                                    values={{ model: settings.aiModel, provider: getProviderLabel(settings.aiProvider) }}
+                                    components={{ strong: <strong className="font-semibold" /> }}
+                                  />
+                                </span>
+                              </div>
+                            )}
+                            <p className="text-xs text-muted">
+                              {settings.aiProvider === "custom-openai"
+                                ? t("settings.ai.customOpenaiModelHelp")
+                                : t("settings.ai.modelDesc")}
+                            </p>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
+                )}
 
-                  {/* System Prompt Configuration */}
-                  <div className="border-t border-default pt-6 mt-6">
-                    <h4 className="text-md font-medium text-primary mb-4 flex items-center gap-2">
-                      <Code2 size={16} /> {t("settings.ai.systemPrompt")}
-                    </h4>
-                    <p className="text-xs text-secondary mb-4">
-                      {t("settings.ai.systemPromptDesc")}
-                    </p>
-
-                    <div className="space-y-4">
-                      <textarea
-                        value={systemPrompt}
-                        onChange={(e) => setSystemPrompt(e.target.value)}
-                        className="w-full h-40 bg-base border border-strong rounded-lg p-3 text-primary text-sm font-mono focus:outline-none focus:border-blue-500 transition-colors resize-y"
-                        placeholder={t("settings.ai.enterSystemPrompt")}
-                      />
-                        <div className="flex justify-end gap-2">
-                            <button
-                                onClick={handleResetPrompt}
-                                className="px-3 py-2 bg-surface-secondary hover:bg-surface-tertiary text-secondary rounded text-sm font-medium transition-colors border border-strong"
-                            >
-                                {t("settings.ai.resetDefault")}
-                            </button>
-                            <button
-                                onClick={handleSavePrompt}
-                                className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium transition-colors"
-                            >
-                                {t("settings.ai.savePrompt")}
-                            </button>
+                {/* Card 4: Prompt Customization — Accordion */}
+                <div className="space-y-2">
+                  {/* System Prompt */}
+                  <div className="bg-elevated border border-default rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setPromptSectionOpen(promptSectionOpen === "system" ? null : "system")}
+                      className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-base/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-1.5 rounded-lg bg-surface-secondary text-muted">
+                          <Code2 size={14} />
                         </div>
-                     </div>
+                        <div>
+                          <span className="text-sm font-medium text-primary">{t("settings.ai.systemPrompt")}</span>
+                          <p className="text-xs text-muted mt-0.5">{t("settings.ai.systemPromptDesc")}</p>
+                        </div>
+                      </div>
+                      <ChevronDown size={16} className={clsx("text-muted transition-transform shrink-0 ml-4", promptSectionOpen === "system" && "rotate-180")} />
+                    </button>
+                    {promptSectionOpen === "system" && (
+                      <div className="px-5 pb-5 pt-1 border-t border-default">
+                        <textarea
+                          value={systemPrompt}
+                          onChange={(e) => setSystemPrompt(e.target.value)}
+                          className="w-full h-36 bg-base border border-strong rounded-lg p-3 text-primary text-sm font-mono focus:outline-none focus:border-blue-500 transition-colors resize-y"
+                          placeholder={t("settings.ai.enterSystemPrompt")}
+                        />
+                        <div className="flex justify-end gap-2 mt-3">
+                          <button
+                            onClick={handleResetPrompt}
+                            className="px-3 py-1.5 bg-surface-secondary hover:bg-surface-tertiary text-secondary rounded-lg text-sm font-medium transition-colors border border-strong"
+                          >
+                            {t("settings.ai.resetDefault")}
+                          </button>
+                          <button
+                            onClick={handleSavePrompt}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
+                          >
+                            {t("settings.ai.savePrompt")}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Explain Prompt Configuration */}
-                  <div className="border-t border-default pt-6 mt-6">
-                     <h4 className="text-md font-medium text-primary mb-4 flex items-center gap-2">
-                        <Code2 size={16} /> {t("settings.ai.explainPrompt")}
-                     </h4>
-                     <p className="text-xs text-secondary mb-4">
-                        {t("settings.ai.explainPromptDesc")}
-                     </p>
-                     
-                     <div className="space-y-4">
-                        <textarea 
-                           value={explainPrompt}
-                           onChange={(e) => setExplainPrompt(e.target.value)}
-                           className="w-full h-40 bg-base border border-strong rounded-lg p-3 text-primary text-sm font-mono focus:outline-none focus:border-blue-500 transition-colors resize-y"
-                           placeholder={t("settings.ai.enterExplainPrompt")}
-                        />
-                        <div className="flex justify-end gap-2">
-                            <button
-                                onClick={handleResetExplainPrompt}
-                                className="px-3 py-2 bg-surface-secondary hover:bg-surface-tertiary text-secondary rounded text-sm font-medium transition-colors border border-strong"
-                            >
-                                {t("settings.ai.resetDefault")}
-                            </button>
-                            <button
-                                onClick={handleSaveExplainPrompt}
-                                className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium transition-colors"
-                            >
-                                {t("settings.ai.savePrompt")}
-                            </button>
+                  {/* Explain Prompt */}
+                  <div className="bg-elevated border border-default rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setPromptSectionOpen(promptSectionOpen === "explain" ? null : "explain")}
+                      className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-base/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-1.5 rounded-lg bg-surface-secondary text-muted">
+                          <Code2 size={14} />
                         </div>
-                     </div>
+                        <div>
+                          <span className="text-sm font-medium text-primary">{t("settings.ai.explainPrompt")}</span>
+                          <p className="text-xs text-muted mt-0.5">{t("settings.ai.explainPromptDesc")}</p>
+                        </div>
+                      </div>
+                      <ChevronDown size={16} className={clsx("text-muted transition-transform shrink-0 ml-4", promptSectionOpen === "explain" && "rotate-180")} />
+                    </button>
+                    {promptSectionOpen === "explain" && (
+                      <div className="px-5 pb-5 pt-1 border-t border-default">
+                        <textarea
+                          value={explainPrompt}
+                          onChange={(e) => setExplainPrompt(e.target.value)}
+                          className="w-full h-36 bg-base border border-strong rounded-lg p-3 text-primary text-sm font-mono focus:outline-none focus:border-blue-500 transition-colors resize-y"
+                          placeholder={t("settings.ai.enterExplainPrompt")}
+                        />
+                        <div className="flex justify-end gap-2 mt-3">
+                          <button
+                            onClick={handleResetExplainPrompt}
+                            className="px-3 py-1.5 bg-surface-secondary hover:bg-surface-tertiary text-secondary rounded-lg text-sm font-medium transition-colors border border-strong"
+                          >
+                            {t("settings.ai.resetDefault")}
+                          </button>
+                          <button
+                            onClick={handleSaveExplainPrompt}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
+                          >
+                            {t("settings.ai.savePrompt")}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
