@@ -16,10 +16,9 @@ pub fn extract_or_null(ty: &Type, buf: &mut &[u8]) -> JsonValue {
 
     let dimensions = i32::from_be_bytes(buf[..4].try_into().unwrap());
 
-    // i don't think this is possible but just in case
+    // this means empty array
     if dimensions < 1 {
-        log::error!("invalid number of dimensions: {}", dimensions);
-        return JsonValue::Null;
+        return JsonValue::Array(vec![]);
     };
 
     // max dimensions is 64 and just for safety
