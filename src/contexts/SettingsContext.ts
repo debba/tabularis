@@ -8,7 +8,8 @@ export type AiProvider =
   | "anthropic"
   | "openrouter"
   | "ollama"
-  | "custom-openai";
+  | "custom-openai"
+  | "minimax";
 export type ERDiagramLayout = "LR" | "TB";
 
 export interface PluginConfig {

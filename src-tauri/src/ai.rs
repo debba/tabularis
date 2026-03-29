@@ -410,6 +410,7 @@ pub async fn generate_query(app: AppHandle, mut req: AiGenerateRequest) -> Resul
             }
             generate_custom_openai(&client, &api_key, &req, &system_prompt, &base_url).await
         }
+        "minimax" => generate_minimax(&client, &api_key, &req, &system_prompt).await,
         _ => Err(format!("Unsupported provider: {}", req.provider)),
     };
 
@@ -496,6 +497,7 @@ pub async fn explain_query(app: AppHandle, mut req: AiExplainRequest) -> Result<
             }
             generate_custom_openai(&client, &api_key, &gen_req, &system_prompt, &base_url).await
         }
+        "minimax" => generate_minimax(&client, &api_key, &gen_req, &system_prompt).await,
         _ => Err(format!("Unsupported provider: {}", req.provider)),
     };
 
@@ -713,6 +715,43 @@ async fn generate_ollama(
     Ok(clean_response(content))
 }
 
+async fn generate_minimax(
+    client: &Client,
+    api_key: &str,
+    req: &AiGenerateRequest,
+    system_prompt: &str,
+) -> Result<String, String> {
+    let body = json!({
+        "model": req.model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": req.prompt}
+        ],
+        "temperature": 0.1
+    });
+
+    let res = client
+        .post("https://api.minimax.io/v1/chat/completions")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !res.status().is_success() {
+        let error_text = res.text().await.unwrap_or_default();
+        return Err(format!("MiniMax Error: {}", error_text));
+    }
+
+    let json: serde_json::Value = res.json().await.map_err(|e| e.to_string())?;
+    let content = json["choices"][0]["message"]["content"]
+        .as_str()
+        .ok_or("Invalid response format from MiniMax")?;
+
+    Ok(clean_response(content))
+}
+
 fn clean_response(text: &str) -> String {
     let text = text.trim();
     if text.starts_with("```") {
@@ -740,10 +779,16 @@ mod tests {
         assert!(models.contains_key("openai"));
         assert!(models.contains_key("anthropic"));
         assert!(models.contains_key("openrouter"));
+        assert!(models.contains_key("minimax"));
 
         // Check for new futuristic models from yaml
         let openai = models.get("openai").unwrap();
         assert!(openai.contains(&"gpt-5.2".to_string()));
+
+        // Check MiniMax models
+        let minimax = models.get("minimax").unwrap();
+        assert!(minimax.contains(&"MiniMax-M2.7".to_string()));
+        assert!(minimax.contains(&"MiniMax-M2.7-highspeed".to_string()));
 
         // Ollama is not in yaml, so it shouldn't be here yet
         assert!(!models.contains_key("ollama"));

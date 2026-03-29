@@ -282,6 +282,7 @@ describe('settings', () => {
         openai: true,
         anthropic: false,
         openrouter: false,
+        minimax: false,
       };
       const models: Record<string, string[]> = {
         openai: ['gpt-4', 'gpt-3.5'],
@@ -298,14 +299,32 @@ describe('settings', () => {
         openai: false,
         anthropic: true,
         openrouter: false,
+        minimax: false,
       };
       const models: Record<string, string[]> = {
         anthropic: ['claude-3'],
       };
-      
+
       const result = detectAIProviderFromKeys(keyStatus, models);
-      
+
       expect(result.provider).toBe('anthropic');
+    });
+
+    it('should detect minimax when openai/anthropic/openrouter not available', () => {
+      const keyStatus: Record<AiProvider, boolean> = {
+        openai: false,
+        anthropic: false,
+        openrouter: false,
+        minimax: true,
+      };
+      const models: Record<string, string[]> = {
+        minimax: ['MiniMax-M2.7', 'MiniMax-M2.7-highspeed'],
+      };
+
+      const result = detectAIProviderFromKeys(keyStatus, models);
+
+      expect(result.provider).toBe('minimax');
+      expect(result.model).toBe('MiniMax-M2.7');
     });
 
     it('should return null when no keys available', () => {
@@ -313,11 +332,12 @@ describe('settings', () => {
         openai: false,
         anthropic: false,
         openrouter: false,
+        minimax: false,
       };
       const models: Record<string, string[]> = {};
-      
+
       const result = detectAIProviderFromKeys(keyStatus, models);
-      
+
       expect(result.provider).toBeNull();
       expect(result.model).toBeNull();
     });
@@ -327,11 +347,12 @@ describe('settings', () => {
         openai: true,
         anthropic: false,
         openrouter: false,
+        minimax: false,
       };
       const models: Record<string, string[]> = {};
-      
+
       const result = detectAIProviderFromKeys(keyStatus, models);
-      
+
       expect(result.provider).toBe('openai');
       expect(result.model).toBeNull();
     });
