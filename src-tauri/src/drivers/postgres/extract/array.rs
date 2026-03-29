@@ -358,14 +358,14 @@ mod tests {
     }
 
     #[test]
-    fn test_zero_dimensions_returns_null() {
+    fn test_zero_dimensions_returns_empty_array() {
         let arr = [
             0, 0, 0, 0, // dimensions 0 — invalid
             0, 0, 0, 0, 0, 0, 0, 17,
         ];
         let mut buf = &arr[..];
         let json = extract_or_null(&Type::INT4, &mut buf);
-        assert_eq!(json, JsonValue::Null);
+        assert_eq!(json, JsonValue::Array(vec![]));
     }
 
     #[test]
