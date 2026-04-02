@@ -1372,3 +1372,178 @@ fn try_extract_lexeme_text(buf: &mut &[u8]) -> Result<String, String> {
 
     Ok(text)
 }
+
+// Internal System, Snapshots & Statistics postgres types
+
+pub struct PgLsn {
+    pub upper: u32,
+    pub lower: u32,
+}
+
+impl<'a> FromSql<'a> for PgLsn {
+    fn from_sql(
+        _ty: &Type,
+        raw: &'a [u8],
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        if raw.len() != 8 {
+            return Err(
+                format!("fail to extract PgLsn: expected 8 bytes, got {}", raw.len()).into(),
+            );
+        };
+
+        Ok(Self {
+            upper: u32::from_be_bytes([raw[0], raw[1], raw[2], raw[3]]),
+            lower: u32::from_be_bytes([raw[4], raw[5], raw[6], raw[7]]),
+        })
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        match *ty {
+            Type::PG_LSN => true,
+            _ => false,
+        }
+    }
+}
+
+impl From<PgLsn> for JsonValue {
+    #[inline(always)]
+    fn from(value: PgLsn) -> Self {
+        JsonValue::String(format!("{:X}/{:X}", value.upper, value.lower))
+    }
+}
+
+pub struct TxidSnapshotOrPgSnapshot {
+    xmin: i64,
+    xmax: i64,
+    active_xids: Vec<i64>,
+}
+
+impl<'a> FromSql<'a> for TxidSnapshotOrPgSnapshot {
+    fn from_sql(
+        _ty: &Type,
+        raw: &'a [u8],
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        if raw.len() != 20 {
+            return Err(format!(
+                "fail to extract TxidSnapshotOrPgSnapshot: expected 20 bytes, got {}",
+                raw.len()
+            )
+            .into());
+        };
+
+        let count = i32::from_be_bytes([raw[0], raw[1], raw[2], raw[3]]);
+
+        if count < 0 {
+            return Err(format!(
+                "fail to extract TxidSnapshot/PgSnapshot: count is negative: {}",
+                count
+            )
+            .into());
+        };
+
+        let xmin = i64::from_be_bytes(raw[4..12].try_into().unwrap());
+        let xmax = i64::from_be_bytes(raw[12..20].try_into().unwrap());
+
+        if count == 0 {
+            return Ok(Self {
+                xmin,
+                xmax,
+                active_xids: Vec::new(),
+            });
+        };
+
+        let count = count as usize;
+
+        let mut chunks = (&raw[20..]).chunks_exact(8);
+
+        if chunks.len() < count {
+            return Err(format!(
+                "fail to extract TxidSnapshot/PgSnapshot: expected {} 8-byte chunks, got {}",
+                count,
+                chunks.len()
+            )
+            .into());
+        };
+
+        let mut active_xids = Vec::with_capacity(count as usize);
+
+        while let Some(chunk) = chunks.next() {
+            let xid = i64::from_be_bytes(chunk.try_into().unwrap());
+            active_xids.push(xid);
+        }
+
+        Ok(Self {
+            xmin,
+            xmax,
+            active_xids,
+        })
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        match *ty {
+            Type::TXID_SNAPSHOT | Type::PG_SNAPSHOT => true,
+            _ => false,
+        }
+    }
+}
+
+impl From<TxidSnapshotOrPgSnapshot> for JsonValue {
+    fn from(value: TxidSnapshotOrPgSnapshot) -> Self {
+        JsonValue::String(format!(
+            "{}:{}:{}",
+            value.xmin,
+            value.xmax,
+            value
+                .active_xids
+                .into_iter()
+                .map(|xid| xid.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        ))
+    }
+}
+
+// FIXME: Postgres Wire Protocol has two formats for sending data - text and binary.
+// The current format is binary (it is either set by `tokio-postgres` or by postgres
+// because it is the default). anyway binary format doesn't support sending `AclItem`
+utf8_wrapper!(AclItem, ACLITEM);
+utf8_wrapper!(PgNodeTree, PG_NODE_TREE);
+
+macro_rules! binray_wrapper {
+    ($name: ident, $pg_type: ident) => {
+        pub struct $name(pub Vec<u8>);
+
+        impl<'a> FromSql<'a> for $name {
+            fn from_sql(
+                _ty: &Type,
+                raw: &[u8],
+            ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+                Ok(Self(raw.to_vec()))
+            }
+
+            fn accepts(ty: &Type) -> bool {
+                match *ty {
+                    Type::$pg_type => true,
+                    _ => false,
+                }
+            }
+        }
+
+        impl From<$name> for JsonValue {
+            #[inline(always)]
+            fn from(value: $name) -> Self {
+                JsonValue::String(encode_blob(&value.0))
+            }
+        }
+    };
+}
+
+// Some of the following types have a complex binary structure but since
+// they are very rarly used, we send them as blobs. anyway if someone requests,
+// we should implement a proper text representation
+
+binray_wrapper!(PgMcvList, PG_MCV_LIST);
+binray_wrapper!(PgDependencies, PG_DEPENDENCIES);
+binray_wrapper!(PgNdistinct, PG_NDISTINCT);
+binray_wrapper!(PgBrinBloomSummary, PG_BRIN_BLOOM_SUMMARY);
+binray_wrapper!(PgBrinMinmaxMultiSummary, PG_BRIN_MINMAX_MULTI_SUMMARY);
