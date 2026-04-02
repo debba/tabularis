@@ -17,6 +17,7 @@ export function serializeNotebook(
     cells: cells.map((c) => ({
       type: c.type,
       content: c.content,
+      ...(c.name ? { name: c.name } : {}),
       ...(c.schema ? { schema: c.schema } : {}),
       ...(c.chartConfig ? { chartConfig: c.chartConfig } : {}),
       ...(c.isParallel ? { isParallel: c.isParallel } : {}),
@@ -67,6 +68,7 @@ export function deserializeNotebook(json: string): {
         id: generateCellId(),
         type: c.type,
         content: c.content,
+        name: cellRaw.name as string | undefined,
         schema: c.schema,
         chartConfig: cellRaw.chartConfig as NotebookCell['chartConfig'] ?? null,
         isParallel: cellRaw.isParallel as boolean | undefined,

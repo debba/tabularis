@@ -16,44 +16,74 @@ describe("notebookOutline", () => {
     it("extracts headings from markdown cells", () => {
       const cells = [
         makeCell({ id: "c1", content: "# Introduction\nSome text\n## Setup" }),
-        makeCell({ id: "c2", type: "sql", content: "SELECT 1" }),
-        makeCell({ id: "c3", content: "## Analysis\n### Details" }),
+        makeCell({ id: "c2", content: "## Analysis\n### Details" }),
       ];
 
       const entries = extractOutline(cells);
       expect(entries).toEqual([
-        { level: 1, text: "Introduction", cellId: "c1", cellIndex: 0 },
-        { level: 2, text: "Setup", cellId: "c1", cellIndex: 0 },
-        { level: 2, text: "Analysis", cellId: "c3", cellIndex: 2 },
-        { level: 3, text: "Details", cellId: "c3", cellIndex: 2 },
+        { level: 1, text: "Introduction", cellId: "c1", cellIndex: 0, cellType: "markdown" },
+        { level: 2, text: "Setup", cellId: "c1", cellIndex: 0, cellType: "markdown" },
+        { level: 2, text: "Analysis", cellId: "c2", cellIndex: 1, cellType: "markdown" },
+        { level: 3, text: "Details", cellId: "c2", cellIndex: 1, cellType: "markdown" },
       ]);
     });
 
-    it("returns empty array when no markdown cells", () => {
+    it("includes SQL cells in outline", () => {
       const cells = [
         makeCell({ id: "c1", type: "sql", content: "SELECT 1" }),
+        makeCell({ id: "c2", type: "sql", content: "SELECT 2", name: "User Query" }),
       ];
-      expect(extractOutline(cells)).toEqual([]);
+
+      const entries = extractOutline(cells);
+      expect(entries).toEqual([
+        { level: 1, text: "SQL #1", cellId: "c1", cellIndex: 0, cellType: "sql" },
+        { level: 1, text: "User Query", cellId: "c2", cellIndex: 1, cellType: "sql" },
+      ]);
     });
 
-    it("returns empty array when no headings", () => {
+    it("uses cell name for markdown cells when set", () => {
       const cells = [
-        makeCell({ id: "c1", content: "Just some text\nNo headings here" }),
+        makeCell({ id: "c1", content: "# Heading", name: "My Section" }),
       ];
-      expect(extractOutline(cells)).toEqual([]);
+
+      const entries = extractOutline(cells);
+      expect(entries).toEqual([
+        { level: 1, text: "My Section", cellId: "c1", cellIndex: 0, cellType: "markdown" },
+      ]);
     });
 
-    it("skips empty markdown cells", () => {
+    it("mixes SQL and markdown cells", () => {
+      const cells = [
+        makeCell({ id: "c1", content: "# Introduction" }),
+        makeCell({ id: "c2", type: "sql", content: "SELECT * FROM users", name: "Fetch Users" }),
+        makeCell({ id: "c3", content: "## Results" }),
+      ];
+
+      const entries = extractOutline(cells);
+      expect(entries).toHaveLength(3);
+      expect(entries[0].text).toBe("Introduction");
+      expect(entries[1].text).toBe("Fetch Users");
+      expect(entries[1].cellType).toBe("sql");
+      expect(entries[2].text).toBe("Results");
+    });
+
+    it("returns empty array for empty cells", () => {
+      expect(extractOutline([])).toEqual([]);
+    });
+
+    it("skips empty markdown cells without name", () => {
       const cells = [
         makeCell({ id: "c1", content: "" }),
         makeCell({ id: "c2", content: "   " }),
-        makeCell({ id: "c3", content: "# Title" }),
       ];
+      expect(extractOutline(cells)).toEqual([]);
+    });
 
-      const entries = extractOutline(cells);
-      expect(entries).toEqual([
-        { level: 1, text: "Title", cellId: "c3", cellIndex: 2 },
-      ]);
+    it("skips markdown cells with content but no headings and no name", () => {
+      const cells = [
+        makeCell({ id: "c1", content: "Just plain text without headings" }),
+      ];
+      expect(extractOutline(cells)).toEqual([]);
     });
 
     it("only extracts h1-h3 headings", () => {
@@ -76,10 +106,6 @@ describe("notebookOutline", () => {
 
       const entries = extractOutline(cells);
       expect(entries[0].text).toBe("Spaced Title");
-    });
-
-    it("handles empty cells array", () => {
-      expect(extractOutline([])).toEqual([]);
     });
   });
 });

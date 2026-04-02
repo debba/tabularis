@@ -83,8 +83,9 @@ export function AiTab() {
   const [editingKey, setEditingKey] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [explainPrompt, setExplainPrompt] = useState("");
+  const [cellnamePrompt, setCellnamePrompt] = useState("");
   const [promptSectionOpen, setPromptSectionOpen] = useState<
-    "system" | "explain" | null
+    "system" | "explain" | "cellname" | null
   >(null);
 
   const loadModels = useCallback(
@@ -149,6 +150,9 @@ export function AiTab() {
     invoke<string>("get_explain_prompt")
       .then(setExplainPrompt)
       .catch(console.error);
+    invoke<string>("get_cellname_prompt")
+      .then(setCellnamePrompt)
+      .catch(console.error);
   }, [checkKeys, loadModels]);
 
   const handleSaveKey = async (provider: string) => {
@@ -167,10 +171,11 @@ export function AiTab() {
     }
   };
 
-  const handleSavePrompt = async (type: "system" | "explain") => {
-    const cmd =
-      type === "system" ? "save_system_prompt" : "save_explain_prompt";
-    const prompt = type === "system" ? systemPrompt : explainPrompt;
+  const handleSavePrompt = async (type: "system" | "explain" | "cellname") => {
+    const cmdMap = { system: "save_system_prompt", explain: "save_explain_prompt", cellname: "save_cellname_prompt" } as const;
+    const cmd = cmdMap[type];
+    const promptMap = { system: systemPrompt, explain: explainPrompt, cellname: cellnamePrompt };
+    const prompt = promptMap[type];
     try {
       await invoke(cmd, { prompt });
       showAlert(
@@ -182,10 +187,11 @@ export function AiTab() {
     }
   };
 
-  const handleResetPrompt = async (type: "system" | "explain") => {
-    const cmd =
-      type === "system" ? "reset_system_prompt" : "reset_explain_prompt";
-    const setter = type === "system" ? setSystemPrompt : setExplainPrompt;
+  const handleResetPrompt = async (type: "system" | "explain" | "cellname") => {
+    const cmdMap = { system: "reset_system_prompt", explain: "reset_explain_prompt", cellname: "reset_cellname_prompt" } as const;
+    const cmd = cmdMap[type];
+    const setterMap = { system: setSystemPrompt, explain: setExplainPrompt, cellname: setCellnamePrompt };
+    const setter = setterMap[type];
     try {
       const defaultPrompt = await invoke<string>(cmd);
       setter(defaultPrompt);
@@ -564,12 +570,12 @@ export function AiTab() {
 
         {/* Prompt customization */}
         <SettingSection title={t("settings.ai.systemPrompt")}>
-          {(["system", "explain"] as const).map((type) => {
+          {(["system", "explain", "cellname"] as const).map((type) => {
             const isOpen = promptSectionOpen === type;
-            const prompt =
-              type === "system" ? systemPrompt : explainPrompt;
-            const setPrompt =
-              type === "system" ? setSystemPrompt : setExplainPrompt;
+            const promptMap = { system: systemPrompt, explain: explainPrompt, cellname: cellnamePrompt };
+            const setPromptMap = { system: setSystemPrompt, explain: setExplainPrompt, cellname: setCellnamePrompt };
+            const prompt = promptMap[type];
+            const setPrompt = setPromptMap[type];
             return (
               <div
                 key={type}
@@ -610,7 +616,7 @@ export function AiTab() {
                       onChange={(e) => setPrompt(e.target.value)}
                       className="w-full h-36 bg-base border border-strong rounded-lg p-3 text-primary text-sm font-mono focus:outline-none focus:border-blue-500 transition-colors resize-y"
                       placeholder={t(
-                        `settings.ai.enter${type === "system" ? "System" : "Explain"}Prompt`,
+                        `settings.ai.enter${type === "system" ? "System" : type === "explain" ? "Explain" : "Cellname"}Prompt`,
                       )}
                     />
                     <div className="flex justify-end gap-2 mt-3">

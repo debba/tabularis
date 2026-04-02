@@ -25,6 +25,13 @@ pub struct AiExplainRequest {
     pub language: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AiCellNameRequest {
+    pub provider: String,
+    pub model: String,
+    pub query: String,
+}
+
 #[derive(Deserialize, Debug)]
 struct OllamaTagsResponse {
     models: Vec<OllamaModel>,
@@ -340,6 +347,11 @@ pub async fn explain_ai_query(app: AppHandle, req: AiExplainRequest) -> Result<S
     explain_query(app, req).await
 }
 
+#[tauri::command]
+pub async fn generate_cell_name(app: AppHandle, req: AiCellNameRequest) -> Result<String, String> {
+    generate_cellname(app, req).await
+}
+
 // --- Logic Implementation ---
 
 pub async fn generate_query(app: AppHandle, mut req: AiGenerateRequest) -> Result<String, String> {
@@ -507,6 +519,81 @@ pub async fn explain_query(app: AppHandle, mut req: AiExplainRequest) -> Result<
             req.model
         ),
         Err(e) => log::error!("Query explanation generation failed: {}", e),
+    }
+
+    result
+}
+
+pub async fn generate_cellname(app: AppHandle, mut req: AiCellNameRequest) -> Result<String, String> {
+    log::info!("Generating cell name using AI provider: {}", req.provider);
+
+    let app_config = config::load_config_internal(&app);
+    let ollama_port = app_config.ai_ollama_port.unwrap_or(11434);
+
+    if req.model.is_empty() {
+        if req.provider == "ollama" {
+            let ollama_models = fetch_ollama_models(ollama_port).await;
+            let default = ollama_models
+                .first()
+                .ok_or("No Ollama models found. Is Ollama running?")?;
+            req.model = default.clone();
+        } else if req.provider == "custom-openai" {
+            if let Some(ref custom_model) = app_config.ai_custom_openai_model {
+                if !custom_model.is_empty() {
+                    req.model = custom_model.clone();
+                } else {
+                    return Err("No model specified for custom OpenAI provider.".to_string());
+                }
+            } else {
+                return Err("No model specified for custom OpenAI provider.".to_string());
+            }
+        } else {
+            let models = load_default_models();
+            let default_model = models
+                .get(&req.provider)
+                .and_then(|m| m.first())
+                .ok_or_else(|| format!("No models found for provider {}", req.provider))?;
+            req.model = default_model.clone();
+        }
+    }
+
+    let api_key = if req.provider != "ollama" {
+        config::get_ai_api_key(&req.provider)?
+    } else {
+        String::new()
+    };
+
+    let client = Client::new();
+    let system_prompt = config::get_cellname_prompt(app);
+
+    let gen_req = AiGenerateRequest {
+        provider: req.provider.clone(),
+        model: req.model.clone(),
+        prompt: req.query,
+        schema: String::new(),
+    };
+
+    let result = match req.provider.as_str() {
+        "openai" => generate_openai(&client, &api_key, &gen_req, &system_prompt).await,
+        "anthropic" => generate_anthropic(&client, &api_key, &gen_req, &system_prompt).await,
+        "openrouter" => generate_openrouter(&client, &api_key, &gen_req, &system_prompt).await,
+        "ollama" => generate_ollama(&client, &gen_req, &system_prompt, ollama_port).await,
+        "custom-openai" => {
+            let base_url = app_config
+                .ai_custom_openai_url
+                .ok_or("Custom OpenAI URL not configured.")?;
+            if base_url.is_empty() {
+                return Err("Custom OpenAI URL not configured.".to_string());
+            }
+            generate_custom_openai(&client, &api_key, &gen_req, &system_prompt, &base_url).await
+        }
+        "minimax" => generate_minimax(&client, &api_key, &gen_req, &system_prompt).await,
+        _ => Err(format!("Unsupported provider: {}", req.provider)),
+    };
+
+    match &result {
+        Ok(name) => log::info!("Cell name generated: {}", name),
+        Err(e) => log::error!("Cell name generation failed: {}", e),
     }
 
     result

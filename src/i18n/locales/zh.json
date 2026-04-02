@@ -252,6 +252,9 @@
       "explainPrompt": "解释提示词",
       "explainPromptDesc": "自定义\"解释查询\"的指令。使用 {{LANGUAGE}} 作为输出语言的占位符（English/Italian）。",
       "enterExplainPrompt": "输入解释提示词...",
+      "cellnamePrompt": "单元格名称提示词",
+      "cellnamePromptDesc": "自定义 AI 单元格名称生成的指令。SQL 查询作为用户消息发送。",
+      "enterCellnamePrompt": "输入单元格名称提示词...",
       "keySaved": "API 密钥已安全保存",
       "promptSaved": "系统提示词保存成功",
       "explainPromptSaved": "解释提示词保存成功",
@@ -652,7 +655,11 @@
       "expandCell": "展开单元格",
       "outline": "大纲",
       "aiGenerate": "使用 AI 生成 SQL",
-      "aiExplain": "使用 AI 解释此查询"
+      "aiExplain": "使用 AI 解释此查询",
+      "cellNamePlaceholder": "未命名",
+      "editCellName": "编辑单元格名称",
+      "aiGenerateName": "使用 AI 生成名称",
+      "generatingName": "正在生成名称..."
     }
   },
   "createTable": {

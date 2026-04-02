@@ -35,6 +35,9 @@ export function NotebookOutline({
             className="block w-full text-left text-xs text-secondary hover:text-primary transition-colors truncate"
             style={{ paddingLeft: `${(entry.level - 1) * 12}px` }}
           >
+            {entry.cellType === "sql" && (
+              <span className="text-green-400 mr-1">SQL</span>
+            )}
             {entry.text}
           </button>
         ))}

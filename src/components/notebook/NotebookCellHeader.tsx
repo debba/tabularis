@@ -15,6 +15,7 @@ import {
   History,
 } from "lucide-react";
 import type { NotebookCellType } from "../../types/notebook";
+import { CellNameAiButton } from "./CellNameAiButton";
 
 interface NotebookCellHeaderProps {
   cellType: NotebookCellType;
@@ -41,6 +42,9 @@ interface NotebookCellHeaderProps {
   onToggleHistory?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse: () => void;
+  cellName?: string;
+  onNameChange: (name: string) => void;
+  cellContent?: string;
 }
 
 function CellTypeBadge({ cellType }: { cellType: NotebookCellType }) {
@@ -106,9 +110,14 @@ export function NotebookCellHeader({
   onToggleHistory,
   isCollapsed,
   onToggleCollapse,
+  cellName,
+  onNameChange,
+  cellContent,
 }: NotebookCellHeaderProps) {
   const { t } = useTranslation();
   const [isDbOpen, setIsDbOpen] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(cellName ?? "");
   const showDbSelector = cellType === "sql" && selectedDatabases && selectedDatabases.length > 1 && activeSchema && onSchemaChange;
 
   return (
@@ -137,6 +146,45 @@ export function NotebookCellHeader({
         </button>
         <CellTypeBadge cellType={cellType} />
         <span className="text-[10px] text-muted">#{index + 1}</span>
+        {isEditingName ? (
+          <input
+            type="text"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            onBlur={() => {
+              onNameChange(nameInput.trim());
+              setIsEditingName(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                onNameChange(nameInput.trim());
+                setIsEditingName(false);
+              }
+              if (e.key === "Escape") {
+                setNameInput(cellName ?? "");
+                setIsEditingName(false);
+              }
+            }}
+            className="text-[10px] text-secondary bg-base border border-strong rounded px-1 py-0.5 outline-none focus:border-blue-500 w-32"
+            placeholder={t("editor.notebook.cellNamePlaceholder")}
+            autoFocus
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setNameInput(cellName ?? "");
+              setIsEditingName(true);
+            }}
+            className="text-[10px] text-muted hover:text-secondary transition-colors truncate max-w-[200px]"
+            title={t("editor.notebook.editCellName")}
+          >
+            {cellName || t("editor.notebook.cellNamePlaceholder")}
+          </button>
+        )}
+        {cellContent && (
+          <CellNameAiButton content={cellContent} onNameGenerated={onNameChange} />
+        )}
         {showDbSelector && (
           <div className="relative">
             <button

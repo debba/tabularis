@@ -254,9 +254,13 @@ pub fn run() {
             config::get_explain_prompt,
             config::save_explain_prompt,
             config::reset_explain_prompt,
+            config::get_cellname_prompt,
+            config::save_cellname_prompt,
+            config::reset_cellname_prompt,
             // AI
             ai::generate_ai_query,
             ai::explain_ai_query,
+            ai::generate_cell_name,
             ai::get_ai_models,
             commands::get_schema_snapshot,
             // DDL generation

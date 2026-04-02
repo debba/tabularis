@@ -276,6 +276,9 @@
       "explainPrompt": "Prompt de Explicación",
       "explainPromptDesc": "Personaliza las instrucciones para \"Explicar Consulta\". Usa {{LANGUAGE}} como marcador para el idioma de salida (Inglés/Español).",
       "enterExplainPrompt": "Ingresa el prompt de explicación...",
+      "cellnamePrompt": "Prompt Nombre de Celda",
+      "cellnamePromptDesc": "Personaliza las instrucciones para la generación de nombres de celda con IA. La consulta SQL se envía como mensaje del usuario.",
+      "enterCellnamePrompt": "Ingresa el prompt de nombre de celda...",
       "keySaved": "Clave API guardada de forma segura",
       "promptSaved": "Prompt del sistema guardado correctamente",
       "explainPromptSaved": "Prompt de explicación guardado correctamente",
@@ -666,7 +669,11 @@
       "expandCell": "Expandir Celda",
       "outline": "Esquema",
       "aiGenerate": "Generar SQL con IA",
-      "aiExplain": "Explicar esta Consulta con IA"
+      "aiExplain": "Explicar esta Consulta con IA",
+      "cellNamePlaceholder": "Sin nombre",
+      "editCellName": "Editar nombre de celda",
+      "aiGenerateName": "Generar nombre con IA",
+      "generatingName": "Generando nombre..."
     }
   },
   "createTable": {

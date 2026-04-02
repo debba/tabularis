@@ -276,6 +276,9 @@
       "explainPrompt": "Prompt di Spiegazione",
       "explainPromptDesc": "Personalizza le istruzioni per \"Spiega Query\". Usa {{LANGUAGE}} come segnaposto per la lingua di output (Inglese/Italiano).",
       "enterExplainPrompt": "Inserisci prompt di spiegazione...",
+      "cellnamePrompt": "Prompt Nome Cella",
+      "cellnamePromptDesc": "Personalizza le istruzioni per la generazione AI del nome cella. La query SQL viene inviata come messaggio utente.",
+      "enterCellnamePrompt": "Inserisci prompt nome cella...",
       "keySaved": "Chiave API salvata in modo sicuro",
       "promptSaved": "Prompt di sistema salvato con successo",
       "explainPromptSaved": "Prompt di spiegazione salvato con successo",
@@ -676,7 +679,11 @@
       "expandCell": "Espandi Cella",
       "outline": "Sommario",
       "aiGenerate": "Genera SQL con AI",
-      "aiExplain": "Spiega questa Query con AI"
+      "aiExplain": "Spiega questa Query con AI",
+      "cellNamePlaceholder": "Senza nome",
+      "editCellName": "Modifica nome cella",
+      "aiGenerateName": "Genera nome con AI",
+      "generatingName": "Generazione nome..."
     }
   },
   "createTable": {

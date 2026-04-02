@@ -36,6 +36,7 @@ export interface NotebookCell {
   id: string;
   type: NotebookCellType;
   content: string;
+  name?: string; // Optional display name shown in header and outline
   schema?: string; // SQL only: per-cell database override
   result?: QueryResult | null;
   error?: string;
@@ -63,6 +64,7 @@ export interface NotebookFile {
   cells: Array<{
     type: NotebookCellType;
     content: string;
+    name?: string;
     schema?: string;
     chartConfig?: CellChartConfig | null;
     isParallel?: boolean;
