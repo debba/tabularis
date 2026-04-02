@@ -7,6 +7,8 @@ import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import { useSettings } from "../../hooks/useSettings";
 import { getFontCSS } from "../../utils/settings";
 
+let pasteActionRegistered = false;
+
 interface SqlEditorWrapperProps {
   initialValue: string;
   onChange: (value: string) => void;
@@ -69,29 +71,32 @@ const SqlEditorInternal = ({
       // Load Monaco theme before editor is created
       loadMonacoTheme(editorTheme, monaco);
 
-      // Override Monaco's default paste action to use Tauri clipboard API
-      monaco.editor.addEditorAction({
-        id: 'editor.action.clipboardPasteAction',
-        label: 'Paste',
-        contextMenuGroupId: '9_cutcopypaste',
-        contextMenuOrder: 2,
-        run: async (editor: Monaco.editor.IStandaloneCodeEditor) => {
-          try {
-            const text = await readText();
-            const selection = editor.getSelection();
-            if (selection && text) {
-              editor.executeEdits('paste', [{
-                range: selection,
-                text: text,
-                forceMoveMarkers: true
-              }]);
-              editor.pushUndoStop();
+      // Override Monaco's default paste action to use Tauri clipboard API (once globally)
+      if (!pasteActionRegistered) {
+        monaco.editor.addEditorAction({
+          id: 'editor.action.clipboardPasteAction',
+          label: 'Paste',
+          contextMenuGroupId: '9_cutcopypaste',
+          contextMenuOrder: 2,
+          run: async (editor: Monaco.editor.IStandaloneCodeEditor) => {
+            try {
+              const text = await readText();
+              const selection = editor.getSelection();
+              if (selection && text) {
+                editor.executeEdits('paste', [{
+                  range: selection,
+                  text: text,
+                  forceMoveMarkers: true
+                }]);
+                editor.pushUndoStop();
+              }
+            } catch (err) {
+              console.error('Failed to read clipboard:', err);
             }
-          } catch (err) {
-            console.error('Failed to read clipboard:', err);
           }
-        }
-      });
+        });
+        pasteActionRegistered = true;
+      }
     };
 
     const handleEditorMount: OnMount = (editor, monaco) => {

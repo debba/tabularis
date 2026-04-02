@@ -234,8 +234,10 @@ export const Editor = () => {
   const [showNewRowModal, setShowNewRowModal] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [editorHeight, setEditorHeight] = useState(300);
+  const editorHeightRef = useRef(300);
   const [isResultsCollapsed, setIsResultsCollapsed] = useState(false);
   const isDragging = useRef(false);
+  const rafRef = useRef<number | null>(null);
   const editorsRef = useRef<Record<string, Parameters<OnMount>[0]>>({});
   const [monacoInstance, setMonacoInstance] = useState<Monaco | null>(null);
 
@@ -265,6 +267,14 @@ export const Editor = () => {
     isMultiDatabaseCapable(activeCapabilities) && selectedDatabases.length > 1;
   const isEditorOpen =
     !isTableTab && (activeTab?.isEditorOpen ?? activeTab?.type !== "table");
+
+  const handleCloseTab = useCallback(
+    (tabId: string) => {
+      delete editorsRef.current[tabId];
+      closeTab(tabId);
+    },
+    [closeTab],
+  );
 
   // Update window title when the active tab changes
   useEffect(() => {
@@ -775,7 +785,7 @@ export const Editor = () => {
       if (matchesShortcut(e, "close_tab")) {
         e.preventDefault();
         const currentTabId = activeTabIdRef.current;
-        if (currentTabId) closeTab(currentTabId);
+        if (currentTabId) handleCloseTab(currentTabId);
         return;
       }
 
@@ -814,7 +824,7 @@ export const Editor = () => {
     activeConnectionId,
     matchesShortcut,
     addTab,
-    closeTab,
+    handleCloseTab,
     runQuery,
   ]);
 
@@ -1667,14 +1677,30 @@ export const Editor = () => {
 
   const startResize = () => {
     isDragging.current = true;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "row-resize";
+
+    const panels = document.querySelectorAll<HTMLElement>("[data-editor-panel]");
+
     const handleResize = (e: MouseEvent) => {
       if (!isDragging.current) return;
       const newHeight = e.clientY - 50;
-      if (newHeight > 100 && newHeight < window.innerHeight - 150)
-        setEditorHeight(newHeight);
+      if (newHeight > 100 && newHeight < window.innerHeight - 150) {
+        editorHeightRef.current = newHeight;
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(() => {
+          panels.forEach((el) => {
+            el.style.height = `${newHeight}px`;
+          });
+        });
+      }
     };
     const stopResize = () => {
       isDragging.current = false;
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      setEditorHeight(editorHeightRef.current);
       document.removeEventListener("mousemove", handleResize);
       document.removeEventListener("mouseup", stopResize);
     };
@@ -1835,7 +1861,7 @@ export const Editor = () => {
               onAuxClick={(e) => {
                 if (e.button === 1) {
                   e.preventDefault();
-                  closeTab(tab.id);
+                  handleCloseTab(tab.id);
                 }
               }}
               className={clsx(
@@ -1866,7 +1892,7 @@ export const Editor = () => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  closeTab(tab.id);
+                  handleCloseTab(tab.id);
                 }}
                 className={clsx(
                   "p-0.5 rounded-sm hover:bg-surface-secondary transition-opacity shrink-0",
@@ -2095,6 +2121,7 @@ export const Editor = () => {
         return (
           <div
             key={tab.id}
+            data-editor-panel
             style={{
               height: isResultsCollapsed ? "calc(100vh - 109px)" : editorHeight,
               display: isVisible ? "block" : "none",
@@ -2592,7 +2619,7 @@ export const Editor = () => {
           setActiveTabId(tabId);
           setIsTabSwitcherOpen(false);
         }}
-        onClose={(tabId) => closeTab(tabId)}
+        onClose={(tabId) => handleCloseTab(tabId)}
         onDismiss={() => setIsTabSwitcherOpen(false)}
       />
       {saveQueryModal.isOpen && (
@@ -2638,7 +2665,7 @@ export const Editor = () => {
             {
               label: t("editor.closeTab"),
               icon: X,
-              action: () => closeTab(tabContextMenu.tabId),
+              action: () => handleCloseTab(tabContextMenu.tabId),
             },
             {
               label: t("editor.closeOthers"),

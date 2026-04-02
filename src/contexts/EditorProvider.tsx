@@ -100,7 +100,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
 
   // Save tabs to file storage when they change
   useEffect(() => {
-    if (!activeConnectionId || isLoading || tabs.length === 0) return;
+    if (!activeConnectionId || isLoading) return;
 
     const connectionTabs = tabs.filter(
       (t) => t.connectionId === activeConnectionId,
@@ -161,22 +161,14 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
         const {
           newTabs,
           newActiveTabId: nextActiveId,
-          createdNewTab,
         } = closeTabWithState(
           prev,
           activeConnectionId || "",
           activeTabId,
           id,
-          (connId) =>
-            createInitialTab({ id: generateTabId(), connectionId: connId }),
         );
 
-        if (createdNewTab && nextActiveId) {
-          setActiveTabIds((prevIds) => ({
-            ...prevIds,
-            [activeConnectionId || ""]: nextActiveId,
-          }));
-        } else if (nextActiveId !== activeTabId) {
+        if (nextActiveId !== activeTabId) {
           setActiveTabIds((prevIds) => ({
             ...prevIds,
             [activeConnectionId || ""]: nextActiveId || "",
@@ -186,7 +178,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
         return newTabs;
       });
     },
-    [activeConnectionId, activeTabId, createInitialTab],
+    [activeConnectionId, activeTabId],
   );
 
   const closeAllTabs = useCallback(() => {
@@ -195,16 +187,14 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
       const { newTabs, newActiveTabId } = closeAllTabsForConnection(
         prev,
         activeConnectionId,
-        (connId) =>
-          createInitialTab({ id: generateTabId(), connectionId: connId }),
       );
       setActiveTabIds((prevIds) => ({
         ...prevIds,
-        [activeConnectionId]: newActiveTabId,
+        [activeConnectionId]: newActiveTabId || "",
       }));
       return newTabs;
     });
-  }, [activeConnectionId, createInitialTab]);
+  }, [activeConnectionId]);
 
   const closeOtherTabs = useCallback(
     (id: string) => {

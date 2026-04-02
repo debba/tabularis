@@ -161,7 +161,6 @@ export function getActiveTab(
 export interface CloseTabResult {
   newTabs: Tab[];
   newActiveTabId: string | null;
-  createdNewTab: boolean;
 }
 
 export function closeTabWithState(
@@ -169,31 +168,17 @@ export function closeTabWithState(
   connectionId: string,
   activeTabId: string | null,
   tabIdToClose: string,
-  createTabFn: (connectionId: string) => Tab,
 ): CloseTabResult {
-  const tabToClose = tabs.find((t) => t.id === tabIdToClose);
   const newTabs = tabs.filter((t) => t.id !== tabIdToClose);
   const connTabs = newTabs.filter((t) => t.connectionId === connectionId);
-
-  // If no tabs left for this connection, create a new console tab
-  if (connTabs.length === 0 && tabToClose?.connectionId === connectionId) {
-    const newTab = createTabFn(connectionId);
-    return {
-      newTabs: [...newTabs, newTab],
-      newActiveTabId: newTab.id,
-      createdNewTab: true,
-    };
-  }
 
   // If closing the active tab, find next active tab (prefer previous tab)
   let newActiveTabIdResult = activeTabId;
   if (activeTabId === tabIdToClose) {
-    // Find index in the original connection tabs list
     const originalConnTabs = tabs.filter(
       (t) => t.connectionId === connectionId,
     );
     const closedIdx = originalConnTabs.findIndex((t) => t.id === tabIdToClose);
-    // Prefer the previous tab, otherwise the first available
     const nextActiveIdx = Math.max(0, closedIdx - 1);
     const nextActiveTab = connTabs[nextActiveIdx];
     newActiveTabIdResult = nextActiveTab?.id || null;
@@ -202,20 +187,17 @@ export function closeTabWithState(
   return {
     newTabs,
     newActiveTabId: newActiveTabIdResult,
-    createdNewTab: false,
   };
 }
 
 export function closeAllTabsForConnection(
   tabs: Tab[],
   connectionId: string,
-  createTabFn: (connectionId: string) => Tab,
-): { newTabs: Tab[]; newActiveTabId: string } {
+): { newTabs: Tab[]; newActiveTabId: string | null } {
   const otherConnTabs = tabs.filter((t) => t.connectionId !== connectionId);
-  const newTab = createTabFn(connectionId);
   return {
-    newTabs: [...otherConnTabs, newTab],
-    newActiveTabId: newTab.id,
+    newTabs: otherConnTabs,
+    newActiveTabId: null,
   };
 }
 
