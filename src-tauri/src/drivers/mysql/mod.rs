@@ -626,21 +626,37 @@ pub async fn insert_record(
     Ok(result.rows_affected())
 }
 
-/// Extracts ORDER BY clause from a SQL query (case-insensitive)
+/// Extracts ORDER BY clause from a SQL query (case-insensitive),
+/// stopping before any trailing LIMIT/OFFSET so they stay with the subquery.
 fn extract_order_by(query: &str) -> String {
     let query_upper = query.to_uppercase();
     if let Some(pos) = query_upper.rfind("ORDER BY") {
-        query[pos..].trim().to_string()
+        let after_order = &query[pos..];
+        let upper_after = after_order.to_uppercase();
+        if let Some(limit_pos) = upper_after.find("LIMIT") {
+            after_order[..limit_pos].trim().to_string()
+        } else {
+            after_order.trim().to_string()
+        }
     } else {
         String::new()
     }
 }
 
-/// Removes ORDER BY clause from a SQL query
+/// Removes ORDER BY clause from a SQL query, preserving any trailing
+/// LIMIT/OFFSET that the user wrote.
 fn remove_order_by(query: &str) -> String {
     let query_upper = query.to_uppercase();
     if let Some(pos) = query_upper.rfind("ORDER BY") {
-        query[..pos].trim().to_string()
+        let before = query[..pos].trim();
+        let after_order = &query[pos..];
+        let upper_after = after_order.to_uppercase();
+        if let Some(limit_pos) = upper_after.find("LIMIT") {
+            let suffix = after_order[limit_pos..].trim();
+            format!("{} {}", before, suffix)
+        } else {
+            before.to_string()
+        }
     } else {
         query.to_string()
     }
