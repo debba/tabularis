@@ -3,6 +3,7 @@ import {
   extractCellReferences,
   hasCellReferences,
   resolveQueryVariables,
+  findUnresolvedDependencies,
 } from "../../src/utils/notebookVariables";
 import type { NotebookCell } from "../../src/types/notebook";
 
@@ -194,6 +195,92 @@ describe("notebookVariables", () => {
         cells,
       );
       expect(result.sql).toContain("WHERE 1=0");
+    });
+  });
+
+  describe("findUnresolvedDependencies", () => {
+    it("returns empty array when no references", () => {
+      const cells = [makeCell({ content: "SELECT 1" })];
+      expect(findUnresolvedDependencies("SELECT 1", cells)).toEqual([]);
+    });
+
+    it("returns indices of cells without results", () => {
+      const cells = [
+        makeCell({ id: "c1", content: "SELECT 1", result: null }),
+        makeCell({ id: "c2", content: "SELECT 2", result: null }),
+      ];
+      const result = findUnresolvedDependencies(
+        "SELECT * FROM {{cell_1}} JOIN {{cell_2}}",
+        cells,
+      );
+      expect(result).toEqual([0, 1]);
+    });
+
+    it("excludes cells that already have results", () => {
+      const cells = [
+        makeCell({
+          id: "c1",
+          content: "SELECT 1",
+          result: { columns: ["id"], rows: [[1]], affected_rows: 0 },
+        }),
+        makeCell({ id: "c2", content: "SELECT 2", result: null }),
+      ];
+      const result = findUnresolvedDependencies(
+        "SELECT * FROM {{cell_1}} JOIN {{cell_2}}",
+        cells,
+      );
+      expect(result).toEqual([1]);
+    });
+
+    it("excludes non-SQL cells", () => {
+      const cells = [
+        makeCell({ id: "c1", type: "markdown", content: "# Title" }),
+      ];
+      const result = findUnresolvedDependencies(
+        "SELECT * FROM {{cell_1}}",
+        cells,
+      );
+      expect(result).toEqual([]);
+    });
+
+    it("includes cells with errors", () => {
+      const cells = [
+        makeCell({
+          id: "c1",
+          content: "SELECT bad",
+          result: { columns: [], rows: [], affected_rows: 0 },
+          error: "syntax error",
+        }),
+      ];
+      const result = findUnresolvedDependencies(
+        "SELECT * FROM {{cell_1}}",
+        cells,
+      );
+      expect(result).toEqual([0]);
+    });
+
+    it("returns sorted indices", () => {
+      const cells = [
+        makeCell({ id: "c1", content: "SELECT 1" }),
+        makeCell({ id: "c2", content: "SELECT 2" }),
+        makeCell({ id: "c3", content: "SELECT 3" }),
+      ];
+      const result = findUnresolvedDependencies(
+        "SELECT * FROM {{cell_3}} JOIN {{cell_1}}",
+        cells,
+      );
+      expect(result).toEqual([0, 2]);
+    });
+
+    it("deduplicates repeated references", () => {
+      const cells = [
+        makeCell({ id: "c1", content: "SELECT 1" }),
+      ];
+      const result = findUnresolvedDependencies(
+        "SELECT * FROM {{cell_1}} UNION SELECT * FROM {{cell_1}}",
+        cells,
+      );
+      expect(result).toEqual([0]);
     });
   });
 });

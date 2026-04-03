@@ -51,6 +51,33 @@ export interface ResolvedQuery {
   unresolvedRefs: CellReference[];
 }
 
+/**
+ * Find cell indices that need to be executed before the given SQL can run.
+ * Returns indices of referenced cells that have no result (or have errors).
+ * Returns them in sorted order (lowest index first) for sequential execution.
+ */
+export function findUnresolvedDependencies(
+  sql: string,
+  cells: NotebookCell[],
+): number[] {
+  const refs = extractCellReferences(sql);
+  const indices = new Set<number>();
+  for (const ref of refs) {
+    const targetCell = cells[ref.cellIndex];
+    if (
+      !targetCell ||
+      targetCell.type !== "sql" ||
+      !targetCell.result ||
+      targetCell.error
+    ) {
+      if (targetCell && targetCell.type === "sql") {
+        indices.add(ref.cellIndex);
+      }
+    }
+  }
+  return Array.from(indices).sort((a, b) => a - b);
+}
+
 export function resolveQueryVariables(
   sql: string,
   cells: NotebookCell[],

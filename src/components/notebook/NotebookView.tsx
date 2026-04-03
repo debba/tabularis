@@ -29,7 +29,7 @@ import {
   addFailure,
   addSkipped,
 } from "../../utils/notebookRunAll";
-import { resolveQueryVariables } from "../../utils/notebookVariables";
+import { resolveQueryVariables, findUnresolvedDependencies } from "../../utils/notebookVariables";
 import { resolveParams } from "../../utils/notebookParams";
 import {
   addHistoryEntry,
@@ -215,7 +215,28 @@ export function NotebookView({
         sql = paramResult.sql;
       }
 
-      // Resolve cell variable references
+      // Lazy-execute unresolved cell dependencies
+      const unresolvedDeps = findUnresolvedDependencies(sql, cellsRef.current);
+      if (unresolvedDeps.length > 0) {
+        for (const depIndex of unresolvedDeps) {
+          const depCell = cellsRef.current[depIndex];
+          if (depCell && depCell.type === "sql" && depCell.content.trim()) {
+            await runCell(depCell.id);
+            // Check if dependency failed
+            const updated = cellsRef.current[depIndex];
+            if (updated?.error) {
+              updateCell(cellId, {
+                error: `Dependency {{cell_${depIndex + 1}}} failed: ${updated.error}`,
+                isLoading: false,
+                result: null,
+              });
+              return;
+            }
+          }
+        }
+      }
+
+      // Resolve cell variable references (dependencies should now have results)
       const { sql: resolvedSql, unresolvedRefs } = resolveQueryVariables(
         sql,
         cellsRef.current,
@@ -226,7 +247,7 @@ export function NotebookView({
           .map((r) => `{{cell_${r.cellIndex + 1}}}`)
           .join(", ");
         updateCell(cellId, {
-          error: `Unresolved cell references: ${refLabels}. Run the referenced cells first.`,
+          error: `Unresolved cell references: ${refLabels}. Referenced cells must be SQL cells with content.`,
           isLoading: false,
           result: null,
         });
