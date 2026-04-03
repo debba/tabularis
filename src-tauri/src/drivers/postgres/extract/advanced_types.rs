@@ -706,8 +706,8 @@ pub struct TimeTz {
     hrs: u8,
     mins: u8,
     secs: u8,
-    microseconds: u16,
-    offset_sign: u8,
+    microseconds: u32,
+    offset_sign: char,
     offset_hrs: u8,
     offset_mins: u8,
     offset_secs: u8,
@@ -732,7 +732,7 @@ impl<'a> FromSql<'a> for TimeTz {
         };
 
         // it is important to check for this because we need to convert to hours `u8` safely
-        if microseconds > 1000 * 60 * 60 * 24 {
+        if microseconds > 1000 * 1000 * 60 * 60 * 24 {
             return Err(format!(
                 "microseconds must not exceed 24 hours for TIMETZ: {}",
                 microseconds
@@ -740,24 +740,24 @@ impl<'a> FromSql<'a> for TimeTz {
             .into());
         };
 
-        let hrs = (microseconds / (1000 * 60 * 60)) as u8;
-        microseconds %= 1000 * 60 * 60;
-        let mins = (microseconds / (1000 * 60)) as u8;
-        microseconds %= 1000 * 60;
-        let secs = (microseconds / 1000) as u8;
-        let microseconds = (microseconds % 1000) as u16;
+        let hrs = (microseconds / (1000 * 1000 * 60 * 60)) as u8;
+        microseconds %= 1000 * 1000 * 60 * 60;
+        let mins = (microseconds / (1000 * 1000 * 60)) as u8;
+        microseconds %= 1000 * 1000 * 60;
+        let secs = (microseconds / (1000 * 1000)) as u8;
+        let microseconds = (microseconds % (1000 * 1000)) as u32;
 
         let mut timezone_offset = i32::from_be_bytes([raw[8], raw[9], raw[10], raw[11]]);
 
         let offset_sign = if timezone_offset.is_positive() {
-            timezone_offset = timezone_offset.abs();
-            b'-'
+            '-'
         } else {
-            b'+'
+            timezone_offset = -timezone_offset;
+            '+'
         };
 
-        let offset_hrs = (timezone_offset / 3600) as u8;
-        let remainder = timezone_offset % 3600;
+        let offset_hrs = (timezone_offset / (60 * 60)) as u8;
+        let remainder = timezone_offset % (60 * 60);
         let offset_mins = (remainder / 60) as u8;
         let offset_secs = (remainder % 60) as u8;
 
@@ -765,7 +765,7 @@ impl<'a> FromSql<'a> for TimeTz {
             hrs,
             mins,
             secs,
-            microseconds: microseconds as u16,
+            microseconds,
             offset_sign,
             offset_hrs,
             offset_mins,
@@ -783,47 +783,24 @@ impl<'a> FromSql<'a> for TimeTz {
 
 impl From<TimeTz> for JsonValue {
     fn from(value: TimeTz) -> Self {
-        let mut offset = Vec::with_capacity(9);
-        offset.push(value.offset_sign);
-
-        if value.offset_hrs > 9 {
-            let offset_hrs = value.offset_hrs.to_string();
-            offset.extend_from_slice(offset_hrs.as_bytes());
-        } else {
-            offset.push(b'0');
-            offset.push(value.offset_hrs + 48);
-        };
-
-        if value.offset_mins > 0 {
-            offset.push(b':');
-            if value.offset_mins > 9 {
-                let offset_mins = value.offset_mins.to_string();
-                offset.extend_from_slice(offset_mins.as_bytes());
-            } else {
-                offset.push(b'0');
-                offset.push(value.offset_mins + 48);
-            }
-        };
-
-        if value.offset_secs > 0 {
-            offset.push(b':');
-            if value.offset_secs > 9 {
-                let offset_secs = value.offset_secs.to_string();
-                offset.extend_from_slice(offset_secs.as_bytes());
-            } else {
-                offset.push(b'0');
-                offset.push(value.offset_secs + 48);
-            }
-        };
-
-        let mut time = format!("{}:{}:{}", value.hrs, value.mins, value.secs);
+        let mut time = format!("{:02}:{:02}:{:02}", value.hrs, value.mins, value.secs,);
 
         if value.microseconds > 0 {
             time.push('.');
-            time.push_str(&value.microseconds.to_string());
+            time.push_str(&value.microseconds.to_string().trim_end_matches('0'));
         };
 
-        JsonValue::String(format!("{}{}", time, String::from_utf8(offset).unwrap(),))
+        time.push_str(&format!("{}{:02}", value.offset_sign, value.offset_hrs));
+
+        if value.offset_mins > 0 {
+            time.push_str(&format!(":{:02}", value.offset_mins));
+        }
+
+        if value.offset_secs > 0 {
+            time.push_str(&format!(":{:02}", value.offset_secs));
+        };
+
+        JsonValue::String(time)
     }
 }
 
@@ -835,7 +812,7 @@ pub struct Interval {
     pub hours: u8,
     pub minutes: u8,
     pub seconds: u8,
-    pub microseconds: u16,
+    pub microseconds: u32,
 }
 
 impl<'a> FromSql<'a> for Interval {
@@ -863,16 +840,17 @@ impl<'a> FromSql<'a> for Interval {
             sign = '+';
         }
 
-        let mut hrs = microseconds / (1000 * 60 * 60);
-        microseconds %= 1000 * 60 * 60;
-        let mins = (microseconds / (1000 * 60)) as u8;
-        microseconds %= 1000 * 60;
-        let secs = (microseconds / 1000) as u8;
-        let microseconds = (microseconds % 1000) as u16;
+        let mut hrs = microseconds / (1000 * 1000 * 60 * 60);
+        microseconds %= 1000 * 1000 * 60 * 60;
+        let mins = (microseconds / (1000 * 1000 * 60)) as u8;
+        microseconds %= 1000 * 1000 * 60;
+        let secs = (microseconds / (1000 * 1000)) as u8;
+
+        let microseconds = (microseconds % (1000 * 1000)) as u32;
 
         if hrs > 23 || hrs < -23 {
-            days += (hrs % 24) as i32;
-            hrs /= 24;
+            days += (hrs / 24) as i32;
+            hrs %= 24;
         };
 
         Ok(Interval {
@@ -881,8 +859,8 @@ impl<'a> FromSql<'a> for Interval {
             days,
             sign,
             hours: hrs as u8,
-            minutes: mins as u8,
-            seconds: secs as u8,
+            minutes: mins,
+            seconds: secs,
             microseconds,
         })
     }
@@ -905,7 +883,7 @@ impl From<Interval> for JsonValue {
             } else {
                 "years"
             };
-            s.push_str(&format!("{} {}", value.years, years_str));
+            s.push_str(&format!("{} {} ", value.years, years_str));
         };
 
         if value.months != 0 {
@@ -914,7 +892,7 @@ impl From<Interval> for JsonValue {
             } else {
                 "months"
             };
-            s.push_str(&format!("{} {}", value.months, months_str));
+            s.push_str(&format!("{} {} ", value.months, months_str));
         };
 
         if value.days != 0 {
@@ -923,20 +901,23 @@ impl From<Interval> for JsonValue {
             } else {
                 "days"
             };
-            s.push_str(&format!("{} {}", value.days, days_str));
+            s.push_str(&format!("{} {} ", value.days, days_str));
         };
 
         if value.hours != 0 || value.minutes != 0 || value.seconds != 0 || value.microseconds != 0 {
-            if s.len() > 0 {
-                s.push(' ');
+            if value.sign != '+' {
+                s.push(value.sign);
             };
 
             s.push_str(&format!(
-                "{}{:02}:{:02}:{:02}",
-                value.sign, value.hours, value.minutes, value.seconds
+                "{:02}:{:02}:{:02}",
+                value.hours, value.minutes, value.seconds
             ));
             if value.microseconds != 0 {
-                s.push_str(&format!(".{}", value.microseconds));
+                s.push_str(&format!(
+                    ".{}",
+                    value.microseconds.to_string().trim_end_matches('0')
+                ));
             }
         };
 
@@ -1279,7 +1260,7 @@ fn try_extract_ts_query(buf: &mut &[u8], pre_lvl: u8) -> Result<String, String> 
 
             let prefixed = buf[2] == 1;
 
-            *buf = &buf[2..];
+            *buf = &buf[3..];
 
             let lexeme = try_extract_lexeme_text(buf)?;
 
@@ -1554,3 +1535,9 @@ binary_wrapper!(PgDependencies, PG_DEPENDENCIES);
 binary_wrapper!(PgNdistinct, PG_NDISTINCT);
 binary_wrapper!(PgBrinBloomSummary, PG_BRIN_BLOOM_SUMMARY);
 binary_wrapper!(PgBrinMinmaxMultiSummary, PG_BRIN_MINMAX_MULTI_SUMMARY);
+
+/*
+'14:30:00-05'::timetz AS timetz_val => null,
+'1 year 2 months 3 days 04:05:06'::interval AS interval_val =>
+1 year2 months8 days +170:00:00;
+ */
