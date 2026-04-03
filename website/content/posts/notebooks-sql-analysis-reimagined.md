@@ -20,7 +20,7 @@ That question has been driving the next big feature in Tabularis: **Notebooks**.
 
 This is still a work in progress — not shipped yet, not final. But the core is functional, the pieces are connecting, and I want to share where this is heading and why I think it matters.
 
-<video src="/video/tabularis-notebooks.mp4" controls muted playsinline loop></video>
+<video src="/videos/posts/tabularis-notebooks.mp4" controls muted playsinline loop></video>
 
 ---
 
@@ -123,7 +123,6 @@ Hit **Run All** (or `Ctrl+Shift+Enter`) and every SQL cell executes top to botto
 
 After execution, a **summary card** shows succeeded, failed, and skipped cells. Failed cells are clickable — tap one and the notebook scrolls straight to it. No hunting through a long document for the red cell.
 
-
 ---
 
 ## Multi-Database Queries
@@ -160,7 +159,6 @@ Notebooks plug into the AI features that already exist in Tabularis, in two ways
 
 </div>
 
-
 ---
 
 ## Organization
@@ -185,7 +183,6 @@ Two export formats are taking shape:
 **HTML export** — a self-contained HTML document with rendered markdown, SQL highlighting, and result tables embedded. Dark-themed, ready to share or archive. The "send it to your manager" format.
 
 Individual cell results can also be exported as **CSV** or **JSON** from the result toolbar.
-
 
 ---
 
