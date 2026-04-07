@@ -1635,6 +1635,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse }: Explo
           onClose={() => setIsCreateTableModalOpen(false)}
           onSuccess={() => {
             if (refreshTables) refreshTables();
+            setSchemaVersion((v) => v + 1);
           }}
         />
       )}

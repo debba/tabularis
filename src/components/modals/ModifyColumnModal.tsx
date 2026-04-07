@@ -1,23 +1,18 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { X, Save, Loader2, AlertTriangle } from "lucide-react";
+import { X, Save, Loader2, AlertTriangle, Columns, Plus } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { SqlPreview } from "../ui/SqlPreview";
 import { useDatabase } from "../../hooks/useDatabase";
 import { useDataTypes } from "../../hooks/useDataTypes";
 import { useDrivers } from "../../hooks/useDrivers";
 import { Modal } from "../ui/Modal";
+import { Select } from "../ui/Select";
 import { supportsAlterColumn } from "../../utils/driverCapabilities";
+import { parseColumnType, buildColumnDefinition } from "../../utils/columnTypes";
+import type { ColumnFormData } from "../../utils/columnTypes";
 
-interface ColumnDef {
-  name: string;
-  type: string;
-  length?: string;
-  isNullable: boolean;
-  defaultValue?: string;
-  isPk: boolean;
-  isAutoInc: boolean;
-}
+type ColumnDef = ColumnFormData;
 
 interface ModifyColumnModalProps {
   isOpen: boolean;
@@ -34,27 +29,6 @@ interface ModifyColumnModalProps {
     is_pk: boolean;
     is_auto_increment: boolean;
   } | null;
-}
-
-interface ColumnDefinition {
-  name: string;
-  data_type: string;
-  is_nullable: boolean;
-  is_pk: boolean;
-  is_auto_increment: boolean;
-  default_value: string | null;
-}
-
-function buildColumnDefinition(form: ColumnDef): ColumnDefinition {
-  const typeDef = `${form.type}${form.length ? `(${form.length})` : ""}`;
-  return {
-    name: form.name,
-    data_type: typeDef,
-    is_nullable: form.isNullable,
-    is_pk: form.isPk,
-    is_auto_increment: form.isAutoInc,
-    default_value: form.defaultValue || null,
-  };
 }
 
 export const ModifyColumnModal = ({
@@ -81,19 +55,9 @@ export const ModifyColumnModal = ({
     [dataTypes],
   );
 
-  // Parse initial type/length from column.data_type if possible
-  // e.g. "varchar(255)" -> type="VARCHAR", length="255"
-  const parseType = (fullType: string) => {
-    const match = fullType.match(/^([a-zA-Z0-9_ ]+)(?:\((.+)\))?$/);
-    if (match) {
-      return { type: match[1].toUpperCase().trim(), length: match[2] || "" };
-    }
-    return { type: fullType.toUpperCase().trim(), length: "" };
-  };
-
   const initial = useMemo(() => {
     if (column) {
-      const { type, length } = parseType(column.data_type);
+      const { type, length } = parseColumnType(column.data_type, availableTypes);
       return {
         name: column.name,
         type,
@@ -113,7 +77,7 @@ export const ModifyColumnModal = ({
       isPk: false,
       isAutoInc: false,
     };
-  }, [column]);
+  }, [column, availableTypes]);
 
   const [form, setForm] = useState<ColumnDef>(initial);
   const [loading, setLoading] = useState(false);
@@ -139,8 +103,8 @@ export const ModifyColumnModal = ({
       if (isEdit) {
         const oldCol = buildColumnDefinition({
           name: column!.name,
-          type: parseType(column!.data_type).type,
-          length: parseType(column!.data_type).length,
+          type: parseColumnType(column!.data_type, availableTypes).type,
+          length: parseColumnType(column!.data_type, availableTypes).length,
           isNullable: column!.is_nullable,
           defaultValue: "",
           isPk: column!.is_pk,
@@ -167,7 +131,7 @@ export const ModifyColumnModal = ({
     } catch (e) {
       setSqlPreview("-- " + String(e));
     }
-  }, [form, isEdit, column, connectionId, tableName, activeSchema, t]);
+  }, [form, isEdit, column, connectionId, tableName, activeSchema, availableTypes, t]);
 
   // Debounced preview generation
   useEffect(() => {
@@ -188,8 +152,8 @@ export const ModifyColumnModal = ({
       if (isEdit) {
         const oldCol = buildColumnDefinition({
           name: column!.name,
-          type: parseType(column!.data_type).type,
-          length: parseType(column!.data_type).length,
+          type: parseColumnType(column!.data_type, availableTypes).type,
+          length: parseColumnType(column!.data_type, availableTypes).length,
           isNullable: column!.is_nullable,
           defaultValue: "",
           isPk: column!.is_pk,
@@ -232,13 +196,18 @@ export const ModifyColumnModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} overlayClassName="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]">
-      <div className="bg-elevated rounded-xl shadow-2xl w-[500px] border border-strong flex flex-col">
+    <Modal isOpen={isOpen} onClose={onClose} overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100]">
+      <div className="bg-elevated rounded-xl shadow-2xl w-[500px] border border-strong flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-default bg-surface-secondary/50 rounded-t-xl">
-          <h2 className="text-lg font-semibold text-primary">
-            {isEdit ? t("modifyColumn.titleEdit") : t("modifyColumn.titleAdd")}
-          </h2>
+        <div className="flex items-center justify-between p-4 border-b border-default bg-base">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${isEdit ? 'bg-purple-900/30' : 'bg-blue-900/30'}`}>
+              {isEdit ? <Columns size={20} className="text-purple-400" /> : <Plus size={20} className="text-blue-400" />}
+            </div>
+            <h2 className="text-lg font-semibold text-primary">
+              {isEdit ? t("modifyColumn.titleEdit") : t("modifyColumn.titleAdd")}
+            </h2>
+          </div>
           <button
             onClick={onClose}
             className="text-secondary hover:text-primary transition-colors"
@@ -248,22 +217,22 @@ export const ModifyColumnModal = ({
         </div>
 
         {/* Body */}
-        <div className="p-6 flex flex-col gap-4">
+        <div className="p-6 flex flex-col gap-4 overflow-y-auto">
           {!canAlterColumn && isEdit && (
-            <div className="bg-warning-bg border border-warning-border text-warning-text text-xs p-3 rounded flex items-start gap-2">
+            <div className="bg-warning-bg border border-warning-border text-warning-text text-xs p-3 rounded-lg flex items-start gap-2">
               <AlertTriangle size={14} className="shrink-0 mt-0.5" />
               <span>{t("modifyColumn.sqliteWarn")}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-secondary mb-1">
+            <label className="block text-xs uppercase font-bold text-muted mb-1">
               {t("modifyColumn.name")}
             </label>
             <input
               value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none font-mono"
+              onChange={(e) => { setForm({ ...form, name: e.target.value }); setError(""); }}
+              className={`w-full bg-base border rounded-lg px-3 py-2 text-primary text-sm focus:border-blue-500 focus:outline-none font-mono ${!form.name.trim() && error ? 'border-red-500' : 'border-strong'}`}
               placeholder="column_name"
               autoFocus
             />
@@ -271,13 +240,13 @@ export const ModifyColumnModal = ({
 
           <div className="flex gap-4">
             <div className="flex-1">
-              <label className="block text-xs font-semibold text-secondary mb-1">
+              <label className="block text-xs uppercase font-bold text-muted mb-1">
                 {t("modifyColumn.type")}
               </label>
-              <select
+              <Select
                 value={form.type}
-                onChange={(e) => {
-                  const newType = e.target.value;
+                options={availableTypes.map((t) => t.name)}
+                onChange={(newType) => {
                   const typeInfo = availableTypes.find((t) => t.name === newType);
                   const needsLength = typeInfo?.requires_length || typeInfo?.requires_precision;
                   setForm({
@@ -286,27 +255,23 @@ export const ModifyColumnModal = ({
                     length: needsLength
                       ? form.length || typeInfo?.default_length || ""
                       : "",
+                    isAutoInc: typeInfo?.supports_auto_increment ? form.isAutoInc : false,
                   });
                 }}
                 disabled={!canAlterColumn && isEdit}
-                className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none disabled:opacity-50 appearance-none cursor-pointer hover:bg-elevated transition-colors"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                  backgroundPosition: `right 0.5rem center`,
-                  backgroundRepeat: `no-repeat`,
-                  backgroundSize: `1.5em 1.5em`,
-                  paddingRight: `2.5rem`,
-                }}
-              >
-                {availableTypes.map((typeInfo) => (
-                  <option key={typeInfo.name} value={typeInfo.name}>
-                    {typeInfo.name}
-                  </option>
-                ))}
-              </select>
+                placeholder={t("modifyColumn.type")}
+                searchPlaceholder={t("common.search")}
+                noResultsLabel={t("common.noResults")}
+              />
+              {availableTypes.find((t) => t.name === form.type)?.requires_extension && (
+                <div className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+                  <AlertTriangle size={12} />
+                  <span>{t("modifyColumn.requiresExtension", { ext: availableTypes.find((t) => t.name === form.type)?.requires_extension })}</span>
+                </div>
+              )}
             </div>
             <div className="w-24">
-              <label className="block text-xs font-semibold text-secondary mb-1">
+              <label className="block text-xs uppercase font-bold text-muted mb-1">
                 {t("modifyColumn.length")}
               </label>
               <input
@@ -327,15 +292,15 @@ export const ModifyColumnModal = ({
 
           <div className="flex gap-4">
             <div className="flex-1">
-              <label className="block text-xs font-semibold text-secondary mb-1">
+              <label className="block text-xs uppercase font-bold text-muted mb-1">
                 {t("modifyColumn.default")}
               </label>
               <input
-                value={form.defaultValue}
+                value={form.isAutoInc ? "" : form.defaultValue}
                 onChange={(e) =>
                   setForm({ ...form, defaultValue: e.target.value })
                 }
-                disabled={!canAlterColumn && isEdit}
+                disabled={(!canAlterColumn && isEdit) || form.isAutoInc}
                 className="w-full bg-base border border-strong rounded p-2 text-primary text-sm focus:border-focus outline-none font-mono disabled:opacity-50"
                 placeholder="NULL"
               />
@@ -347,16 +312,16 @@ export const ModifyColumnModal = ({
               <input
                 type="checkbox"
                 id="isNullable"
-                checked={!form.isNullable}
+                checked={form.isAutoInc ? true : !form.isNullable}
                 onChange={(e) =>
                   setForm({ ...form, isNullable: !e.target.checked })
                 }
-                disabled={!canAlterColumn && isEdit}
-                className="accent-blue-500"
+                disabled={(!canAlterColumn && isEdit) || form.isAutoInc}
+                className="accent-blue-500 disabled:opacity-50"
               />
               <label
                 htmlFor="isNullable"
-                className="text-sm text-secondary select-none cursor-pointer"
+                className={`text-sm select-none cursor-pointer ${form.isAutoInc ? "text-muted" : "text-secondary"}`}
               >
                 {t("modifyColumn.notNull")}
               </label>
@@ -390,13 +355,13 @@ export const ModifyColumnModal = ({
                 }
                 disabled={
                   (isEdit && !(canAlterColumn && !!driverCapabilities?.auto_increment_keyword)) ||
-                  !["INTEGER", "BIGINT"].includes(form.type)
+                  !availableTypes.find((t) => t.name === form.type)?.supports_auto_increment
                 }
                 className="accent-blue-500 disabled:opacity-50"
               />
               <label
                 htmlFor="isAutoInc"
-                className={`text-sm select-none cursor-pointer ${(isEdit && !(canAlterColumn && !!driverCapabilities?.auto_increment_keyword)) || !["INTEGER", "BIGINT"].includes(form.type) ? "text-muted" : "text-secondary"}`}
+                className={`text-sm select-none cursor-pointer ${(isEdit && !(canAlterColumn && !!driverCapabilities?.auto_increment_keyword)) || !availableTypes.find((t) => t.name === form.type)?.supports_auto_increment ? "text-muted" : "text-secondary"}`}
               >
                 {t("modifyColumn.autoInc")}
               </label>
@@ -416,17 +381,18 @@ export const ModifyColumnModal = ({
           </div>
 
           {error && (
-            <div className="text-error-text text-xs bg-error-bg border border-error-border p-2 rounded">
+            <div className="text-error-text text-xs bg-error-bg border border-error-border p-3 rounded-lg flex items-center gap-2">
+              <AlertTriangle size={14} className="shrink-0" />
               {error}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-surface-secondary/50 border-t border-default rounded-b-xl flex justify-end gap-3">
+        <div className="p-4 border-t border-default bg-base/50 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-secondary hover:text-primary hover:bg-surface-secondary font-medium text-sm rounded-lg transition-colors"
+            className="px-4 py-2 text-secondary hover:text-primary transition-colors text-sm"
           >
             {t("modifyColumn.cancel")}
           </button>
@@ -434,9 +400,10 @@ export const ModifyColumnModal = ({
             onClick={handleSubmit}
             disabled={
               loading ||
+              !form.name.trim() ||
               (!canAlterColumn && isEdit && form.name === column?.name)
             }
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-primary px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-900/20 transition-all"
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-blue-900/20 transition-all"
           >
             {loading && <Loader2 size={16} className="animate-spin" />}
             <Save size={16} />{" "}
