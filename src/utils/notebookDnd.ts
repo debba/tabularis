@@ -16,7 +16,7 @@ export function reorderCells(
 }
 
 export function getDropIndex(
-  containerRect: DOMRect,
+  _containerRect: DOMRect,
   cellRects: DOMRect[],
   clientY: number,
   dragIndex: number,

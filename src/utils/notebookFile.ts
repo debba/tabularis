@@ -63,7 +63,7 @@ export function deserializeNotebook(json: string): {
     throw new Error("Invalid notebook file format");
   }
 
-  const raw = data as Record<string, unknown>;
+  const raw = data as unknown as Record<string, unknown>;
   return {
     title: data.title,
     cells: data.cells.map((c) => {

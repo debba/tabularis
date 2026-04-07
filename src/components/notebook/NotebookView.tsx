@@ -90,34 +90,26 @@ export function NotebookView({
   const cellRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const notebookIdRef = useRef(tab.notebookId);
+  const runCellRef = useRef<(cellId: string) => Promise<void>>(async () => {});
 
   // Keep ref in sync
   useEffect(() => {
     notebookIdRef.current = tab.notebookId;
   }, [tab.notebookId]);
 
-  // Load notebook from store/disk on mount or notebookId change
+  // Load notebook from disk when not already cached
   useEffect(() => {
-    if (!tab.notebookId) {
-      setIsLoadingNotebook(false);
-      return;
-    }
+    if (!tab.notebookId || notebook) return;
 
-    const cached = getNotebookState(tab.notebookId);
-    if (cached) {
-      setNotebook(cached);
-      cellsRef.current = cached.cells;
-      setIsLoadingNotebook(false);
-      return;
-    }
-
-    setIsLoadingNotebook(true);
+    let cancelled = false;
     loadNotebook(tab.notebookId).then((state) => {
+      if (cancelled) return;
       setNotebook(state);
       cellsRef.current = state.cells;
       setIsLoadingNotebook(false);
     });
-  }, [tab.notebookId]);
+    return () => { cancelled = true; };
+  }, [tab.notebookId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync tab title to notebook store
   useEffect(() => {
@@ -221,7 +213,7 @@ export function NotebookView({
         for (const depIndex of unresolvedDeps) {
           const depCell = cellsRef.current[depIndex];
           if (depCell && depCell.type === "sql" && depCell.content.trim()) {
-            await runCell(depCell.id);
+            await runCellRef.current(depCell.id);
             // Check if dependency failed
             const updated = cellsRef.current[depIndex];
             if (updated?.error) {
@@ -309,6 +301,10 @@ export function NotebookView({
       params,
     ],
   );
+
+  useEffect(() => {
+    runCellRef.current = runCell;
+  }, [runCell]);
 
   const runAll = useCallback(async () => {
     setIsRunningAll(true);
