@@ -3,16 +3,26 @@ name: Publish to AUR
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (without v prefix, e.g. 0.9.14)'
+        required: true
 
 jobs:
   aur-publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Get Release Version
         id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Download .deb Artifact
         run: |
@@ -30,7 +40,7 @@ jobs:
           sed -i "s/^sha256sums=.*/sha256sums=('${{ steps.shasum.outputs.sha256 }}')/" PKGBUILD
 
       - name: Publish to AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v2
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.2
         with:
           pkgname: tabularis-bin
           pkgbuild: ./aur/PKGBUILD
