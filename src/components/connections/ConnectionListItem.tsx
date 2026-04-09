@@ -22,6 +22,7 @@ export interface ConnectionListItemProps {
   onDuplicate: () => void;
   onDelete: () => void;
   onContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
+  onMouseDown?: (e: MouseEvent<HTMLDivElement>) => void;
 }
 
 export const ConnectionListItem = ({
@@ -35,6 +36,7 @@ export const ConnectionListItem = ({
   onDuplicate,
   onDelete,
   onContextMenu,
+  onMouseDown,
 }: ConnectionListItemProps) => {
   const { t } = useTranslation();
   const { activeConnectionId, isConnectionOpen } = useDatabase();
@@ -51,6 +53,7 @@ export const ConnectionListItem = ({
     <div
       onDoubleClick={() => isDriverEnabled && !isConnecting && onConnect()}
       onContextMenu={onContextMenu}
+      onMouseDown={onMouseDown}
       className={clsx(
         'group flex items-center gap-3 px-3.5 py-2 rounded-xl border transition-all duration-150 cursor-pointer select-none',
         !isDriverEnabled && 'opacity-60 cursor-not-allowed',

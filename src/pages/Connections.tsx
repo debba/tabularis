@@ -42,6 +42,7 @@ export const Connections = () => {
     updateGroup,
     deleteGroup,
     moveConnectionToGroup,
+    reorderGroups,
     toggleGroupCollapsed,
     loadConnections,
     connections: contextConnections,
@@ -77,6 +78,8 @@ export const Connections = () => {
     message: string;
     onConfirm: () => void;
   } | null>(null);
+  const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const isRenameCancelledRef = useRef(false);
 
   useEffect(() => {
@@ -324,7 +327,79 @@ export const Connections = () => {
     onDelete: () => handleDelete(conn.id),
     onContextMenu: (e: React.MouseEvent<HTMLDivElement>) =>
       handleConnContextMenu(e, conn),
+    onMouseDown: (e: React.MouseEvent<HTMLDivElement>) =>
+      handleConnectionMouseDown(e, conn.id, conn.group_id),
   });
+
+  const handleConnectionMouseDown = (e: React.MouseEvent, connId: string, currentGroupId: string | undefined) => {
+    if (e.button !== 0) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let isDragging = false;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDragging) {
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        if (dx * dx + dy * dy < 25) return;
+        isDragging = true;
+      }
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const groupEl = (el as HTMLElement)?.closest("[data-group-id]") as HTMLElement | null;
+      setDragOverGroupId(groupEl?.dataset.groupId ?? null);
+    };
+
+    const onMouseUp = (ev: MouseEvent) => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      if (!isDragging) {
+        setDragOverGroupId(null);
+        return;
+      }
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const groupEl = (el as HTMLElement)?.closest("[data-group-id]") as HTMLElement | null;
+      const targetGroupId = groupEl?.dataset.groupId ?? null;
+      setDragOverGroupId(null);
+      if (!targetGroupId || targetGroupId === currentGroupId) return;
+      void handleMoveToGroup(connId, targetGroupId);
+    };
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
+
+  const handleGripMouseDown = (e: React.MouseEvent, sourceGroupId: string) => {
+    e.preventDefault();
+    setDraggingGroupId(sourceGroupId);
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const groupEl = (el as HTMLElement)?.closest("[data-group-id]") as HTMLElement | null;
+      const targetId = groupEl?.dataset.groupId ?? null;
+      setDragOverGroupId(targetId !== sourceGroupId ? targetId : null);
+    };
+
+    const onMouseUp = (ev: MouseEvent) => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const groupEl = (el as HTMLElement)?.closest("[data-group-id]") as HTMLElement | null;
+      const targetGroupId = groupEl?.dataset.groupId ?? null;
+      setDraggingGroupId(null);
+      setDragOverGroupId(null);
+      if (!targetGroupId || targetGroupId === sourceGroupId) return;
+      const newOrder = [...sortedGroups];
+      const fromIdx = newOrder.findIndex((g) => g.id === sourceGroupId);
+      const toIdx = newOrder.findIndex((g) => g.id === targetGroupId);
+      if (fromIdx === -1 || toIdx === -1) return;
+      const [moved] = newOrder.splice(fromIdx, 1);
+      newOrder.splice(toIdx, 0, moved);
+      void reorderGroups(newOrder.map((g, i) => [g.id, i]));
+    };
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
 
   const groupHeaderProps = (group: (typeof sortedGroups)[number]) => ({
     group,
@@ -338,6 +413,8 @@ export const Connections = () => {
     setEditGroupName,
     setEditingGroupId,
     onRenameConfirm: handleRenameGroup,
+    onGripMouseDown: (e: React.MouseEvent) => handleGripMouseDown(e, group.id),
+    isDragOver: dragOverGroupId === group.id && draggingGroupId !== group.id,
   });
 
   return (
@@ -546,7 +623,11 @@ export const Connections = () => {
                   const groupConns = filteredGroupedConnections[group.id] || [];
                   if (groupConns.length === 0 && search.trim()) return null;
                   return (
-                    <div key={group.id} className="space-y-3">
+                    <div
+                      key={group.id}
+                      data-group-id={group.id}
+                      className="space-y-3"
+                    >
                       <GroupHeader
                         {...groupHeaderProps(group)}
                         connCount={groupConns.length}
@@ -608,7 +689,11 @@ export const Connections = () => {
                   const groupConns = filteredGroupedConnections[group.id] || [];
                   if (groupConns.length === 0 && search.trim()) return null;
                   return (
-                    <div key={group.id} className="space-y-2">
+                    <div
+                      key={group.id}
+                      data-group-id={group.id}
+                      className="space-y-2"
+                    >
                       <GroupHeader
                         {...groupHeaderProps(group)}
                         connCount={groupConns.length}

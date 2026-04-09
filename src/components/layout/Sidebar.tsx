@@ -37,7 +37,6 @@ export const Sidebar = () => {
     connections,
     updateGroup,
     deleteGroup,
-    moveConnectionToGroup,
     toggleGroupCollapsed,
   } = useDatabase();
   const navigate = useNavigate();

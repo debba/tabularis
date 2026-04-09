@@ -117,7 +117,7 @@ export const ConnectionGroupFolder = ({
   const connectedCount = connections.filter(c => c.isConnected).length;
 
   return (
-    <div className="w-full">
+    <div className="w-full" data-group-id={group.id}>
       {/* Group header */}
       <div
         className={clsx(

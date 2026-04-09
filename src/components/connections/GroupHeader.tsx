@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { ChevronRight, Folder, FolderOpen, MoreVertical } from 'lucide-react';
+import { GripVertical, ChevronRight, Folder, FolderOpen, MoreVertical } from 'lucide-react';
 import clsx from 'clsx';
 import type { ConnectionGroup } from '../../contexts/DatabaseContext';
 
@@ -15,6 +15,8 @@ export interface GroupHeaderProps {
   setEditGroupName: (name: string) => void;
   setEditingGroupId: (id: string | null) => void;
   onRenameConfirm: (groupId: string) => void;
+  onGripMouseDown?: (e: React.MouseEvent) => void;
+  isDragOver?: boolean;
 }
 
 export const GroupHeader = ({
@@ -29,15 +31,29 @@ export const GroupHeader = ({
   setEditGroupName,
   setEditingGroupId,
   onRenameConfirm,
+  onGripMouseDown,
+  isDragOver,
 }: GroupHeaderProps) => (
   <div
-    className="flex items-center gap-2 group cursor-pointer"
+    className={clsx(
+      "flex items-center gap-2 group cursor-pointer rounded-lg",
+      isDragOver && "ring-1 ring-blue-400 bg-blue-500/5"
+    )}
     onClick={onToggleCollapse}
     onContextMenu={(e) => {
       e.preventDefault();
       onOpenContextMenu(e.clientX, e.clientY, group.id);
     }}
   >
+    {onGripMouseDown && (
+      <div
+        onMouseDown={onGripMouseDown}
+        onClick={(e) => e.stopPropagation()}
+        className="opacity-0 group-hover:opacity-100 cursor-grab p-0.5 rounded text-muted hover:text-secondary shrink-0 select-none"
+      >
+        <GripVertical size={12} />
+      </div>
+    )}
     <ChevronRight
       size={14}
       className={clsx('text-muted transition-transform', !isCollapsed && 'rotate-90')}

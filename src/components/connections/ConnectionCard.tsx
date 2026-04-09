@@ -22,6 +22,7 @@ export interface ConnectionCardProps {
   onDuplicate: () => void;
   onDelete: () => void;
   onContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
+  onMouseDown?: (e: MouseEvent<HTMLDivElement>) => void;
 }
 
 export const ConnectionCard = ({
@@ -35,6 +36,7 @@ export const ConnectionCard = ({
   onDuplicate,
   onDelete,
   onContextMenu,
+  onMouseDown,
 }: ConnectionCardProps) => {
   const { t } = useTranslation();
   const { activeConnectionId, isConnectionOpen } = useDatabase();
@@ -49,10 +51,9 @@ export const ConnectionCard = ({
 
   return (
     <div
-      draggable
-      onDragStart={(e) => e.dataTransfer.setData('connectionId', conn.id)}
       onDoubleClick={() => isDriverEnabled && !isConnecting && onConnect()}
       onContextMenu={onContextMenu}
+      onMouseDown={onMouseDown}
       className={clsx(
         'group relative flex flex-col rounded-2xl border transition-all duration-150 cursor-pointer select-none overflow-hidden',
         !isDriverEnabled && 'opacity-60 cursor-not-allowed',
