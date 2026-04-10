@@ -653,7 +653,11 @@
       "analyzeWarning": "ANALYZE ejecuta la consulta. Usar con precaucion en instrucciones que modifican datos.",
       "notSupported": "EXPLAIN no esta soportado para este tipo de conexion.",
       "rerun": "Reejecutar",
-      "close": "Cerrar"
+      "close": "Cerrar",
+      "aiAnalysis": "Analisis IA",
+      "aiAnalysisTitle": "Analisis IA del Plan de Ejecucion",
+      "aiAnalyzing": "Analizando plan de ejecucion con IA...",
+      "aiConfigRequired": "Proveedor de IA no configurado. Ve a Configuracion > IA."
     },
     "notebook": {
       "addSqlCell": "Agregar Celda SQL",

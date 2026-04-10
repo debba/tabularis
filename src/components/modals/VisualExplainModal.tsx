@@ -3,11 +3,16 @@ import { useTranslation } from "react-i18next";
 import { X, Loader2, Network, RefreshCw, AlertTriangle } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTheme } from "../../hooks/useTheme";
+import { useSettings } from "../../hooks/useSettings";
 import MonacoEditor from "@monaco-editor/react";
 import type { ExplainPlan } from "../../types/explain";
 import { isDataModifyingQuery } from "../../utils/explainPlan";
-import { ExplainSummaryBar } from "./visual-explain/ExplainSummaryBar";
+import {
+  ExplainSummaryBar,
+  type ExplainViewMode,
+} from "./visual-explain/ExplainSummaryBar";
 import { ExplainGraph } from "./visual-explain/ExplainGraph";
+import { ExplainAiAnalysis } from "./visual-explain/ExplainAiAnalysis";
 
 interface VisualExplainModalProps {
   isOpen: boolean;
@@ -26,10 +31,11 @@ export const VisualExplainModal = ({
 }: VisualExplainModalProps) => {
   const { t } = useTranslation();
   const { currentTheme } = useTheme();
+  const { settings } = useSettings();
   const [plan, setPlan] = useState<ExplainPlan | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showRaw, setShowRaw] = useState(false);
+  const [viewMode, setViewMode] = useState<ExplainViewMode>("graph");
 
   const isDml = query ? isDataModifyingQuery(query) : false;
   const [analyze, setAnalyze] = useState(!isDml);
@@ -91,8 +97,9 @@ export const VisualExplainModal = ({
         {/* Summary Bar */}
         <ExplainSummaryBar
           plan={plan}
-          showRaw={showRaw}
-          onToggleRaw={() => setShowRaw((prev) => !prev)}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          aiEnabled={!!settings.aiEnabled}
         />
 
         {/* Content */}
@@ -111,7 +118,7 @@ export const VisualExplainModal = ({
               </div>
             </div>
           ) : plan ? (
-            showRaw && plan.raw_output ? (
+            viewMode === "raw" && plan.raw_output ? (
               <MonacoEditor
                 height="100%"
                 language="json"
@@ -125,6 +132,8 @@ export const VisualExplainModal = ({
                   wordWrap: "on",
                 }}
               />
+            ) : viewMode === "ai" ? (
+              <ExplainAiAnalysis plan={plan} />
             ) : (
               <ExplainGraph plan={plan} />
             )

@@ -663,7 +663,11 @@
       "analyzeWarning": "ANALYZE esegue la query. Usare con cautela su istruzioni che modificano dati.",
       "notSupported": "EXPLAIN non supportato per questo tipo di connessione.",
       "rerun": "Riesegui",
-      "close": "Chiudi"
+      "close": "Chiudi",
+      "aiAnalysis": "Analisi AI",
+      "aiAnalysisTitle": "Analisi AI del Piano di Esecuzione",
+      "aiAnalyzing": "Analisi del piano di esecuzione con AI...",
+      "aiConfigRequired": "Provider AI non configurato. Vai su Impostazioni > AI."
     },
     "notebook": {
       "addSqlCell": "Aggiungi Cella SQL",

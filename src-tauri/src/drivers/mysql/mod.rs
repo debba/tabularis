@@ -1063,59 +1063,73 @@ pub async fn explain_query(
     };
     let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
 
-    // Try EXPLAIN FORMAT=JSON first (MySQL 5.7+)
+    // Try EXPLAIN FORMAT=JSON first (MySQL 5.7+ / MariaDB 10.1+)
     let explain_json_sql = format!("EXPLAIN FORMAT=JSON {}", query);
-    let json_result: Result<String, String> = {
+    let json_result: Result<String, String> = async {
         let row = sqlx::query(&explain_json_sql)
             .fetch_one(&mut *conn)
             .await
             .map_err(|e| e.to_string())?;
         let val: String = row.try_get(0).map_err(|e| e.to_string())?;
         Ok(val)
-    };
+    }
+    .await;
 
-    let raw_json = json_result?;
-    let raw_output = raw_json.clone();
+    let (root, final_raw, has_analyze_data) = match json_result {
+        Ok(raw_json) => {
+            let raw_output = raw_json.clone();
 
-    let json_val: serde_json::Value = serde_json::from_str(&raw_json)
-        .map_err(|e| format!("Failed to parse EXPLAIN JSON: {}", e))?;
+            let json_val: serde_json::Value = serde_json::from_str(&raw_json)
+                .map_err(|e| format!("Failed to parse EXPLAIN JSON: {}", e))?;
 
-    let query_block = json_val
-        .get("query_block")
-        .ok_or("EXPLAIN JSON missing 'query_block'")?;
+            let query_block = json_val
+                .get("query_block")
+                .ok_or("EXPLAIN JSON missing 'query_block'")?;
 
-    let mut counter: u32 = 0;
-    let root = parse_mysql_query_block(query_block, &mut counter);
+            let mut counter: u32 = 0;
+            let root = parse_mysql_query_block(query_block, &mut counter);
 
-    // If analyze requested, try EXPLAIN ANALYZE (MySQL 8.0.18+)
-    let mut has_analyze_data = false;
-    let mut final_raw = raw_output.clone();
+            // If analyze requested, try EXPLAIN ANALYZE (MySQL 8.0.18+)
+            let mut has_analyze_data = false;
+            let mut final_raw = raw_output;
 
-    if analyze {
-        // Re-acquire connection for EXPLAIN ANALYZE
-        let mut conn2 = pool.acquire().await.map_err(|e| e.to_string())?;
-        let analyze_sql = format!("EXPLAIN ANALYZE {}", query);
-        match sqlx::query(&analyze_sql)
-            .fetch_all(&mut *conn2)
-            .await
-        {
-            Ok(rows) => {
-                let mut lines = Vec::new();
-                for row in &rows {
-                    if let Ok(line) = row.try_get::<String, _>(0) {
-                        lines.push(line);
+            if analyze {
+                let mut conn2 = pool.acquire().await.map_err(|e| e.to_string())?;
+                let analyze_sql = format!("EXPLAIN ANALYZE {}", query);
+                match sqlx::query(&analyze_sql).fetch_all(&mut *conn2).await {
+                    Ok(rows) => {
+                        let mut lines = Vec::new();
+                        for row in &rows {
+                            if let Ok(line) = row.try_get::<String, _>(0) {
+                                lines.push(line);
+                            }
+                        }
+                        if !lines.is_empty() {
+                            has_analyze_data = true;
+                            final_raw = lines.join("\n");
+                        }
+                    }
+                    Err(_) => {
+                        // EXPLAIN ANALYZE not available — use JSON-only
                     }
                 }
-                if !lines.is_empty() {
-                    has_analyze_data = true;
-                    final_raw = lines.join("\n");
-                }
             }
-            Err(_) => {
-                // MySQL < 8.0.18, EXPLAIN ANALYZE not available — use JSON-only
-            }
+
+            (root, final_raw, has_analyze_data)
         }
-    }
+        Err(_) => {
+            // FORMAT=JSON not supported — fall back to plain EXPLAIN
+            let mut conn2 = pool.acquire().await.map_err(|e| e.to_string())?;
+            let explain_sql = format!("EXPLAIN {}", query);
+            let rows = sqlx::query(&explain_sql)
+                .fetch_all(&mut *conn2)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            let (root, raw) = parse_mysql_tabular_explain(&rows);
+            (root, raw, false)
+        }
+    };
 
     Ok(ExplainPlan {
         root,
@@ -1126,6 +1140,112 @@ pub async fn explain_query(
         has_analyze_data,
         raw_output: Some(final_raw),
     })
+}
+
+/// Parse the tabular output from plain `EXPLAIN` (for MySQL/MariaDB without FORMAT=JSON).
+/// Columns: id, select_type, table, partitions, type, possible_keys, key, key_len, ref, rows, filtered, Extra
+fn parse_mysql_tabular_explain(rows: &[sqlx::mysql::MySqlRow]) -> (ExplainNode, String) {
+    let mut raw_lines = Vec::new();
+    let mut children = Vec::new();
+
+    for (i, row) in rows.iter().enumerate() {
+        let select_type: String = row.try_get("select_type").unwrap_or_default();
+        let table: String = row.try_get("table").unwrap_or_default();
+        let access_type: String = row.try_get("type").unwrap_or_default();
+        let possible_keys: Option<String> = row.try_get("possible_keys").ok();
+        let key: Option<String> = row.try_get("key").ok();
+        let plan_rows: Option<i64> = row.try_get("rows").ok();
+        let filtered: Option<f64> = row.try_get("filtered").ok();
+        let extra: Option<String> = row.try_get("Extra").ok();
+
+        let node_type = match access_type.as_str() {
+            "ALL" => "Full Table Scan",
+            "index" => "Index Scan",
+            "range" => "Range Scan",
+            "ref" => "Index Lookup",
+            "eq_ref" => "Unique Index Lookup",
+            "const" | "system" => "Const Lookup",
+            "fulltext" => "Fulltext Search",
+            other => other,
+        }
+        .to_string();
+
+        raw_lines.push(format!(
+            "{}\t{}\t{}\t{}\t{}\t{}",
+            select_type,
+            table,
+            access_type,
+            key.as_deref().unwrap_or("-"),
+            plan_rows.unwrap_or(0),
+            extra.as_deref().unwrap_or("")
+        ));
+
+        let mut node_extra = std::collections::HashMap::new();
+        if let Some(pk) = &possible_keys {
+            node_extra.insert(
+                "possible_keys".to_string(),
+                serde_json::Value::String(pk.clone()),
+            );
+        }
+        if let Some(f) = filtered {
+            node_extra.insert(
+                "filtered".to_string(),
+                serde_json::Value::Number(serde_json::Number::from_f64(f).unwrap_or(serde_json::Number::from(0))),
+            );
+        }
+        if let Some(e) = &extra {
+            node_extra.insert(
+                "extra".to_string(),
+                serde_json::Value::String(e.clone()),
+            );
+        }
+        node_extra.insert(
+            "select_type".to_string(),
+            serde_json::Value::String(select_type),
+        );
+
+        children.push(ExplainNode {
+            id: format!("node_{}", i + 1),
+            node_type,
+            relation: Some(table),
+            startup_cost: None,
+            total_cost: None,
+            plan_rows: plan_rows.map(|r| r as f64),
+            actual_rows: None,
+            actual_time_ms: None,
+            actual_loops: None,
+            buffers_hit: None,
+            buffers_read: None,
+            filter: extra.clone(),
+            index_condition: key,
+            join_type: None,
+            hash_condition: None,
+            extra: node_extra,
+            children: vec![],
+        });
+    }
+
+    let root = ExplainNode {
+        id: "node_0".to_string(),
+        node_type: "Query".to_string(),
+        relation: None,
+        startup_cost: None,
+        total_cost: None,
+        plan_rows: None,
+        actual_rows: None,
+        actual_time_ms: None,
+        actual_loops: None,
+        buffers_hit: None,
+        buffers_read: None,
+        filter: None,
+        index_condition: None,
+        join_type: None,
+        hash_condition: None,
+        extra: std::collections::HashMap::new(),
+        children,
+    };
+
+    (root, raw_lines.join("\n"))
 }
 
 fn parse_mysql_query_block(block: &serde_json::Value, counter: &mut u32) -> ExplainNode {

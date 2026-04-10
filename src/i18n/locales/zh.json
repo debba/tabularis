@@ -634,7 +634,11 @@
       "analyzeWarning": "ANALYZE 会实际执行查询。对数据修改语句请谨慎使用。",
       "notSupported": "此连接类型不支持 EXPLAIN。",
       "rerun": "重新运行",
-      "close": "关闭"
+      "close": "关闭",
+      "aiAnalysis": "AI 分析",
+      "aiAnalysisTitle": "AI 执行计划分析",
+      "aiAnalyzing": "正在使用 AI 分析执行计划...",
+      "aiConfigRequired": "未配置 AI 提供商。请前往 设置 > AI。"
     },
     "notebook": {
       "addSqlCell": "添加 SQL 单元格",

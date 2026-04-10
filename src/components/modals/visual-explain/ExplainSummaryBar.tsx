@@ -1,22 +1,34 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { FileText } from "lucide-react";
+import { FileText, Sparkles } from "lucide-react";
 import type { ExplainPlan } from "../../../types/explain";
 import { formatTime, formatCost, getMaxCost } from "../../../utils/explainPlan";
 
+export type ExplainViewMode = "graph" | "raw" | "ai";
+
 interface ExplainSummaryBarProps {
   plan: ExplainPlan | null;
-  showRaw: boolean;
-  onToggleRaw: () => void;
+  viewMode: ExplainViewMode;
+  onViewModeChange: (mode: ExplainViewMode) => void;
+  aiEnabled: boolean;
 }
 
 export const ExplainSummaryBar = memo(
-  ({ plan, showRaw, onToggleRaw }: ExplainSummaryBarProps) => {
+  ({ plan, viewMode, onViewModeChange, aiEnabled }: ExplainSummaryBarProps) => {
     const { t } = useTranslation();
 
     if (!plan) return null;
 
     const maxCost = getMaxCost(plan.root);
+
+    const toggleButtonClass = (mode: ExplainViewMode) =>
+      `flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
+        viewMode === mode
+          ? mode === "ai"
+            ? "bg-purple-900/40 text-purple-300 border border-purple-500/40"
+            : "bg-blue-900/40 text-blue-300 border border-blue-500/40"
+          : "text-muted hover:text-primary bg-surface-secondary hover:bg-surface-tertiary border border-transparent"
+      }`;
 
     return (
       <div className="flex items-center gap-4 px-4 py-2 border-b border-default bg-base/50 text-xs">
@@ -56,16 +68,26 @@ export const ExplainSummaryBar = memo(
         <div className="flex-1" />
 
         <button
-          onClick={onToggleRaw}
-          className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
-            showRaw
-              ? "bg-blue-900/40 text-blue-300 border border-blue-500/40"
-              : "text-muted hover:text-primary bg-surface-secondary hover:bg-surface-tertiary border border-transparent"
-          }`}
+          onClick={() =>
+            onViewModeChange(viewMode === "raw" ? "graph" : "raw")
+          }
+          className={toggleButtonClass("raw")}
         >
           <FileText size={12} />
           {t("editor.visualExplain.rawOutput")}
         </button>
+
+        {aiEnabled && (
+          <button
+            onClick={() =>
+              onViewModeChange(viewMode === "ai" ? "graph" : "ai")
+            }
+            className={toggleButtonClass("ai")}
+          >
+            <Sparkles size={12} />
+            {t("editor.visualExplain.aiAnalysis")}
+          </button>
+        )}
       </div>
     );
   },
