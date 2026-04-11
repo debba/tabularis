@@ -1,0 +1,235 @@
+{
+  "version": 1,
+  "title": "EXPLAIN Plan Showcase — Visual Explain Testing",
+  "createdAt": "2026-04-10T12:00:00.000Z",
+  "cells": [
+    {
+      "type": "markdown",
+      "content": "# EXPLAIN Plan Showcase\n\nThis notebook contains queries designed to produce **diverse and interesting EXPLAIN plans** for testing the Tabularis Visual Explain feature.\n\n> **Setup:** Run `docs/test-data/explain-demo-database.sql` on your MySQL/MariaDB server first.\n>\n> **How to use:** Select any SQL cell and click the **Explain** button (or right-click → Visual Explain) to see the execution plan graph, table view, and AI analysis.\n\nEach section covers a different optimizer strategy. The queries progress from simple single-table scans to complex multi-table analytics."
+    },
+    {
+      "type": "markdown",
+      "content": "---\n\n## 1. Table Scans\n\nThe `audit_log` table has **no secondary indexes** — only a primary key. Queries filtering on non-PK columns force the optimizer to do a full table scan (`ALL` access type).\n\nCompare the full scan below with the PK lookup that follows."
+    },
+    {
+      "type": "sql",
+      "content": "-- Full Table Scan (type: ALL)\n-- The audit_log table has no indexes on entity_type or action,\n-- so MySQL must scan every row.\nSELECT entity_type, action, COUNT(*) AS cnt\nFROM audit_log\nWHERE action = 'login'\nGROUP BY entity_type, action\nORDER BY cnt DESC",
+      "name": "Full Table Scan",
+      "chartConfig": {
+        "type": "bar",
+        "labelColumn": "entity_type",
+        "valueColumns": ["cnt"]
+      }
+    },
+    {
+      "type": "sql",
+      "content": "-- Primary Key Lookup (type: const)\n-- Accessing a single row by PK is the fastest possible access.\nSELECT * FROM users WHERE id = 42",
+      "name": "PK Const Lookup"
+    },
+    {
+      "type": "markdown",
+      "content": "---\n\n## 2. Index Access Patterns\n\nMySQL uses different index access strategies depending on the query shape:\n- **ref** — equality lookup on a non-unique index\n- **range** — index range scan (BETWEEN, >, <, IN)\n- **index** — full index scan (reads the entire index, but no table data)\n\nRun EXPLAIN on each cell and compare the `type` column."
+    },
+    {
+      "type": "sql",
+      "content": "-- Index Ref Access (type: ref)\n-- Uses idx_country to find all users in a specific country.\nSELECT id, username, full_name, score\nFROM users\nWHERE country = 'USA'\nORDER BY score DESC",
+      "name": "Index Ref"
+    },
+    {
+      "type": "sql",
+      "content": "-- Index Range Scan (type: range)\n-- Uses idx_created_at to scan a date range.\nSELECT id, username, created_at, is_premium\nFROM users\nWHERE created_at BETWEEN '2023-06-01' AND '2023-12-31'\nORDER BY created_at",
+      "name": "Index Range Scan"
+    },
+    {
+      "type": "sql",
+      "content": "-- Composite Index with Leftmost Prefix (type: ref)\n-- Uses the (is_premium, score) composite index.\n-- Only the leftmost column is used for equality.\nSELECT id, username, score\nFROM users\nWHERE is_premium = 1\nORDER BY score DESC\nLIMIT 20",
+      "name": "Composite Index"
+    },
+    {
+      "type": "sql",
+      "content": "-- Covering Index / Index-Only Scan (Extra: Using index)\n-- All requested columns are part of idx_user_active.\n-- MySQL reads ONLY the index, never touching table rows.\nSELECT user_id, is_active, last_active_at\nFROM user_sessions\nWHERE user_id = 10 AND is_active = 1\nORDER BY last_active_at DESC",
+      "name": "Covering Index"
+    },
+    {
+      "type": "markdown",
+      "content": "---\n\n## 3. JOIN Operations\n\nJOINs produce multi-node EXPLAIN trees. The Visual Explain graph makes it easy to see:\n- Which table is the **driving table** (outermost loop)\n- Which **access type** is used for each table\n- The **estimated rows** per loop iteration"
+    },
+    {
+      "type": "sql",
+      "content": "-- Simple Inner JOIN (2 tables)\n-- Nested loop: users drives, posts accessed via idx_user_id.\nSELECT u.username, p.title, p.view_count\nFROM users u\nJOIN posts p ON p.user_id = u.id\nWHERE u.country = 'Japan'\nORDER BY p.view_count DESC\nLIMIT 10",
+      "name": "Simple JOIN"
+    },
+    {
+      "type": "sql",
+      "content": "-- Multi-Table JOIN (4 tables)\n-- Produces a deep tree: users → posts → post_tags → tags.\n-- Watch how the optimizer picks the join order.\nSELECT u.username, p.title, t.name AS tag\nFROM users u\nJOIN posts p ON p.user_id = u.id\nJOIN post_tags pt ON pt.post_id = p.id\nJOIN tags t ON t.id = pt.tag_id\nWHERE u.is_premium = 1\n  AND p.status = 'published'\nLIMIT 50",
+      "name": "Multi-Table JOIN"
+    },
+    {
+      "type": "sql",
+      "content": "-- LEFT JOIN with NULL check\n-- Finds users who have never posted (anti-join pattern).\n-- Look for \"Not exists\" in the Extra column.\nSELECT u.id, u.username, u.country\nFROM users u\nLEFT JOIN posts p ON p.user_id = u.id\nWHERE p.id IS NULL\nORDER BY u.created_at",
+      "name": "Anti-Join (LEFT JOIN + IS NULL)"
+    },
+    {
+      "type": "markdown",
+      "content": "---\n\n## 4. Subqueries\n\nSubqueries trigger different execution strategies depending on their form. MySQL may materialize them, convert them to semi-joins, or execute them once per outer row (correlated).\n\nThe Visual Explain tree shows subquery nodes distinctly from join nodes."
+    },
+    {
+      "type": "sql",
+      "content": "-- IN Subquery → Semi-Join Optimization\n-- MySQL 8+ may convert this to a semi-join internally.\nSELECT u.username, u.country, u.score\nFROM users u\nWHERE u.id IN (\n    SELECT DISTINCT p.user_id\n    FROM posts p\n    WHERE p.status = 'published'\n      AND p.view_count > 5000\n)\nORDER BY u.score DESC",
+      "name": "IN Subquery"
+    },
+    {
+      "type": "sql",
+      "content": "-- EXISTS Subquery (correlated)\n-- Executed once per outer row — check the plan for DEPENDENT SUBQUERY.\nSELECT u.username, u.email\nFROM users u\nWHERE EXISTS (\n    SELECT 1 FROM comments c\n    WHERE c.user_id = u.id\n      AND c.is_flagged = 1\n)\nORDER BY u.username",
+      "name": "EXISTS Subquery"
+    },
+    {
+      "type": "sql",
+      "content": "-- Scalar Subquery in SELECT (correlated)\n-- One subquery execution per outer row.\nSELECT\n    u.username,\n    u.country,\n    (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS post_count,\n    (SELECT COUNT(*) FROM comments c WHERE c.user_id = u.id) AS comment_count\nFROM users u\nWHERE u.is_premium = 1\nORDER BY post_count DESC\nLIMIT 15",
+      "name": "Scalar Subqueries"
+    },
+    {
+      "type": "markdown",
+      "content": "---\n\n## 5. Derived Tables & CTEs\n\nDerived tables (subqueries in FROM) and CTEs are materialized into temporary tables. The EXPLAIN plan shows a `<derived>` or `<subquery>` node.\n\nThese produce wide, branching EXPLAIN trees that are great for testing the Visual Explain graph layout."
+    },
+    {
+      "type": "sql",
+      "content": "-- Derived Table (subquery in FROM)\n-- The inner query is materialized, then joined.\nSELECT\n    top_authors.username,\n    top_authors.total_posts,\n    top_authors.total_views,\n    c.name AS favorite_category\nFROM (\n    SELECT\n        u.id AS user_id,\n        u.username,\n        COUNT(p.id) AS total_posts,\n        SUM(p.view_count) AS total_views\n    FROM users u\n    JOIN posts p ON p.user_id = u.id\n    WHERE p.status = 'published'\n    GROUP BY u.id, u.username\n    HAVING total_posts >= 5\n) top_authors\nJOIN posts p2 ON p2.user_id = top_authors.user_id\nJOIN categories c ON c.id = p2.category_id\nGROUP BY top_authors.user_id, top_authors.username,\n         top_authors.total_posts, top_authors.total_views, c.name\nORDER BY top_authors.total_views DESC\nLIMIT 20",
+      "name": "Derived Table"
+    },
+    {
+      "type": "sql",
+      "content": "-- CTE (WITH clause)\n-- Similar to derived table, but more readable.\n-- Check if MySQL materializes or merges the CTE.\nWITH active_commenters AS (\n    SELECT\n        user_id,\n        COUNT(*) AS comment_count,\n        SUM(is_flagged) AS flagged_count\n    FROM comments\n    GROUP BY user_id\n    HAVING comment_count >= 3\n)\nSELECT\n    u.username,\n    u.country,\n    ac.comment_count,\n    ac.flagged_count,\n    ROUND(ac.flagged_count / ac.comment_count * 100, 1) AS flagged_pct\nFROM active_commenters ac\nJOIN users u ON u.id = ac.user_id\nORDER BY ac.comment_count DESC\nLIMIT 20",
+      "name": "CTE"
+    },
+    {
+      "type": "markdown",
+      "content": "---\n\n## 6. Aggregation & Sorting\n\nGROUP BY and ORDER BY may use indexes or fall back to temporary tables and filesort. The EXPLAIN Extra column reveals which strategy is chosen.\n\nLook for:\n- `Using temporary` — a temp table was created\n- `Using filesort` — an extra sorting pass\n- `Using index` — the index provides the ordering for free"
+    },
+    {
+      "type": "sql",
+      "content": "-- GROUP BY with Filesort and Temporary Table\n-- Aggregation across a JOIN forces temp table + filesort.\nSELECT\n    c.name AS category,\n    p.status,\n    COUNT(*) AS post_count,\n    ROUND(AVG(p.view_count)) AS avg_views,\n    MAX(p.view_count) AS max_views\nFROM posts p\nJOIN categories c ON c.id = p.category_id\nGROUP BY c.name, p.status\nORDER BY post_count DESC",
+      "name": "GROUP BY + Filesort",
+      "chartConfig": {
+        "type": "bar",
+        "labelColumn": "category",
+        "valueColumns": ["post_count", "avg_views"]
+      }
+    },
+    {
+      "type": "sql",
+      "content": "-- ORDER BY with LIMIT (top-N optimization)\n-- MySQL may use an index or a priority queue for top-N.\nSELECT id, username, score, country\nFROM users\nORDER BY score DESC\nLIMIT 10",
+      "name": "Top-N Sort"
+    },
+    {
+      "type": "sql",
+      "content": "-- DISTINCT with JOIN\n-- Produces a plan with duplicate removal.\nSELECT DISTINCT u.country\nFROM users u\nJOIN posts p ON p.user_id = u.id\nWHERE p.status = 'published'\nORDER BY u.country",
+      "name": "DISTINCT"
+    },
+    {
+      "type": "markdown",
+      "content": "---\n\n## 7. UNION & Set Operations\n\nUNION combines two result sets. `UNION ALL` skips duplicate removal, while `UNION` adds a temporary table for deduplication.\n\nThe EXPLAIN plan shows each branch as a separate query block."
+    },
+    {
+      "type": "sql",
+      "content": "-- UNION with different access paths per branch\n-- Branch 1 uses idx_country, Branch 2 uses idx_premium_score.\nSELECT username, country, 'by_country' AS source\nFROM users\nWHERE country IN ('USA', 'UK', 'Germany')\n\nUNION ALL\n\nSELECT username, country, 'by_premium' AS source\nFROM users\nWHERE is_premium = 1 AND score > 4000",
+      "name": "UNION ALL"
+    },
+    {
+      "type": "sql",
+      "content": "-- UNION with deduplication (temporary table)\nSELECT username FROM users WHERE country = 'Japan'\nUNION\nSELECT username FROM users WHERE is_premium = 1",
+      "name": "UNION (dedup)"
+    },
+    {
+      "type": "markdown",
+      "content": "---\n\n## 8. Complex Analytical Queries\n\nReal-world queries combine multiple joins, subqueries, aggregation, and sorting. These produce the most complex and visually interesting EXPLAIN trees.\n\nThese are ideal for testing:\n- Graph layout with many nodes\n- Cost distribution heatmap\n- AI analysis suggestions"
+    },
+    {
+      "type": "sql",
+      "content": "-- Author Leaderboard: 5-table join with aggregation\nSELECT\n    u.username,\n    u.country,\n    COUNT(DISTINCT p.id) AS posts,\n    COUNT(DISTINCT c.id) AS comments_received,\n    SUM(p.view_count) AS total_views,\n    COUNT(DISTINCT t.id) AS unique_tags\nFROM users u\nJOIN posts p ON p.user_id = u.id AND p.status = 'published'\nLEFT JOIN comments c ON c.post_id = p.id\nLEFT JOIN post_tags pt ON pt.post_id = p.id\nLEFT JOIN tags t ON t.id = pt.tag_id\nGROUP BY u.id, u.username, u.country\nHAVING posts >= 3\nORDER BY total_views DESC\nLIMIT 15",
+      "name": "Author Leaderboard",
+      "chartConfig": {
+        "type": "bar",
+        "labelColumn": "username",
+        "valueColumns": ["total_views", "comments_received"]
+      }
+    },
+    {
+      "type": "sql",
+      "content": "-- Category Performance Dashboard\n-- Hierarchical join (parent → child categories) + aggregation.\nSELECT\n    parent.name AS area,\n    child.name AS category,\n    COUNT(p.id) AS posts,\n    ROUND(AVG(p.view_count)) AS avg_views,\n    SUM(CASE WHEN p.status = 'published' THEN 1 ELSE 0 END) AS published,\n    SUM(CASE WHEN p.status = 'draft' THEN 1 ELSE 0 END) AS drafts\nFROM categories parent\nJOIN categories child ON child.parent_id = parent.id\nJOIN posts p ON p.category_id = child.id\nGROUP BY parent.name, child.name\nORDER BY parent.name, avg_views DESC",
+      "name": "Category Dashboard",
+      "chartConfig": {
+        "type": "bar",
+        "labelColumn": "category",
+        "valueColumns": ["avg_views", "posts"]
+      }
+    },
+    {
+      "type": "sql",
+      "content": "-- Country Engagement Report\n-- Combines user, post, and comment data with derived metrics.\nSELECT\n    u.country,\n    COUNT(DISTINCT u.id) AS users,\n    COUNT(DISTINCT p.id) AS posts,\n    COUNT(DISTINCT c.id) AS comments,\n    ROUND(COUNT(DISTINCT p.id) / COUNT(DISTINCT u.id), 1) AS posts_per_user,\n    ROUND(COUNT(DISTINCT c.id) / COUNT(DISTINCT p.id), 1) AS comments_per_post,\n    SUM(p.view_count) AS total_views\nFROM users u\nLEFT JOIN posts p ON p.user_id = u.id\nLEFT JOIN comments c ON c.post_id = p.id\nGROUP BY u.country\nHAVING users >= 5\nORDER BY total_views DESC",
+      "name": "Country Engagement",
+      "chartConfig": {
+        "type": "line",
+        "labelColumn": "country",
+        "valueColumns": ["posts_per_user", "comments_per_post"]
+      }
+    },
+    {
+      "type": "sql",
+      "content": "-- Trending Tags: post_tags JOIN with ranking\nSELECT\n    t.name AS tag,\n    COUNT(DISTINCT pt.post_id) AS post_count,\n    ROUND(AVG(p.view_count)) AS avg_views,\n    SUM(p.view_count) AS total_views\nFROM tags t\nJOIN post_tags pt ON pt.tag_id = t.id\nJOIN posts p ON p.id = pt.post_id\nWHERE p.status = 'published'\nGROUP BY t.id, t.name\nORDER BY total_views DESC\nLIMIT 15",
+      "name": "Trending Tags",
+      "chartConfig": {
+        "type": "pie",
+        "labelColumn": "tag",
+        "valueColumns": ["total_views"]
+      }
+    },
+    {
+      "type": "markdown",
+      "content": "---\n\n## 9. Worst-Case Scenarios\n\nThese queries intentionally produce **expensive plans** — full scans, cartesian-like products, or deeply nested subqueries. They are useful for testing the cost heatmap (red nodes) and AI optimization suggestions."
+    },
+    {
+      "type": "sql",
+      "content": "-- Full Scan + Filesort on Large Unindexed Table\n-- No index can help — every row must be read and sorted.\nSELECT\n    actor_id,\n    entity_type,\n    action,\n    COUNT(*) AS action_count,\n    MIN(created_at) AS first_seen,\n    MAX(created_at) AS last_seen\nFROM audit_log\nGROUP BY actor_id, entity_type, action\nHAVING action_count > 2\nORDER BY action_count DESC",
+      "name": "Full Scan + Sort (Expensive)"
+    },
+    {
+      "type": "sql",
+      "content": "-- Correlated Subquery in WHERE + ORDER BY (multiple passes)\nSELECT\n    p.title,\n    p.view_count,\n    p.status,\n    (SELECT u.username FROM users u WHERE u.id = p.user_id) AS author,\n    (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,\n    (SELECT COUNT(*) FROM post_tags pt WHERE pt.post_id = p.id) AS tag_count\nFROM posts p\nWHERE p.view_count > (\n    SELECT AVG(p2.view_count) FROM posts p2 WHERE p2.category_id = p.category_id\n)\nORDER BY p.view_count DESC\nLIMIT 20",
+      "name": "Correlated Subqueries (Expensive)"
+    },
+    {
+      "type": "sql",
+      "content": "-- Self-Join: find users from the same country with similar scores\n-- Produces a large intermediate result set.\nSELECT\n    u1.username AS user_a,\n    u2.username AS user_b,\n    u1.country,\n    u1.score AS score_a,\n    u2.score AS score_b,\n    ABS(u1.score - u2.score) AS score_diff\nFROM users u1\nJOIN users u2 ON u1.country = u2.country\n                AND u1.id < u2.id\n                AND ABS(u1.score - u2.score) < 100\nORDER BY u1.country, score_diff\nLIMIT 30",
+      "name": "Self-Join (Expensive)"
+    },
+    {
+      "type": "markdown",
+      "content": "---\n\n## 10. Index Optimization Before/After\n\nThese pairs of queries let you see how adding an index changes the EXPLAIN plan. Run the first query, note the plan, then execute the `CREATE INDEX` and re-run.\n\nThis is great for demonstrating the value of the Visual Explain tool."
+    },
+    {
+      "type": "sql",
+      "content": "-- BEFORE index: full scan on audit_log filtering by entity_type\n-- Expected: type=ALL, rows=all, Using where\nSELECT entity_type, action, COUNT(*) AS cnt\nFROM audit_log\nWHERE entity_type = 'post' AND action = 'update'\nGROUP BY entity_type, action",
+      "name": "Before Index"
+    },
+    {
+      "type": "sql",
+      "content": "-- Add index to audit_log for the columns we filter on\nCREATE INDEX idx_entity_action ON audit_log (entity_type, action)",
+      "name": "Add Index"
+    },
+    {
+      "type": "sql",
+      "content": "-- AFTER index: same query, now uses idx_entity_action\n-- Expected: type=ref, rows=subset, Using index\nSELECT entity_type, action, COUNT(*) AS cnt\nFROM audit_log\nWHERE entity_type = 'post' AND action = 'update'\nGROUP BY entity_type, action",
+      "name": "After Index"
+    },
+    {
+      "type": "sql",
+      "content": "-- Cleanup: remove the index to keep the demo repeatable\nDROP INDEX idx_entity_action ON audit_log",
+      "name": "Drop Index"
+    },
+    {
+      "type": "markdown",
+      "content": "---\n\n## Summary\n\n| Section | EXPLAIN Feature | Key Observation |\n|---------|----------------|------------------|\n| Table Scans | `type: ALL` vs `type: const` | Dramatic cost difference |\n| Index Access | ref, range, covering index | Color-coded node costs |\n| JOINs | Multi-node trees | Join order visualization |\n| Subqueries | Semi-join, correlated | Subquery node branching |\n| Derived/CTEs | Materialized temp tables | Wide branching trees |\n| Aggregation | Filesort, temp tables | Extra column indicators |\n| UNION | Multi-branch plans | Parallel branch layout |\n| Complex Queries | Deep trees, high costs | AI analysis suggestions |\n| Worst-Case | Red cost nodes | Optimization opportunities |\n| Before/After | Plan comparison | Impact of index creation |\n\n*Use the **Explain** button on any SQL cell to open the Visual Explain modal.*"
+    }
+  ]
+}
