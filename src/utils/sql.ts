@@ -5,7 +5,7 @@ export function splitQueries(sql: string): string[] {
 }
 
 /**
- * Strip leading SQL comments (line `-- …` and block `/* … *​/`) and whitespace
+ * Strip leading SQL comments (single-line and block comments) and whitespace
  * so that the first keyword of the actual statement is at position 0.
  */
 export function stripLeadingSqlComments(query: string): string {

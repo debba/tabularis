@@ -67,7 +67,7 @@ export const VisualExplainModal = ({
     } finally {
       setIsLoading(false);
     }
-  }, [query, connectionId, analyze, schema]);
+  }, [query, connectionId, analyze, schema, t]);
 
   useEffect(() => {
     if (isOpen && query?.trim() && connectionId) {
