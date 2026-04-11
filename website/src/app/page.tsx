@@ -60,6 +60,30 @@ const SEO_ENTRY_POINTS = [
     excerpt:
       "A stronger desktop workflow for SQLite-based apps, prototypes, migrations, and local debugging.",
   },
+  {
+    href: "/solutions/mysql-client-for-developers",
+    title: "MySQL Client",
+    excerpt:
+      "A developer-focused MySQL and MariaDB workflow with SQL editing, SSH, and reusable notebook analysis.",
+  },
+  {
+    href: "/solutions/secure-database-client",
+    title: "Secure Database Client",
+    excerpt:
+      "A local-first database workflow with SSH tunneling, system keychain storage, and controlled desktop access.",
+  },
+  {
+    href: "/solutions/plugin-based-database-client",
+    title: "Plugin-Based Database Client",
+    excerpt:
+      "An extensible database client with a plugin system for custom engines and broader database workflows.",
+  },
+  {
+    href: "/solutions/duckdb-redis-database-workflows",
+    title: "DuckDB and Redis Workflows",
+    excerpt:
+      "Extend beyond built-in engines with plugin-driven workflows for analytical and mixed-stack database use cases.",
+  },
 ];
 
 // Helper to parse home.md into sections
@@ -592,8 +616,8 @@ export default function HomePage() {
         <h2>_explore_by_intent</h2>
         <p>
           Start from the workflow you actually care about: PostgreSQL work,
-          reusable SQL analysis, AI-native database tooling, or tool
-          comparisons.
+          MySQL and SQLite work, reusable SQL analysis, secure access,
+          extensibility, AI-native database tooling, or tool comparisons.
         </p>
         <div className="wiki-index-grid" style={{ marginTop: "1.5rem" }}>
           {SEO_ENTRY_POINTS.map((entry) => (
@@ -603,6 +627,11 @@ export default function HomePage() {
             </Link>
           ))}
         </div>
+        <p className="blog-all-link" style={{ marginTop: "1.25rem" }}>
+          <Link href="/solutions" style={{ fontWeight: 600 }}>
+            Browse all solutions →
+          </Link>
+        </p>
       </section>
 
       {/* PLUGINS */}

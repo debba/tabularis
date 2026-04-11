@@ -90,6 +90,12 @@ export default function DownloadPage() {
           <Link href="/solutions/sql-notebooks">
             SQL notebooks guide →
           </Link>
+          <Link href="/solutions/mysql-client-for-developers">
+            MySQL client guide →
+          </Link>
+          <Link href="/solutions/secure-database-client">
+            Secure database client guide →
+          </Link>
         </div>
 
         <div className="plugin-cta dl-mirror-box">
@@ -108,6 +114,29 @@ export default function DownloadPage() {
           >
             Download from SourceForge &rarr;
           </a>
+        </div>
+
+        <div className="plugin-cta dl-mirror-box">
+          <h3>Explore by Workflow</h3>
+          <p>
+            Not every download starts from the same use case. If you are here
+            because of PostgreSQL, MySQL, secure access, notebooks, or plugin
+            extensibility, start from the matching guide.
+          </p>
+          <div className="dl-page-footer-links">
+            <Link href="/solutions/postgresql-client">
+              PostgreSQL →
+            </Link>
+            <Link href="/solutions/mysql-client-for-developers">
+              MySQL →
+            </Link>
+            <Link href="/solutions/secure-database-client">
+              Security →
+            </Link>
+            <Link href="/solutions/plugin-based-database-client">
+              Plugins →
+            </Link>
+          </div>
         </div>
       </section>
 

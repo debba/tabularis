@@ -36,8 +36,9 @@ export default function SolutionsPage() {
           <div className="blog-intro-body">
             <h3>Solutions</h3>
             <p>
-            Explore Tabularis by workflow and use case, from PostgreSQL work to
-            SQL notebooks and AI agent database flows.
+            Explore Tabularis by workflow and use case, from PostgreSQL, MySQL,
+            and SQLite work to SQL notebooks, secure access, plugin-based
+            extensibility, and AI agent database flows.
             </p>
           </div>
         </div>
