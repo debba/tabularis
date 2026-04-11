@@ -21,7 +21,7 @@
   <a href="https://winstall.app/apps/Debba.Tabularis"><img src="https://img.shields.io/winget/v/Debba.Tabularis?label=WinGet&logo=windows&color=0078D4" alt="WinGet" /></a>
 </p>
 
-An open-source desktop client for modern databases. Supports PostgreSQL, MySQL/MariaDB, and SQLite, and is hackable with plugins, with notebooks, AI, and MCP built in.
+An open-source desktop client for modern databases. Supports PostgreSQL, MySQL/MariaDB and SQLite and is hackable with plugins, with notebooks, AI, and MCP built in.
 
 **Available in:** English, Italian, Spanish, Chinese (Simplified)
 
