@@ -253,14 +253,9 @@ export const registerSqlAutocomplete = (
       }
 
       // ============================================
-      // 4. TABLE SUGGESTIONS (limit to 50 for large schemas)
+      // 4. TABLE SUGGESTIONS
       // ============================================
-      const MAX_TABLE_SUGGESTIONS = 50;
-      const tablesToShow = tables.length > MAX_TABLE_SUGGESTIONS 
-        ? tables.slice(0, MAX_TABLE_SUGGESTIONS) 
-        : tables;
-      
-      const tableSuggestions = tablesToShow.map((t) => ({
+      const tableSuggestions = tables.map((t) => ({
         label: t.name,
         kind: monaco.languages.CompletionItemKind.Class,
         detail: "Table",
@@ -269,18 +264,12 @@ export const registerSqlAutocomplete = (
         sortText: `1_${t.name}`
       }));
 
-      // Combine suggestions with smart limits
-      const allSuggestions = [
-        ...contextColumnSuggestions,
-        ...tableSuggestions,
-        ...keywordSuggestions
-      ];
-      
-      // Monaco handles filtering/limiting internally, but we cap total results
-      const MAX_TOTAL_SUGGESTIONS = 200;
-      
       return {
-        suggestions: allSuggestions.slice(0, MAX_TOTAL_SUGGESTIONS),
+        suggestions: [
+          ...contextColumnSuggestions,
+          ...tableSuggestions,
+          ...keywordSuggestions,
+        ],
       };
     },
   });
