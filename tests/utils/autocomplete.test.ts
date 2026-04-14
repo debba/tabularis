@@ -151,7 +151,7 @@ describe('autocomplete', () => {
       expect(tableSuggestions[1].label).toBe('orders');
     });
 
-    it('should limit table suggestions to MAX_TABLE_SUGGESTIONS', async () => {
+    it('should include all table suggestions regardless of count', async () => {
       const monaco = createMockMonaco();
       const tables: TableInfo[] = Array.from({ length: 60 }, (_, i) => ({
         name: `table_${i}`,
@@ -168,12 +168,12 @@ describe('autocomplete', () => {
       const position = { lineNumber: 1, column: 15 };
 
       const result = await provider.provideCompletionItems(model, position);
-      
-      // Tables are limited to 50, but keywords are also included
-      const tableSuggestions = result.suggestions.filter((s: { sortText?: string }) => 
+
+      // All 60 tables should be present — no arbitrary cap
+      const tableSuggestions = result.suggestions.filter((s: { sortText?: string }) =>
         s.sortText?.startsWith('1_')
       );
-      expect(tableSuggestions.length).toBeLessThanOrEqual(50);
+      expect(tableSuggestions.length).toBe(60);
     });
 
     it('should return keyword suggestions when no context', async () => {
@@ -324,7 +324,7 @@ describe('autocomplete', () => {
   });
 
   describe('suggestion limits', () => {
-    it('should cap total suggestions to MAX_TOTAL_SUGGESTIONS', async () => {
+    it('should return all suggestions without an arbitrary total cap', async () => {
       const monaco = createMockMonaco();
       const tables: TableInfo[] = Array.from({ length: 100 }, (_, i) => ({
         name: `table_${i}`,
@@ -341,9 +341,12 @@ describe('autocomplete', () => {
       const position = { lineNumber: 1, column: 15 };
 
       const result = await provider.provideCompletionItems(model, position);
-      
-      // Should be limited to 200 total
-      expect(result.suggestions.length).toBeLessThanOrEqual(200);
+
+      // All 100 tables should be present — Monaco handles filtering internally
+      const tableSuggestions = result.suggestions.filter((s: { sortText?: string }) =>
+        s.sortText?.startsWith('1_')
+      );
+      expect(tableSuggestions.length).toBe(100);
     });
   });
 });
