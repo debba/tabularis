@@ -7,6 +7,8 @@ import {
   Layers,
   Plus,
   RefreshCw,
+  Search,
+  X,
 } from "lucide-react";
 import { Accordion } from "./Accordion";
 import { SidebarTableItem } from "./SidebarTableItem";
@@ -86,6 +88,7 @@ export const SidebarSchemaItem = ({
   const [routinesOpen, setRoutinesOpen] = useState(false);
   const [functionsOpen, setFunctionsOpen] = useState(true);
   const [proceduresOpen, setProceduresOpen] = useState(true);
+  const [tableFilter, setTableFilter] = useState("");
 
   // Adjust isExpanded during render when activeSchema changes (avoids useEffect)
   if (activeSchema !== prevActiveSchema) {
@@ -96,6 +99,9 @@ export const SidebarSchemaItem = ({
   }
 
   const tables = schemaData?.tables ?? [];
+  const filteredTables = tableFilter
+    ? tables.filter((t) => t.name.toLowerCase().includes(tableFilter.toLowerCase()))
+    : tables;
   const views = schemaData?.views ?? [];
   const routines = schemaData?.routines ?? [];
   const isLoading = schemaData?.isLoading ?? false;
@@ -189,13 +195,36 @@ export const SidebarSchemaItem = ({
                   </div>
                 }
               >
-                {tables.length === 0 ? (
+                {tables.length > 0 && (
+                  <div className="px-2 py-1">
+                    <div className="relative flex items-center">
+                      <Search size={11} className="absolute left-2 text-muted pointer-events-none" />
+                      <input
+                        type="text"
+                        value={tableFilter}
+                        onChange={(e) => setTableFilter(e.target.value)}
+                        placeholder={t("sidebar.filterTables")}
+                        className="w-full bg-surface-secondary text-xs text-secondary placeholder:text-muted rounded pl-6 pr-6 py-1 border border-default focus:outline-none focus:border-blue-500/50"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      {tableFilter && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setTableFilter(""); }}
+                          className="absolute right-1.5 text-muted hover:text-primary"
+                        >
+                          <X size={11} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {filteredTables.length === 0 ? (
                   <div className="text-center p-2 text-xs text-muted italic">
-                    {t("sidebar.noTables")}
+                    {tableFilter ? t("sidebar.noTablesMatch") : t("sidebar.noTables")}
                   </div>
                 ) : (
                   <div>
-                    {tables.map((table) => (
+                    {filteredTables.map((table) => (
                       <SidebarTableItem
                         key={table.name}
                         table={table}
