@@ -165,7 +165,7 @@ export default function HomePage() {
           <span className="badge version">v{APP_VERSION}</span>
           <span className="badge">Open Source</span>
           <span className="badge">Apache 2.0</span>
-          <span className="badge">🌍 EN | IT | ES | ZH</span>
+          <span className="badge">🌍 EN | IT | ES | FR | DE | ZH</span>
         </div>
 
         <p
