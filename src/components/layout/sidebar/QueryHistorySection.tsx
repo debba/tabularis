@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { History, Search, Trash2, Loader2, Database } from "lucide-react";
+import { Search, Trash2, Loader2, Database } from "lucide-react";
 import { groupByDate, formatHistoryTime } from "../../../utils/dateGroups";
+import { SqlHighlight } from "../../ui/SqlHighlight";
+import { formatSqlPreview } from "../../../utils/sqlHighlight";
 import type { QueryHistoryEntry } from "../../../types/queryHistory";
 
 interface QueryHistorySectionProps {
@@ -36,12 +38,6 @@ export function QueryHistorySection({
     () => groupByDate(filteredEntries, (e) => e.executedAt),
     [filteredEntries],
   );
-
-  const truncateSql = (sql: string, maxLen = 60): string => {
-    const firstLine = sql.split("\n")[0].trim();
-    if (firstLine.length <= maxLen) return firstLine;
-    return firstLine.slice(0, maxLen) + "...";
-  };
 
   const formatDuration = (ms: number | null): string => {
     if (ms === null) return "";
@@ -116,35 +112,38 @@ export function QueryHistorySection({
                 onClick={() => setSelectedId(entry.id)}
                 onDoubleClick={() => onDoubleClick(entry)}
                 onContextMenu={(e) => onContextMenu(e, entry)}
-                className={`flex items-center gap-2 pl-3 pr-4 py-1.5 text-sm cursor-pointer group transition-colors ${
+                className={`pl-3 pr-3 py-1.5 cursor-pointer group transition-colors border-b border-default/30 ${
                   selectedId === entry.id
                     ? entry.status === "error"
-                      ? "bg-red-500/15 text-red-300"
-                      : "bg-surface-secondary text-primary"
+                      ? "bg-red-500/15"
+                      : "bg-surface-secondary"
                     : entry.status === "error"
-                      ? "text-red-400/70 hover:bg-red-500/10 hover:text-red-300"
-                      : "text-secondary hover:bg-surface-secondary hover:text-primary"
+                      ? "hover:bg-red-500/10"
+                      : "hover:bg-surface-secondary"
                 }`}
                 title={entry.database ? `[${entry.database}] ${entry.sql}` : entry.sql}
               >
-                <History size={14} className={entry.status === "error" ? "text-red-400/50 shrink-0" : "text-muted shrink-0"} />
-                <div className="flex-1 min-w-0">
-                  <div className="truncate text-xs">
-                    {truncateSql(entry.sql)}
+                <div className="flex items-center justify-between gap-2 mb-0.5">
+                  <div className="flex items-center gap-1 text-[10px] text-muted min-w-0">
+                    <span>{formatHistoryTime(entry.executedAt)}</span>
+                    {entry.executionTimeMs !== null && (
+                      <span className="text-muted/60">{formatDuration(entry.executionTimeMs)}</span>
+                    )}
                   </div>
                   {entry.database && (
-                    <div className="flex items-center gap-0.5 text-[10px] text-muted mt-0.5">
+                    <div className="flex items-center gap-0.5 text-[10px] text-muted shrink-0">
                       <Database size={9} className="shrink-0" />
-                      <span className="truncate">{entry.database}</span>
+                      <span className="truncate max-w-[80px]">{entry.database}</span>
                     </div>
                   )}
                 </div>
-                <div className="shrink-0 text-[10px] text-muted flex items-center gap-1">
-                  {entry.executionTimeMs !== null && (
-                    <span>{formatDuration(entry.executionTimeMs)}</span>
-                  )}
-                  <span>{formatHistoryTime(entry.executedAt)}</span>
-                </div>
+                {entry.status === "error" ? (
+                  <pre className="text-[11px] leading-[1.4] font-mono whitespace-pre-wrap break-all text-red-400/70">
+                    {formatSqlPreview(entry.sql)}
+                  </pre>
+                ) : (
+                  <SqlHighlight sql={entry.sql} />
+                )}
               </div>
             ))}
           </div>

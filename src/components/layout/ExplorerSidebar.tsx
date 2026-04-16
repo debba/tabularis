@@ -66,7 +66,8 @@ import type { ContextMenuData } from "../../types/sidebar";
 import type { RoutineInfo } from "../../contexts/DatabaseContext";
 import { groupRoutinesByType } from "../../utils/routines";
 import { formatObjectCount } from "../../utils/schema";
-import { formatHistoryTime } from "../../utils/dateGroups";
+import { groupByDate, formatHistoryTime } from "../../utils/dateGroups";
+import { SqlHighlight } from "../ui/SqlHighlight";
 import { isMultiDatabaseCapable } from "../../utils/database";
 import { supportsManageTables } from "../../utils/driverCapabilities";
 
@@ -150,6 +151,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
   const [historyToFavoriteDB, setHistoryToFavoriteDB] = useState<string | null>(null);
   const [historyDeleteConfirm, setHistoryDeleteConfirm] = useState<string | null>(null);
   const [historyClearConfirm, setHistoryClearConfirm] = useState(false);
+  const [favoriteDeleteConfirm, setFavoriteDeleteConfirm] = useState<string | null>(null);
   const [tableFilter, setTableFilter] = useState("");
   const [favoritesFilter, setFavoritesFilter] = useState("");
   const [selectedFavoriteId, setSelectedFavoriteId] = useState<string | null>(null);
@@ -449,7 +451,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
         </div>
 
         {/* Tab bar */}
-        <div className="flex items-center border-b border-default bg-base">
+        <div className="flex items-center border-b border-default bg-base px-1">
           {([
             { id: "structure" as const, icon: Layers, label: t("sidebar.structure") },
             { id: "favorites" as const, icon: Star, label: t("sidebar.favorites"), count: queries.length },
@@ -458,22 +460,21 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
             <button
               key={tab.id}
               onClick={() => setSidebarTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-1 py-2 text-xs font-medium transition-colors relative min-w-0 ${
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 text-xs font-medium transition-colors relative min-w-0 ${
                 sidebarTab === tab.id
                   ? "text-primary"
                   : "text-muted hover:text-secondary"
               }`}
               title={`${tab.label}${tab.count !== undefined && tab.count > 0 ? ` (${tab.count})` : ""}`}
             >
-              <tab.icon size={15} className="shrink-0" />
+              <tab.icon size={14} className="shrink-0" />
               {sidebarWidth >= 200 && (
                 <span className="truncate">{tab.label}</span>
               )}
-              {sidebarWidth >= 200 && tab.count !== undefined && tab.count > 0 && (
-                <span className="text-[10px] text-muted shrink-0">({tab.count})</span>
-              )}
-              {sidebarWidth < 200 && tab.count !== undefined && tab.count > 0 && (
-                <span className="text-[10px] text-muted shrink-0">{tab.count}</span>
+              {tab.count !== undefined && tab.count > 0 && (
+                <span className="text-[10px] text-muted shrink-0">
+                  {sidebarWidth >= 200 ? `(${tab.count})` : tab.count}
+                </span>
               )}
               {sidebarTab === tab.id && (
                 <div className="absolute bottom-0 left-1 right-1 h-0.5 bg-blue-500 rounded-full" />
@@ -485,9 +486,16 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
         <div className="flex-1 overflow-y-auto py-2">
           {/* Favorites tab */}
           {sidebarTab === "favorites" && (<div className="animate-fade-in">{(() => {
+            const sorted = [...queries].sort((a, b) => {
+              if (!a.updated_at && !b.updated_at) return 0;
+              if (!a.updated_at) return 1;
+              if (!b.updated_at) return -1;
+              return b.updated_at.localeCompare(a.updated_at);
+            });
             const filteredQueries = favoritesFilter.trim()
-              ? queries.filter((q) => q.name.toLowerCase().includes(favoritesFilter.toLowerCase()) || q.sql.toLowerCase().includes(favoritesFilter.toLowerCase()))
-              : queries;
+              ? sorted.filter((q) => q.name.toLowerCase().includes(favoritesFilter.toLowerCase()) || q.sql.toLowerCase().includes(favoritesFilter.toLowerCase()))
+              : sorted;
+            const groupedFavorites = groupByDate(filteredQueries, (q) => q.updated_at ?? "1970-01-01");
 
             return queries.length === 0 ? (
               <div className="text-center p-4 text-xs text-muted italic">
@@ -515,46 +523,48 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                     {filteredQueries.length} / {queries.length}
                   </div>
                 )}
-                {filteredQueries.length === 0 ? (
+                {groupedFavorites.length === 0 ? (
                   <div className="text-center p-2 text-xs text-muted italic">
                     {t("sidebar.noFavoritesSearchResults")}
                   </div>
                 ) : (
-                  filteredQueries.map((q) => (
-                    <div
-                      key={q.id}
-                      onClick={() => setSelectedFavoriteId(q.id)}
-                      onDoubleClick={() => runQuery(q.sql, q.name, undefined, false, q.database ?? undefined)}
-                      onContextMenu={(e) =>
-                        handleContextMenu(e, "query", q.id, q.name, q)
-                      }
-                      className={`flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer group transition-colors ${
-                        selectedFavoriteId === q.id
-                          ? "bg-surface-secondary text-primary"
-                          : "text-secondary hover:bg-surface-secondary hover:text-primary"
-                      }`}
-                      title={q.database ? `[${q.database}] ${q.name}` : q.name}
-                    >
-                      <FileCode size={14} className="text-green-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <span className="truncate block">{q.name}</span>
-                        {(q.database || q.updated_at) && (
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted mt-0.5">
-                            {q.database && (
-                              <span className="flex items-center gap-0.5 min-w-0">
-                                <Database size={9} className="shrink-0" />
-                                <span className="truncate">{q.database}</span>
-                              </span>
-                            )}
-                            {q.updated_at && (
-                              <span className="flex items-center gap-0.5 shrink-0">
-                                <Clock size={9} className="shrink-0" />
-                                <span>{formatHistoryTime(q.updated_at)}</span>
-                              </span>
-                            )}
-                          </div>
-                        )}
+                  groupedFavorites.map(([groupKey, items]) => (
+                    <div key={groupKey}>
+                      <div className="px-3 py-1 text-[10px] font-semibold uppercase text-muted tracking-wider">
+                        {t(`sidebar.${groupKey}`)}
                       </div>
+                      {items.map((q) => (
+                        <div
+                          key={q.id}
+                          onClick={() => setSelectedFavoriteId(q.id)}
+                          onDoubleClick={() => runQuery(q.sql, q.name, undefined, false, q.database ?? undefined)}
+                          onContextMenu={(e) =>
+                            handleContextMenu(e, "query", q.id, q.name, q)
+                          }
+                          className={`pl-3 pr-3 py-1.5 cursor-pointer group transition-colors border-b border-default/30 ${
+                            selectedFavoriteId === q.id
+                              ? "bg-surface-secondary"
+                              : "hover:bg-surface-secondary"
+                          }`}
+                          title={q.database ? `[${q.database}] ${q.sql}` : q.sql}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <span className="text-[11px] font-medium text-primary truncate">{q.name}</span>
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted shrink-0">
+                              {q.database && (
+                                <span className="flex items-center gap-0.5">
+                                  <Database size={9} className="shrink-0" />
+                                  <span className="truncate max-w-[80px]">{q.database}</span>
+                                </span>
+                              )}
+                              {q.updated_at && (
+                                <span>{formatHistoryTime(q.updated_at)}</span>
+                              )}
+                            </div>
+                          </div>
+                          <SqlHighlight sql={q.sql} />
+                        </div>
+                      ))}
                     </div>
                   ))
                 )}
@@ -1779,14 +1789,8 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                 label: t("sidebar.delete"),
                                 icon: Trash2,
                                 danger: true,
-                                action: async () => {
-                                  const confirmed = await ask(
-                                    t("sidebar.confirmDeleteQuery", { name: contextMenu.label }),
-                                    { title: t("sidebar.confirmDeleteTitle"), kind: "warning" },
-                                  );
-                                  if (confirmed) {
-                                    deleteQuery(contextMenu.id);
-                                  }
+                                action: () => {
+                                  setFavoriteDeleteConfirm(contextMenu.id);
                                 },
                               },
                             ]
@@ -1920,6 +1924,20 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
           }}
         />
       )}
+
+      {/* Delete favorite confirmation */}
+      <ConfirmModal
+        isOpen={favoriteDeleteConfirm !== null}
+        onClose={() => setFavoriteDeleteConfirm(null)}
+        title={t("sidebar.confirmDeleteTitle")}
+        message={t("sidebar.confirmDeleteQuery", { name: queries.find((q) => q.id === favoriteDeleteConfirm)?.name ?? "" })}
+        onConfirm={() => {
+          if (favoriteDeleteConfirm) {
+            deleteQuery(favoriteDeleteConfirm);
+          }
+          setFavoriteDeleteConfirm(null);
+        }}
+      />
 
       {/* Delete single history entry confirmation */}
       <ConfirmModal
