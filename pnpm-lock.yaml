@@ -180,6 +180,9 @@ importers:
       highlight.js:
         specifier: ^11.11.1
         version: 11.11.1
+      lucide-react:
+        specifier: ^1.8.0
+        version: 1.8.0(react@19.2.4)
       marked:
         specifier: ^15.0.12
         version: 15.0.12
@@ -2377,6 +2380,11 @@ packages:
 
   lucide-react@0.563.0:
     resolution: {integrity: sha512-8dXPB2GI4dI8jV4MgUDGBeLdGk8ekfqVZ0BdLcrRzocGgG75ltNEmWS+gE7uokKF/0oSUuczNDT+g9hFJ23FkA==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  lucide-react@1.8.0:
+    resolution: {integrity: sha512-WuvlsjngSk7TnTBJ1hsCy3ql9V9VOdcPkd3PKcSmM34vJD8KG6molxz7m7zbYFgICwsanQWmJ13JlYs4Zp7Arw==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -5150,6 +5158,10 @@ snapshots:
       yallist: 3.1.1
 
   lucide-react@0.563.0(react@19.2.4):
+    dependencies:
+      react: 19.2.4
+
+  lucide-react@1.8.0(react@19.2.4):
     dependencies:
       react: 19.2.4
 
