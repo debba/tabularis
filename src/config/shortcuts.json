@@ -120,6 +120,16 @@
     "overridable": false
   },
   {
+    "id": "paste_import_clipboard",
+    "category": "navigation",
+    "defaultMac": "⌘+Shift+V",
+    "defaultWin": "Ctrl+Shift+V",
+    "macMatch": { "metaKey": true, "shiftKey": true, "key": "v" },
+    "winMatch": { "ctrlKey": true, "shiftKey": true, "key": "v" },
+    "i18nKey": "settings.shortcuts.pasteImportClipboard",
+    "overridable": true
+  },
+  {
     "id": "notebook_run_all",
     "category": "notebook",
     "defaultMac": "⌘+Shift+Enter",

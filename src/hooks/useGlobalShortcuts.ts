@@ -30,6 +30,12 @@ export function useGlobalShortcuts() {
         return;
       }
 
+      if (matchesShortcut(e, "paste_import_clipboard")) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("tabularis:paste-import"));
+        return;
+      }
+
       if (matchesShortcut(e, "open_connections")) {
         e.preventDefault();
         navigate("/connections");

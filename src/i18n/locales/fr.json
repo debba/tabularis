@@ -482,7 +482,8 @@
       "notOverridable": "Intégré, non personnalisable",
       "pressKeys": "Appuyez sur une combinaison de touches...",
       "notebookRunAll": "Exécuter toutes les cellules",
-      "categories_notebook": "Notebook"
+      "categories_notebook": "Notebook",
+      "pasteImportClipboard": "Importer depuis le Presse-papiers"
     }
   },
   "update": {
@@ -1175,5 +1176,53 @@
   "queryModal": {
     "database": "Base de données",
     "noDatabase": "Aucune base de données"
+  },
+  "clipboardImport": {
+    "title": "Importer depuis le Presse-papiers",
+    "subtitle": "Collez des données structurées et vérifiez le schéma avant l'import",
+    "selectTablePlaceholder": "Sélectionner une table...",
+    "contextMenuLabel": "Importer depuis le Presse-papiers...",
+    "firstRowHeader": "Première ligne comme en-tête",
+    "tableName": "Nom de la table",
+    "tableNamePlaceholder": "ex. donnees_ventes",
+    "aiSuggest": "Suggérer avec IA",
+    "tableExists": "Existe déjà",
+    "mode": "Mode",
+    "createNew": "Créer nouvelle table",
+    "appendTo": "Ajouter à existante",
+    "onConflict": "Si existe",
+    "conflictFail": "Erreur",
+    "conflictAppend": "Ajouter des lignes",
+    "conflictReplace": "Remplacer la table",
+    "schemaPreview": "Schéma des colonnes",
+    "dataPreview": "Aperçu des données",
+    "sample": "Exemples de valeurs",
+    "lowConfidence": "Types mixtes détectés, défaut TEXT",
+    "rowsTotal": "{{count}} lignes",
+    "showingFirst": "premières {{count}}",
+    "import": "Importer {{count}} lignes",
+    "importing": "Importation...",
+    "success": "{{count}} lignes importées dans \"{{table}}\"",
+    "tableCreated": "Nouvelle table créée",
+    "openTable": "Fermer",
+    "noData": "Aucune donnée dans le presse-papiers",
+    "retry": "Réessayer",
+    "warningsCount": "{{count}} avertissements d'analyse",
+    "columnsLabel": "colonnes",
+    "rowsLabel": "lignes",
+    "stepConfigure": "Configurer la destination",
+    "stepReview": "Vérifier et ajuster",
+    "modeCreateHint": "Une nouvelle table sera créée",
+    "modeAppendHint": "Les lignes seront ajoutées à une table existante",
+    "maximize": "Agrandir",
+    "minimize": "Réduire",
+    "nSelected": "{{count}} sélectionnées",
+    "deleteSelected": "Supprimer la sélection",
+    "deleteColumn": "Supprimer la colonne",
+    "sourceColumn": "Colonne du presse-papiers",
+    "targetColumn": "Colonne cible",
+    "targetColumnPlaceholder": "Choisir la cible...",
+    "skipColumn": "Ignorer (ne pas importer)",
+    "createNewColumn": "Créer une nouvelle colonne"
   }
 }

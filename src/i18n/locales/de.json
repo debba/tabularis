@@ -482,7 +482,8 @@
       "notOverridable": "Integriert, nicht anpassbar",
       "pressKeys": "Tastenkombination drücken...",
       "notebookRunAll": "Alle Zellen ausführen",
-      "categories_notebook": "Notebook"
+      "categories_notebook": "Notebook",
+      "pasteImportClipboard": "Aus Zwischenablage importieren"
     }
   },
   "update": {
@@ -1175,5 +1176,53 @@
   "queryModal": {
     "database": "Datenbank",
     "noDatabase": "Keine Datenbank"
+  },
+  "clipboardImport": {
+    "title": "Aus Zwischenablage importieren",
+    "subtitle": "Strukturierte Daten einfügen und Schema vor dem Import prüfen",
+    "selectTablePlaceholder": "Tabelle auswählen...",
+    "contextMenuLabel": "Aus Zwischenablage importieren...",
+    "firstRowHeader": "Erste Zeile als Kopfzeile",
+    "tableName": "Tabellenname",
+    "tableNamePlaceholder": "z.B. verkaufsdaten",
+    "aiSuggest": "KI-Vorschlag",
+    "tableExists": "Bereits vorhanden",
+    "mode": "Modus",
+    "createNew": "Neue Tabelle erstellen",
+    "appendTo": "An bestehende anhängen",
+    "onConflict": "Falls vorhanden",
+    "conflictFail": "Fehler",
+    "conflictAppend": "Zeilen anhängen",
+    "conflictReplace": "Tabelle ersetzen",
+    "schemaPreview": "Spalten-Schema",
+    "dataPreview": "Datenvorschau",
+    "sample": "Beispielwerte",
+    "lowConfidence": "Gemischte Typen erkannt, Standard TEXT",
+    "rowsTotal": "{{count}} Zeilen",
+    "showingFirst": "erste {{count}}",
+    "import": "{{count}} Zeilen importieren",
+    "importing": "Importiert...",
+    "success": "{{count}} Zeilen in \"{{table}}\" importiert",
+    "tableCreated": "Neue Tabelle erstellt",
+    "openTable": "Schließen",
+    "noData": "Keine Daten in der Zwischenablage",
+    "retry": "Erneut versuchen",
+    "warningsCount": "{{count}} Parser-Warnungen",
+    "columnsLabel": "Spalten",
+    "rowsLabel": "Zeilen",
+    "stepConfigure": "Ziel konfigurieren",
+    "stepReview": "Überprüfen & anpassen",
+    "modeCreateHint": "Eine neue Tabelle wird erstellt",
+    "modeAppendHint": "Zeilen werden an eine bestehende Tabelle angehängt",
+    "maximize": "Maximieren",
+    "minimize": "Minimieren",
+    "nSelected": "{{count}} ausgewählt",
+    "deleteSelected": "Auswahl löschen",
+    "deleteColumn": "Spalte löschen",
+    "sourceColumn": "Zwischenablage-Spalte",
+    "targetColumn": "Zielspalte",
+    "targetColumnPlaceholder": "Ziel wählen...",
+    "skipColumn": "Überspringen (nicht importieren)",
+    "createNewColumn": "Neue Spalte erstellen"
   }
 }

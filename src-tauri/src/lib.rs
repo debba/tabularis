@@ -1,4 +1,5 @@
 pub mod ai;
+pub mod clipboard_import;
 pub mod commands;
 pub mod config;
 pub mod credential_cache;
@@ -213,6 +214,7 @@ pub fn run() {
             commands::disconnect_connection,
             commands::register_active_connection,
             commands::get_data_types,
+            commands::map_inferred_column_types,
             // SSH Connections
             commands::get_ssh_connections,
             commands::save_ssh_connection,
@@ -301,7 +303,10 @@ pub fn run() {
             ai::analyze_ai_explain_plan,
             ai::generate_cell_name,
             ai::generate_tab_rename,
+            ai::suggest_table_name,
             ai::get_ai_models,
+            // Clipboard Import
+            clipboard_import::execute_clipboard_import,
             commands::get_schema_snapshot,
             // DDL generation
             commands::get_create_table_sql,

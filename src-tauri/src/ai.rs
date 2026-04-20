@@ -39,6 +39,14 @@ pub struct AiTabRenameRequest {
     pub query: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AiSuggestTableNameRequest {
+    pub provider: String,
+    pub model: String,
+    pub headers: Vec<String>,
+    pub sample_rows: Vec<Vec<String>>,
+}
+
 #[derive(Deserialize, Debug)]
 struct OllamaTagsResponse {
     models: Vec<OllamaModel>,
@@ -574,6 +582,61 @@ pub async fn generate_cellname(app: AppHandle, req: AiCellNameRequest) -> Result
         "Cell name",
     )
     .await
+}
+
+#[tauri::command]
+pub async fn suggest_table_name(
+    app: AppHandle,
+    req: AiSuggestTableNameRequest,
+) -> Result<String, String> {
+    log::info!("Suggesting table name using AI provider: {}", req.provider);
+
+    let app_config = config::load_config_internal(&app);
+    let ollama_port = app_config.ai_ollama_port.unwrap_or(11434);
+    let resolved_model = resolve_model(&req.provider, &req.model, &app_config, ollama_port).await?;
+
+    let sample_preview = req
+        .sample_rows
+        .iter()
+        .take(3)
+        .map(|r| r.join(", "))
+        .collect::<Vec<_>>()
+        .join(" | ");
+
+    let prompt = format!(
+        "Given these column names: [{}] and sample data: [{}], suggest a concise snake_case table name that describes this data. Reply with only the table name, nothing else.",
+        req.headers.join(", "),
+        sample_preview
+    );
+
+    let gen_req = AiGenerateRequest {
+        provider: req.provider.clone(),
+        model: resolved_model,
+        prompt,
+        schema: String::new(),
+    };
+
+    let system_prompt = "You are a database naming expert. Reply with only a snake_case table name, no explanation.";
+    let result = dispatch_provider(&app_config, &gen_req, system_prompt, ollama_port).await;
+
+    match &result {
+        Ok(name) => {
+            let cleaned = name
+                .trim()
+                .trim_matches('"')
+                .trim_matches('\'')
+                .to_lowercase()
+                .replace(|c: char| !c.is_alphanumeric() && c != '_', "_")
+                .trim_matches('_')
+                .to_string();
+            log::info!("Table name suggested: {}", cleaned);
+            Ok(cleaned)
+        }
+        Err(e) => {
+            log::error!("Table name suggestion failed: {}", e);
+            Err(e.clone())
+        }
+    }
 }
 
 #[tauri::command]

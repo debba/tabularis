@@ -1080,6 +1080,13 @@ impl DatabaseDriver for MysqlDriver {
         types::get_data_types()
     }
 
+    fn map_inferred_type(&self, kind: &str) -> String {
+        match kind {
+            "REAL" => "DOUBLE".to_string(),
+            other => other.to_string(),
+        }
+    }
+
     fn build_connection_url(
         &self,
         params: &crate::models::ConnectionParams,

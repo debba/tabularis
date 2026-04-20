@@ -164,6 +164,17 @@ pub trait DatabaseDriver: Send + Sync {
     /// Returns the list of data types supported by this driver.
     fn get_data_types(&self) -> Vec<DataTypeInfo>;
 
+    /// Maps a generic inferred type (emitted by the clipboard parser) to the
+    /// concrete type name that this driver prefers. The input `kind` is one of
+    /// `INTEGER`, `REAL`, `BOOLEAN`, `DATE`, `DATETIME`, `TEXT`, `JSON`.
+    ///
+    /// The default implementation returns the input unchanged so that drivers
+    /// whose type names already match the generic kinds (e.g. SQLite) need no
+    /// override.
+    fn map_inferred_type(&self, kind: &str) -> String {
+        kind.to_string()
+    }
+
     /// Builds the connection URL string for this driver.
     fn build_connection_url(&self, params: &ConnectionParams) -> Result<String, String>;
 

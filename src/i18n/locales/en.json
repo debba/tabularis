@@ -482,7 +482,8 @@
       "notOverridable": "Built-in, not customizable",
       "pressKeys": "Press key combination...",
       "notebookRunAll": "Run All Cells",
-      "categories_notebook": "Notebook"
+      "categories_notebook": "Notebook",
+      "pasteImportClipboard": "Import from Clipboard"
     }
   },
   "update": {
@@ -1175,5 +1176,53 @@
   "queryModal": {
     "database": "Database",
     "noDatabase": "No database"
+  },
+  "clipboardImport": {
+    "title": "Import from Clipboard",
+    "subtitle": "Paste structured data and preview the schema before importing",
+    "selectTablePlaceholder": "Select a table...",
+    "contextMenuLabel": "Import from Clipboard...",
+    "firstRowHeader": "First row as header",
+    "tableName": "Table name",
+    "tableNamePlaceholder": "e.g. sales_data",
+    "aiSuggest": "AI Suggest",
+    "tableExists": "Already exists",
+    "mode": "Mode",
+    "createNew": "Create new table",
+    "appendTo": "Append to existing",
+    "onConflict": "If exists",
+    "conflictFail": "Fail with error",
+    "conflictAppend": "Append rows",
+    "conflictReplace": "Replace table",
+    "schemaPreview": "Column Schema",
+    "dataPreview": "Data Preview",
+    "sample": "Sample values",
+    "lowConfidence": "Mixed types detected, defaulted to TEXT",
+    "rowsTotal": "{{count}} rows",
+    "showingFirst": "showing first {{count}}",
+    "import": "Import {{count}} rows",
+    "importing": "Importing...",
+    "success": "{{count}} rows imported into \"{{table}}\"",
+    "tableCreated": "New table created",
+    "openTable": "Close",
+    "noData": "No data found in clipboard",
+    "retry": "Try again",
+    "warningsCount": "{{count}} parsing warnings",
+    "columnsLabel": "columns",
+    "rowsLabel": "rows",
+    "stepConfigure": "Configure destination",
+    "stepReview": "Review & adjust",
+    "modeCreateHint": "A new table will be created",
+    "modeAppendHint": "Rows will be added to an existing table",
+    "maximize": "Maximize",
+    "minimize": "Minimize",
+    "nSelected": "{{count}} selected",
+    "deleteSelected": "Delete selected",
+    "deleteColumn": "Delete column",
+    "sourceColumn": "Clipboard column",
+    "targetColumn": "Target column",
+    "targetColumnPlaceholder": "Choose target...",
+    "skipColumn": "Skip (do not import)",
+    "createNewColumn": "Create new column"
   }
 }

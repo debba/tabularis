@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { quoteTableRef } from "../../utils/identifiers";
@@ -32,6 +32,7 @@ import {
   FileInput,
   Layers,
   Clock,
+  Clipboard,
 } from "lucide-react";
 import { ask, open } from "@tauri-apps/plugin-dialog";
 import { toErrorMessage } from "../../utils/errors";
@@ -51,6 +52,7 @@ import { CreateForeignKeyModal } from "../modals/CreateForeignKeyModal";
 import { GenerateSQLModal } from "../modals/GenerateSQLModal";
 import { DumpDatabaseModal } from "../modals/DumpDatabaseModal";
 import { ImportDatabaseModal } from "../modals/ImportDatabaseModal";
+import { ClipboardImportModal } from "../modals/ClipboardImportModal";
 import { ViewEditorModal } from "../modals/ViewEditorModal";
 import { ConfirmModal } from "../modals/ConfirmModal";
 import { Accordion } from "./sidebar/Accordion";
@@ -132,6 +134,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
   } | null>(null);
   const [schemaModal, setSchemaModal] = useState<{ tableName: string; schema?: string } | null>(null);
   const [isCreateTableModalOpen, setIsCreateTableModalOpen] = useState(false);
+  const [isClipboardImportOpen, setIsClipboardImportOpen] = useState(false);
   const [modifyColumnModal, setModifyColumnModal] = useState<{
     isOpen: boolean;
     tableName: string;
@@ -191,6 +194,16 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
       state: { initialQuery: sql, queryName, tableName, preventAutoRun, schema, targetConnectionId: activeConnectionId },
     });
   };
+
+  useEffect(() => {
+    const handler = () => {
+      if (activeConnectionId && activeCapabilities?.no_connection_required !== true) {
+        setIsClipboardImportOpen(true);
+      }
+    };
+    window.addEventListener("tabularis:paste-import", handler);
+    return () => window.removeEventListener("tabularis:paste-import", handler);
+  }, [activeConnectionId, activeCapabilities]);
 
   const handleTableClick = (tableName: string, schema?: string) => {
     setActiveTable(tableName, schema);
@@ -1458,6 +1471,11 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                       icon: FileCode,
                       action: () => setGenerateSQLModal(contextMenu.id),
                     } : null,
+                    supportsManageTables(activeCapabilities) ? {
+                      label: t("clipboardImport.contextMenuLabel"),
+                      icon: Clipboard,
+                      action: () => setIsClipboardImportOpen(true),
+                    } : null,
                     {
                       label: t("sidebar.copyName"),
                       icon: Copy,
@@ -1827,6 +1845,18 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
           onSuccess={() => {
             if (refreshTables) refreshTables();
             setSchemaVersion((v) => v + 1);
+          }}
+        />
+      )}
+
+      {isClipboardImportOpen && (
+        <ClipboardImportModal
+          isOpen={isClipboardImportOpen}
+          onClose={() => setIsClipboardImportOpen(false)}
+          onSuccess={() => {
+            if (refreshTables) refreshTables();
+            setSchemaVersion((v) => v + 1);
+            setIsClipboardImportOpen(false);
           }}
         />
       )}

@@ -2731,6 +2731,17 @@ pub async fn get_data_types(driver: String) -> Result<crate::models::DataTypeReg
     Ok(crate::models::DataTypeRegistry { driver, types })
 }
 
+/// Maps generic inferred types (emitted by the clipboard parser) to
+/// driver-specific type names. Returns names in the same order as `kinds`.
+#[tauri::command]
+pub async fn map_inferred_column_types(
+    driver: String,
+    kinds: Vec<String>,
+) -> Result<Vec<String>, String> {
+    let drv = driver_for(&driver).await?;
+    Ok(kinds.iter().map(|k| drv.map_inferred_type(k)).collect())
+}
+
 // --- DDL generation commands ---
 
 #[tauri::command]

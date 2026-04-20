@@ -482,7 +482,8 @@
       "notOverridable": "Integrata, non personalizzabile",
       "pressKeys": "Premi la combinazione di tasti...",
       "notebookRunAll": "Esegui Tutte le Celle",
-      "categories_notebook": "Notebook"
+      "categories_notebook": "Notebook",
+      "pasteImportClipboard": "Importa dagli Appunti"
     }
   },
   "update": {
@@ -1156,5 +1157,53 @@
   "queryModal": {
     "database": "Database",
     "noDatabase": "Nessun database"
+  },
+  "clipboardImport": {
+    "title": "Importa dagli Appunti",
+    "subtitle": "Incolla dati strutturati e rivedi lo schema prima dell'importazione",
+    "selectTablePlaceholder": "Seleziona una tabella...",
+    "contextMenuLabel": "Importa dagli Appunti...",
+    "firstRowHeader": "Prima riga come intestazione",
+    "tableName": "Nome tabella",
+    "tableNamePlaceholder": "es. dati_vendite",
+    "aiSuggest": "Suggerisci con AI",
+    "tableExists": "Esiste già",
+    "mode": "Modalità",
+    "createNew": "Crea nuova tabella",
+    "appendTo": "Aggiungi a esistente",
+    "onConflict": "Se esiste",
+    "conflictFail": "Errore",
+    "conflictAppend": "Aggiungi righe",
+    "conflictReplace": "Sostituisci tabella",
+    "schemaPreview": "Schema Colonne",
+    "dataPreview": "Anteprima Dati",
+    "sample": "Valori campione",
+    "lowConfidence": "Tipi misti rilevati, default TEXT",
+    "rowsTotal": "{{count}} righe",
+    "showingFirst": "prime {{count}}",
+    "import": "Importa {{count}} righe",
+    "importing": "Importazione...",
+    "success": "{{count}} righe importate in \"{{table}}\"",
+    "tableCreated": "Nuova tabella creata",
+    "openTable": "Chiudi",
+    "noData": "Nessun dato negli appunti",
+    "retry": "Riprova",
+    "warningsCount": "{{count}} avvisi di parsing",
+    "columnsLabel": "colonne",
+    "rowsLabel": "righe",
+    "stepConfigure": "Configura destinazione",
+    "stepReview": "Rivedi e modifica",
+    "modeCreateHint": "Verrà creata una nuova tabella",
+    "modeAppendHint": "Le righe verranno aggiunte a una tabella esistente",
+    "maximize": "Massimizza",
+    "minimize": "Riduci",
+    "nSelected": "{{count}} selezionate",
+    "deleteSelected": "Elimina selezionate",
+    "deleteColumn": "Elimina colonna",
+    "sourceColumn": "Colonna appunti",
+    "targetColumn": "Colonna destinazione",
+    "targetColumnPlaceholder": "Scegli destinazione...",
+    "skipColumn": "Salta (non importare)",
+    "createNewColumn": "Crea nuova colonna"
   }
 }
