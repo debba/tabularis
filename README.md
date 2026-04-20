@@ -19,7 +19,6 @@
 ![](https://img.shields.io/github/release/debba/tabularis.svg?style=flat)
 ![](https://img.shields.io/github/downloads/debba/tabularis/total.svg?style=flat)
 ![Build & Release](https://github.com/debba/tabularis/workflows/Release/badge.svg)
-[![Known Vulnerabilities](https://snyk.io//test/github/debba/tabularis/badge.svg?targetFile=package.json)](https://snyk.io//test/github/debba/tabularis?targetFile=package.json)
 [![Discord](https://img.shields.io/discord/1470772941296894128?color=5865F2&logo=discord&logoColor=white)](https://discord.gg/YrZPHAwMSG)
 [![Gitster](https://gitster.dev/api/repositories/badge/cmlko1jr60005ne4yh7i7oy3e)](https://gitster.dev/repo/debba/tabularis)
 
