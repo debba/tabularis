@@ -9,7 +9,7 @@ category: "Core Features"
 
 Not every query needs to be handwritten. For exploring data, generating reporting views, or learning SQL structures, the **Visual Query Builder** provides an intuitive, drag-and-drop canvas for generating robust SQL statements.
 
-![Visual Query Builder](/img/tabularis-visual-query-builder.png)
+<video src="/videos/wiki/03-visual-query-builder.mp4" controls muted playsinline loop autoplay controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture></video>
 
 ## Workflow: Point, Click, Query
 

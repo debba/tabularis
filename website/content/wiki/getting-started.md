@@ -9,6 +9,8 @@ excerpt: "Connect to your first database, explore the schema, and run your first
 
 This guide walks you through the first things to do after installing Tabularis.
 
+<video src="/videos/wiki/01-first-connection.mp4" controls muted playsinline loop autoplay controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture></video>
+
 ## 1. Create a connection
 
 Click the **`+`** button in the left sidebar to open the New Connection form.

@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { marked } from "@/lib/markdown";
+import { wrapVideosInHtml } from "@/lib/markdownVideos";
 
 export type SeoSection = "solutions" | "compare";
 
@@ -72,7 +73,7 @@ export function getSeoPageBySlug(
 
   if (meta.section !== section) return null;
 
-  return { meta, html: marked.parse(content) as string };
+  return { meta, html: wrapVideosInHtml(marked.parse(content) as string) };
 }
 
 export function getAdjacentSeoPages(section: SeoSection, slug: string): {

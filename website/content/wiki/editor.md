@@ -9,7 +9,7 @@ category: "Core Features"
 
 The **SQL Editor** in Tabularis is built around a highly customized integration of **Monaco** (the exact editor engine that powers VS Code). It provides a world-class typing experience optimized specifically for complex database querying.
 
-![SQL Editor](/img/tabularis-sql-editor-data-grid.png)
+<video src="/videos/wiki/02-sql-editor.mp4" controls muted playsinline loop autoplay controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture></video>
 
 ## Intelligent Context-Aware Autocomplete
 

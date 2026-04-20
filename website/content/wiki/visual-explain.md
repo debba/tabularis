@@ -9,6 +9,8 @@ category: "Core Features"
 
 **Visual EXPLAIN** turns raw execution plans into something you can actually work with. Select a query, click the EXPLAIN button, and Tabularis runs the appropriate `EXPLAIN` syntax for your database, parses the output, and presents it across four views — all without leaving the application.
 
+<video src="/videos/wiki/05-visual-explain.mp4" controls muted playsinline loop autoplay controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture></video>
+
 It works with PostgreSQL, MySQL, MariaDB, and SQLite. Each engine uses different EXPLAIN formats and capabilities, and Tabularis handles the differences automatically.
 
 ![Visual EXPLAIN modal with graph view showing execution plan nodes, cost heatmap, and summary bar](/img/posts/tabularis-visual-explain-graph-view-execution-plan.png)

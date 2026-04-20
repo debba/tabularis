@@ -9,7 +9,7 @@ category: "Core Features"
 
 **SQL Notebooks** bring a notebook-style workflow to Tabularis. Instead of juggling multiple console tabs, you can organize SQL queries and documentation into a single, structured document — run cells individually or sequentially, visualize results with charts, and share the whole thing as an HTML export.
 
-![SQL Notebook with cells, results, and pie chart](/img/posts/tabularis-notebook-sql-cell-pie-chart-data-grid.png)
+<video src="/videos/wiki/04-sql-notebook.mp4" controls muted playsinline loop autoplay controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture></video>
 
 ## Creating a Notebook
 

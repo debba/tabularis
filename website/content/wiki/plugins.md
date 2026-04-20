@@ -9,7 +9,7 @@ category: "AI & Integration"
 
 While Tabularis supports major relational databases natively via Rust, the ecosystem of data stores is vast. The Plugin System allows anyone to add support for external databases (like DuckDB, ClickHouse, or Redis) using **any programming language**.
 
-![Plugin manager showing installed and available drivers](/img/tabularis-plugin-manager.png)
+<video src="/videos/wiki/08-plugins.mp4" controls muted playsinline loop autoplay controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture></video>
 
 For the complete protocol reference, see [`plugins/PLUGIN_GUIDE.md`](https://github.com/debba/tabularis/blob/main/plugins/PLUGIN_GUIDE.md) in the repository.
 

@@ -7,9 +7,9 @@ category: "Core Features"
 
 # Split View
 
-![Split View](/img/tabularis-split-view.png)
-
 **Split View** lets you open two or more database connections side by side in the same window. Each pane has its own SQL editor and data grid. The left sidebar is shared — clicking inside a pane makes that connection the active one in the explorer. This is useful for comparing query results across environments, migrating data, or working on two databases at the same time.
+
+<video src="/videos/wiki/07-split-view.mp4" controls muted playsinline loop autoplay controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture></video>
 
 ## Activating Split View
 

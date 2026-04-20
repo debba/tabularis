@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
+import { enhanceWrappedVideo } from "@/lib/videoLoader";
 
 interface LightboxState {
   src: string;
@@ -30,6 +31,10 @@ export function WikiContent({ html }: { html: string }) {
         setLightbox({ src: imageList[i].src, alt: imageList[i].alt, images: imageList, index: i });
       });
     });
+
+    ref.current
+      .querySelectorAll<HTMLVideoElement>("video")
+      .forEach(enhanceWrappedVideo);
   }, [html]);
 
   const close = useCallback(() => setLightbox(null), []);

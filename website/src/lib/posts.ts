@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { marked } from "@/lib/markdown";
+import { wrapVideosInHtml } from "@/lib/markdownVideos";
 
 export interface PostOg {
   title: string;
@@ -117,7 +118,8 @@ export async function getPostBySlug(
     }
   }
 
-  const html = marked.parse(processedContent) as string;
+  const rawHtml = marked.parse(processedContent) as string;
+  const html = wrapVideosInHtml(rawHtml);
   return { meta, html };
 }
 

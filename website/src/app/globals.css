@@ -990,14 +990,133 @@ pre {
 
 /* SCREENSHOTS */
 .screenshot-container {
+  position: relative;
+  aspect-ratio: 1656 / 1080;
   margin-bottom: 3rem;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-bright);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  background: var(--card-bg);
 }
 
 .screenshot-main {
   width: 100%;
-  border-radius: 12px;
-  border: 1px solid var(--border-bright);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+/* VIDEO WRAPPER (wiki) */
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  aspect-ratio: 1656 / 1080;
+  margin: 1.5rem 0 0.4rem;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.video-wrapper video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  border: none;
+  border-radius: 0;
+  max-width: none;
+}
+
+/* VIDEO LOADER */
+.video-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.video-loader[hidden] {
+  display: none;
+}
+
+.video-loader-icon {
+  width: 40px;
+  height: 40px;
+  animation: video-loader-spin 1s linear infinite;
+}
+
+@keyframes video-loader-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-loader-icon {
+    animation: none;
+  }
+}
+
+/* VIDEO ERROR OVERLAY */
+.video-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--text-bright);
+  padding: 1rem;
+  text-align: center;
+  z-index: 2;
+}
+
+.video-error[hidden] {
+  display: none;
+}
+
+.video-error-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--text-muted);
+}
+
+.video-error-text {
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.video-error-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-bright);
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.15s;
+}
+
+.video-error-retry:hover {
+  text-decoration-color: currentColor;
+}
+
+.video-error-retry-icon {
+  width: 12px;
+  height: 12px;
 }
 
 /* PLUGIN LIST */
@@ -2734,8 +2853,7 @@ pre {
   margin: 2rem 0;
 }
 
-.post-content img,
-.post-content video {
+.post-content img {
   width: 100%;
   max-width: 800px;
   border-radius: 6px;
@@ -2743,6 +2861,12 @@ pre {
   display: block;
   margin: 1.5rem 0 0.4rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.post-content video::-webkit-media-controls-volume-slider,
+.post-content video::-webkit-media-controls-volume-control-container,
+.post-content video::-webkit-media-controls-mute-button {
+  display: none !important;
 }
 
 /* Inline badge images (e.g. shields.io wrapped in a link) */

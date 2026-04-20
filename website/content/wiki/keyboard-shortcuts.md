@@ -9,6 +9,8 @@ category: "Customization"
 
 Tabularis ships with a set of keyboard shortcuts for common actions across navigation, the editor, and the data grid. All shortcuts use **Cmd** on macOS and **Ctrl** on Windows/Linux.
 
+<video src="/videos/wiki/10-keyboard-shortcuts.mp4" controls muted playsinline loop autoplay controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture></video>
+
 ---
 
 ## Navigation

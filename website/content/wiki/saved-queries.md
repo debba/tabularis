@@ -9,6 +9,8 @@ category: "Core Features"
 
 Tabularis lets you save SQL queries and associate them with a specific connection. Saved queries appear in the Explorer sidebar and can be executed, edited, or deleted with a single click.
 
+<video src="/videos/wiki/11-favorites-history.mp4" controls muted playsinline loop autoplay controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture></video>
+
 ## Saving a Query
 
 There are two ways to save a query:

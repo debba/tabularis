@@ -99,4 +99,28 @@ export const SPONSORS: Sponsor[] = [
         "Connect your repo and let AI handle the bug fixes your users report. Free tier included — no credit card required.",
     },
   },
+  {
+    id: "devglobe",
+    name: "DevGlobe",
+    tagline: "Connect your IDE, show up on the globe, and showcase your projects to a community of builders.",
+    url: "https://devglobe.xyz",
+    accentColor: "#115BCA",
+    highlightColor: "#1870F4",
+    logoImg: "/img/sponsors/devglobe.png",
+    logoImgCompact: "/img/sponsors/devglobe_compact.png",
+    modalDescription:
+      "Connect your IDE, appear live on the globe, and showcase your projects to a community of builders. Track your coding stats, discover what others are working on, and get noticed. Free and open source. 25+ editors supported.",
+    features: [
+      { icon: "🌍", text: "Connect your IDE and appear live on the globe" },
+      { icon: "🚀", text: "Ship your project — get discovered by the community" },
+      { icon: "📊", text: "Your coding, in numbers — track languages, streaks and patterns" },
+      { icon: "🔌", text: "Pick your editor — 25+ supported, install in one click" },
+      { icon: "🔓", text: "Free and open source" },
+    ],
+    offer: {
+      title: "Start tracking for free",
+      description:
+        "Pick your editor, install the plugin, and join hundreds of developers already on the globe.",
+    },
+  },
 ];

@@ -9,6 +9,8 @@ category: "AI & Integration"
 
 Tabularis integrates a privacy-first AI assistant directly into the SQL Editor and notebooks. It goes beyond simple autocomplete by understanding your database structure to generate, explain, and label queries.
 
+<video src="/videos/wiki/09-ai-assistant.mp4" controls muted playsinline loop autoplay controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture></video>
+
 ![AI Assistant](/img/tabularis-ai-assistant.png)
 
 ## How Context Injection Works

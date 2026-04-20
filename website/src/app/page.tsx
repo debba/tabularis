@@ -13,6 +13,7 @@ import { getAllPlugins } from "@/lib/plugins";
 import { SiteHeader } from "@/components/SiteHeader";
 import { DownloadButtons } from "@/components/DownloadButtons";
 import { SponsorsSection, IconExternalLink, IconArrow } from "@/components/SponsorsSection";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { ExpandableText } from "@/components/ExpandableText";
 import { CarouselGrid } from "@/components/CarouselGrid";
 import {
@@ -188,13 +189,12 @@ export default function HomePage() {
       </header>
 
       {/* MAIN SCREENSHOT */}
-      <div className="screenshot-container">
-        <img
-          src="/img/overview.png"
-          alt="Tabularis Overview"
-          className="screenshot-main"
-        />
-      </div>
+      <VideoPlayer
+        src="/videos/overview.mp4"
+        wrapperClassName="screenshot-container"
+        videoClassName="screenshot-main"
+        ariaLabel="Tabularis Overview"
+      />
 
       {/* SPONSORS */}
       <SponsorsSection />
