@@ -38,7 +38,7 @@ An open-source desktop client for modern databases. Supports PostgreSQL, MySQL/M
 **Discord** - [Join our Discord server](https://discord.gg/YrZPHAwMSG) to talk with the maintainers, share feedback, and get help from the community.
 
 <div align="center">
-  <img src="website/public/img/overview.gif" width="80%" alt="Tabularis" />
+  <img src="website/public/img/overview.gif" alt="Tabularis" />
 </div>
 
 > 💡 **Origin Story:** This project began as an AI-assisted development experiment, exploring how far intelligent agents could accelerate building a fully functional tool from scratch..
