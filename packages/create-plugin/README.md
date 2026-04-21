@@ -1,10 +1,12 @@
-# create-tabularis-plugin
+# @tabularis/create-plugin
 
 Scaffold a new [Tabularis](https://github.com/TabularisDB/tabularis) database driver plugin in seconds.
 
 ```bash
-npx create-tabularis-plugin my-driver
+npm create @tabularis/plugin@latest my-driver
 ```
+
+(Works the same with `pnpm create @tabularis/plugin@latest my-driver` or `yarn create @tabularis/plugin my-driver`.)
 
 ## What you get
 
@@ -21,7 +23,13 @@ A runnable Rust project with:
 ## Usage
 
 ```bash
-npx create-tabularis-plugin [options] <name>
+npm create @tabularis/plugin@latest [--] [options] <name>
+```
+
+`--` separates the package name from the flags so they reach the CLI instead of npm. If you prefer the direct form:
+
+```bash
+npx @tabularis/create-plugin [options] <name>
 ```
 
 ### Options
@@ -38,16 +46,16 @@ npx create-tabularis-plugin [options] <name>
 
 ```bash
 # Network driver (host/port/user/pass connection form)
-npx create-tabularis-plugin my-pg-like
+npm create @tabularis/plugin@latest my-pg-like
 
 # File-based driver (SQLite, DuckDB shape)
-npx create-tabularis-plugin duckdb-clone --db-type=file
+npm create @tabularis/plugin@latest duckdb-clone -- --db-type=file
 
 # API-based plugin (no connection form; public REST-ish data source)
-npx create-tabularis-plugin my-api --db-type=api
+npm create @tabularis/plugin@latest my-api -- --db-type=api
 
 # With UI extension scaffold
-npx create-tabularis-plugin mine --with-ui
+npm create @tabularis/plugin@latest mine -- --with-ui
 ```
 
 ## Next steps after scaffolding

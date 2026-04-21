@@ -5,12 +5,12 @@ This directory contains the official plugin registry and documentation for the T
 ## Quick start — build a plugin
 
 ```bash
-npx create-tabularis-plugin my-driver
+npm create @tabularis/plugin@latest my-driver
 cd my-driver
 just dev-install
 ```
 
-Your driver appears in the Tabularis connection picker immediately. Fill in the handlers as you go — full reference in [`PLUGIN_GUIDE.md`](./PLUGIN_GUIDE.md). Scaffolder source and options: [`packages/create-tabularis-plugin/`](../packages/create-tabularis-plugin/).
+Your driver appears in the Tabularis connection picker immediately. Fill in the handlers as you go — full reference in [`PLUGIN_GUIDE.md`](./PLUGIN_GUIDE.md). Scaffolder source and options: [`packages/create-plugin/`](../packages/create-plugin/).
 
 ## Directory Contents
 

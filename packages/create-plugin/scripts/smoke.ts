@@ -6,7 +6,7 @@
  * 2. Run `cargo check` on each — must exit 0.
  * 3. For --with-ui, also verify the ui/ directory has the expected files.
  *
- * Intended to be run via `pnpm --filter create-tabularis-plugin smoke`.
+ * Intended to be run via `pnpm --filter @tabularis/create-plugin smoke`.
  * Requires cargo on PATH.
  */
 
@@ -63,7 +63,7 @@ function scaffoldOne(kind: "network" | "file", withUi: boolean): void {
 function main(): void {
   if (!existsSync(CLI)) {
     throw new Error(
-      `CLI not built at ${CLI}. Run \`pnpm --filter create-tabularis-plugin build\` first.`,
+      `CLI not built at ${CLI}. Run \`pnpm --filter @tabularis/create-plugin build\` first.`,
     );
   }
 

@@ -23,10 +23,11 @@ export function printError(message: string): void {
 
 export function printHelp(): void {
   console.log(`
-${kleur.bold("create-tabularis-plugin")} — scaffold a new Tabularis driver plugin
+${kleur.bold("@tabularis/create-plugin")} — scaffold a new Tabularis driver plugin
 
 ${kleur.bold("Usage:")}
-  npx create-tabularis-plugin [options] <name>
+  npm create @tabularis/plugin@latest [--] [options] <name>
+  npx @tabularis/create-plugin [options] <name>
 
 ${kleur.bold("Arguments:")}
   <name>                 Plugin name (slugified to lowercase with hyphens)
@@ -41,8 +42,8 @@ ${kleur.bold("Options:")}
   -h, --help             Print this help
 
 ${kleur.bold("Examples:")}
-  npx create-tabularis-plugin my-driver
-  npx create-tabularis-plugin sqlite-like --db-type=file
-  npx create-tabularis-plugin hackernews --db-type=api --with-ui
+  npm create @tabularis/plugin@latest my-driver
+  npm create @tabularis/plugin@latest sqlite-like -- --db-type=file
+  npx @tabularis/create-plugin hackernews --db-type=api --with-ui
 `);
 }
