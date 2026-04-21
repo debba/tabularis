@@ -1,4 +1,5 @@
 pub mod ai;
+pub mod cli;
 pub mod clipboard_import;
 pub mod commands;
 pub mod config;
@@ -45,7 +46,6 @@ pub mod drivers {
     pub mod sqlite;
 }
 
-use clap::Parser;
 use logger::{create_log_buffer, init_logger, SharedLogBuffer};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Manager;
@@ -79,23 +79,6 @@ fn close_devtools(window: tauri::WebviewWindow) {
     log::info!("DevTools closed");
 }
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    /// Start in MCP Server mode (Model Context Protocol)
-    #[arg(long)]
-    mcp: bool,
-
-    /// Enable debug logging (including sqlx queries)
-    #[arg(long)]
-    debug: bool,
-
-    /// Open a Visual Explain window for a previously-saved EXPLAIN file
-    /// (Postgres `EXPLAIN (FORMAT JSON)` output).
-    #[arg(long, value_name = "FILE")]
-    explain: Option<String>,
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // On Linux + Wayland, disable the DMA-BUF renderer in WebKitGTK to prevent
@@ -111,14 +94,7 @@ pub fn run() {
         }
     }
 
-    // Check for CLI args first
-    // We use try_parse because on some platforms (like GUI launch) args might be weird
-    // or Tauri might want to handle them. But for --mcp we need priority.
-    let args = Args::try_parse().unwrap_or_else(|_| Args {
-        mcp: false,
-        debug: false,
-        explain: None,
-    });
+    let args = cli::parse();
 
     if args.mcp {
         let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
