@@ -326,6 +326,17 @@ interface SlotContext {
 
 Plugin UI components must be pre-built as **IIFE bundles** (Immediately Invoked Function Expression). The host provides `React`, `ReactJSXRuntime`, and the plugin API as globals — your bundle must **not** bundle its own copies of these.
 
+#### Installing the plugin API types
+
+The `@tabularis/plugin-api` package gives you TypeScript types, hook signatures, and the `defineSlot` helper for slot-aware type inference. Install it as a dev dependency — at runtime the host injects the real implementation, so the package itself ships as thin stubs.
+
+```bash
+npm install --save-dev @tabularis/plugin-api
+# or: pnpm add -D @tabularis/plugin-api
+```
+
+Then `react` and `@tabularis/plugin-api` remain Vite externals in your build config — the installed package is used only for types and autocomplete in your editor.
+
 #### Vite configuration example
 
 ```typescript
@@ -363,24 +374,40 @@ export default defineConfig({
 
 ### Writing a Slot Component
 
-Each component receives `context` (slot-specific data) and `pluginId` as props:
+**Recommended: use `defineSlot` for typed context.** The helper infers the exact `context` shape for the slot you target, so fields like `context.columnName` are non-nullable where the host guarantees them:
 
 ```tsx
 // src/FieldPreview.tsx
-import { usePluginConnection } from "@tabularis/plugin-api";
+import { defineSlot, usePluginConnection } from "@tabularis/plugin-api";
 
-export default function FieldPreview({ context, pluginId }: {
-  context: Record<string, unknown>;
-  pluginId: string;
-}) {
+const FieldPreview = defineSlot(
+  "row-editor-sidebar.field.after",
+  ({ context }) => {
+    const { driver } = usePluginConnection();
+    if (context.columnName !== "geometry") return null;
+
+    return (
+      <div style={{ padding: "4px 0", fontSize: "11px", color: "#888" }}>
+        Geometry preview for {String(context.rowData[context.columnName])}
+      </div>
+    );
+  },
+);
+
+// The loader expects a default-exported React component.
+export default FieldPreview.component;
+```
+
+**Legacy form (no typed context).** Older bundles used the loose `SlotComponentProps` shape. Still supported; new plugins should prefer `defineSlot`.
+
+```tsx
+import { usePluginConnection } from "@tabularis/plugin-api";
+import type { SlotComponentProps } from "@tabularis/plugin-api";
+
+export default function FieldPreview({ context }: SlotComponentProps) {
   const { driver } = usePluginConnection();
   if (context.columnName !== "geometry") return null;
-
-  return (
-    <div style={{ padding: "4px 0", fontSize: "11px", color: "#888" }}>
-      Geometry preview for {String(context.rowData?.[context.columnName])}
-    </div>
-  );
+  return <div>Geometry preview for {String(context.rowData?.[context.columnName!])}</div>;
 }
 ```
 

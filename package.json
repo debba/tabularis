@@ -18,6 +18,8 @@
     "test:rust": "cd src-tauri && cargo test",
     "test:all": "pnpm test:rust && pnpm test:coverage",
     "tauri": "tauri",
+    "build:plugin-api": "pnpm --filter @tabularis/plugin-api build",
+    "check:plugin-api": "pnpm --filter @tabularis/plugin-api check:sync",
     "roadmap": "node scripts/update-roadmap.js",
     "sync-links": "node scripts/sync-links.js",
     "sync-sponsors": "node scripts/sync-sponsors.js",

@@ -20,6 +20,12 @@ interface PluginSlotProviderProps {
  * Expose host globals so external plugin bundles (IIFE format) can access
  * React and the Tabularis plugin API without bundling their own copies.
  */
+/**
+ * Keep in sync with `packages/plugin-api/src/version.ts` (API_VERSION).
+ * Bump when the host API shape changes in a way plugin bundles can observe.
+ */
+const HOST_API_VERSION = "0.1.0";
+
 let globalsExposed = false;
 function exposePluginGlobals() {
   if (globalsExposed) return;
@@ -27,6 +33,7 @@ function exposePluginGlobals() {
   (window as unknown as Record<string, unknown>).React = React;
   (window as unknown as Record<string, unknown>).ReactJSXRuntime = ReactJSXRuntime;
   (window as unknown as Record<string, unknown>).__TABULARIS_API__ = pluginApi;
+  (window as unknown as Record<string, unknown>).__TABULARIS_API_VERSION__ = HOST_API_VERSION;
 }
 
 /**
