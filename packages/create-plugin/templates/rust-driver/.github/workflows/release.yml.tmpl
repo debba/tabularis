@@ -90,7 +90,7 @@ jobs:
       - name: Package (unix)
         if: runner.os != 'Windows'
         run: |
-          STAGE=staging/${ID}
+          STAGE=staging
           mkdir -p "$STAGE"
           cp target/${{ matrix.target }}/release/${BIN_NAME}${{ matrix.binary-suffix }} "$STAGE/"
           cp manifest.json "$STAGE/"
@@ -98,13 +98,13 @@ jobs:
             mkdir -p "$STAGE/ui/dist"
             cp ui/dist/index.js "$STAGE/ui/dist/"
           fi
-          (cd staging && zip -r ../${BIN_NAME}-${{ matrix.platform-label }}.zip ${ID})
+          (cd "$STAGE" && zip -r ../${BIN_NAME}-${{ matrix.platform-label }}.zip .)
 
       - name: Package (windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $stage = "staging\${ID}"
+          $stage = "staging"
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item "target\${{ matrix.target }}\release\${BIN_NAME}${{ matrix.binary-suffix }}" $stage
           Copy-Item "manifest.json" $stage
@@ -112,7 +112,7 @@ jobs:
             New-Item -ItemType Directory -Force -Path "$stage\ui\dist" | Out-Null
             Copy-Item "ui\dist\index.js" "$stage\ui\dist"
           }
-          Compress-Archive -Path $stage -DestinationPath "${BIN_NAME}-${{ matrix.platform-label }}.zip"
+          Compress-Archive -Path "$stage\*" -DestinationPath "${BIN_NAME}-${{ matrix.platform-label }}.zip"
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
