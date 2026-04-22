@@ -1,3 +1,22 @@
+## [0.9.21](https://github.com/debba/tabularis/compare/v0.9.20...v0.9.21) (2026-04-22)
+
+
+### Bug Fixes
+
+* **ci:** correct release packaging to zip staging contents ([8f2849d](https://github.com/debba/tabularis/commit/8f2849da5310e86bcd9cffd03fe4ee43644009f3))
+
+
+### Features
+
+* **create-tabularis-plugin:** add plugin scaffolder package with CLI, ([2cdff1b](https://github.com/debba/tabularis/commit/2cdff1b7bed72ebf4a1b2d1bf6c2708fa6c7a885))
+* **plugin-api:** add @tabularis/plugin-api package ([e3b228b](https://github.com/debba/tabularis/commit/e3b228b43b50c69c1d10d854636b4ffe8fe9d096))
+* **plugin-api:** add defineSlot helper and remove google sheets plugin ([28e9758](https://github.com/debba/tabularis/commit/28e9758f2affc88f8d94671a10476640e0a82403))
+* **plugins:** add google-sheets plugin to registry ([e81a68b](https://github.com/debba/tabularis/commit/e81a68b3c96cb837cb1cf05b06869b307e1cb071))
+* **plugins:** add google-sheets plugin to registry ([0ec0d7b](https://github.com/debba/tabularis/commit/0ec0d7b93649112db1d332f336524b483509677a))
+* **plugins:** add plugin center UI, search/filter, and cleanup on ([67a41ad](https://github.com/debba/tabularis/commit/67a41ad20fa3b8c925249093502f61a3d72a0dc5))
+* **rust-driver:** add optional UI build and cross-platform dev-install ([278b2f4](https://github.com/debba/tabularis/commit/278b2f40048d34758ceb1c8e2b8168831639f1b4))
+* **settings:** persist and respect activeExternalDrivers in settings UI ([efabf6e](https://github.com/debba/tabularis/commit/efabf6e997f74445f9408c9e6b5c4b3f2ff08bb8))
+
 ## [0.9.20](https://github.com/debba/tabularis/compare/v0.9.19...v0.9.20) (2026-04-21)
 
 
