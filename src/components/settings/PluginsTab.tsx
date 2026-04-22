@@ -33,7 +33,6 @@ import { useSettings } from "../../hooks/useSettings";
 import { useDrivers } from "../../hooks/useDrivers";
 import { usePluginRegistry } from "../../hooks/usePluginRegistry";
 import { useDatabase } from "../../hooks/useDatabase";
-import { SettingSection } from "./SettingControls";
 import { parseAuthor, versionGte } from "../../utils/plugins";
 import { removePluginConfig } from "../../utils/pluginConfig";
 import { findConnectionsForDrivers } from "../../utils/connectionManager";
