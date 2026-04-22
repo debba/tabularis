@@ -23,6 +23,7 @@ import { PluginsTab } from "../components/settings/PluginsTab";
 import { InfoTab } from "../components/settings/InfoTab";
 import { PluginSettingsPage } from "../components/settings/PluginSettingsPage";
 import { useDrivers } from "../hooks/useDrivers";
+import { useSettings } from "../hooks/useSettings";
 
 type SettingsTab =
   | "general"
@@ -74,6 +75,9 @@ export const Settings = () => {
     installedPlugins,
     refresh: refreshDrivers,
   } = useDrivers();
+  const { settings } = useSettings();
+  const activeExternalDrivers =
+    settings.activeExternalDrivers ?? installedPlugins.map((p) => p.id);
   const [requestedTab, setRequestedTab] = useState<SettingsTab>("general");
   const [isConfigJsonModalOpen, setIsConfigJsonModalOpen] = useState(false);
   const [pluginSidebarOverrides, setPluginSidebarOverrides] = useState<
@@ -101,6 +105,8 @@ export const Settings = () => {
   for (const driver of allDrivers) {
     const hasSettings = (driver.settings?.length ?? 0) > 0;
     if (driver.is_builtin && !hasSettings) continue;
+    if (!driver.is_builtin && !activeExternalDrivers.includes(driver.id))
+      continue;
     pluginSettingItems.set(driver.id, {
       id: driver.id,
       name: driver.name,
@@ -109,6 +115,7 @@ export const Settings = () => {
 
   for (const plugin of installedPlugins) {
     if (pluginSidebarOverrides[plugin.id] === null) continue;
+    if (!activeExternalDrivers.includes(plugin.id)) continue;
     pluginSettingItems.set(plugin.id, {
       id: plugin.id,
       name: plugin.name,
@@ -118,7 +125,8 @@ export const Settings = () => {
   for (const [pluginId, pluginName] of Object.entries(pluginSidebarOverrides)) {
     if (
       pluginName !== null &&
-      !installedPlugins.some((plugin) => plugin.id === pluginId)
+      !installedPlugins.some((plugin) => plugin.id === pluginId) &&
+      activeExternalDrivers.includes(pluginId)
     ) {
       pluginSettingItems.set(pluginId, {
         id: pluginId,

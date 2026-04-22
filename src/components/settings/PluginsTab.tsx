@@ -593,6 +593,16 @@ export function PluginsTab({
       setInstallingPluginId(pluginId);
       try {
         await invoke("install_plugin", { pluginId, version });
+        await updateSettingRef.current(
+          "activeExternalDrivers",
+          Array.from(
+            new Set([
+              ...(settingsRef.current.activeExternalDrivers ??
+                installedPluginsRef.current.map((plugin) => plugin.id)),
+              pluginId,
+            ]),
+          ),
+        );
         refreshRegistry();
         refreshDrivers();
         const pluginName =
