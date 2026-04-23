@@ -1,10 +1,12 @@
 use std::fs;
+use std::time::Duration;
 
 use crate::drivers::driver_trait::PluginManifest;
 use crate::plugins::installer::{self, InstalledPluginInfo};
 use crate::plugins::manager::ConfigManifest;
 use crate::plugins::registry::{self, RegistryPluginWithStatus, RegistryReleaseWithStatus};
 use tauri::AppHandle;
+use tokio::time::sleep;
 
 #[tauri::command]
 pub async fn fetch_plugin_registry(
@@ -71,6 +73,12 @@ pub async fn install_plugin(
     plugin_id: String,
     version: Option<String>,
 ) -> Result<(), String> {
+    // Updating an installed plugin must stop the existing process first,
+    // otherwise the OS may keep files locked while we replace the directory.
+    crate::drivers::registry::unregister_driver(&plugin_id).await;
+    crate::drivers::registry::unregister_manifest(&plugin_id).await;
+    sleep(Duration::from_millis(500)).await;
+
     let config = crate::config::load_config_internal(&app);
     let remote = registry::fetch_registry(config.custom_registry_url.as_deref()).await?;
     let platform = registry::get_current_platform();
@@ -101,6 +109,20 @@ pub async fn install_plugin(
         })?;
 
     installer::download_and_install(&plugin_id, download_url).await?;
+
+    let installed_plugin = installer::read_installed_plugin(&plugin_id)?;
+    if installed_plugin.id != plugin_id {
+        return Err(format!(
+            "Plugin archive mismatch: registry expected id '{}' but installed manifest reports '{}'",
+            plugin_id, installed_plugin.id
+        ));
+    }
+    if installed_plugin.version != target_version {
+        return Err(format!(
+            "Plugin archive version mismatch: registry expected version '{}' but installed manifest reports '{}'. The published asset appears inconsistent.",
+            target_version, installed_plugin.version
+        ));
+    }
 
     // Hot-register the new driver (no restart needed)
     let plugin_cfg = config.plugins.as_ref().and_then(|m| m.get(&plugin_id));
