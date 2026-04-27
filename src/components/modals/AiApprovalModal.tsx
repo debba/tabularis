@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, ShieldAlert, X, Pencil } from "lucide-react";
+import { Check, ShieldAlert, X, Pencil, Maximize2, Minimize2 } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { useTheme } from "../../hooks/useTheme";
 import { loadMonacoTheme } from "../../themes/themeUtils";
@@ -32,13 +32,28 @@ export function AiApprovalModal({
   const [submitting, setSubmitting] = useState(false);
   const [viewMode, setViewMode] = useState<ExplainViewMode>("graph");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [planExpanded, setPlanExpanded] = useState(false);
 
   // Reset local state if a new pending arrives.
   useEffect(() => {
     setEditedQuery(approval.query);
     setEditing(false);
     setReason("");
+    setPlanExpanded(false);
   }, [approval.id, approval.query]);
+
+  // Close the expanded plan overlay with Escape without dismissing the parent modal.
+  useEffect(() => {
+    if (!planExpanded) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setPlanExpanded(false);
+      }
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [planExpanded]);
 
   const explainPlan = useMemo<ExplainPlan | null>(() => {
     if (!approval.explainPlan || typeof approval.explainPlan !== "object") {
@@ -158,11 +173,23 @@ export function AiApprovalModal({
           </section>
 
           <section>
-            <label className="text-xs uppercase font-bold text-muted mb-2 block">
-              {t("aiApproval.preflightPlan")}
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs uppercase font-bold text-muted">
+                {t("aiApproval.preflightPlan")}
+              </label>
+              {explainPlan && (
+                <button
+                  onClick={() => setPlanExpanded(true)}
+                  className="flex items-center gap-1 px-2 py-1 text-xs text-muted hover:text-primary hover:bg-surface-tertiary rounded transition-colors"
+                  title={t("aiApproval.expandPlan")}
+                >
+                  <Maximize2 size={11} />
+                  {t("aiApproval.expandPlan")}
+                </button>
+              )}
+            </div>
             {explainPlan ? (
-              <div className="rounded-lg border border-default bg-base h-[280px] overflow-hidden">
+              <div className="rounded-lg border border-default bg-base h-[360px] overflow-hidden">
                 <VisualExplainView
                   plan={explainPlan}
                   isLoading={false}
@@ -228,6 +255,45 @@ export function AiApprovalModal({
           </div>
         </div>
       </div>
+
+      {planExpanded && explainPlan && (
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-[130] backdrop-blur-sm"
+          onClick={() => setPlanExpanded(false)}
+        >
+          <div
+            className="bg-elevated border border-strong rounded-xl shadow-2xl w-[95vw] h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-3 border-b border-default bg-base">
+              <h3 className="text-sm font-semibold text-primary">
+                {t("aiApproval.preflightPlan")}
+              </h3>
+              <button
+                onClick={() => setPlanExpanded(false)}
+                className="flex items-center gap-1 px-2 py-1 text-xs text-muted hover:text-primary hover:bg-surface-tertiary rounded transition-colors"
+                title={t("aiApproval.collapsePlan")}
+                aria-label={t("aiApproval.collapsePlan")}
+              >
+                <Minimize2 size={12} />
+                {t("aiApproval.collapsePlan")}
+              </button>
+            </div>
+            <div className="flex-1 min-h-0 bg-base">
+              <VisualExplainView
+                plan={explainPlan}
+                isLoading={false}
+                error={null}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                selectedNodeId={selectedNodeId}
+                onSelectNode={setSelectedNodeId}
+                aiEnabled={false}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

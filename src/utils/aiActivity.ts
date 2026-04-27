@@ -6,8 +6,21 @@ import type {
   AiActivityStatus,
   AiNotebookExport,
   AiQueryKind,
+  AiSessionSummary,
   PendingApproval,
 } from "../types/ai";
+
+export type SortDirection = "asc" | "desc";
+
+export type EventSortField =
+  | "timestamp"
+  | "tool"
+  | "connection"
+  | "kind"
+  | "duration"
+  | "status";
+
+export type SessionSortField = "started" | "events" | "runQueries";
 
 export interface BadgeStyle {
   bg: string;
@@ -242,4 +255,127 @@ function base64UrlDecode(s: string): string {
 /// (write or DDL). Use to drive UI emphasis (red border, etc).
 export function isDestructiveApproval(p: PendingApproval): boolean {
   return p.queryKind === "write" || p.queryKind === "ddl" || p.queryKind === "unknown";
+}
+
+const QUERY_KIND_ORDER: Record<AiQueryKind, number> = {
+  select: 0,
+  write: 1,
+  ddl: 2,
+  unknown: 3,
+};
+
+const STATUS_ORDER: Record<AiActivityStatus, number> = {
+  success: 0,
+  blocked_readonly: 1,
+  blocked_pending_approval: 2,
+  denied: 3,
+  error: 4,
+  timeout: 5,
+};
+
+// Returns 0 when both values are present, otherwise a non-zero sentinel that
+// the caller propagates *without* flipping for direction (nulls always sort
+// last in both ASC and DESC).
+function nullsLast<T>(
+  a: T | null | undefined,
+  b: T | null | undefined,
+): number {
+  const aMissing = a === null || a === undefined;
+  const bMissing = b === null || b === undefined;
+  if (aMissing && bMissing) return 0;
+  if (aMissing) return 1;
+  if (bMissing) return -1;
+  return 0;
+}
+
+function applyDirection(cmp: number, dir: SortDirection): number {
+  return dir === "asc" ? cmp : -cmp;
+}
+
+/// Returns a new array of events sorted by the given field/direction. Stable
+/// for equal keys (preserves the input order). Pure: never mutates `events`.
+export function sortAiEvents(
+  events: AiActivityEvent[],
+  field: EventSortField,
+  direction: SortDirection,
+): AiActivityEvent[] {
+  const decorated = events.map((ev, i) => ({ ev, i }));
+  decorated.sort((a, b) => {
+    let cmp = 0;
+    let nullCmp = 0;
+    switch (field) {
+      case "timestamp":
+        cmp = a.ev.timestamp.localeCompare(b.ev.timestamp);
+        break;
+      case "tool":
+        cmp = a.ev.tool.localeCompare(b.ev.tool);
+        break;
+      case "connection":
+        nullCmp = nullsLast(a.ev.connectionName, b.ev.connectionName);
+        if (nullCmp !== 0) return nullCmp;
+        cmp = (a.ev.connectionName ?? "").localeCompare(
+          b.ev.connectionName ?? "",
+        );
+        break;
+      case "kind":
+        nullCmp = nullsLast(a.ev.queryKind, b.ev.queryKind);
+        if (nullCmp !== 0) return nullCmp;
+        cmp =
+          (QUERY_KIND_ORDER[a.ev.queryKind as AiQueryKind] ?? 99) -
+          (QUERY_KIND_ORDER[b.ev.queryKind as AiQueryKind] ?? 99);
+        break;
+      case "duration":
+        cmp = a.ev.durationMs - b.ev.durationMs;
+        break;
+      case "status":
+        cmp = (STATUS_ORDER[a.ev.status] ?? 99) - (STATUS_ORDER[b.ev.status] ?? 99);
+        break;
+    }
+    if (cmp === 0) return a.i - b.i;
+    return applyDirection(cmp, direction);
+  });
+  return decorated.map((d) => d.ev);
+}
+
+/// Returns a new array of sessions sorted by the given field/direction.
+/// Stable for equal keys.
+export function sortAiSessions(
+  sessions: AiSessionSummary[],
+  field: SessionSortField,
+  direction: SortDirection,
+): AiSessionSummary[] {
+  const decorated = sessions.map((s, i) => ({ s, i }));
+  decorated.sort((a, b) => {
+    let cmp = 0;
+    switch (field) {
+      case "started":
+        cmp = a.s.startedAt.localeCompare(b.s.startedAt);
+        break;
+      case "events":
+        cmp = a.s.eventCount - b.s.eventCount;
+        break;
+      case "runQueries":
+        cmp = a.s.runQueryCount - b.s.runQueryCount;
+        break;
+    }
+    if (cmp === 0) return a.i - b.i;
+    return applyDirection(cmp, direction);
+  });
+  return decorated.map((d) => d.s);
+}
+
+/// Case-insensitive substring match against the parts of a session a user
+/// would reasonably type into a search box (id, client hint, connection
+/// names). Empty/whitespace queries match everything.
+export function sessionMatchesSearch(
+  session: AiSessionSummary,
+  query: string,
+): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  if (session.sessionId.toLowerCase().includes(q)) return true;
+  if (session.clientHint && session.clientHint.toLowerCase().includes(q)) {
+    return true;
+  }
+  return session.connectionNames.some((c) => c.toLowerCase().includes(q));
 }

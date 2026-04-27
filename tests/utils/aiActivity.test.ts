@@ -10,11 +10,15 @@ import {
   isDestructiveApproval,
   notebookFileFromExport,
   parseVisualExplainDeepLink,
+  sessionMatchesSearch,
+  sortAiEvents,
+  sortAiSessions,
   truncateQuery,
 } from "../../src/utils/aiActivity";
 import type {
   AiActivityEvent,
   AiNotebookExport,
+  AiSessionSummary,
   PendingApproval,
 } from "../../src/types/ai";
 
@@ -228,5 +232,130 @@ describe("isDestructiveApproval", () => {
 
   it("does not flag select", () => {
     expect(isDestructiveApproval({ ...base, queryKind: "select" })).toBe(false);
+  });
+});
+
+describe("sortAiEvents", () => {
+  const a = baseEvent({ id: "a", timestamp: "2026-04-24T10:00:00Z", durationMs: 50 });
+  const b = baseEvent({ id: "b", timestamp: "2026-04-24T11:00:00Z", durationMs: 10 });
+  const c = baseEvent({ id: "c", timestamp: "2026-04-24T09:00:00Z", durationMs: 200 });
+
+  it("sorts by timestamp descending (most recent first)", () => {
+    const result = sortAiEvents([a, b, c], "timestamp", "desc");
+    expect(result.map((e) => e.id)).toEqual(["b", "a", "c"]);
+  });
+
+  it("sorts by timestamp ascending", () => {
+    const result = sortAiEvents([a, b, c], "timestamp", "asc");
+    expect(result.map((e) => e.id)).toEqual(["c", "a", "b"]);
+  });
+
+  it("sorts by duration", () => {
+    expect(sortAiEvents([a, b, c], "duration", "asc").map((e) => e.id)).toEqual([
+      "b",
+      "a",
+      "c",
+    ]);
+    expect(sortAiEvents([a, b, c], "duration", "desc").map((e) => e.id)).toEqual([
+      "c",
+      "a",
+      "b",
+    ]);
+  });
+
+  it("places nulls last when sorting nullable fields", () => {
+    const withNull = baseEvent({ id: "n", connectionName: null });
+    const withName = baseEvent({ id: "x", connectionName: "alpha" });
+    const result = sortAiEvents([withNull, withName], "connection", "desc");
+    expect(result[result.length - 1].id).toBe("n");
+  });
+
+  it("is stable when keys tie", () => {
+    const x1 = baseEvent({ id: "x1", durationMs: 10 });
+    const x2 = baseEvent({ id: "x2", durationMs: 10 });
+    const x3 = baseEvent({ id: "x3", durationMs: 10 });
+    const result = sortAiEvents([x1, x2, x3], "duration", "desc");
+    expect(result.map((e) => e.id)).toEqual(["x1", "x2", "x3"]);
+  });
+
+  it("does not mutate the input array", () => {
+    const input = [a, b, c];
+    sortAiEvents(input, "timestamp", "desc");
+    expect(input.map((e) => e.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("orders status from success → blocked → denied → error → timeout", () => {
+    const s1 = baseEvent({ id: "ok", status: "success" });
+    const s2 = baseEvent({ id: "err", status: "error" });
+    const s3 = baseEvent({ id: "den", status: "denied" });
+    const result = sortAiEvents([s2, s3, s1], "status", "asc");
+    expect(result.map((e) => e.id)).toEqual(["ok", "den", "err"]);
+  });
+});
+
+const baseSession = (
+  overrides: Partial<AiSessionSummary> = {},
+): AiSessionSummary => ({
+  sessionId: "s",
+  startedAt: "2026-04-24T10:00:00Z",
+  endedAt: "2026-04-24T10:05:00Z",
+  eventCount: 3,
+  runQueryCount: 1,
+  connectionNames: ["dev"],
+  clientHint: "claude-desktop",
+  ...overrides,
+});
+
+describe("sortAiSessions", () => {
+  const a = baseSession({ sessionId: "a", startedAt: "2026-04-24T10:00:00Z", eventCount: 5 });
+  const b = baseSession({ sessionId: "b", startedAt: "2026-04-24T11:00:00Z", eventCount: 1 });
+  const c = baseSession({ sessionId: "c", startedAt: "2026-04-24T09:00:00Z", eventCount: 10 });
+
+  it("sorts by startedAt descending by default usage", () => {
+    expect(
+      sortAiSessions([a, b, c], "started", "desc").map((s) => s.sessionId),
+    ).toEqual(["b", "a", "c"]);
+  });
+
+  it("sorts by event count", () => {
+    expect(
+      sortAiSessions([a, b, c], "events", "desc").map((s) => s.sessionId),
+    ).toEqual(["c", "a", "b"]);
+  });
+});
+
+describe("sessionMatchesSearch", () => {
+  const session = baseSession({
+    sessionId: "abc12345",
+    clientHint: "claude-desktop",
+    connectionNames: ["dev-db", "stage"],
+  });
+
+  it("matches empty / whitespace query", () => {
+    expect(sessionMatchesSearch(session, "")).toBe(true);
+    expect(sessionMatchesSearch(session, "   ")).toBe(true);
+  });
+
+  it("matches by session id prefix or substring", () => {
+    expect(sessionMatchesSearch(session, "abc12")).toBe(true);
+    expect(sessionMatchesSearch(session, "12345")).toBe(true);
+  });
+
+  it("matches by client hint case-insensitively", () => {
+    expect(sessionMatchesSearch(session, "CLAUDE")).toBe(true);
+  });
+
+  it("matches by any connection name", () => {
+    expect(sessionMatchesSearch(session, "stage")).toBe(true);
+    expect(sessionMatchesSearch(session, "dev-db")).toBe(true);
+  });
+
+  it("returns false when nothing matches", () => {
+    expect(sessionMatchesSearch(session, "missing")).toBe(false);
+  });
+
+  it("handles missing client hint without throwing", () => {
+    const noHint = baseSession({ clientHint: null });
+    expect(sessionMatchesSearch(noHint, "claude")).toBe(false);
   });
 });

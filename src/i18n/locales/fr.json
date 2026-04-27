@@ -1313,6 +1313,20 @@
       "status": "Statut",
       "actions": "Actions"
     },
+    "sort": {
+      "sortBy": "Trier par {{field}}",
+      "sortByPlaceholder": "Trier par…",
+      "toggleAscending": "Tri croissant",
+      "toggleDescending": "Tri décroissant",
+      "ascending": "Asc",
+      "descending": "Desc",
+      "started": "Début",
+      "eventCount": "Événements",
+      "runQueries": "Requêtes exécutées"
+    },
+    "searchSessions": "Rechercher session, client, connexion…",
+    "filteredFrom": "sur {{total}}",
+    "noMatches": "Aucune session ne correspond aux filtres.",
     "status": {
       "success": "Succès",
       "blocked_readonly": "Bloquée (lecture seule)",
@@ -1336,6 +1350,8 @@
     "editQuery": "Modifier avant d'approuver",
     "lockQuery": "Verrouiller",
     "preflightPlan": "Plan d'exécution préalable",
+    "expandPlan": "Agrandir",
+    "collapsePlan": "Réduire",
     "explainUnavailable": "EXPLAIN indisponible.",
     "explainFailed": "EXPLAIN a échoué : {{error}}",
     "reasonLabel": "Motif (facultatif)",

@@ -1265,6 +1265,20 @@
       "status": "Estado",
       "actions": "Acciones"
     },
+    "sort": {
+      "sortBy": "Ordenar por {{field}}",
+      "sortByPlaceholder": "Ordenar por…",
+      "toggleAscending": "Orden ascendente",
+      "toggleDescending": "Orden descendente",
+      "ascending": "Asc",
+      "descending": "Desc",
+      "started": "Inicio",
+      "eventCount": "Eventos",
+      "runQueries": "Consultas ejecutadas"
+    },
+    "searchSessions": "Buscar sesión, cliente, conexión…",
+    "filteredFrom": "de {{total}}",
+    "noMatches": "Ninguna sesión coincide con los filtros.",
     "status": {
       "success": "Éxito",
       "blocked_readonly": "Bloqueada (solo lectura)",
@@ -1288,6 +1302,8 @@
     "editQuery": "Editar antes de aprobar",
     "lockQuery": "Bloquear consulta",
     "preflightPlan": "Plan de ejecución previo",
+    "expandPlan": "Expandir",
+    "collapsePlan": "Contraer",
     "explainUnavailable": "EXPLAIN no disponible para esta consulta.",
     "explainFailed": "EXPLAIN falló: {{error}}",
     "reasonLabel": "Razón (opcional)",

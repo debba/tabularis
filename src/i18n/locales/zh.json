@@ -1257,6 +1257,20 @@
       "status": "状态",
       "actions": "操作"
     },
+    "sort": {
+      "sortBy": "按 {{field}} 排序",
+      "sortByPlaceholder": "排序方式…",
+      "toggleAscending": "升序排列",
+      "toggleDescending": "降序排列",
+      "ascending": "升序",
+      "descending": "降序",
+      "started": "开始时间",
+      "eventCount": "事件数",
+      "runQueries": "执行查询数"
+    },
+    "searchSessions": "搜索会话、客户端、连接…",
+    "filteredFrom": "共 {{total}}",
+    "noMatches": "没有会话匹配当前筛选条件。",
     "status": {
       "success": "成功",
       "blocked_readonly": "已阻止 (只读)",
@@ -1280,6 +1294,8 @@
     "editQuery": "批准前编辑",
     "lockQuery": "锁定查询",
     "preflightPlan": "预先执行计划",
+    "expandPlan": "展开",
+    "collapsePlan": "收起",
     "explainUnavailable": "此查询无法 EXPLAIN。",
     "explainFailed": "EXPLAIN 失败: {{error}}",
     "reasonLabel": "理由 (可选)",

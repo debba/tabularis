@@ -1313,6 +1313,20 @@
       "status": "Status",
       "actions": "Aktionen"
     },
+    "sort": {
+      "sortBy": "Sortieren nach {{field}}",
+      "sortByPlaceholder": "Sortieren nach…",
+      "toggleAscending": "Aufsteigend sortieren",
+      "toggleDescending": "Absteigend sortieren",
+      "ascending": "Aufst.",
+      "descending": "Abst.",
+      "started": "Start",
+      "eventCount": "Ereignisse",
+      "runQueries": "Ausgeführte Abfragen"
+    },
+    "searchSessions": "Suche Sitzung, Client, Verbindung…",
+    "filteredFrom": "von {{total}}",
+    "noMatches": "Keine Sitzung entspricht den Filtern.",
     "status": {
       "success": "Erfolg",
       "blocked_readonly": "Blockiert (nur lesen)",
@@ -1336,6 +1350,8 @@
     "editQuery": "Vor Freigabe bearbeiten",
     "lockQuery": "Sperren",
     "preflightPlan": "Vorab-Ausführungsplan",
+    "expandPlan": "Vergrößern",
+    "collapsePlan": "Verkleinern",
     "explainUnavailable": "EXPLAIN nicht verfügbar.",
     "explainFailed": "EXPLAIN fehlgeschlagen: {{error}}",
     "reasonLabel": "Grund (optional)",
