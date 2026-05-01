@@ -574,6 +574,7 @@
     "password": "Password",
     "passwordMissing": "Password missing or not set. Please re-enter.",
     "passwordPlaceholder": "Enter password",
+    "usernamePlaceholder": "Enter username",
     "filePath": "File Path",
     "folderPath": "Folder Path",
     "dbName": "Database Name",

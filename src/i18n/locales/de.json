@@ -574,6 +574,7 @@
     "password": "Passwort",
     "passwordMissing": "Passwort fehlt oder ist nicht gesetzt. Bitte erneut eingeben.",
     "passwordPlaceholder": "Passwort eingeben",
+    "usernamePlaceholder": "Benutzername eingeben",
     "filePath": "Dateipfad",
     "folderPath": "Ordnerpfad",
     "dbName": "Datenbankname",
