@@ -574,6 +574,7 @@
     "password": "Contraseña",
     "passwordMissing": "Contraseña faltante. Por favor, ingrésala de nuevo.",
     "passwordPlaceholder": "Ingresa la contraseña",
+    "usernamePlaceholder": "Ingresa el nombre de usuario",
     "filePath": "Ruta del Archivo",
     "folderPath": "Ruta de la Carpeta",
     "dbName": "Nombre de la Base de Datos",
