@@ -645,6 +645,7 @@
     "noData": "Keine Daten zum Anzeigen",
     "editRow": "Zeile bearbeiten",
     "deleteRow": "Zeile löschen",
+    "deleteRows": "{{count}} Zeilen löschen",
     "confirmDelete": "Möchtest du diese Zeile wirklich löschen?",
     "deleteTitle": "Zeile löschen",
     "updateFailed": "Aktualisierung fehlgeschlagen: ",

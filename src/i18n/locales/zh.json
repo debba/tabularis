@@ -615,6 +615,7 @@
     "noData": "无数据显示",
     "editRow": "编辑行",
     "deleteRow": "删除行",
+    "deleteRows": "删除 {{count}} 行",
     "confirmDelete": "确定要删除此行吗？",
     "deleteTitle": "删除行",
     "updateFailed": "更新失败：",

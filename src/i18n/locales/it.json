@@ -645,6 +645,7 @@
     "noData": "Nessun dato da visualizzare",
     "editRow": "Modifica riga",
     "deleteRow": "Elimina riga",
+    "deleteRows": "Elimina {{count}} righe",
     "confirmDelete": "Sei sicuro di voler eliminare questa riga?",
     "deleteTitle": "Elimina riga",
     "updateFailed": "Aggiornamento fallito: ",

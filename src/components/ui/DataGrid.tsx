@@ -84,6 +84,7 @@ interface DataGridProps {
   onDiscardInsertion?: (tempId: string) => void;
   onRevertDeletion?: (pkVal: unknown) => void;
   onMarkForDeletion?: (pkVal: unknown) => void;
+  onMarkMultipleForDeletion?: (pkVals: unknown[]) => void;
   selectedRows?: Set<number>;
   onSelectionChange?: (indices: Set<number>) => void;
   copyFormat?: "csv" | "json";
@@ -113,6 +114,7 @@ export const DataGrid = React.memo(
     onDiscardInsertion,
     onRevertDeletion,
     onMarkForDeletion,
+    onMarkMultipleForDeletion,
     selectedRows: externalSelectedRows,
     onSelectionChange,
     copyFormat,
@@ -679,26 +681,43 @@ export const DataGrid = React.memo(
     const deleteSelectedRow = useCallback(() => {
       if (!contextMenu) return;
 
-      const isInsertion = contextMenu.mergedRow?.type === "insertion";
-      const tempId = contextMenu.mergedRow?.tempId;
+      // If the right-clicked row is part of a multi-selection, delete all selected rows.
+      // Otherwise fall back to deleting just the right-clicked row.
+      const rightClickedIsSelected = selectedRowIndices.has(contextMenu.rowIndex);
+      const indicesToDelete =
+        rightClickedIsSelected && selectedRowIndices.size > 1
+          ? Array.from(selectedRowIndices)
+          : [contextMenu.rowIndex];
 
-      // Handle insertion row deletion (discard)
-      if (isInsertion && tempId && onDiscardInsertion) {
-        onDiscardInsertion(tempId);
-        setContextMenu(null);
-        return;
+      const pkVals: unknown[] = [];
+      for (const idx of indicesToDelete) {
+        const mergedRow = mergedRows[idx];
+        if (!mergedRow) continue;
+
+        if (mergedRow.type === "insertion" && mergedRow.tempId && onDiscardInsertion) {
+          onDiscardInsertion(mergedRow.tempId);
+        } else if (mergedRow.type === "existing" && pkColumn && pkIndexMap !== null) {
+          pkVals.push(mergedRow.rowData[pkIndexMap]);
+        }
       }
 
-      // For existing rows, mark for deletion
-      if (pkColumn && pkIndexMap !== null && onMarkForDeletion) {
-        const pkVal = contextMenu.row[pkIndexMap];
-        onMarkForDeletion(pkVal);
-        setContextMenu(null);
+      // Use batch handler to avoid stale-closure overwrites when called per-row.
+      if (pkVals.length > 0) {
+        if (onMarkMultipleForDeletion) {
+          onMarkMultipleForDeletion(pkVals);
+        } else if (onMarkForDeletion) {
+          pkVals.forEach((v) => onMarkForDeletion(v));
+        }
       }
+
+      setContextMenu(null);
     }, [
       contextMenu,
+      selectedRowIndices,
+      mergedRows,
       onDiscardInsertion,
       onMarkForDeletion,
+      onMarkMultipleForDeletion,
       pkColumn,
       pkIndexMap,
     ]);
@@ -1240,6 +1259,10 @@ export const DataGrid = React.memo(
               const canRevert =
                 isInsertion || hasPendingChanges || hasPendingDeletion;
 
+              const deleteRowCount = selectedRowIndices.has(contextMenu.rowIndex)
+                ? selectedRowIndices.size
+                : 1;
+
               // Determine which cell value options to show based on column properties
               const { colName } = contextMenu;
               const isAutoIncrement = autoIncrementColumns?.includes(colName);
@@ -1303,7 +1326,9 @@ export const DataGrid = React.memo(
                     action: openSidebarEditor,
                   },
                   {
-                    label: t("dataGrid.deleteRow"),
+                    label: deleteRowCount > 1
+                      ? t("dataGrid.deleteRows", { count: deleteRowCount })
+                      : t("dataGrid.deleteRow"),
                     icon: Trash2,
                     danger: true,
                     action: deleteSelectedRow,
