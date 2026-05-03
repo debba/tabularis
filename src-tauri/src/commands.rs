@@ -3062,3 +3062,31 @@ pub async fn reorder_connections_in_group<R: Runtime>(
     persistence::save_connections_file(&path, &file)?;
     Ok(())
 }
+
+#[tauri::command]
+pub async fn get_server_now<R: Runtime>(
+    app: AppHandle<R>,
+    connection_id: String,
+) -> Result<String, String> {
+    let saved_conn = find_connection_by_id(&app, &connection_id)?;
+    let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
+
+    let query = match saved_conn.params.driver.as_str() {
+        "sqlite" => "SELECT datetime('now', 'localtime')",
+        _ => "SELECT NOW()",
+    };
+
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    let result = drv.execute_query(&params, query, Some(1), 1, None).await?;
+
+    result
+        .rows
+        .first()
+        .and_then(|row| row.first())
+        .map(|v| match v {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        })
+        .ok_or_else(|| "No timestamp returned from server".to_string())
+}

@@ -20,6 +20,8 @@ import {
   ArrowDown,
   ArrowUpDown,
   Copy,
+  CopyPlus,
+  Clock,
   Undo,
   Trash2,
   Edit,
@@ -45,7 +47,11 @@ import {
 import { isGeometricType, formatGeometricValue } from "../../utils/geometry";
 import { isBlobColumn, isBlobWireFormat } from "../../utils/blob";
 import { isJsonColumn } from "../../utils/json";
-import { getDateInputMode } from "../../utils/dateInput";
+import {
+  getDateInputMode,
+  parseDateTime,
+  formatDateTime,
+} from "../../utils/dateInput";
 import { GeometryInput } from "./GeometryInput";
 import { DateInput } from "./DateInput";
 import { RowEditorSidebar } from "./RowEditorSidebar";
@@ -84,6 +90,7 @@ interface DataGridProps {
   onDiscardInsertion?: (tempId: string) => void;
   onRevertDeletion?: (pkVal: unknown) => void;
   onMarkForDeletion?: (pkVal: unknown) => void;
+  onDuplicateRow?: (rowData: Record<string, unknown>) => void;
   selectedRows?: Set<number>;
   onSelectionChange?: (indices: Set<number>) => void;
   copyFormat?: "csv" | "json";
@@ -113,6 +120,7 @@ export const DataGrid = React.memo(
     onDiscardInsertion,
     onRevertDeletion,
     onMarkForDeletion,
+    onDuplicateRow,
     selectedRows: externalSelectedRows,
     onSelectionChange,
     copyFormat,
@@ -703,6 +711,27 @@ export const DataGrid = React.memo(
       pkIndexMap,
     ]);
 
+    const duplicateSelectedRow = useCallback(() => {
+      if (!contextMenu || !onDuplicateRow) return;
+
+      const mergedRow = contextMenu.mergedRow;
+      const rowData: Record<string, unknown> = {};
+
+      if (mergedRow?.type === "insertion" && mergedRow.tempId && pendingInsertions) {
+        const insertion = pendingInsertions[mergedRow.tempId];
+        if (insertion) {
+          Object.assign(rowData, insertion.data);
+        }
+      } else {
+        columns.forEach((col, idx) => {
+          rowData[col] = contextMenu.row[idx];
+        });
+      }
+
+      onDuplicateRow(rowData);
+      setContextMenu(null);
+    }, [contextMenu, columns, pendingInsertions, onDuplicateRow]);
+
     const buildRowDataWithPending = useCallback(
       (rowArray: unknown[], isInsertion: boolean): Record<string, unknown> => {
         const rowData: Record<string, unknown> = {};
@@ -760,6 +789,38 @@ export const DataGrid = React.memo(
       setCellValue(isInsertion ? null : USE_DEFAULT_SENTINEL);
     }, [contextMenu, setCellValue]);
     const setCellEmpty = useCallback(() => setCellValue(" "), [setCellValue]);
+
+    const setCellServerNow = useCallback(() => {
+      if (!contextMenu || !connectionId) return;
+      const { colName, mergedRow, row } = contextMenu;
+      const isInsertion = mergedRow?.type === "insertion";
+      const colDataType = columnTypeMap?.get(colName) ?? "";
+      const dateMode = getDateInputMode(colDataType);
+      if (!dateMode) return;
+
+      setContextMenu(null);
+      invoke<string>("get_server_now", { connectionId })
+        .then((raw) => {
+          const formatted = formatDateTime(parseDateTime(raw), dateMode);
+          if (isInsertion && onPendingInsertionChange && mergedRow?.tempId) {
+            onPendingInsertionChange(mergedRow.tempId, colName, formatted);
+          } else if (onPendingChange && pkIndexMap !== null) {
+            onPendingChange(row[pkIndexMap], colName, formatted);
+          }
+        })
+        .catch((err) => {
+          showAlert(String(err), { title: t("general.error"), kind: "error" });
+        });
+    }, [
+      contextMenu,
+      connectionId,
+      columnTypeMap,
+      onPendingInsertionChange,
+      onPendingChange,
+      pkIndexMap,
+      t,
+      showAlert,
+    ]);
 
     const copyToClipboard = useCallback(
       async (text: string) => {
@@ -1282,6 +1343,13 @@ export const DataGrid = React.memo(
                     action: setCellEmpty,
                   });
                 }
+                if (getDateInputMode(colDataType) !== null) {
+                  menuItems.push({
+                    label: t("dataGrid.setServerNow"),
+                    icon: Clock,
+                    action: setCellServerNow,
+                  });
+                }
 
                 // Separator before row actions
                 if (menuItems.length > 0) {
@@ -1301,6 +1369,11 @@ export const DataGrid = React.memo(
                     label: t("contextMenu.openSidebar"),
                     icon: Edit,
                     action: openSidebarEditor,
+                  },
+                  {
+                    label: t("dataGrid.duplicateRow"),
+                    icon: CopyPlus,
+                    action: duplicateSelectedRow,
                   },
                   {
                     label: t("dataGrid.deleteRow"),

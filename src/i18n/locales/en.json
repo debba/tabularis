@@ -663,11 +663,13 @@
     "copyRows": "Copy {{count}} Rows",
     "copied": "Copied to clipboard",
     "discardInsertion": "Click to discard this row (rollback)",
+    "duplicateRow": "Duplicate Row",
     "revertSelected": "Revert Selected",
     "setGenerate": "Set GENERATED",
     "setNull": "Set NULL",
     "setDefault": "Set DEFAULT",
-    "setEmpty": "Set EMPTY"
+    "setEmpty": "Set EMPTY",
+    "setServerNow": "Insert Current Timestamp"
   },
   "editRow": {
     "title": "Edit Row",
