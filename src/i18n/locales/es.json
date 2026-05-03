@@ -661,7 +661,9 @@
     "copyColumnNameTable": "Copiar como tabla.columna",
     "copyCells": "Copiar {{count}} Celdas",
     "copyRows": "Copiar {{count}} Filas",
-    "copied": "Copiado al portapapeles"
+    "copied": "Copiado al portapapeles",
+    "duplicateRow": "Duplicar Fila",
+    "setServerNow": "Insertar marca de tiempo actual"
   },
   "editRow": {
     "title": "Editar Fila",
