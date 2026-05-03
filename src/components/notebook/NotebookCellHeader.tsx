@@ -203,7 +203,7 @@ export function NotebookCellHeader({
                   className="fixed inset-0 z-40"
                   onClick={() => setIsDbOpen(false)}
                 />
-                <div className="absolute top-full left-0 mt-1 min-w-[120px] bg-surface-secondary border border-strong rounded shadow-xl z-50 flex flex-col py-1">
+                <div className="absolute top-full left-0 mt-1 min-w-[120px] max-h-[230px] overflow-y-auto bg-surface-secondary border border-strong rounded shadow-xl z-50 flex flex-col py-1">
                   {selectedDatabases.map((db) => (
                     <button
                       key={db}
