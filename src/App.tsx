@@ -23,6 +23,7 @@ import { useUpdate } from "./hooks/useUpdate";
 import { useChangelog } from "./hooks/useChangelog";
 import { useSettings } from "./hooks/useSettings";
 import { APP_VERSION } from "./version";
+import { isVersionAtMost, isVersionNewer } from "./utils/versionCompare";
 
 const WHATS_NEW_VERSION_KEY = "tabularis_last_seen_version";
 
@@ -41,14 +42,18 @@ export function App() {
 
   const lastSeenVersion = localStorage.getItem(WHATS_NEW_VERSION_KEY);
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(
-    () => lastSeenVersion !== null && lastSeenVersion !== APP_VERSION,
+    () => lastSeenVersion !== null && isVersionNewer(APP_VERSION, lastSeenVersion),
   );
 
   const { entries: allEntries, isLoading: isChangelogLoading } = useChangelog();
 
   const whatsNewEntries = useMemo(() => {
     if (!lastSeenVersion) return [];
-    return allEntries.filter((entry) => entry.version > lastSeenVersion);
+    return allEntries.filter(
+      (entry) =>
+        isVersionNewer(entry.version, lastSeenVersion) &&
+        isVersionAtMost(entry.version, APP_VERSION),
+    );
   }, [lastSeenVersion, allEntries]);
 
   const dismissCommunityModal = useCallback(() => {
