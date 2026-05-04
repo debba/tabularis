@@ -646,6 +646,7 @@
     "noData": "Aucune donnée à afficher",
     "editRow": "Modifier la ligne",
     "deleteRow": "Supprimer la ligne",
+    "deleteRows": "Supprimer {{count}} lignes",
     "confirmDelete": "Voulez-vous vraiment supprimer cette ligne ?",
     "deleteTitle": "Supprimer la ligne",
     "updateFailed": "Échec de la mise à jour : ",

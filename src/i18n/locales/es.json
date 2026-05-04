@@ -646,6 +646,7 @@
     "noData": "No hay datos para mostrar",
     "editRow": "Editar Fila",
     "deleteRow": "Eliminar Fila",
+    "deleteRows": "Eliminar {{count}} filas",
     "confirmDelete": "¿Estás seguro de que deseas eliminar esta fila?",
     "deleteTitle": "Eliminar Fila",
     "updateFailed": "Error en la actualización: ",
