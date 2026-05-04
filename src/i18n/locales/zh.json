@@ -544,6 +544,7 @@
     "password": "密码",
     "passwordMissing": "密码缺失或未设置。请重新输入。",
     "passwordPlaceholder": "输入密码",
+    "usernamePlaceholder": "输入用户名",
     "filePath": "文件路径",
     "folderPath": "文件夹路径",
     "dbName": "数据库名称",
