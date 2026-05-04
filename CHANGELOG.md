@@ -1,3 +1,18 @@
+## [0.10.1](https://github.com/debba/tabularis/compare/v0.10.0...v0.10.1) (2026-05-04)
+
+
+### Bug Fixes
+
+* resolve LIMIT keyword misidentification in SQL pagination ([c4d2298](https://github.com/debba/tabularis/commit/c4d22986cd2119817b0bb90b0f446854a90fd380))
+
+
+### Features
+
+* **app:** use semantic version compare for whats-new and changelog ([dc474df](https://github.com/debba/tabularis/commit/dc474df5f3f3d6ddd81db01eb30c7da103ae5995))
+* Make database selector dropdowns scrollable after 10 entries ([390a811](https://github.com/debba/tabularis/commit/390a81156f0df382cb47ba8d6454e19ee4c3b8ee))
+* **postgres:** add binding module for parameterized values ([f15a268](https://github.com/debba/tabularis/commit/f15a2687fb27dc3a705c7cdbc2d645a420293562))
+* **query-builder:** add mini result grid, schema hook, and layout util ([8c79525](https://github.com/debba/tabularis/commit/8c79525caaa9138ddc2a43dfba95001f1d7688a7))
+
 # [0.10.0](https://github.com/debba/tabularis/compare/v0.9.21...v0.10.0) (2026-04-27)
 
 
