@@ -172,6 +172,10 @@ export const DataGrid = React.memo(
     const [lastSelectedRowIndex, setLastSelectedRowIndex] = useState<
       number | null
     >(null);
+    const [focusedCell, setFocusedCell] = useState<{
+      rowIndex: number;
+      colIndex: number;
+    } | null>(null);
     const editInputRef = useRef<HTMLInputElement>(null);
 
     const selectedRowIndices =
@@ -273,6 +277,7 @@ export const DataGrid = React.memo(
     );
 
     const handleSelectAll = useCallback(() => {
+      setFocusedCell(null);
       if (selectedRowIndices.size === mergedRows.length) {
         updateSelection(new Set());
       } else {
@@ -903,22 +908,47 @@ export const DataGrid = React.memo(
       );
     }, [selectedRowIndices, data, formatRows, copyToClipboard]);
 
+    const copyCellValue = useCallback(
+      async (rowIndex: number, colIndex: number) => {
+        const mergedRow = mergedRows[rowIndex];
+        if (!mergedRow) return;
+        const rawValue = mergedRow.rowData[colIndex];
+        const colName = columns[colIndex];
+        const colType = columnTypeMap?.get(colName);
+        const colLength = columnLengthMap?.get(colName);
+        const text = formatCellValue(rawValue, "null", colType, colLength);
+        await copyToClipboard(text);
+      },
+      [mergedRows, columns, columnTypeMap, columnLengthMap, copyToClipboard],
+    );
+
+    const copyCellFromContext = useCallback(async () => {
+      if (!contextMenu) return;
+      await copyCellValue(contextMenu.rowIndex, contextMenu.colIndex);
+      setContextMenu(null);
+    }, [contextMenu, copyCellValue]);
+
     // Handle keyboard shortcuts
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
         // CMD/CTRL + C
         if ((e.metaKey || e.ctrlKey) && e.key === "c") {
           // Only handle if not editing a cell
-          if (!editingCell && selectedRowIndices.size > 0) {
-            e.preventDefault();
-            copySelectedCells();
+          if (!editingCell) {
+            if (focusedCell) {
+              e.preventDefault();
+              copyCellValue(focusedCell.rowIndex, focusedCell.colIndex);
+            } else if (selectedRowIndices.size > 0) {
+              e.preventDefault();
+              copySelectedCells();
+            }
           }
         }
       };
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [editingCell, selectedRowIndices, copySelectedCells]);
+    }, [editingCell, selectedRowIndices, focusedCell, copyCellValue, copySelectedCells]);
 
     // Show "no data" if there are no columns (even with pending insertions, we can't render without column info)
     // OR if there are columns but no data and no pending insertions
@@ -1020,7 +1050,10 @@ export const DataGrid = React.memo(
                       }`}
                     >
                       <td
-                        onClick={(e) => handleRowClick(rowIndex, e)}
+                        onClick={(e) => {
+                          setFocusedCell(null);
+                          handleRowClick(rowIndex, e);
+                        }}
                         className={`px-2 py-1.5 text-xs text-center border-b border-r border-default sticky left-0 z-10 cursor-pointer select-none w-[50px] min-w-[50px] ${
                           isInsertion
                             ? isSelected
@@ -1079,6 +1112,10 @@ export const DataGrid = React.memo(
                           isModified,
                         });
 
+                        const isFocused =
+                          focusedCell?.rowIndex === rowIndex &&
+                          focusedCell?.colIndex === colIndex;
+
                         return (
                           <td
                             key={cell.id}
@@ -1088,7 +1125,8 @@ export const DataGrid = React.memo(
                               if (target.closest("button")) {
                                 return;
                               }
-                              handleRowClick(rowIndex, e);
+                              setFocusedCell({ rowIndex, colIndex });
+                              updateSelection(new Set());
                             }}
                             onDoubleClick={() =>
                               !isPendingDelete &&
@@ -1110,7 +1148,7 @@ export const DataGrid = React.memo(
                                 colName,
                               )
                             }
-                            className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 font-mono ${isEditing ? "relative" : "whitespace-nowrap truncate max-w-[300px]"} cursor-text ${stateClass}`}
+                            className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 font-mono ${isEditing ? "relative" : "whitespace-nowrap truncate max-w-[300px]"} cursor-text ${stateClass} ${isFocused ? "ring-2 ring-inset ring-blue-400" : ""}`}
                             title={!isEditing ? String(displayValue) : ""}
                           >
                             {isEditing
@@ -1379,6 +1417,12 @@ export const DataGrid = React.memo(
                   menuItems.push({ separator: true });
                 }
               }
+
+              menuItems.push({
+                label: t("dataGrid.copyCell"),
+                icon: Copy,
+                action: copyCellFromContext,
+              });
 
               menuItems.push({
                 label: t("dataGrid.copySelectedRows"),
