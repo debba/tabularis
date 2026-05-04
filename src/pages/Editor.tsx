@@ -1411,6 +1411,23 @@ export const Editor = () => {
     [updateTab],
   );
 
+  const handleMarkMultipleForDeletion = useCallback(
+    (pkVals: unknown[]) => {
+      if (!activeTabIdRef.current) return;
+      const tabId = activeTabIdRef.current;
+      const currentTab = tabsRef.current.find((t) => t.id === tabId);
+      if (!currentTab) return;
+
+      const newPendingDeletions = { ...(currentTab.pendingDeletions || {}) };
+      for (const pkVal of pkVals) {
+        newPendingDeletions[String(pkVal)] = pkVal;
+      }
+
+      updateTab(tabId, { pendingDeletions: newPendingDeletions });
+    },
+    [updateTab],
+  );
+
   const handleNewRow = useCallback(async () => {
     if (
       !activeTabIdRef.current ||
@@ -3053,6 +3070,7 @@ export const Editor = () => {
                     onDiscardInsertion={handleDiscardInsertion}
                     onRevertDeletion={handleRevertDeletion}
                     onMarkForDeletion={handleMarkForDeletion}
+                    onMarkMultipleForDeletion={handleMarkMultipleForDeletion}
                     selectedRows={new Set(activeTab.selectedRows || [])}
                     onSelectionChange={handleSelectionChange}
                     copyFormat={copyFormat}

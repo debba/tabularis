@@ -646,6 +646,7 @@
     "noData": "No data to display",
     "editRow": "Edit Row",
     "deleteRow": "Delete Row",
+    "deleteRows": "Delete {{count}} rows",
     "confirmDelete": "Are you sure you want to delete this row?",
     "deleteTitle": "Delete Row",
     "updateFailed": "Update failed: ",
