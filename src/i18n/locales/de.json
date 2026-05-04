@@ -665,11 +665,13 @@
     "copyRows": "{{count}} Zeile(n) kopieren",
     "copied": "In Zwischenablage kopiert",
     "discardInsertion": "Klicken, um diese Zeile zu verwerfen (Rollback)",
+    "duplicateRow": "Zeile duplizieren",
     "revertSelected": "Auswahl zurücksetzen",
     "setGenerate": "GENERATED setzen",
     "setNull": "NULL setzen",
     "setDefault": "DEFAULT setzen",
-    "setEmpty": "EMPTY setzen"
+    "setEmpty": "EMPTY setzen",
+    "setServerNow": "Aktuellen Zeitstempel einfügen"
   },
   "editRow": {
     "title": "Zeile bearbeiten",

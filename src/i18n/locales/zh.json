@@ -635,11 +635,13 @@
     "copyRows": "复制 {{count}} 行",
     "copied": "已复制到剪贴板",
     "discardInsertion": "点击放弃此行（回滚）",
+    "duplicateRow": "复制行",
     "revertSelected": "还原选中",
     "setGenerate": "设为 GENERATED",
     "setNull": "设为 NULL",
     "setDefault": "设为 DEFAULT",
-    "setEmpty": "设为空"
+    "setEmpty": "设为空",
+    "setServerNow": "插入当前时间戳"
   },
   "editRow": {
     "title": "编辑行",
