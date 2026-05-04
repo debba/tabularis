@@ -38,6 +38,7 @@ export function MiniResultGrid({ columns, rows, loading, message }: MiniResultGr
     return sorted;
   }, [rows, sortCol, sortDir, columns]);
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual exposes non-memoizable methods; this local usage does not pass them to memoized children.
   const virtualizer = useVirtualizer({
     count: displayRows.length,
     getScrollElement: () => parentRef.current,
