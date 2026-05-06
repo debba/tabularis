@@ -9,7 +9,7 @@ import type { QueryResultEntry } from "../../types/editor";
 interface ResultEntryContentProps {
   entry: QueryResultEntry;
   connectionId: string | null;
-  copyFormat: "csv" | "json";
+  copyFormat: "csv" | "json" | "sql-insert";
   csvDelimiter: string;
   onPageChange: (page: number) => void;
   compact?: boolean;

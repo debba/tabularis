@@ -59,6 +59,7 @@ import { useDatabase } from "../../hooks/useDatabase";
 import {
   rowsToCSV,
   rowsToJSON,
+  rowsToSqlInsert,
   getSelectedRows,
   copyTextToClipboard,
 } from "../../utils/clipboard";
@@ -94,7 +95,7 @@ interface DataGridProps {
   onDuplicateRow?: (rowData: Record<string, unknown>) => void;
   selectedRows?: Set<number>;
   onSelectionChange?: (indices: Set<number>) => void;
-  copyFormat?: "csv" | "json";
+  copyFormat?: "csv" | "json" | "sql-insert";
   csvDelimiter?: string;
   sortClause?: string;
   onSort?: (colName: string) => void;
@@ -864,11 +865,13 @@ export const DataGrid = React.memo(
     );
 
     const formatRows = useCallback(
-      (rows: unknown[][]) =>
-        copyFormat === "json"
-          ? rowsToJSON(rows, columns)
-          : rowsToCSV(rows, "null", csvDelimiter),
-      [columns, copyFormat, csvDelimiter],
+      (rows: unknown[][]) => {
+        if (copyFormat === "json") return rowsToJSON(rows, columns);
+        if (copyFormat === "sql-insert")
+          return rowsToSqlInsert(rows, columns, tableName ?? "table");
+        return rowsToCSV(rows, "null", csvDelimiter);
+      },
+      [columns, copyFormat, csvDelimiter, tableName],
     );
 
     const copySelectedOrContextRow = useCallback(async () => {

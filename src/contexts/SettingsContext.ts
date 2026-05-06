@@ -2,7 +2,7 @@ import { createContext } from "react";
 import type { AppLanguage } from "../i18n/config";
 
 export type { AppLanguage };
-export type CopyFormat = "csv" | "json";
+export type CopyFormat = "csv" | "json" | "sql-insert";
 export type AiProvider =
   | "openai"
   | "anthropic"
