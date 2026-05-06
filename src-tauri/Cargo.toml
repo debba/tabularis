@@ -56,8 +56,14 @@ zip = "4.2.0"
 tauri-plugin-clipboard-manager = "2"
 tokio-postgres = { version = "0.7.13", features = ["with-chrono-0_4", "with-uuid-1", "with-serde_json-1", "array-impls"] }
 deadpool-postgres = "0.14.1"
-postgres-native-tls = "0.5.1"
-native-tls = "0.2.13"
+# rustls is used for the PostgreSQL deadpool TLS path. native-tls (used by
+# sqlx and the MySQL pool) trips macOS Secure Transport's strict EKU checks
+# on user-supplied root anchors (e.g. the AWS RDS bundle), so the Postgres
+# pool routes through rustls + the platform verifier instead.
+tokio-postgres-rustls = "0.13"
+rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }
+rustls-pemfile = "2"
+rustls-platform-verifier = "0.6"
 notify = "6"
 
 # GTK dependencies for Wayland window title workaround (Linux only)

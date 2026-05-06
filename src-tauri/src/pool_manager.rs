@@ -1,14 +1,37 @@
 use crate::models::ConnectionParams;
 use deadpool_postgres::{Manager as PgPoolManager, Pool as PgPool};
-use native_tls::TlsConnector;
 use once_cell::sync::Lazy;
-use postgres_native_tls::MakeTlsConnector;
+use rustls::{ClientConfig, RootCertStore};
+use rustls_platform_verifier::BuilderVerifierExt;
 use sqlx::{sqlite::SqliteConnectOptions, MySql, Pool, Sqlite};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 use tokio_postgres::{config::SslMode as PgSslMode, Config as PgConfig};
+use tokio_postgres_rustls::MakeRustlsConnect;
+
+/// `tokio_postgres` renders only the top-level error kind ("error performing
+/// TLS handshake"); the concrete cause lives in the `source()` chain.
+pub(crate) fn format_error_chain<E: std::error::Error + ?Sized>(err: &E) -> String {
+    let mut out = err.to_string();
+    let mut source = err.source();
+    while let Some(cause) = source {
+        out.push_str(" -> ");
+        out.push_str(&cause.to_string());
+        source = cause.source();
+    }
+    out
+}
+
+/// rustls 0.23 needs a process-level `CryptoProvider`; install once.
+fn ensure_rustls_crypto_provider() {
+    use std::sync::Once;
+    static INSTALL: Once = Once::new();
+    INSTALL.call_once(|| {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    });
+}
 
 type PoolMap<T> = Arc<RwLock<HashMap<String, Pool<T>>>>;
 type PgPoolMap = Arc<RwLock<HashMap<String, PgPool>>>;
@@ -134,6 +157,57 @@ fn build_postgres_configurations(params: &ConnectionParams) -> PgConfig {
     }
 
     cfg
+}
+
+/// Build the rustls connector for the PostgreSQL pool.
+///
+/// `rustls` (not `native-tls`) because macOS Secure Transport applies a
+/// strict `id-kp-serverAuth` EKU check to user-supplied root anchors, which
+/// rejects valid CA certs with "The extended key usage is not valid".
+///
+/// `ssl_ca` (PEM file or bundle) overrides the platform trust store. This
+/// is the path RDS users take: the macOS keychain does not trust the
+/// regional Amazon RDS root CAs, so they must supply
+/// `https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem`
+/// (or a region-specific bundle) via the connection's CA Certificate field.
+///
+/// We deliberately do NOT vendor the RDS bundle in the repo: AWS rotates
+/// these CAs every 1-3 years, and shipping a stale bundle in a release
+/// silently breaks RDS users until they upgrade. Distributors who want
+/// out-of-the-box RDS support can pull a fresh bundle at packaging time
+/// (e.g. via a Dockerfile `RUN curl ...` or a build script that drops it
+/// into `src-tauri/assets/`) and point users at the resulting path.
+fn build_postgres_tls_connector(params: &ConnectionParams) -> Result<MakeRustlsConnect, String> {
+    ensure_rustls_crypto_provider();
+    let builder = ClientConfig::builder();
+    let user_ca = params.ssl_ca.as_deref().filter(|s| !s.trim().is_empty());
+    let config = match user_ca {
+        Some(ca_path) => {
+            let pem = std::fs::read(ca_path)
+                .map_err(|e| format!("Failed to read ssl_ca file '{}': {}", ca_path, e))?;
+            let mut roots = RootCertStore::empty();
+            let mut cursor = std::io::Cursor::new(&pem[..]);
+            for cert in rustls_pemfile::certs(&mut cursor) {
+                let cert = cert
+                    .map_err(|e| format!("Failed to parse ssl_ca '{}': {}", ca_path, e))?;
+                roots.add(cert).map_err(|e| {
+                    format!("Failed to add ssl_ca cert from '{}': {}", ca_path, e)
+                })?;
+            }
+            if roots.is_empty() {
+                return Err(format!(
+                    "ssl_ca '{}' contained no PEM CERTIFICATE blocks",
+                    ca_path
+                ));
+            }
+            builder.with_root_certificates(roots).with_no_client_auth()
+        }
+        None => builder
+            .with_platform_verifier()
+            .map_err(|e| format!("Failed to build platform TLS verifier: {}", e))?
+            .with_no_client_auth(),
+    };
+    Ok(MakeRustlsConnect::new(config))
 }
 
 fn build_sqlite_connectoptions(params: &ConnectionParams) -> SqliteConnectOptions {
@@ -263,17 +337,18 @@ pub async fn get_postgres_pool_with_id(
 
     let cfg = build_postgres_configurations(params);
 
-    let tls_connector = MakeTlsConnector::new(TlsConnector::new().map_err(|e| {
-        log::error!("Failed to create Tls Connector for PostgreSQL pool: {}", e);
-        e.to_string()
-    })?);
+    let tls_connector = build_postgres_tls_connector(params).map_err(|e| {
+        log::error!("Failed to create TLS connector for PostgreSQL pool: {}", e);
+        e
+    })?;
 
     let pool = PgPool::builder(PgPoolManager::new(cfg, tls_connector))
         .max_size(10)
         .build()
         .map_err(|e| {
-            log::error!("Failed to create PostgreSQL connection pool: {}", e);
-            e.to_string()
+            let detail = format_error_chain(&e);
+            log::error!("Failed to create PostgreSQL connection pool: {}", detail);
+            detail
         })?;
 
     log::info!(
