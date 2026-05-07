@@ -288,7 +288,7 @@ export const Editor = () => {
   const [tempPage, setTempPage] = useState("1");
   const [isCountLoading, setIsCountLoading] = useState(false);
   const [applyToAll, setApplyToAll] = useState(false);
-  const [copyFormat, setCopyFormat] = useState<"csv" | "json">(
+  const [copyFormat, setCopyFormat] = useState<"csv" | "json" | "sql-insert">(
     settings.copyFormat ?? "csv",
   );
   const [csvDelimiter, setCsvDelimiter] = useState(
@@ -2995,7 +2995,7 @@ export const Editor = () => {
                       <select
                         value={copyFormat}
                         onChange={(e) =>
-                          setCopyFormat(e.target.value as "csv" | "json")
+                          setCopyFormat(e.target.value as "csv" | "json" | "sql-insert")
                         }
                         className="bg-transparent border-none text-[11px] text-secondary hover:text-primary focus:outline-none cursor-pointer appearance-none pr-3 font-medium uppercase tracking-wide"
                         title={t("settings.copyFormat")}
@@ -3003,6 +3003,7 @@ export const Editor = () => {
                       >
                         <option value="csv">CSV</option>
                         <option value="json">JSON</option>
+                        <option value="sql-insert">SQL INSERT</option>
                       </select>
                       {copyFormat === "csv" && (
                         <select

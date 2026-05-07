@@ -53,6 +53,7 @@ export function GeneralTab() {
             options={[
               { value: "csv", label: "CSV" },
               { value: "json", label: "JSON" },
+              { value: "sql-insert", label: "SQL INSERT" },
             ]}
           />
         </SettingRow>
