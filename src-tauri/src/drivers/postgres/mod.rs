@@ -1215,11 +1215,14 @@ impl DatabaseDriver for PostgresDriver {
             return Err("No active connection pool".into());
         }
         let pool = crate::pool_manager::get_postgres_pool_with_id(params, conn_id).await?;
-        let client = pool.get().await.map_err(|e| e.to_string())?;
+        let client = pool
+            .get()
+            .await
+            .map_err(|e| crate::pool_manager::format_error_chain(&e))?;
         client
             .simple_query("SELECT 1")
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| crate::pool_manager::format_error_chain(&e))?;
         Ok(())
     }
 

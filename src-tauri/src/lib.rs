@@ -39,6 +39,8 @@ pub mod paths; // Added
 pub mod persistence;
 pub mod plugins;
 pub mod pool_manager;
+#[cfg(test)]
+pub mod pool_manager_tests;
 pub mod preferences;
 pub mod query_history;
 #[cfg(test)]
