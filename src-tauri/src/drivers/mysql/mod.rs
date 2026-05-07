@@ -1093,7 +1093,12 @@ impl DatabaseDriver for MysqlDriver {
     ) -> Result<String, String> {
         use urlencoding::encode;
         let user = encode(params.username.as_deref().unwrap_or_default());
-        let pass = encode(params.password.as_deref().unwrap_or_default());
+        let raw_pass = params.password.as_deref().unwrap_or_default();
+        let credentials = if raw_pass.is_empty() {
+            user.into_owned()
+        } else {
+            format!("{}:{}", user, encode(raw_pass))
+        };
         let max_allowed_packet = mysql_numeric_setting(
             "maxAllowedPacket",
             DEFAULT_MYSQL_MAX_ALLOWED_PACKET,
@@ -1104,9 +1109,8 @@ impl DatabaseDriver for MysqlDriver {
             mysql_numeric_setting("connectTimeout", DEFAULT_MYSQL_CONNECT_TIMEOUT_MS);
         let timezone = mysql_string_setting("timezone", DEFAULT_MYSQL_TIMEZONE);
         Ok(format!(
-            "mysql://{}:{}@{}:{}/{}?maxAllowedPacket={}&socketTimeout={}&connectTimeout={}&timezone={}",
-            user,
-            pass,
+            "mysql://{}@{}:{}/{}?maxAllowedPacket={}&socketTimeout={}&connectTimeout={}&timezone={}",
+            credentials,
             params.host.as_deref().unwrap_or("localhost"),
             params.port.unwrap_or(3306),
             params.database,
