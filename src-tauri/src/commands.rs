@@ -1377,7 +1377,7 @@ mod tests {
         async fn test_no_password() {
             let params = create_params("mysql", "localhost", Some(3306), "root", None, "testdb");
             let url = build_connection_url(&params).await.unwrap();
-            assert_eq!(url, "mysql://root:@localhost:3306/testdb");
+            assert_eq!(url, "mysql://root@localhost:3306/testdb");
         }
 
         #[tokio::test]
@@ -2401,23 +2401,26 @@ pub async fn open_er_diagram_window(
 /// Builds a connection URL for a database driver.
 pub async fn build_connection_url(params: &ConnectionParams) -> Result<String, String> {
     let user = encode(params.username.as_deref().unwrap_or_default());
-    let pass = encode(params.password.as_deref().unwrap_or_default());
+    let raw_pass = params.password.as_deref().unwrap_or_default();
+    let credentials = if raw_pass.is_empty() {
+        user.into_owned()
+    } else {
+        format!("{}:{}", user, encode(raw_pass))
+    };
     let host = params.host.as_deref().unwrap_or("localhost");
 
     match params.driver.as_str() {
         "sqlite" => Ok(format!("sqlite://{}", params.database)),
         "postgres" => Ok(format!(
-            "postgres://{}:{}@{}:{}/{}",
-            user,
-            pass,
+            "postgres://{}@{}:{}/{}",
+            credentials,
             host,
             params.port.unwrap_or(DEFAULT_POSTGRES_PORT),
             params.database
         )),
         "mysql" => Ok(format!(
-            "mysql://{}:{}@{}:{}/{}",
-            user,
-            pass,
+            "mysql://{}@{}:{}/{}",
+            credentials,
             host,
             params.port.unwrap_or(DEFAULT_MYSQL_PORT),
             params.database

@@ -104,9 +104,12 @@ fn build_mysql_options(
         .host(host)
         .port(port)
         .username(username)
-        .password(password)
         .database(database)
         .timezone(timezone);
+
+    if !password.is_empty() {
+        options = options.password(password);
+    }
 
     // Configure SSL mode based on params.ssl_mode
     let ssl_mode = match params.ssl_mode.as_deref().unwrap_or("required") {
