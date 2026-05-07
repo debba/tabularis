@@ -1660,7 +1660,7 @@ mod tests {
             params.username = None;
             params.password = None;
             let url = build_connection_url(&params).await.unwrap();
-            assert!(url.contains(":@localhost"));
+            assert_eq!(url, "mysql://@localhost:3306/testdb");
         }
 
         #[tokio::test]
