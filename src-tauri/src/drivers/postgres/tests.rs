@@ -1,5 +1,6 @@
 use super::binding::{
-    PgValueOptions, bind_pg_number, bind_pg_numeric_string, bind_pg_value, build_pk_predicate,
+    PgValueOptions, bind_pg_boolean_string, bind_pg_number, bind_pg_numeric_string, bind_pg_value,
+    build_pk_predicate,
 };
 use super::helpers::{extract_base_type, is_implicit_cast_compatible};
 
@@ -249,8 +250,110 @@ mod pg_numeric_string_binding_tests {
     }
 }
 
+mod pg_boolean_string_binding_tests {
+    use super::*;
+
+    #[test]
+    fn true_string_for_boolean_column_binds_as_bool() {
+        let bound = bind_pg_boolean_string("true", "boolean", 1).unwrap().unwrap();
+        assert_eq!(bound.sql, "$1");
+        assert!(bound.param.is_some());
+    }
+
+    #[test]
+    fn false_string_for_boolean_column_binds_as_bool() {
+        let bound = bind_pg_boolean_string("false", "boolean", 2)
+            .unwrap()
+            .unwrap();
+        assert_eq!(bound.sql, "$2");
+        assert!(bound.param.is_some());
+    }
+
+    #[test]
+    fn pg_literal_aliases_are_accepted() {
+        for s in ["t", "T", "yes", "Y", "on", "1"] {
+            assert!(
+                bind_pg_boolean_string(s, "boolean", 1).unwrap().is_ok(),
+                "expected {:?} to parse as TRUE",
+                s
+            );
+        }
+        for s in ["f", "F", "no", "N", "off", "0"] {
+            assert!(
+                bind_pg_boolean_string(s, "boolean", 1).unwrap().is_ok(),
+                "expected {:?} to parse as FALSE",
+                s
+            );
+        }
+    }
+
+    #[test]
+    fn surrounding_whitespace_is_tolerated() {
+        assert!(
+            bind_pg_boolean_string("  true  ", "boolean", 1)
+                .unwrap()
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn bool_alias_for_column_type_is_handled() {
+        assert!(bind_pg_boolean_string("true", "bool", 1).unwrap().is_ok());
+    }
+
+    #[test]
+    fn non_boolean_column_returns_none() {
+        assert!(bind_pg_boolean_string("true", "text", 1).is_none());
+        assert!(bind_pg_boolean_string("1", "integer", 1).is_none());
+    }
+
+    #[test]
+    fn invalid_boolean_string_returns_detailed_error() {
+        let err = match bind_pg_boolean_string("maybe", "boolean", 1).unwrap() {
+            Ok(_) => panic!("expected invalid boolean binding to fail"),
+            Err(err) => err,
+        };
+        assert!(err.contains("Cannot convert value"));
+        assert!(err.contains("boolean"));
+    }
+}
+
 mod bind_pg_value_tests {
     use super::*;
+
+    #[test]
+    fn update_string_for_boolean_column_uses_boolean_binding() {
+        let bound = bind_pg_value(
+            serde_json::json!("true"),
+            1,
+            PgValueOptions {
+                column_type: Some("boolean"),
+                max_blob_size: 1024,
+                allow_default: true,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(bound.sql, "$1");
+        assert!(bound.param.is_some());
+    }
+
+    #[test]
+    fn invalid_boolean_string_for_boolean_column_returns_error() {
+        let err = match bind_pg_value(
+            serde_json::json!("maybe"),
+            1,
+            PgValueOptions {
+                column_type: Some("boolean"),
+                max_blob_size: 1024,
+                allow_default: true,
+            },
+        ) {
+            Ok(_) => panic!("expected invalid boolean binding to fail"),
+            Err(err) => err,
+        };
+        assert!(err.contains("boolean"));
+    }
 
     #[test]
     fn update_string_for_numeric_column_uses_numeric_binding() {

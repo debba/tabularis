@@ -96,6 +96,48 @@ pub(super) fn bind_pg_number(
     }
 }
 
+/// Coerce a string value into a Rust `bool` for PostgreSQL `boolean` columns.
+///
+/// `tokio-postgres` rejects a string bound to a `bool` column with
+/// "error serializing parameter X". The data grid editor sends every cell as
+/// a JSON string, so a "true"/"false" string never reaches `bind_pg_value`'s
+/// `Bool` arm. This helper mirrors the literal forms PostgreSQL accepts for
+/// `boolean` (case-insensitive, surrounding whitespace tolerated).
+///
+/// Returns `None` if the column is not boolean, so callers can fall through
+/// to the next coercion path.
+pub(super) fn bind_pg_boolean_string(
+    s: &str,
+    column_type: &str,
+    placeholder_idx: usize,
+) -> Option<Result<BoundValue, String>> {
+    let normalized = extract_base_type(column_type).to_lowercase();
+    if !matches!(normalized.as_str(), "boolean" | "bool") {
+        return None;
+    }
+
+    let parsed = match s.trim().to_lowercase().as_str() {
+        "true" | "t" | "yes" | "y" | "on" | "1" => Some(true),
+        "false" | "f" | "no" | "n" | "off" | "0" => Some(false),
+        _ => None,
+    };
+
+    Some(parsed.map_or_else(
+        || {
+            Err(format!(
+                "Cannot convert value {:?} to PostgreSQL boolean column type {}",
+                s, column_type
+            ))
+        },
+        |b| {
+            Ok(BoundValue {
+                sql: format!("${}", placeholder_idx),
+                param: Some(Box::new(b) as PgParam),
+            })
+        },
+    ))
+}
+
 pub(super) fn bind_pg_numeric_string(
     s: &str,
     column_type: &str,
@@ -181,6 +223,13 @@ fn bind_pg_string(
             sql: format!("${}", placeholder_idx),
             param: Some(Box::new(bytes)),
         });
+    }
+
+    if let Some(binding) = options
+        .column_type
+        .and_then(|data_type| bind_pg_boolean_string(s, data_type, placeholder_idx))
+    {
+        return binding;
     }
 
     if let Some(binding) = options
