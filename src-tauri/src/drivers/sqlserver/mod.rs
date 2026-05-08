@@ -24,7 +24,7 @@ use crate::models::{
 };
 use crate::pool_manager::get_sqlserver_pool;
 
-/// Built-in SQL Server driver. Backed by `tiberius` + `deadpool`.
+/// Built-in SQL Server driver. Backed by `mssql-tiberius-bridge` + `deadpool`.
 pub struct SqlServerDriver {
     manifest: PluginManifest,
 }
@@ -76,10 +76,10 @@ impl Default for SqlServerDriver {
     }
 }
 
-/// Acquire a tiberius client from the pool.
+/// Acquire a bridge client from the pool.
 async fn acquire(
     params: &ConnectionParams,
-) -> Result<deadpool::managed::Object<pool::TiberiusManager>, String> {
+) -> Result<deadpool::managed::Object<pool::BridgeManager>, String> {
     let pool = get_sqlserver_pool(params).await?;
     pool.get().await.map_err(|e| e.to_string())
 }
@@ -127,9 +127,7 @@ impl DatabaseDriver for SqlServerDriver {
         conn.simple_query("SELECT 1")
             .await
             .map_err(|e| e.to_string())?
-            .into_first_result()
-            .await
-            .map_err(|e| e.to_string())?;
+            .into_first_result();
         Ok(())
     }
 
@@ -142,9 +140,7 @@ impl DatabaseDriver for SqlServerDriver {
             )
             .await
             .map_err(|e| e.to_string())?
-            .into_first_result()
-            .await
-            .map_err(|e| e.to_string())?;
+            .into_first_result();
 
         let mut out = Vec::with_capacity(rows.len());
         for row in rows {
@@ -168,9 +164,7 @@ impl DatabaseDriver for SqlServerDriver {
             )
             .await
             .map_err(|e| e.to_string())?
-            .into_first_result()
-            .await
-            .map_err(|e| e.to_string())?;
+            .into_first_result();
 
         let mut out = Vec::with_capacity(rows.len());
         for row in rows {
@@ -355,13 +349,11 @@ impl DatabaseDriver for SqlServerDriver {
             .await
             .map_err(|e| e.to_string())?;
         let rows = stream
-            .into_first_result()
-            .await
-            .map_err(|e| e.to_string())?;
+            .into_first_result();
 
         let columns: Vec<String> = rows
             .first()
-            .map(|r| r.columns().iter().map(|c| c.name().to_string()).collect())
+            .map(|r| r.columns().iter().map(|c| c.name.to_string()).collect())
             .unwrap_or_default();
 
         let mut json_rows: Vec<Vec<serde_json::Value>> = rows

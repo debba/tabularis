@@ -1,4 +1,4 @@
-use crate::drivers::sqlserver::pool::{build_config as build_sqlserver_config, TiberiusManager};
+use crate::drivers::sqlserver::pool::{build_config as build_sqlserver_config, BridgeManager};
 use crate::models::ConnectionParams;
 use deadpool::managed::Pool as DeadPool;
 use deadpool_postgres::{Manager as PgPoolManager, Pool as PgPool};
@@ -14,7 +14,7 @@ use tokio_postgres::{config::SslMode as PgSslMode, Config as PgConfig};
 
 type PoolMap<T> = Arc<RwLock<HashMap<String, Pool<T>>>>;
 type PgPoolMap = Arc<RwLock<HashMap<String, PgPool>>>;
-pub type SqlServerPool = DeadPool<TiberiusManager>;
+pub type SqlServerPool = DeadPool<BridgeManager>;
 type SqlServerPoolMap = Arc<RwLock<HashMap<String, SqlServerPool>>>;
 
 static MYSQL_POOLS: Lazy<PoolMap<MySql>> = Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
@@ -385,7 +385,7 @@ pub async fn get_sqlserver_pool_with_id(
     );
 
     let cfg = build_sqlserver_config(params)?;
-    let manager = TiberiusManager::new(cfg);
+    let manager = BridgeManager::new(cfg);
     let pool = DeadPool::builder(manager)
         .max_size(10)
         .build()

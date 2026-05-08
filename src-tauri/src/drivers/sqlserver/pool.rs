@@ -1,55 +1,39 @@
-//! Tiberius-backed connection pool primitives.
+//! mssql-tiberius-bridge connection pool primitives.
 //!
-//! This file mirrors the shape of `deadpool_postgres`: a `Manager`
-//! implementation that wraps `tiberius::Client` over a `tokio::net::TcpStream`
-//! (adapted to the futures-io traits tiberius expects via `tokio-util::compat`).
+//! Pools `mssql_tiberius_bridge::Client` objects via a custom deadpool Manager.
+//! The bridge Client provides tiberius-compatible `.query()` and `.simple_query()`
+//! methods over Microsoft's mssql-tds protocol implementation.
 //!
 //! Phase 1 restrictions (intentional):
 //! - SQL authentication only (user + password)
 //! - `trust_cert()` is always enabled; Phase 2 exposes the toggle via `ConnectionParams`
 //! - TLS encryption is requested on login only (`EncryptionLevel::On`)
-//!
-//! The actual `SQLSERVER_POOLS` registry + accessors live in
-//! `crate::pool_manager` (Day 2); this module is runtime-agnostic.
 
 use crate::models::ConnectionParams;
 use deadpool::managed::{Manager, Metrics, RecycleError, RecycleResult};
-use tiberius::{AuthMethod, Client, Config, EncryptionLevel};
-use tokio::net::TcpStream;
-use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
+use mssql_tiberius_bridge::{AuthMethod, Client, Config, EncryptionLevel};
 
-/// A live tiberius client bound to a tokio TCP stream.
-/// `deadpool` hands one of these out per checkout; the stream is owned by the
-/// pool and reused across queries.
-pub type TiberiusConnection = Client<Compat<TcpStream>>;
+/// A live bridge client. `deadpool` hands one of these out per checkout.
+pub type BridgeConnection = Client;
 
-/// Deadpool `Manager` for tiberius connections.
+/// Deadpool `Manager` for mssql-tiberius-bridge connections.
 #[derive(Debug, Clone)]
-pub struct TiberiusManager {
+pub struct BridgeManager {
     config: Config,
 }
 
-impl TiberiusManager {
+impl BridgeManager {
     pub fn new(config: Config) -> Self {
         Self { config }
     }
 }
 
-impl Manager for TiberiusManager {
-    type Type = TiberiusConnection;
-    type Error = tiberius::error::Error;
+impl Manager for BridgeManager {
+    type Type = BridgeConnection;
+    type Error = mssql_tiberius_bridge::Error;
 
     async fn create(&self) -> Result<Self::Type, Self::Error> {
-        let tcp = TcpStream::connect(self.config.get_addr())
-            .await
-            .map_err(|e| tiberius::error::Error::Io {
-                kind: e.kind(),
-                message: e.to_string(),
-            })?;
-        // Disable Nagle's algorithm — the same thing the official mssql client
-        // does; small query round-trips benefit.
-        tcp.set_nodelay(true).ok();
-        Client::connect(self.config.clone(), tcp.compat_write()).await
+        Client::connect(&self.config).await
     }
 
     async fn recycle(
@@ -61,14 +45,12 @@ impl Manager for TiberiusManager {
         conn.simple_query("SELECT 1")
             .await
             .map_err(RecycleError::Backend)?
-            .into_first_result()
-            .await
-            .map_err(RecycleError::Backend)?;
+            .into_first_result();
         Ok(())
     }
 }
 
-/// Build a `tiberius::Config` from Tabularis `ConnectionParams`.
+/// Build a `mssql_tiberius_bridge::Config` from Tabularis `ConnectionParams`.
 ///
 /// Phase 1 consumes only: host, port, username, password, database.
 /// Phase 2 will extend with `trust_server_certificate`, `encrypt`, `instance_name`.
@@ -141,9 +123,6 @@ mod tests {
 
     #[test]
     fn build_config_empty_credentials_do_not_panic() {
-        // SQL Server rejects empty credentials at login time, but building the
-        // config must never panic — the pool layer turns the login error into
-        // a descriptive string instead.
         let mut params = base_params(Some("localhost"), Some(1433), "master");
         params.username = None;
         params.password = None;
@@ -155,20 +134,17 @@ mod tests {
         fn assert_send<T: Send>() {}
         fn assert_sync<T: Sync>() {}
         fn assert_clone<T: Clone>() {}
-        assert_send::<TiberiusManager>();
-        assert_sync::<TiberiusManager>();
-        assert_clone::<TiberiusManager>();
+        assert_send::<BridgeManager>();
+        assert_sync::<BridgeManager>();
+        assert_clone::<BridgeManager>();
     }
 
     #[test]
     fn manager_new_stores_config() {
         let cfg = build_config(&base_params(Some("example.com"), Some(1433), "master"))
             .expect("config builds");
-        let mgr = TiberiusManager::new(cfg);
-        // Cloning the manager must not panic and must share the config.
+        let mgr = BridgeManager::new(cfg);
         let cloned = mgr.clone();
-        // We can't assert equality on tiberius::Config directly (no PartialEq),
-        // but we can assert both managers return the same debug representation.
         let original = format!("{:?}", mgr);
         let cloned_dbg = format!("{:?}", cloned);
         assert_eq!(original, cloned_dbg);

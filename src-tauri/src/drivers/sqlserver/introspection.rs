@@ -9,7 +9,7 @@
 //! we never interpolate user input.
 
 use crate::drivers::sqlserver::helpers::qualify;
-use crate::drivers::sqlserver::pool::TiberiusConnection;
+use crate::drivers::sqlserver::pool::BridgeConnection;
 use crate::models::{
     ForeignKey, Index, RoutineInfo, RoutineParameter, TableColumn, TableInfo, TableSchema,
     ViewInfo,
@@ -291,33 +291,31 @@ pub fn is_string_type(data_type: &str) -> bool {
 
 // --- Async query helpers --------------------------------------------------
 
-fn row_str(row: &tiberius::Row, col: &str) -> String {
+fn row_str(row: &mssql_tiberius_bridge::Row, col: &str) -> String {
     row.get::<&str, _>(col).unwrap_or("").to_string()
 }
 
-fn row_str_opt(row: &tiberius::Row, col: &str) -> Option<String> {
+fn row_str_opt(row: &mssql_tiberius_bridge::Row, col: &str) -> Option<String> {
     row.get::<&str, _>(col).map(|s| s.to_string())
 }
 
-fn row_bool(row: &tiberius::Row, col: &str) -> bool {
+fn row_bool(row: &mssql_tiberius_bridge::Row, col: &str) -> bool {
     row.get::<bool, _>(col).unwrap_or(false)
 }
 
-fn row_i32(row: &tiberius::Row, col: &str) -> i32 {
+fn row_i32(row: &mssql_tiberius_bridge::Row, col: &str) -> i32 {
     row.get::<i32, _>(col).unwrap_or(0)
 }
 
 pub async fn get_tables(
-    conn: &mut TiberiusConnection,
+    conn: &mut BridgeConnection,
     schema: &str,
 ) -> Result<Vec<TableInfo>, String> {
     let rows = conn
         .query(Q_GET_TABLES, &[&schema])
         .await
         .map_err(|e| e.to_string())?
-        .into_first_result()
-        .await
-        .map_err(|e| e.to_string())?;
+        .into_first_result();
 
     Ok(rows
         .into_iter()
@@ -326,7 +324,7 @@ pub async fn get_tables(
 }
 
 pub async fn get_columns(
-    conn: &mut TiberiusConnection,
+    conn: &mut BridgeConnection,
     table: &str,
     schema: Option<&str>,
 ) -> Result<Vec<TableColumn>, String> {
@@ -335,9 +333,7 @@ pub async fn get_columns(
         .query(Q_GET_COLUMNS, &[&qualified])
         .await
         .map_err(|e| e.to_string())?
-        .into_first_result()
-        .await
-        .map_err(|e| e.to_string())?;
+        .into_first_result();
 
     Ok(rows
         .into_iter()
@@ -356,7 +352,7 @@ pub async fn get_columns(
 }
 
 pub async fn get_foreign_keys(
-    conn: &mut TiberiusConnection,
+    conn: &mut BridgeConnection,
     table: &str,
     schema: Option<&str>,
 ) -> Result<Vec<ForeignKey>, String> {
@@ -365,9 +361,7 @@ pub async fn get_foreign_keys(
         .query(Q_GET_FOREIGN_KEYS, &[&schema, &table])
         .await
         .map_err(|e| e.to_string())?
-        .into_first_result()
-        .await
-        .map_err(|e| e.to_string())?;
+        .into_first_result();
 
     Ok(rows
         .into_iter()
@@ -385,16 +379,14 @@ pub async fn get_foreign_keys(
 }
 
 pub async fn get_all_columns_batch(
-    conn: &mut TiberiusConnection,
+    conn: &mut BridgeConnection,
     schema: &str,
 ) -> Result<HashMap<String, Vec<TableColumn>>, String> {
     let rows = conn
         .query(Q_GET_ALL_COLUMNS_BATCH, &[&schema])
         .await
         .map_err(|e| e.to_string())?
-        .into_first_result()
-        .await
-        .map_err(|e| e.to_string())?;
+        .into_first_result();
 
     let mut out: HashMap<String, Vec<TableColumn>> = HashMap::new();
     for r in rows {
@@ -414,16 +406,14 @@ pub async fn get_all_columns_batch(
 }
 
 pub async fn get_all_foreign_keys_batch(
-    conn: &mut TiberiusConnection,
+    conn: &mut BridgeConnection,
     schema: &str,
 ) -> Result<HashMap<String, Vec<ForeignKey>>, String> {
     let rows = conn
         .query(Q_GET_ALL_FOREIGN_KEYS_BATCH, &[&schema])
         .await
         .map_err(|e| e.to_string())?
-        .into_first_result()
-        .await
-        .map_err(|e| e.to_string())?;
+        .into_first_result();
 
     let mut out: HashMap<String, Vec<ForeignKey>> = HashMap::new();
     for r in rows {
@@ -445,7 +435,7 @@ pub async fn get_all_foreign_keys_batch(
 /// batch, FK batch. Missing columns or FK for a table → empty Vec (never
 /// omitted from the result).
 pub async fn get_schema_snapshot(
-    conn: &mut TiberiusConnection,
+    conn: &mut BridgeConnection,
     schema: &str,
 ) -> Result<Vec<TableSchema>, String> {
     let tables = get_tables(conn, schema).await?;
@@ -463,16 +453,14 @@ pub async fn get_schema_snapshot(
 }
 
 pub async fn get_views(
-    conn: &mut TiberiusConnection,
+    conn: &mut BridgeConnection,
     schema: &str,
 ) -> Result<Vec<ViewInfo>, String> {
     let rows = conn
         .query(Q_GET_VIEWS, &[&schema])
         .await
         .map_err(|e| e.to_string())?
-        .into_first_result()
-        .await
-        .map_err(|e| e.to_string())?;
+        .into_first_result();
 
     Ok(rows
         .into_iter()
@@ -487,7 +475,7 @@ pub async fn get_views(
 }
 
 pub async fn get_module_definition(
-    conn: &mut TiberiusConnection,
+    conn: &mut BridgeConnection,
     object_name: &str,
     schema: Option<&str>,
 ) -> Result<String, String> {
@@ -496,9 +484,7 @@ pub async fn get_module_definition(
         .query(Q_GET_MODULE_DEFINITION, &[&qualified])
         .await
         .map_err(|e| e.to_string())?
-        .into_first_result()
-        .await
-        .map_err(|e| e.to_string())?;
+        .into_first_result();
 
     rows.into_iter()
         .next()
@@ -507,16 +493,14 @@ pub async fn get_module_definition(
 }
 
 pub async fn get_routines(
-    conn: &mut TiberiusConnection,
+    conn: &mut BridgeConnection,
     schema: &str,
 ) -> Result<Vec<RoutineInfo>, String> {
     let rows = conn
         .query(Q_GET_ROUTINES, &[&schema])
         .await
         .map_err(|e| e.to_string())?
-        .into_first_result()
-        .await
-        .map_err(|e| e.to_string())?;
+        .into_first_result();
 
     Ok(rows
         .into_iter()
@@ -534,7 +518,7 @@ pub async fn get_routines(
 }
 
 pub async fn get_routine_parameters(
-    conn: &mut TiberiusConnection,
+    conn: &mut BridgeConnection,
     routine_name: &str,
     schema: &str,
 ) -> Result<Vec<RoutineParameter>, String> {
@@ -542,9 +526,7 @@ pub async fn get_routine_parameters(
         .query(Q_GET_ROUTINE_PARAMETERS, &[&schema, &routine_name])
         .await
         .map_err(|e| e.to_string())?
-        .into_first_result()
-        .await
-        .map_err(|e| e.to_string())?;
+        .into_first_result();
 
     Ok(rows
         .into_iter()
@@ -558,7 +540,7 @@ pub async fn get_routine_parameters(
 }
 
 pub async fn get_indexes(
-    conn: &mut TiberiusConnection,
+    conn: &mut BridgeConnection,
     table: &str,
     schema: Option<&str>,
 ) -> Result<Vec<Index>, String> {
@@ -567,9 +549,7 @@ pub async fn get_indexes(
         .query(Q_GET_INDEXES, &[&qualified])
         .await
         .map_err(|e| e.to_string())?
-        .into_first_result()
-        .await
-        .map_err(|e| e.to_string())?;
+        .into_first_result();
 
     Ok(rows
         .into_iter()
