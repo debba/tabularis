@@ -1,3 +1,18 @@
+## [0.10.2](https://github.com/debba/tabularis/compare/v0.10.1...v0.10.2) (2026-05-08)
+
+
+### Bug Fixes
+
+* **db:** omit empty password in connection URLs ([6164f49](https://github.com/debba/tabularis/commit/6164f49e4644d2842bb6706930133bfc0a523ff3))
+* **postgres:** switch deadpool TLS to rustls + honor ssl_ca ([8dd0d3b](https://github.com/debba/tabularis/commit/8dd0d3b47a6d66fe4fcffd858fb68652b8bf9f64)), closes [#166](https://github.com/debba/tabularis/issues/166)
+
+
+### Features
+
+* **data-grid:** add SQL INSERT as a copy format option ([088aa90](https://github.com/debba/tabularis/commit/088aa905d23cc0cca1f7ba7b2f2a28975428b438))
+* **data-grid:** cell-level selection and copy ([2b31e6f](https://github.com/debba/tabularis/commit/2b31e6f8f390a3d58983a6122c236a8903229607))
+* **postgres:** coerce boolean strings to bool for boolean columns ([71aea59](https://github.com/debba/tabularis/commit/71aea59589bf0444a5fa76ad1067e6ec814b00db)), closes [#155](https://github.com/debba/tabularis/issues/155)
+
 ## [0.10.1](https://github.com/debba/tabularis/compare/v0.10.0...v0.10.1) (2026-05-04)
 
 
