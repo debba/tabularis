@@ -3345,9 +3345,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "mssql-tds"
-version = "0.1.0"
-source = "git+https://github.com/microsoft/mssql-rs#63de19de0c9d41f29650644e01b98e49c33bafc1"
+name = "mssql-tds-preview"
+version = "0.1.0-preview.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "454957bed59024ea56acb311e8c0b74369182f1a3256d9e036d4b46f687d0462"
 dependencies = [
  "async-trait",
  "bigdecimal",
@@ -3375,13 +3376,14 @@ dependencies = [
 
 [[package]]
 name = "mssql-tiberius-bridge"
-version = "0.1.0"
-source = "git+https://github.com/saurabh500/mssql-tiberius-bridge#f8312c688ec1c7848830bb73366a32dd4a56f998"
+version = "0.1.0-preview.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c6fea503cb6e9636768e8b636b32ab477965238411dcc70e7490f23328b2318"
 dependencies = [
  "async-trait",
  "chrono",
  "deadpool",
- "mssql-tds",
+ "mssql-tds-preview",
  "rust_decimal",
  "serde_json",
  "thiserror 2.0.18",
