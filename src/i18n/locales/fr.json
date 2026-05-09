@@ -730,6 +730,14 @@
     "queryFailed": "Échec de la requête.",
     "showErrorDetails": "Afficher les détails",
     "hideErrorDetails": "Masquer les détails",
+    "errorBoundary": {
+      "title": "L'éditeur a planté de manière inattendue",
+      "description": "Un élément de l'éditeur n'a pas pu s'afficher. L'erreur est indiquée ci-dessous — réessayez ou revenez à vos connexions.",
+      "retry": "Réessayer",
+      "closeCurrentTab": "Fermer l’onglet actuel",
+      "backToConnections": "Retour aux connexions",
+      "showDetails": "Afficher les détails techniques"
+    },
     "newVisualQuery": "Nouvelle requête visuelle",
     "activeDatabase": "Base de données active",
     "tabSwitcher": {

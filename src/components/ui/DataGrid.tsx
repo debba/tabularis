@@ -504,7 +504,10 @@ export const DataGrid = React.memo(
       () =>
         columns.map((colName, index) =>
           columnHelper.accessor((row) => row[index], {
-            id: colName,
+            // react-table requires a non-empty `id` when an accessorFn is used.
+            // Some drivers (e.g. SQL Server `SELECT @@VERSION`, Postgres `SELECT 1 AS ""`)
+            // return columns with an empty name, which would otherwise crash the grid.
+            id: colName !== "" ? colName : `__unnamed_${index}__`,
             header: () => {
               const sortState = getColumnSortState(colName, sortClause);
               const displaySortState: "none" | "asc" | "desc" =

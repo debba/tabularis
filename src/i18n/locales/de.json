@@ -730,6 +730,14 @@
     "queryFailed": "Abfrage fehlgeschlagen.",
     "showErrorDetails": "Details anzeigen",
     "hideErrorDetails": "Details ausblenden",
+    "errorBoundary": {
+      "title": "Der Editor ist unerwartet abgestürzt",
+      "description": "Etwas im Editor konnte nicht gerendert werden. Der Fehler wird unten angezeigt — versuche es erneut oder kehre zu deinen Verbindungen zurück.",
+      "retry": "Erneut versuchen",
+      "closeCurrentTab": "Aktuellen Tab schließen",
+      "backToConnections": "Zurück zu den Verbindungen",
+      "showDetails": "Technische Details anzeigen"
+    },
     "newVisualQuery": "Neue visuelle Abfrage",
     "activeDatabase": "Aktive Datenbank",
     "tabSwitcher": {

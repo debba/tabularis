@@ -723,6 +723,14 @@
     "queryFailed": "La consulta falló.",
     "showErrorDetails": "Mostrar detalles",
     "hideErrorDetails": "Ocultar detalles",
+    "errorBoundary": {
+      "title": "El editor falló inesperadamente",
+      "description": "Algo en el editor no pudo renderizarse. El error se muestra abajo — vuelve a intentarlo o regresa a tus conexiones.",
+      "retry": "Reintentar",
+      "closeCurrentTab": "Cerrar pestaña actual",
+      "backToConnections": "Volver a conexiones",
+      "showDetails": "Mostrar detalles técnicos"
+    },
     "newVisualQuery": "Nueva Consulta Visual",
     "activeDatabase": "Base de datos activa",
     "tabSwitcher": {
