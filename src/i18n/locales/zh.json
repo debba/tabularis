@@ -700,6 +700,14 @@
     "queryFailed": "查询失败。",
     "showErrorDetails": "显示详情",
     "hideErrorDetails": "隐藏详情",
+    "errorBoundary": {
+      "title": "编辑器意外崩溃",
+      "description": "编辑器中的某些内容渲染失败。错误显示如下 — 请重试或返回到你的连接列表。",
+      "retry": "重试",
+      "closeCurrentTab": "关闭当前标签",
+      "backToConnections": "返回连接",
+      "showDetails": "显示技术细节"
+    },
     "newVisualQuery": "新建可视化查询",
     "activeDatabase": "当前数据库",
     "tabSwitcher": {

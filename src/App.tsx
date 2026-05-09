@@ -15,6 +15,7 @@ import { SchemaDiagramPage } from "./pages/SchemaDiagramPage";
 import { TaskManagerPage } from "./pages/TaskManagerPage";
 import { VisualExplainPage } from "./pages/VisualExplainPage";
 import { ConnectionHealthMonitor } from "./components/ConnectionHealthMonitor";
+import { EditorErrorBoundary } from "./components/ui/EditorErrorBoundary";
 import { UpdateNotificationModal } from "./components/modals/UpdateNotificationModal";
 import { CommunityModal } from "./components/modals/CommunityModal";
 import { WhatsNewModal } from "./components/modals/WhatsNewModal";
@@ -116,7 +117,14 @@ export function App() {
                         element={<Navigate to="/connections" replace />}
                       />
                       <Route path="connections" element={<Connections />} />
-                      <Route path="editor" element={<Editor />} />
+                      <Route
+                        path="editor"
+                        element={
+                          <EditorErrorBoundary>
+                            <Editor />
+                          </EditorErrorBoundary>
+                        }
+                      />
                       <Route path="mcp" element={<McpPage />} />
                       <Route path="settings" element={<Settings />} />
                     </Route>
