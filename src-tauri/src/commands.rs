@@ -10,9 +10,10 @@ use uuid::Uuid;
 use crate::credential_cache;
 use crate::keychain_utils;
 use crate::models::{
-    ColumnDefinition, ConnectionGroup, ConnectionParams, ConnectionsFile, ExplainPlan, ForeignKey,
-    Index, QueryResult, RoutineInfo, RoutineParameter, SavedConnection, SshConnection,
-    SshConnectionInput, SshTestParams, TableColumn, TableInfo, TestConnectionRequest,
+    ColumnDefinition, ConnectionGroup, ConnectionParams, ConnectionsFile, ExplainPlan,
+    ExportPayload, ForeignKey, Index, QueryResult, RoutineInfo, RoutineParameter, SavedConnection,
+    SshConnection, SshConnectionInput, SshTestParams, TableColumn, TableInfo,
+    TestConnectionRequest,
 };
 use crate::persistence;
 use crate::ssh_tunnel::{get_tunnels, SshTunnel};
@@ -3092,4 +3093,164 @@ pub async fn get_server_now<R: Runtime>(
             other => other.to_string(),
         })
         .ok_or_else(|| "No timestamp returned from server".to_string())
+}
+
+#[tauri::command]
+pub async fn export_connections_payload<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<ExportPayload, String> {
+    let conn_path = get_config_path(&app)?;
+    let ssh_path = get_ssh_config_path(&app)?;
+
+    let mut conn_file = persistence::load_connections_file(&conn_path)?;
+    let mut ssh_connections = if ssh_path.exists() {
+        let content = fs::read_to_string(&ssh_path).map_err(|e| e.to_string())?;
+        serde_json::from_str::<Vec<SshConnection>>(&content).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    let cache = app
+        .state::<std::sync::Arc<crate::credential_cache::CredentialCache>>()
+        .inner()
+        .clone();
+
+    // Resolve passwords for database connections
+    for conn in &mut conn_file.connections {
+        if conn.params.save_in_keychain.unwrap_or(false) {
+            if let Ok(pwd) = credential_cache::get_db_password_cached(&cache, &conn.id) {
+                conn.params.password = Some(pwd);
+            }
+            if conn.params.ssh_enabled.unwrap_or(false) {
+                if let Ok(ssh_pwd) = credential_cache::get_ssh_password_cached(&cache, &conn.id) {
+                    conn.params.ssh_password = Some(ssh_pwd);
+                }
+                if let Ok(ssh_passphrase) =
+                    credential_cache::get_ssh_key_passphrase_cached(&cache, &conn.id)
+                {
+                    conn.params.ssh_key_passphrase = Some(ssh_passphrase);
+                }
+            }
+        }
+    }
+
+    // Resolve passwords for SSH connections
+    for ssh in &mut ssh_connections {
+        if ssh.save_in_keychain.unwrap_or(false) {
+            if let Ok(pwd) = credential_cache::get_ssh_password_cached(&cache, &ssh.id) {
+                ssh.password = Some(pwd);
+            }
+            if let Ok(passphrase) = credential_cache::get_ssh_key_passphrase_cached(&cache, &ssh.id)
+            {
+                ssh.key_passphrase = Some(passphrase);
+            }
+        }
+    }
+
+    Ok(ExportPayload {
+        version: 1,
+        groups: conn_file.groups,
+        connections: conn_file.connections,
+        ssh_connections,
+    })
+}
+
+#[tauri::command]
+pub async fn import_connections_payload<R: Runtime>(
+    app: AppHandle<R>,
+    payload: ExportPayload,
+) -> Result<(), String> {
+    let conn_path = get_config_path(&app)?;
+    let ssh_path = get_ssh_config_path(&app)?;
+
+    let mut current_file = persistence::load_connections_file(&conn_path).unwrap_or_default();
+    let mut current_ssh = if ssh_path.exists() {
+        let content = fs::read_to_string(&ssh_path).map_err(|e| e.to_string())?;
+        serde_json::from_str::<Vec<SshConnection>>(&content).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    let cache = app
+        .state::<std::sync::Arc<crate::credential_cache::CredentialCache>>()
+        .inner()
+        .clone();
+
+    // Merge groups
+    for new_group in payload.groups {
+        if let Some(existing) = current_file.groups.iter_mut().find(|g| g.id == new_group.id) {
+            *existing = new_group;
+        } else {
+            current_file.groups.push(new_group);
+        }
+    }
+
+    // Merge connections and handle passwords
+    for mut new_conn in payload.connections {
+        // Handle passwords in keychain
+        if new_conn.params.save_in_keychain.unwrap_or(false) {
+            if let Some(pwd) = &new_conn.params.password {
+                keychain_utils::set_db_password(&new_conn.id, pwd)?;
+                credential_cache::set_db_password_cached(&cache, &new_conn.id, pwd);
+            }
+            if new_conn.params.ssh_enabled.unwrap_or(false) {
+                if let Some(ssh_pwd) = &new_conn.params.ssh_password {
+                    keychain_utils::set_ssh_password(&new_conn.id, ssh_pwd)?;
+                    credential_cache::set_ssh_password_cached(&cache, &new_conn.id, ssh_pwd);
+                }
+                if let Some(ssh_passphrase) = &new_conn.params.ssh_key_passphrase {
+                    keychain_utils::set_ssh_key_passphrase(&new_conn.id, ssh_passphrase)?;
+                    credential_cache::set_ssh_key_passphrase_cached(
+                        &cache,
+                        &new_conn.id,
+                        ssh_passphrase,
+                    );
+                }
+            }
+            // Clear passwords from struct before saving to disk
+            new_conn.params.password = None;
+            new_conn.params.ssh_password = None;
+            new_conn.params.ssh_key_passphrase = None;
+        }
+
+        if let Some(existing) = current_file
+            .connections
+            .iter_mut()
+            .find(|c| c.id == new_conn.id)
+        {
+            *existing = new_conn;
+        } else {
+            current_file.connections.push(new_conn);
+        }
+    }
+
+    // Merge SSH connections and handle passwords
+    for mut new_ssh in payload.ssh_connections {
+        if new_ssh.save_in_keychain.unwrap_or(false) {
+            if let Some(pwd) = &new_ssh.password {
+                keychain_utils::set_ssh_password(&new_ssh.id, pwd)?;
+                credential_cache::set_ssh_password_cached(&cache, &new_ssh.id, pwd);
+            }
+            if let Some(passphrase) = &new_ssh.key_passphrase {
+                keychain_utils::set_ssh_key_passphrase(&new_ssh.id, passphrase)?;
+                credential_cache::set_ssh_key_passphrase_cached(&cache, &new_ssh.id, passphrase);
+            }
+            // Clear passwords from struct before saving to disk
+            new_ssh.password = None;
+            new_ssh.key_passphrase = None;
+        }
+
+        if let Some(existing) = current_ssh.iter_mut().find(|s| s.id == new_ssh.id) {
+            *existing = new_ssh;
+        } else {
+            current_ssh.push(new_ssh);
+        }
+    }
+
+    // Save files
+    persistence::save_connections_file(&conn_path, &current_file)?;
+    let ssh_json = serde_json::to_string_pretty(&current_ssh).map_err(|e| e.to_string())?;
+    fs::write(ssh_path, ssh_json).map_err(|e| e.to_string())?;
+
+    Ok(())
 }
