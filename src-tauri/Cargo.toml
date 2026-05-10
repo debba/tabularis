@@ -1,6 +1,6 @@
 [package]
 name = "tabularis"
-version = "0.9.21"
+version = "0.10.2"
 description = "tabularis - A database manager for developers"
 authors = ["Debba"]
 edition = "2021"
@@ -61,6 +61,15 @@ native-tls = "0.2.13"
 # SQL Server driver (mssql-tiberius-bridge) — tiberius-compatible API over mssql-tds
 mssql-tiberius-bridge = "=0.1.0-preview.3"
 deadpool = "0.12"
+# rustls is used for the PostgreSQL deadpool TLS path. native-tls (used by
+# sqlx and the MySQL pool) trips macOS Secure Transport's strict EKU checks
+# on user-supplied root anchors (e.g. the AWS RDS bundle), so the Postgres
+# pool routes through rustls + the platform verifier instead.
+tokio-postgres-rustls = "0.13"
+rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }
+rustls-pemfile = "2"
+rustls-platform-verifier = "0.6"
+notify = "6"
 
 # GTK dependencies for Wayland window title workaround (Linux only)
 [target.'cfg(target_os = "linux")'.dependencies]
@@ -71,3 +80,4 @@ tauri-plugin-updater = "2"
 
 [dev-dependencies]
 tempfile = "3.24.0"
+filetime = "0.2"

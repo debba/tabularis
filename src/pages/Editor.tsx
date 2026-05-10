@@ -288,7 +288,7 @@ export const Editor = () => {
   const [tempPage, setTempPage] = useState("1");
   const [isCountLoading, setIsCountLoading] = useState(false);
   const [applyToAll, setApplyToAll] = useState(false);
-  const [copyFormat, setCopyFormat] = useState<"csv" | "json">(
+  const [copyFormat, setCopyFormat] = useState<"csv" | "json" | "sql-insert">(
     settings.copyFormat ?? "csv",
   );
   const [csvDelimiter, setCsvDelimiter] = useState(
@@ -493,13 +493,14 @@ export const Editor = () => {
   }, [tabs, updateScrollArrows]);
 
   const fetchPkColumn = useCallback(
-    async (table: string, tabId?: string) => {
+    async (table: string, tabId?: string, tabSchema?: string) => {
       if (!activeConnectionId) return;
+      const effectiveSchema = tabSchema ?? activeSchema;
       try {
         const cols = await invoke<TableColumn[]>("get_columns", {
           connectionId: activeConnectionId,
           tableName: table,
-          ...(activeSchema ? { schema: activeSchema } : {}),
+          ...(effectiveSchema ? { schema: effectiveSchema } : {}),
         });
         const pk = cols.find((c) => c.is_pk);
         const autoInc = cols
@@ -683,7 +684,7 @@ export const Editor = () => {
 
         if (tableName) {
           // Wait for PK column to be fetched before showing results
-          await fetchPkColumn(tableName, targetTabId);
+          await fetchPkColumn(tableName, targetTabId, targetTab?.schema ?? undefined);
         } else {
           // No table, explicitly set pkColumn to null (read-only mode)
           updateTab(targetTabId, { pkColumn: null });
@@ -1406,6 +1407,52 @@ export const Editor = () => {
       };
 
       updateTab(tabId, { pendingDeletions: newPendingDeletions });
+    },
+    [updateTab],
+  );
+
+  const handleMarkMultipleForDeletion = useCallback(
+    (pkVals: unknown[]) => {
+      if (!activeTabIdRef.current) return;
+      const tabId = activeTabIdRef.current;
+      const currentTab = tabsRef.current.find((t) => t.id === tabId);
+      if (!currentTab) return;
+
+      const newPendingDeletions = { ...(currentTab.pendingDeletions || {}) };
+      for (const pkVal of pkVals) {
+        newPendingDeletions[String(pkVal)] = pkVal;
+      }
+
+      updateTab(tabId, { pendingDeletions: newPendingDeletions });
+    },
+    [updateTab],
+  );
+
+  const handleDuplicateRow = useCallback(
+    (rowData: Record<string, unknown>) => {
+      if (!activeTabIdRef.current) return;
+      const tabId = activeTabIdRef.current;
+      const currentTab = tabsRef.current.find((t) => t.id === tabId);
+      if (!currentTab) return;
+
+      const autoIncrementCols = currentTab.autoIncrementColumns ?? [];
+      const data: Record<string, unknown> = { ...rowData };
+      autoIncrementCols.forEach((col) => {
+        data[col] = null;
+      });
+
+      const tempId = generateTempId();
+      const currentPendingInsertions = currentTab.pendingInsertions || {};
+      const existingRowCount = currentTab.result?.rows.length || 0;
+      const insertionCount = Object.keys(currentPendingInsertions).length;
+      const displayIndex = existingRowCount + insertionCount;
+
+      updateTab(tabId, {
+        pendingInsertions: {
+          ...currentPendingInsertions,
+          [tempId]: { tempId, data, displayIndex },
+        },
+      });
     },
     [updateTab],
   );
@@ -2474,7 +2521,7 @@ export const Editor = () => {
                   className="fixed inset-0 z-40"
                   onClick={() => setIsDbDropdownOpen(false)}
                 />
-                <div className="absolute top-full right-0 mt-1 min-w-[140px] bg-surface-secondary border border-strong rounded shadow-xl z-50 flex flex-col py-1">
+                <div className="absolute top-full right-0 mt-1 min-w-[140px] max-h-[280px] overflow-y-auto bg-surface-secondary border border-strong rounded shadow-xl z-50 flex flex-col py-1">
                   {selectedDatabases.map((db) => (
                     <button
                       key={db}
@@ -2948,7 +2995,7 @@ export const Editor = () => {
                       <select
                         value={copyFormat}
                         onChange={(e) =>
-                          setCopyFormat(e.target.value as "csv" | "json")
+                          setCopyFormat(e.target.value as "csv" | "json" | "sql-insert")
                         }
                         className="bg-transparent border-none text-[11px] text-secondary hover:text-primary focus:outline-none cursor-pointer appearance-none pr-3 font-medium uppercase tracking-wide"
                         title={t("settings.copyFormat")}
@@ -2956,6 +3003,7 @@ export const Editor = () => {
                       >
                         <option value="csv">CSV</option>
                         <option value="json">JSON</option>
+                        <option value="sql-insert">SQL INSERT</option>
                       </select>
                       {copyFormat === "csv" && (
                         <select
@@ -3052,6 +3100,8 @@ export const Editor = () => {
                     onDiscardInsertion={handleDiscardInsertion}
                     onRevertDeletion={handleRevertDeletion}
                     onMarkForDeletion={handleMarkForDeletion}
+                    onMarkMultipleForDeletion={handleMarkMultipleForDeletion}
+                    onDuplicateRow={handleDuplicateRow}
                     selectedRows={new Set(activeTab.selectedRows || [])}
                     onSelectionChange={handleSelectionChange}
                     copyFormat={copyFormat}

@@ -168,7 +168,31 @@
     "errorTitle": "安装失败",
     "clients": "AI 客户端",
     "manualCommand": "手动命令",
-    "manualCommandText": "在终端中运行此命令，然后重启 Claude Code。"
+    "manualCommandText": "在终端中运行此命令，然后重启 Claude Code。",
+    "tabs": {
+      "setup": "设置",
+      "activity": "活动",
+      "safety": "安全"
+    },
+    "safety": {
+      "readOnlyTitle": "只读模式",
+      "readOnlyDefault": "将所有 MCP 查询设为只读",
+      "readOnlyDefaultDesc": "通过 MCP 阻止任何非 SELECT 语句,除非连接被显式允许。",
+      "readOnlyList": "只读连接",
+      "readOnlyListDesc": "这些连接将拒绝来自 MCP 的写入。其他连接行为不变。",
+      "allowList": "允许 MCP 写入",
+      "allowListDesc": "其余连接保持只读。仅勾选的连接可以执行写入。",
+      "approvalTitle": "审批门",
+      "approvalMode": "需要审批",
+      "approvalModeDesc": "在执行前暂停写入(或所有查询)并要求用户在 Tabularis 中批准。",
+      "modeOff": "关闭",
+      "modeWritesOnly": "仅写入",
+      "modeAll": "所有查询",
+      "approvalTimeout": "超时",
+      "approvalTimeoutDesc": "MCP 子进程等待用户决定的时间。",
+      "preflightExplain": "预先 EXPLAIN",
+      "preflightExplainDesc": "在显示审批模态之前运行 EXPLAIN,以便用户查看执行计划。"
+    }
   },
   "connections": {
     "title": "连接",
@@ -465,7 +489,8 @@
       "pressKeys": "按下组合键...",
       "notebookRunAll": "运行所有单元格",
       "categories_notebook": "笔记本"
-    }
+    },
+    "aiActivity": "AI 活动"
   },
   "update": {
     "newVersionAvailable": "有新版本可用",
@@ -519,6 +544,7 @@
     "password": "密码",
     "passwordMissing": "密码缺失或未设置。请重新输入。",
     "passwordPlaceholder": "输入密码",
+    "usernamePlaceholder": "输入用户名",
     "filePath": "文件路径",
     "folderPath": "文件夹路径",
     "dbName": "数据库名称",
@@ -590,6 +616,7 @@
     "noData": "无数据显示",
     "editRow": "编辑行",
     "deleteRow": "删除行",
+    "deleteRows": "删除 {{count}} 行",
     "confirmDelete": "确定要删除此行吗？",
     "deleteTitle": "删除行",
     "updateFailed": "更新失败：",
@@ -608,11 +635,13 @@
     "copyRows": "复制 {{count}} 行",
     "copied": "已复制到剪贴板",
     "discardInsertion": "点击放弃此行（回滚）",
+    "duplicateRow": "复制行",
     "revertSelected": "还原选中",
     "setGenerate": "设为 GENERATED",
     "setNull": "设为 NULL",
     "setDefault": "设为 DEFAULT",
-    "setEmpty": "设为空"
+    "setEmpty": "设为空",
+    "setServerNow": "插入当前时间戳"
   },
   "editRow": {
     "title": "编辑行",
@@ -671,6 +700,14 @@
     "queryFailed": "查询失败。",
     "showErrorDetails": "显示详情",
     "hideErrorDetails": "隐藏详情",
+    "errorBoundary": {
+      "title": "编辑器意外崩溃",
+      "description": "编辑器中的某些内容渲染失败。错误显示如下 — 请重试或返回到你的连接列表。",
+      "retry": "重试",
+      "closeCurrentTab": "关闭当前标签",
+      "backToConnections": "返回连接",
+      "showDetails": "显示技术细节"
+    },
     "newVisualQuery": "新建可视化查询",
     "activeDatabase": "当前数据库",
     "tabSwitcher": {
@@ -1191,5 +1228,91 @@
     "targetColumnPlaceholder": "选择目标...",
     "skipColumn": "跳过（不导入）",
     "createNewColumn": "创建新列"
+  },
+  "aiActivity": {
+    "title": "AI 活动",
+    "description": "MCP 工具调用的审计日志,以及等待批准的查询。仅本地存储。",
+    "tabs": {
+      "events": "事件",
+      "sessions": "会话"
+    },
+    "empty": "暂无 MCP 活动。",
+    "eventsCount_other": "{{count}} 个事件",
+    "blockedCount_other": "{{count}} 个被阻止",
+    "errorsCount_other": "{{count}} 个错误",
+    "sessionsCount_other": "{{count}} 个会话",
+    "events": "事件",
+    "runQueries": "查询",
+    "connections": "连接",
+    "client": "客户端",
+    "rowsReturned": "返回的行数",
+    "approvalId": "审批 ID",
+    "searchQuery": "搜索查询…",
+    "allTools": "所有工具",
+    "allStatuses": "所有状态",
+    "clearAll": "清空",
+    "clearConfirm": "删除全部 AI 活动历史?此操作不可撤销。",
+    "exportNotebook": "导出为 Notebook",
+    "exportSuccess": "已导出到 {{path}}",
+    "viewDetails": "查看详情",
+    "copyQuery": "复制查询",
+    "openVisualExplain": "在 Visual Explain 中打开",
+    "copied": "已复制到剪贴板",
+    "detailTitle": "事件详情",
+    "col": {
+      "timestamp": "时间",
+      "tool": "工具",
+      "connection": "连接",
+      "query": "查询",
+      "kind": "类型",
+      "duration": "耗时",
+      "status": "状态",
+      "actions": "操作"
+    },
+    "sort": {
+      "sortBy": "按 {{field}} 排序",
+      "sortByPlaceholder": "排序方式…",
+      "toggleAscending": "升序排列",
+      "toggleDescending": "降序排列",
+      "ascending": "升序",
+      "descending": "降序",
+      "started": "开始时间",
+      "eventCount": "事件数",
+      "runQueries": "执行查询数"
+    },
+    "searchSessions": "搜索会话、客户端、连接…",
+    "filteredFrom": "共 {{total}}",
+    "noMatches": "没有会话匹配当前筛选条件。",
+    "status": {
+      "success": "成功",
+      "blocked_readonly": "已阻止 (只读)",
+      "blocked_pending_approval": "待审批",
+      "denied": "已拒绝",
+      "error": "错误",
+      "timeout": "超时"
+    },
+    "queryKind": {
+      "select": "读取",
+      "write": "写入",
+      "ddl": "DDL",
+      "unknown": "未知"
+    }
+  },
+  "aiApproval": {
+    "title": "AI 请求执行数据库写入",
+    "subtitle": "在 {{connection}} 上 — 请审核后再执行。",
+    "subtitleWithClient": "{{client}} 在 {{connection}} 上 — 请审核后再执行。",
+    "query": "查询",
+    "editQuery": "批准前编辑",
+    "lockQuery": "锁定查询",
+    "preflightPlan": "预先执行计划",
+    "expandPlan": "展开",
+    "collapsePlan": "收起",
+    "explainUnavailable": "此查询无法 EXPLAIN。",
+    "explainFailed": "EXPLAIN 失败: {{error}}",
+    "reasonLabel": "理由 (可选)",
+    "reasonPlaceholder": "例如:在生产环境中风险较大,请确认…",
+    "approve": "批准",
+    "deny": "拒绝"
   }
 }

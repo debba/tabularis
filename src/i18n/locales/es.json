@@ -169,7 +169,31 @@
     "errorTitle": "Instalación Fallida",
     "clients": "CLIENTES IA",
     "manualCommand": "COMANDO MANUAL",
-    "manualCommandText": "Ejecuta este comando en tu terminal y reinicia Claude Code."
+    "manualCommandText": "Ejecuta este comando en tu terminal y reinicia Claude Code.",
+    "tabs": {
+      "setup": "Configuración",
+      "activity": "Actividad",
+      "safety": "Seguridad"
+    },
+    "safety": {
+      "readOnlyTitle": "Modo solo lectura",
+      "readOnlyDefault": "Hacer todas las consultas MCP de solo lectura",
+      "readOnlyDefaultDesc": "Bloquea cualquier sentencia que no sea SELECT vía MCP, salvo las conexiones autorizadas abajo.",
+      "readOnlyList": "Conexiones de solo lectura",
+      "readOnlyListDesc": "Estas conexiones rechazarán escrituras desde MCP. Las otras se comportan normalmente.",
+      "allowList": "Permitir escrituras desde MCP",
+      "allowListDesc": "El resto sigue en solo lectura. Solo las marcadas pueden ejecutar escrituras.",
+      "approvalTitle": "Puerta de aprobación",
+      "approvalMode": "Aprobación requerida",
+      "approvalModeDesc": "Pausa las escrituras (o todas las consultas) y pide al usuario que apruebe antes de ejecutar.",
+      "modeOff": "Desactivada",
+      "modeWritesOnly": "Solo escrituras",
+      "modeAll": "Todas las consultas",
+      "approvalTimeout": "Tiempo de espera",
+      "approvalTimeoutDesc": "Cuánto espera el subproceso MCP la decisión del usuario antes de fallar.",
+      "preflightExplain": "EXPLAIN previo",
+      "preflightExplainDesc": "Ejecuta un EXPLAIN antes de mostrar el modal para que el usuario vea el plan."
+    }
   },
   "connections": {
     "title": "Conexiones",
@@ -495,7 +519,8 @@
       "notebookRunAll": "Ejecutar Todas las Celdas",
       "categories_notebook": "Notebook",
       "pasteImportClipboard": "Importar desde Portapapeles"
-    }
+    },
+    "aiActivity": "Actividad IA"
   },
   "update": {
     "newVersionAvailable": "Nueva Versión Disponible",
@@ -549,6 +574,7 @@
     "password": "Contraseña",
     "passwordMissing": "Contraseña faltante. Por favor, ingrésala de nuevo.",
     "passwordPlaceholder": "Ingresa la contraseña",
+    "usernamePlaceholder": "Ingresa el nombre de usuario",
     "filePath": "Ruta del Archivo",
     "folderPath": "Ruta de la Carpeta",
     "dbName": "Nombre de la Base de Datos",
@@ -620,6 +646,7 @@
     "noData": "No hay datos para mostrar",
     "editRow": "Editar Fila",
     "deleteRow": "Eliminar Fila",
+    "deleteRows": "Eliminar {{count}} filas",
     "confirmDelete": "¿Estás seguro de que deseas eliminar esta fila?",
     "deleteTitle": "Eliminar Fila",
     "updateFailed": "Error en la actualización: ",
@@ -636,7 +663,9 @@
     "copyColumnNameTable": "Copiar como tabla.columna",
     "copyCells": "Copiar {{count}} Celdas",
     "copyRows": "Copiar {{count}} Filas",
-    "copied": "Copiado al portapapeles"
+    "copied": "Copiado al portapapeles",
+    "duplicateRow": "Duplicar Fila",
+    "setServerNow": "Insertar marca de tiempo actual"
   },
   "editRow": {
     "title": "Editar Fila",
@@ -694,6 +723,14 @@
     "queryFailed": "La consulta falló.",
     "showErrorDetails": "Mostrar detalles",
     "hideErrorDetails": "Ocultar detalles",
+    "errorBoundary": {
+      "title": "El editor falló inesperadamente",
+      "description": "Algo en el editor no pudo renderizarse. El error se muestra abajo — vuelve a intentarlo o regresa a tus conexiones.",
+      "retry": "Reintentar",
+      "closeCurrentTab": "Cerrar pestaña actual",
+      "backToConnections": "Volver a conexiones",
+      "showDetails": "Mostrar detalles técnicos"
+    },
     "newVisualQuery": "Nueva Consulta Visual",
     "activeDatabase": "Base de datos activa",
     "tabSwitcher": {
@@ -1195,5 +1232,95 @@
     "targetColumnPlaceholder": "Elegir destino...",
     "skipColumn": "Omitir (no importar)",
     "createNewColumn": "Crear nueva columna"
+  },
+  "aiActivity": {
+    "title": "Actividad IA",
+    "description": "Registro de cada llamada MCP y de las consultas pendientes de aprobación. Almacenado localmente.",
+    "tabs": {
+      "events": "Eventos",
+      "sessions": "Sesiones"
+    },
+    "empty": "Sin actividad MCP registrada.",
+    "eventsCount_one": "{{count}} evento",
+    "eventsCount_other": "{{count}} eventos",
+    "blockedCount_one": "{{count}} bloqueado",
+    "blockedCount_other": "{{count}} bloqueados",
+    "errorsCount_one": "{{count}} error",
+    "errorsCount_other": "{{count}} errores",
+    "sessionsCount_one": "{{count}} sesión",
+    "sessionsCount_other": "{{count}} sesiones",
+    "events": "Eventos",
+    "runQueries": "Consultas",
+    "connections": "Conexiones",
+    "client": "Cliente",
+    "rowsReturned": "Filas devueltas",
+    "approvalId": "ID aprobación",
+    "searchQuery": "Buscar en la consulta…",
+    "allTools": "Todas las herramientas",
+    "allStatuses": "Todos los estados",
+    "clearAll": "Limpiar",
+    "clearConfirm": "¿Borrar todo el historial de actividad IA? Esta acción es irreversible.",
+    "exportNotebook": "Exportar como Notebook",
+    "exportSuccess": "Exportado a {{path}}",
+    "viewDetails": "Ver detalles",
+    "copyQuery": "Copiar consulta",
+    "openVisualExplain": "Abrir en Visual Explain",
+    "copied": "Copiado al portapapeles",
+    "detailTitle": "Detalles del evento",
+    "col": {
+      "timestamp": "Hora",
+      "tool": "Herramienta",
+      "connection": "Conexión",
+      "query": "Consulta",
+      "kind": "Tipo",
+      "duration": "Duración",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "sort": {
+      "sortBy": "Ordenar por {{field}}",
+      "sortByPlaceholder": "Ordenar por…",
+      "toggleAscending": "Orden ascendente",
+      "toggleDescending": "Orden descendente",
+      "ascending": "Asc",
+      "descending": "Desc",
+      "started": "Inicio",
+      "eventCount": "Eventos",
+      "runQueries": "Consultas ejecutadas"
+    },
+    "searchSessions": "Buscar sesión, cliente, conexión…",
+    "filteredFrom": "de {{total}}",
+    "noMatches": "Ninguna sesión coincide con los filtros.",
+    "status": {
+      "success": "Éxito",
+      "blocked_readonly": "Bloqueada (solo lectura)",
+      "blocked_pending_approval": "Pendiente",
+      "denied": "Denegada",
+      "error": "Error",
+      "timeout": "Tiempo agotado"
+    },
+    "queryKind": {
+      "select": "Lectura",
+      "write": "Escritura",
+      "ddl": "DDL",
+      "unknown": "Desconocido"
+    }
+  },
+  "aiApproval": {
+    "title": "La IA quiere ejecutar una escritura en la base de datos",
+    "subtitle": "En {{connection}} — revisa y decide antes de ejecutar.",
+    "subtitleWithClient": "{{client}} en {{connection}} — revisa y decide antes de ejecutar.",
+    "query": "Consulta",
+    "editQuery": "Editar antes de aprobar",
+    "lockQuery": "Bloquear consulta",
+    "preflightPlan": "Plan de ejecución previo",
+    "expandPlan": "Expandir",
+    "collapsePlan": "Contraer",
+    "explainUnavailable": "EXPLAIN no disponible para esta consulta.",
+    "explainFailed": "EXPLAIN falló: {{error}}",
+    "reasonLabel": "Razón (opcional)",
+    "reasonPlaceholder": "ej. Parece arriesgada en prod, confirma…",
+    "approve": "Aprobar",
+    "deny": "Denegar"
   }
 }

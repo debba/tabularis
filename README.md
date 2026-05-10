@@ -44,7 +44,7 @@ An open-source desktop client for modern databases. Supports PostgreSQL, MySQL/M
 
 ## Release Download:
 
-[![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/TabularisDB/tabularis/releases/download/v0.9.21/tabularis_0.9.21_x64-setup.exe) [![macOS](https://img.shields.io/badge/macOS-Download-black?logo=apple)](https://github.com/TabularisDB/tabularis/releases/download/v0.9.21/tabularis_0.9.21_x64.dmg) [![Linux AppImage](https://img.shields.io/badge/Linux-AppImage-green?logo=linux)](https://github.com/TabularisDB/tabularis/releases/download/v0.9.21/tabularis_0.9.21_amd64.AppImage) [![Linux .deb](https://img.shields.io/badge/Linux-.deb-orange?logo=debian)](https://github.com/TabularisDB/tabularis/releases/download/v0.9.21/tabularis_0.9.21_amd64.deb) [![Linux .rpm](https://img.shields.io/badge/Linux-.rpm-red?logo=redhat)](https://github.com/TabularisDB/tabularis/releases/download/v0.9.21/tabularis-0.9.7-1.x86_64.rpm)
+[![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/TabularisDB/tabularis/releases/download/v0.10.2/tabularis_0.10.2_x64-setup.exe) [![macOS](https://img.shields.io/badge/macOS-Download-black?logo=apple)](https://github.com/TabularisDB/tabularis/releases/download/v0.10.2/tabularis_0.10.2_x64.dmg) [![Linux AppImage](https://img.shields.io/badge/Linux-AppImage-green?logo=linux)](https://github.com/TabularisDB/tabularis/releases/download/v0.10.2/tabularis_0.10.2_amd64.AppImage) [![Linux .deb](https://img.shields.io/badge/Linux-.deb-orange?logo=debian)](https://github.com/TabularisDB/tabularis/releases/download/v0.10.2/tabularis_0.10.2_amd64.deb) [![Linux .rpm](https://img.shields.io/badge/Linux-.rpm-red?logo=redhat)](https://github.com/TabularisDB/tabularis/releases/download/v0.10.2/tabularis-0.9.7-1.x86_64.rpm)
 
 <!-- SPONSORS:START -->
 
@@ -479,6 +479,7 @@ pnpm tauri build
 - [x] [Visual Explain Analyze](https://github.com/TabularisDB/tabularis/issues/22)
 - [x] [Plugin System](https://github.com/TabularisDB/tabularis/issues/19)
 - [x] [Query History](https://github.com/TabularisDB/tabularis/issues/18)
+- [ ] [SQL Server driver — implementation roadmap & call for contributors](https://github.com/TabularisDB/tabularis/issues/150)
 - [ ] [Feature: Remote Control](https://github.com/TabularisDB/tabularis/issues/46)
 - [ ] [Command Palette](https://github.com/TabularisDB/tabularis/issues/25)
 - [ ] [JSON/JSONB Editor & Viewer](https://github.com/TabularisDB/tabularis/issues/24)

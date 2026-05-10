@@ -23,6 +23,10 @@ interface VisualExplainModalProps {
   query: string;
   connectionId: string;
   schema?: string;
+  /// Display label to use when the connection isn't loaded in the active
+  /// database context (e.g. opened from the AI Activity panel). Falls back
+  /// to the live connection name if available, then to `connectionId`.
+  connectionLabel?: string;
 }
 
 export const VisualExplainModal = ({
@@ -31,6 +35,7 @@ export const VisualExplainModal = ({
   query,
   connectionId,
   schema,
+  connectionLabel,
 }: VisualExplainModalProps) => {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -50,7 +55,8 @@ export const VisualExplainModal = ({
   const driverManifest =
     allDrivers.find((driver) => driver.id === effectiveDriver) ?? null;
   const driverLabel = driverManifest?.name ?? effectiveDriver;
-  const connectionLabel = connectionData?.connectionName ?? connectionId;
+  const resolvedConnectionLabel =
+    connectionData?.connectionName ?? connectionLabel ?? connectionId;
   const schemaLabel = schema ?? connectionData?.activeSchema ?? null;
   const databaseLabel = connectionData?.databaseName ?? schema ?? "";
   const locationLabel =
@@ -111,7 +117,7 @@ export const VisualExplainModal = ({
                 <div className="inline-flex items-center gap-2 rounded-lg border border-default bg-surface-secondary/50 px-2.5 py-1 text-xs text-secondary">
                   <span className="text-primary">{getDriverIcon(driverManifest, 14)}</span>
                   <span className="font-medium text-primary">
-                    {connectionLabel}
+                    {resolvedConnectionLabel}
                   </span>
                 </div>
                 {locationLabel && (

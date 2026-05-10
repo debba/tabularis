@@ -2,6 +2,7 @@ pub mod types;
 
 pub mod extract;
 
+mod binding;
 mod client;
 mod explain;
 mod helpers;
@@ -14,15 +15,12 @@ use crate::models::{
     TableColumn, TableInfo, ViewInfo,
 };
 use crate::pool_manager::get_postgres_pool;
+use binding::{PgValueOptions, bind_pg_value, build_pk_predicate};
 use client::{execute, format_pg_error, query_all, query_one};
 pub use explain::explain_query;
 use extract::extract_value;
-use helpers::{
-    escape_identifier, extract_base_type, is_implicit_cast_compatible, is_raw_sql_function,
-    is_wkt_geometry, json_array_to_pg_literal, try_parse_pg_array,
-};
+use helpers::{escape_identifier, extract_base_type, is_implicit_cast_compatible};
 use tokio_postgres::types::ToSql;
-use uuid::Uuid;
 
 pub async fn get_schemas(params: &ConnectionParams) -> Result<Vec<String>, String> {
     let pool = get_postgres_pool(params).await?;
@@ -387,32 +385,16 @@ pub async fn save_blob_column_to_file(
 ) -> Result<(), String> {
     let pool = get_postgres_pool(params).await?;
 
+    let (predicate, param) = build_pk_predicate(pk_col, pk_val, 1)?;
     let query = format!(
-        "SELECT \"{}\" FROM \"{}\".\"{}\" WHERE \"{}\" = $1",
+        "SELECT \"{}\" FROM \"{}\".\"{}\" WHERE {}",
         escape_identifier(col_name),
         escape_identifier(schema),
         escape_identifier(table),
-        escape_identifier(pk_col)
+        predicate,
     );
 
-    let row = match pk_val {
-        serde_json::Value::Number(n) => {
-            if n.is_i64() {
-                query_one(&pool, &query, &[&n.as_i64()]).await
-            } else {
-                query_one(&pool, &query, &[&n.as_f64()]).await
-            }
-        }
-        serde_json::Value::String(s) => {
-            // Try parsing as UUID so PostgreSQL receives the correct type
-            if let Ok(uuid) = s.parse::<Uuid>() {
-                query_one(&pool, &query, &[&uuid]).await
-            } else {
-                query_one(&pool, &query, &[&s]).await
-            }
-        }
-        _ => return Err("Unsupported PK type".into()),
-    }?;
+    let row = query_one(&pool, &query, &[param.as_ref() as &(dyn ToSql + Sync)]).await?;
 
     let bytes: Vec<u8> = row.try_get(0).map_err(|e| format_pg_error(&e))?;
     std::fs::write(file_path, bytes).map_err(|e| e.to_string())
@@ -428,35 +410,95 @@ pub async fn fetch_blob_column_as_data_url(
 ) -> Result<String, String> {
     let pool = get_postgres_pool(params).await?;
 
+    let (predicate, param) = build_pk_predicate(pk_col, pk_val, 1)?;
     let query = format!(
-        "SELECT \"{}\" FROM \"{}\".\"{}\" WHERE \"{}\" = $1",
+        "SELECT \"{}\" FROM \"{}\".\"{}\" WHERE {}",
         escape_identifier(col_name),
         escape_identifier(schema),
         escape_identifier(table),
-        escape_identifier(pk_col)
+        predicate,
     );
 
-    let row = match pk_val {
-        serde_json::Value::Number(n) => {
-            if n.is_i64() {
-                query_one(&pool, &query, &[&n.as_i64()]).await
-            } else {
-                query_one(&pool, &query, &[&n.as_f64()]).await
-            }
-        }
-        serde_json::Value::String(s) => {
-            // Try parsing as UUID so PostgreSQL receives the correct type
-            if let Ok(uuid) = s.parse::<Uuid>() {
-                query_one(&pool, &query, &[&uuid]).await
-            } else {
-                query_one(&pool, &query, &[&s]).await
-            }
-        }
-        _ => return Err("Unsupported PK type".into()),
-    }?;
+    let row = query_one(&pool, &query, &[param.as_ref() as &(dyn ToSql + Sync)]).await?;
 
     let bytes: Vec<u8> = row.try_get(0).map_err(|e| format_pg_error(&e))?;
     Ok(crate::drivers::common::encode_blob_full(&bytes))
+}
+
+async fn get_column_data_type(
+    pool: &deadpool_postgres::Pool,
+    schema: &str,
+    table: &str,
+    col_name: &str,
+) -> Result<Option<String>, String> {
+    let rows = query_all(
+        pool,
+        "SELECT data_type::text, udt_name::text \
+FROM information_schema.columns \
+WHERE table_schema = $1 AND table_name = $2 AND column_name = $3 \
+LIMIT 1",
+        &[&schema, &table, &col_name],
+    )
+    .await?;
+
+    Ok(rows.first().map(|row| {
+        row.try_get::<_, String>("data_type")
+            .or_else(|_| row.try_get::<_, String>("udt_name"))
+            .unwrap_or_else(|_| "unknown".to_string())
+    }))
+}
+
+fn json_value_kind(value: &serde_json::Value) -> &'static str {
+    match value {
+        serde_json::Value::Null => "null",
+        serde_json::Value::Bool(_) => "boolean",
+        serde_json::Value::Number(_) => "number",
+        serde_json::Value::String(_) => "string",
+        serde_json::Value::Array(_) => "array",
+        serde_json::Value::Object(_) => "object",
+    }
+}
+
+fn update_record_error_context(
+    err: String,
+    schema: &str,
+    table: &str,
+    pk_col: &str,
+    pk_val: &serde_json::Value,
+    col_name: &str,
+    new_val: &serde_json::Value,
+    column_type: Option<&str>,
+    query: &str,
+) -> String {
+    let column_type = column_type.unwrap_or("unknown");
+    let hint = if matches!(new_val, serde_json::Value::String(_))
+        && matches!(
+            column_type.to_ascii_lowercase().as_str(),
+            "smallint"
+                | "integer"
+                | "bigint"
+                | "int2"
+                | "int4"
+                | "int8"
+                | "serial"
+                | "bigserial"
+                | "numeric"
+                | "decimal"
+                | "real"
+                | "double precision"
+                | "float4"
+                | "float8"
+        ) {
+        "\nHint: the edited value arrived from the grid as a JSON string. For numeric PostgreSQL columns, Tabularis attempts to parse it before binding; check that the value is valid for the target column type."
+    } else {
+        ""
+    };
+
+    format!(
+        "{err}\n\nPostgreSQL update context:\n- table: \"{schema}\".\"{table}\"\n- column: \"{col_name}\" ({column_type})\n- new value JSON type: {new_val_kind}\n- primary key: \"{pk_col}\" JSON type {pk_val_kind}\n- SQL: {query}{hint}",
+        new_val_kind = json_value_kind(new_val),
+        pk_val_kind = json_value_kind(pk_val),
+    )
 }
 
 pub async fn delete_record(
@@ -468,33 +510,15 @@ pub async fn delete_record(
 ) -> Result<u64, String> {
     let pool = get_postgres_pool(params).await?;
 
+    let (predicate, param) = build_pk_predicate(pk_col, pk_val, 1)?;
     let query = format!(
-        "DELETE FROM \"{}\".\"{}\" WHERE \"{}\" = $1",
+        "DELETE FROM \"{}\".\"{}\" WHERE {}",
         escape_identifier(schema),
         escape_identifier(table),
-        escape_identifier(pk_col)
+        predicate,
     );
 
-    let result = match pk_val {
-        serde_json::Value::Number(n) => {
-            if n.is_i64() {
-                execute(&pool, &query, &[&n.as_i64()]).await
-            } else {
-                execute(&pool, &query, &[&n.as_f64()]).await
-            }
-        }
-        serde_json::Value::String(s) => {
-            // Try parsing as UUID so PostgreSQL receives the correct type
-            if let Ok(uuid) = s.parse::<Uuid>() {
-                execute(&pool, &query, &[&uuid]).await
-            } else {
-                execute(&pool, &query, &[&s]).await
-            }
-        }
-        _ => return Err("Unsupported PK type".into()),
-    };
-
-    result
+    execute(&pool, &query, &[param.as_ref() as &(dyn ToSql + Sync)]).await
 }
 
 pub async fn update_record(
@@ -508,6 +532,21 @@ pub async fn update_record(
     max_blob_size: u64,
 ) -> Result<u64, String> {
     let pool = get_postgres_pool(params).await?;
+    let column_data_type = match get_column_data_type(&pool, schema, table, col_name).await {
+        Ok(data_type) => data_type,
+        Err(err) => {
+            log::debug!(
+                "Could not load PostgreSQL column metadata for {}.{}.{}: {}",
+                schema,
+                table,
+                col_name,
+                err
+            );
+            None
+        }
+    };
+    let new_val_for_context = new_val.clone();
+    let pk_val_for_context = pk_val.clone();
 
     let mut query = format!(
         "UPDATE \"{}\".\"{}\" SET \"{}\" = ",
@@ -518,91 +557,43 @@ pub async fn update_record(
 
     let mut params: Vec<Box<dyn tokio_postgres::types::ToSql + Send + Sync>> = Vec::new();
 
-    match new_val {
-        serde_json::Value::Number(n) => {
-            query.push_str(&format!("${}", params.len() + 1));
-            if n.is_i64() {
-                params.push(Box::new(n.as_i64()));
-            } else {
-                params.push(Box::new(n.as_f64()));
-            }
-        }
-        serde_json::Value::String(s) => {
-            // Check for special sentinel value to use DEFAULT
-            if s == "__USE_DEFAULT__" {
-                query.push_str("DEFAULT");
-            } else if let Some(bytes) =
-                crate::drivers::common::decode_blob_wire_format(&s, max_blob_size)
-            {
-                // Blob wire format: decode to raw bytes so the DB stores binary data,
-                // not the internal wire format string.
-                query.push_str(&format!("${}", params.len() + 1));
-                params.push(Box::new(bytes));
-            } else if is_raw_sql_function(&s) {
-                // If it's a raw SQL function (e.g., ST_GeomFromText('POINT(1 2)', 4326))
-                // insert it directly without parameter binding
-                query.push_str(&s);
-            } else if is_wkt_geometry(&s) {
-                // If it's WKT geometry format, wrap with ST_GeomFromText
-                query.push_str(&format!("ST_GeomFromText(${})", params.len() + 1));
-
-                params.push(Box::new(s));
-            } else if s.parse::<Uuid>().is_ok() {
-                // Wrap in explicit SQL CAST so PostgreSQL receives the correct type
-                // regardless of how sqlx QueryBuilder infers the parameter OID
-                query.push_str(&format!("CAST(${} AS uuid)", params.len() + 1));
-
-                params.push(Box::new(s));
-            } else if let Some(pg_arr) = try_parse_pg_array(&s) {
-                query.push_str(&pg_arr?);
-            } else {
-                query.push_str(&format!("${}", params.len() + 1));
-                params.push(Box::new(s));
-            }
-        }
-        serde_json::Value::Bool(b) => {
-            query.push_str(&format!("${}", params.len() + 1));
-            params.push(Box::new(b));
-        }
-        serde_json::Value::Null => {
-            query.push_str("NULL");
-        }
-        serde_json::Value::Array(arr) => {
-            query.push_str(&json_array_to_pg_literal(&arr)?);
-        }
-        _ => return Err("Unsupported Value type".into()),
+    let bound = bind_pg_value(
+        new_val,
+        params.len() + 1,
+        PgValueOptions {
+            column_type: column_data_type.as_deref(),
+            max_blob_size,
+            allow_default: true,
+        },
+    )?;
+    query.push_str(&bound.sql);
+    if let Some(param) = bound.param {
+        params.push(param);
     }
 
-    query.push_str(&format!(" WHERE \"{}\" = ", pk_col));
-
-    match pk_val {
-        serde_json::Value::Number(n) => {
-            query.push_str(&format!("${}", params.len() + 1));
-
-            if n.is_i64() {
-                params.push(Box::new(n.as_i64()));
-            } else {
-                params.push(Box::new(n.as_f64()));
-            }
-        }
-        serde_json::Value::String(s) => {
-            if s.parse::<Uuid>().is_ok() {
-                query.push_str(&format!("CAST(${}) AS uuid)", params.len() + 1));
-                params.push(Box::new(s));
-            } else {
-                query.push_str(&format!("${}", params.len() + 1));
-                params.push(Box::new(s));
-            }
-        }
-        _ => return Err("Unsupported PK type".into()),
-    }
+    let (predicate, pk_param) = build_pk_predicate(pk_col, pk_val, params.len() + 1)?;
+    query.push_str(" WHERE ");
+    query.push_str(&predicate);
+    params.push(pk_param);
 
     let params: Vec<&(dyn ToSql + Sync)> = params
         .iter()
         .map(|b| b.as_ref() as &(dyn ToSql + Sync))
         .collect();
 
-    execute(&pool, &query, &params).await
+    execute(&pool, &query, &params).await.map_err(|err| {
+        update_record_error_context(
+            err,
+            schema,
+            table,
+            pk_col,
+            &pk_val_for_context,
+            col_name,
+            &new_val_for_context,
+            column_data_type.as_deref(),
+            &query,
+        )
+    })
 }
 
 pub async fn insert_record(
@@ -640,55 +631,18 @@ pub async fn insert_record(
     let mut vals_set: Vec<String> = Vec::with_capacity(vals.len());
 
     for val in vals {
-        match val {
-            serde_json::Value::Number(n) => {
-                vals_set.push(format!("${}", params.len() + 1));
-                if n.is_i64() {
-                    params.push(Box::new(n.as_i64()));
-                } else {
-                    params.push(Box::new(n.as_f64()));
-                }
-            }
-            serde_json::Value::String(s) => {
-                if let Some(bytes) =
-                    crate::drivers::common::decode_blob_wire_format(&s, max_blob_size)
-                {
-                    // Blob wire format: decode to raw bytes so the DB stores binary data,
-                    // not the internal wire format string.
-                    vals_set.push(format!("${}", params.len() + 1));
-                    params.push(Box::new(bytes));
-                } else if is_raw_sql_function(&s) {
-                    // If it's a raw SQL function (e.g., ST_GeomFromText('POINT(1 2)', 4326))
-                    // insert it directly without parameter binding
-                    vals_set.push(s);
-                } else if is_wkt_geometry(&s) {
-                    // If it's WKT geometry format, wrap with ST_GeomFromText
-                    vals_set.push(format!("ST_GeomFromText(${})", params.len() + 1));
-                    params.push(Box::new(s));
-                } else if s.parse::<Uuid>().is_ok() {
-                    // If it's a UUID, cast it to uuid type
-                    vals_set.push(format!("CAST(${} AS uuid)", params.len() + 1));
-                    params.push(Box::new(s));
-                } else if let Some(pg_arr) = try_parse_pg_array(&s) {
-                    vals_set.push(pg_arr?);
-                } else {
-                    vals_set.push(format!("${}", params.len() + 1));
-                    params.push(Box::new(s));
-                }
-            }
-            serde_json::Value::Bool(b) => {
-                vals_set.push(format!("${}", params.len() + 1));
-                params.push(Box::new(b));
-            }
-            serde_json::Value::Null => {
-                vals_set.push("NULL".to_string());
-            }
-            serde_json::Value::Array(arr) => {
-                vals_set.push(json_array_to_pg_literal(&arr)?);
-            }
-            _ => {
-                return Err(format!("Unsupported value type: {:?}", val));
-            }
+        let bound = bind_pg_value(
+            val,
+            params.len() + 1,
+            PgValueOptions {
+                column_type: None,
+                max_blob_size,
+                allow_default: false,
+            },
+        )?;
+        vals_set.push(bound.sql);
+        if let Some(param) = bound.param {
+            params.push(param);
         }
     }
 
@@ -788,10 +742,12 @@ pub async fn execute_query(
 
     let params: Vec<i32> = vec![];
     // Stream data rows while COUNT runs in the background
-    let mut rows_stream = std::pin::pin!(client
-        .query_raw(&final_query, &params)
-        .await
-        .map_err(|e| format_pg_error(&e))?);
+    let mut rows_stream = std::pin::pin!(
+        client
+            .query_raw(&final_query, &params)
+            .await
+            .map_err(|e| format_pg_error(&e))?
+    );
 
     let mut columns: Vec<String> = Vec::new();
     let mut json_rows = Vec::new();
@@ -1259,11 +1215,14 @@ impl DatabaseDriver for PostgresDriver {
             return Err("No active connection pool".into());
         }
         let pool = crate::pool_manager::get_postgres_pool_with_id(params, conn_id).await?;
-        let client = pool.get().await.map_err(|e| e.to_string())?;
+        let client = pool
+            .get()
+            .await
+            .map_err(|e| crate::pool_manager::format_error_chain(&e))?;
         client
             .simple_query("SELECT 1")
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| crate::pool_manager::format_error_chain(&e))?;
         Ok(())
     }
 

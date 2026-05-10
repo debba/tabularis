@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
@@ -13,6 +13,14 @@ pub struct InstalledPluginInfo {
     pub description: String,
 }
 
+#[derive(Deserialize)]
+struct InstalledPluginManifest {
+    id: String,
+    name: String,
+    version: String,
+    description: String,
+}
+
 pub fn get_plugins_dir() -> Result<PathBuf, String> {
     let proj_dirs = ProjectDirs::from("com", "debba", "tabularis")
         .ok_or_else(|| "Could not determine project directories".to_string())?;
@@ -22,6 +30,27 @@ pub fn get_plugins_dir() -> Result<PathBuf, String> {
             .map_err(|e| format!("Failed to create plugins directory: {}", e))?;
     }
     Ok(plugins_dir)
+}
+
+pub(crate) fn read_plugin_info_from_dir(path: &Path) -> Result<InstalledPluginInfo, String> {
+    let manifest_path = path.join("manifest.json");
+    let manifest_str = fs::read_to_string(&manifest_path)
+        .map_err(|e| format!("Failed to read plugin manifest {:?}: {}", manifest_path, e))?;
+
+    let manifest: InstalledPluginManifest = serde_json::from_str(&manifest_str)
+        .map_err(|e| format!("Failed to parse plugin manifest {:?}: {}", manifest_path, e))?;
+
+    Ok(InstalledPluginInfo {
+        id: manifest.id,
+        name: manifest.name,
+        version: manifest.version,
+        description: manifest.description,
+    })
+}
+
+pub fn read_installed_plugin(plugin_id: &str) -> Result<InstalledPluginInfo, String> {
+    let plugins_dir = get_plugins_dir()?;
+    read_plugin_info_from_dir(&plugins_dir.join(plugin_id))
 }
 
 pub async fn download_and_install(plugin_id: &str, download_url: &str) -> Result<(), String> {
@@ -210,30 +239,9 @@ pub fn list_installed() -> Result<Vec<InstalledPluginInfo>, String> {
             continue;
         }
 
-        let manifest_str = match fs::read_to_string(&manifest_path) {
-            Ok(s) => s,
-            Err(_) => continue,
-        };
-
-        #[derive(Deserialize)]
-        struct Manifest {
-            id: String,
-            name: String,
-            version: String,
-            description: String,
+        if let Ok(plugin) = read_plugin_info_from_dir(&path) {
+            plugins.push(plugin);
         }
-
-        let manifest: Manifest = match serde_json::from_str(&manifest_str) {
-            Ok(m) => m,
-            Err(_) => continue,
-        };
-
-        plugins.push(InstalledPluginInfo {
-            id: manifest.id,
-            name: manifest.name,
-            version: manifest.version,
-            description: manifest.description,
-        });
     }
 
     Ok(plugins)

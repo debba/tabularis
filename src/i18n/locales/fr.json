@@ -169,7 +169,31 @@
     "errorTitle": "Échec de l’installation",
     "clients": "CLIENTS IA",
     "manualCommand": "COMMANDE MANUELLE",
-    "manualCommandText": "Exécutez cette commande dans votre terminal, puis redémarrez Claude Code."
+    "manualCommandText": "Exécutez cette commande dans votre terminal, puis redémarrez Claude Code.",
+    "tabs": {
+      "setup": "Configuration",
+      "activity": "Activité",
+      "safety": "Sécurité"
+    },
+    "safety": {
+      "readOnlyTitle": "Mode lecture seule",
+      "readOnlyDefault": "Mettre toutes les requêtes MCP en lecture seule",
+      "readOnlyDefaultDesc": "Bloquer tout statement non-SELECT via MCP, sauf pour les connexions autorisées ci-dessous.",
+      "readOnlyList": "Connexions en lecture seule",
+      "readOnlyListDesc": "Ces connexions refuseront les écritures via MCP. Les autres restent normales.",
+      "allowList": "Autoriser les écritures via MCP",
+      "allowListDesc": "Les autres restent en lecture seule. Seules celles cochées peuvent écrire.",
+      "approvalTitle": "Validation manuelle",
+      "approvalMode": "Validation requise",
+      "approvalModeDesc": "Mettre en pause les écritures (ou toutes les requêtes) et demander la validation utilisateur avant exécution.",
+      "modeOff": "Désactivée",
+      "modeWritesOnly": "Écritures seulement",
+      "modeAll": "Toutes les requêtes",
+      "approvalTimeout": "Délai",
+      "approvalTimeoutDesc": "Temps d'attente avant échec.",
+      "preflightExplain": "EXPLAIN préalable",
+      "preflightExplainDesc": "Exécute EXPLAIN avant d'afficher le modal pour montrer le plan."
+    }
   },
   "connections": {
     "title": "Connexions",
@@ -495,7 +519,8 @@
       "notebookRunAll": "Exécuter toutes les cellules",
       "categories_notebook": "Notebook",
       "pasteImportClipboard": "Importer depuis le Presse-papiers"
-    }
+    },
+    "aiActivity": "Activité IA"
   },
   "update": {
     "newVersionAvailable": "Nouvelle version disponible",
@@ -549,6 +574,7 @@
     "password": "Mot de passe",
     "passwordMissing": "Mot de passe manquant ou non défini. Veuillez le ressaisir.",
     "passwordPlaceholder": "Saisir le mot de passe",
+    "usernamePlaceholder": "Saisir le nom d'utilisateur",
     "filePath": "Chemin du fichier",
     "folderPath": "Chemin du dossier",
     "dbName": "Nom de la base de données",
@@ -620,6 +646,7 @@
     "noData": "Aucune donnée à afficher",
     "editRow": "Modifier la ligne",
     "deleteRow": "Supprimer la ligne",
+    "deleteRows": "Supprimer {{count}} lignes",
     "confirmDelete": "Voulez-vous vraiment supprimer cette ligne ?",
     "deleteTitle": "Supprimer la ligne",
     "updateFailed": "Échec de la mise à jour : ",
@@ -638,11 +665,13 @@
     "copyRows": "Copier {{count}} ligne(s)",
     "copied": "Copié dans le presse-papiers",
     "discardInsertion": "Cliquez pour annuler cette ligne (rollback)",
+    "duplicateRow": "Dupliquer la ligne",
     "revertSelected": "Annuler la sélection",
     "setGenerate": "Définir GENERATED",
     "setNull": "Définir NULL",
     "setDefault": "Définir DEFAULT",
-    "setEmpty": "Définir EMPTY"
+    "setEmpty": "Définir EMPTY",
+    "setServerNow": "Insérer l'horodatage actuel"
   },
   "editRow": {
     "title": "Modifier la ligne",
@@ -701,6 +730,14 @@
     "queryFailed": "Échec de la requête.",
     "showErrorDetails": "Afficher les détails",
     "hideErrorDetails": "Masquer les détails",
+    "errorBoundary": {
+      "title": "L'éditeur a planté de manière inattendue",
+      "description": "Un élément de l'éditeur n'a pas pu s'afficher. L'erreur est indiquée ci-dessous — réessayez ou revenez à vos connexions.",
+      "retry": "Réessayer",
+      "closeCurrentTab": "Fermer l’onglet actuel",
+      "backToConnections": "Retour aux connexions",
+      "showDetails": "Afficher les détails techniques"
+    },
     "newVisualQuery": "Nouvelle requête visuelle",
     "activeDatabase": "Base de données active",
     "tabSwitcher": {
@@ -1243,5 +1280,95 @@
     "targetColumnPlaceholder": "Choisir la cible...",
     "skipColumn": "Ignorer (ne pas importer)",
     "createNewColumn": "Créer une nouvelle colonne"
+  },
+  "aiActivity": {
+    "title": "Activité IA",
+    "description": "Journal de chaque appel MCP et des requêtes en attente de validation. Stockage local.",
+    "tabs": {
+      "events": "Événements",
+      "sessions": "Sessions"
+    },
+    "empty": "Aucune activité MCP.",
+    "eventsCount_one": "{{count}} événement",
+    "eventsCount_other": "{{count}} événements",
+    "blockedCount_one": "{{count}} bloqué",
+    "blockedCount_other": "{{count}} bloqués",
+    "errorsCount_one": "{{count}} erreur",
+    "errorsCount_other": "{{count}} erreurs",
+    "sessionsCount_one": "{{count}} session",
+    "sessionsCount_other": "{{count}} sessions",
+    "events": "Événements",
+    "runQueries": "Requêtes",
+    "connections": "Connexions",
+    "client": "Client",
+    "rowsReturned": "Lignes retournées",
+    "approvalId": "ID validation",
+    "searchQuery": "Rechercher…",
+    "allTools": "Tous les outils",
+    "allStatuses": "Tous les statuts",
+    "clearAll": "Effacer",
+    "clearConfirm": "Supprimer tout l'historique d'activité IA ? Action irréversible.",
+    "exportNotebook": "Exporter en Notebook",
+    "exportSuccess": "Exporté vers {{path}}",
+    "viewDetails": "Voir les détails",
+    "copyQuery": "Copier la requête",
+    "openVisualExplain": "Ouvrir dans Visual Explain",
+    "copied": "Copié dans le presse-papier",
+    "detailTitle": "Détails de l'événement",
+    "col": {
+      "timestamp": "Heure",
+      "tool": "Outil",
+      "connection": "Connexion",
+      "query": "Requête",
+      "kind": "Type",
+      "duration": "Durée",
+      "status": "Statut",
+      "actions": "Actions"
+    },
+    "sort": {
+      "sortBy": "Trier par {{field}}",
+      "sortByPlaceholder": "Trier par…",
+      "toggleAscending": "Tri croissant",
+      "toggleDescending": "Tri décroissant",
+      "ascending": "Asc",
+      "descending": "Desc",
+      "started": "Début",
+      "eventCount": "Événements",
+      "runQueries": "Requêtes exécutées"
+    },
+    "searchSessions": "Rechercher session, client, connexion…",
+    "filteredFrom": "sur {{total}}",
+    "noMatches": "Aucune session ne correspond aux filtres.",
+    "status": {
+      "success": "Succès",
+      "blocked_readonly": "Bloquée (lecture seule)",
+      "blocked_pending_approval": "En attente",
+      "denied": "Refusée",
+      "error": "Erreur",
+      "timeout": "Délai dépassé"
+    },
+    "queryKind": {
+      "select": "Lecture",
+      "write": "Écriture",
+      "ddl": "DDL",
+      "unknown": "Inconnu"
+    }
+  },
+  "aiApproval": {
+    "title": "L'IA veut exécuter une écriture",
+    "subtitle": "Sur {{connection}} — examinez avant exécution.",
+    "subtitleWithClient": "{{client}} sur {{connection}} — examinez avant exécution.",
+    "query": "Requête",
+    "editQuery": "Modifier avant d'approuver",
+    "lockQuery": "Verrouiller",
+    "preflightPlan": "Plan d'exécution préalable",
+    "expandPlan": "Agrandir",
+    "collapsePlan": "Réduire",
+    "explainUnavailable": "EXPLAIN indisponible.",
+    "explainFailed": "EXPLAIN a échoué : {{error}}",
+    "reasonLabel": "Motif (facultatif)",
+    "reasonPlaceholder": "ex. Risqué en prod, confirmez…",
+    "approve": "Approuver",
+    "deny": "Refuser"
   }
 }

@@ -13,6 +13,7 @@ import {
   WindsurfIcon,
   AntigravityIcon,
 } from "../icons/ClientIcons";
+import { McpSafetySection } from "./mcp/McpSafetySection";
 
 interface McpClientStatus {
   client_id: string;
@@ -279,6 +280,11 @@ export const McpModal = ({ isOpen, onClose }: McpModalProps) => {
                   </p>
                 </div>
               )}
+
+              {/* Safety controls — read-only mode + approval gate */}
+              <div className="pt-2 border-t border-default">
+                <McpSafetySection />
+              </div>
             </>
           )}
         </div>

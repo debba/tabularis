@@ -169,7 +169,31 @@
     "errorTitle": "Installazione Fallita",
     "clients": "CLIENT AI",
     "manualCommand": "COMANDO MANUALE",
-    "manualCommandText": "Esegui questo comando nel terminale, poi riavvia Claude Code."
+    "manualCommandText": "Esegui questo comando nel terminale, poi riavvia Claude Code.",
+    "tabs": {
+      "setup": "Configurazione",
+      "activity": "Attività",
+      "safety": "Sicurezza"
+    },
+    "safety": {
+      "readOnlyTitle": "Modalità sola lettura",
+      "readOnlyDefault": "Rendi tutte le query MCP di sola lettura",
+      "readOnlyDefaultDesc": "Blocca qualsiasi statement non-SELECT proveniente da MCP, salvo le connessioni esplicitamente abilitate.",
+      "readOnlyList": "Connessioni di sola lettura",
+      "readOnlyListDesc": "Queste connessioni rifiuteranno le scritture da MCP. Le altre si comportano normalmente.",
+      "allowList": "Consenti scritture da MCP",
+      "allowListDesc": "Tutte le altre connessioni restano in sola lettura. Solo quelle selezionate possono eseguire scritture.",
+      "approvalTitle": "Approvazione manuale",
+      "approvalMode": "Approvazione richiesta",
+      "approvalModeDesc": "Sospendi le scritture (o ogni query) chiedendo conferma all'utente in Tabularis prima dell'esecuzione.",
+      "modeOff": "Disattiva",
+      "modeWritesOnly": "Solo scritture",
+      "modeAll": "Tutte le query",
+      "approvalTimeout": "Timeout",
+      "approvalTimeoutDesc": "Quanti secondi il processo MCP attende la decisione dell'utente prima di abortire.",
+      "preflightExplain": "EXPLAIN preliminare",
+      "preflightExplainDesc": "Esegui un EXPLAIN della query prima di mostrare il modal di approvazione, così l'utente vede il piano di esecuzione."
+    }
   },
   "connections": {
     "title": "Connessioni",
@@ -495,7 +519,8 @@
       "notebookRunAll": "Esegui Tutte le Celle",
       "categories_notebook": "Notebook",
       "pasteImportClipboard": "Importa dagli Appunti"
-    }
+    },
+    "aiActivity": "Attività AI"
   },
   "update": {
     "newVersionAvailable": "Nuova Versione Disponibile",
@@ -549,6 +574,7 @@
     "password": "Password",
     "passwordMissing": "Password mancante. Per favore reinseriscila.",
     "passwordPlaceholder": "Inserisci password",
+    "usernamePlaceholder": "Inserisci nome utente",
     "filePath": "Percorso File",
     "folderPath": "Percorso Cartella",
     "dbName": "Nome Database",
@@ -620,6 +646,7 @@
     "noData": "Nessun dato da visualizzare",
     "editRow": "Modifica riga",
     "deleteRow": "Elimina riga",
+    "deleteRows": "Elimina {{count}} righe",
     "confirmDelete": "Sei sicuro di voler eliminare questa riga?",
     "deleteTitle": "Elimina riga",
     "updateFailed": "Aggiornamento fallito: ",
@@ -701,6 +728,14 @@
     "queryFailed": "Esecuzione query fallita.",
     "showErrorDetails": "Mostra dettagli",
     "hideErrorDetails": "Nascondi dettagli",
+    "errorBoundary": {
+      "title": "L'editor si è bloccato in modo imprevisto",
+      "description": "Qualcosa nell'editor non è riuscito a renderizzarsi. L'errore è mostrato qui sotto — riprova oppure torna alle connessioni.",
+      "retry": "Riprova",
+      "closeCurrentTab": "Chiudi scheda corrente",
+      "backToConnections": "Torna alle connessioni",
+      "showDetails": "Mostra dettagli tecnici"
+    },
     "newVisualQuery": "Nuova Query Visuale",
     "activeDatabase": "Database attivo",
     "tabSwitcher": {
@@ -1224,5 +1259,95 @@
     "targetColumnPlaceholder": "Scegli destinazione...",
     "skipColumn": "Salta (non importare)",
     "createNewColumn": "Crea nuova colonna"
+  },
+  "aiActivity": {
+    "title": "Attività AI",
+    "description": "Log di ogni chiamata MCP e delle query in attesa di approvazione. Tutto è salvato localmente.",
+    "tabs": {
+      "events": "Eventi",
+      "sessions": "Sessioni"
+    },
+    "empty": "Nessuna attività MCP registrata.",
+    "eventsCount_one": "{{count}} evento",
+    "eventsCount_other": "{{count}} eventi",
+    "blockedCount_one": "{{count}} bloccato",
+    "blockedCount_other": "{{count}} bloccati",
+    "errorsCount_one": "{{count}} errore",
+    "errorsCount_other": "{{count}} errori",
+    "sessionsCount_one": "{{count}} sessione",
+    "sessionsCount_other": "{{count}} sessioni",
+    "events": "Eventi",
+    "runQueries": "Query",
+    "connections": "Connessioni",
+    "client": "Client",
+    "rowsReturned": "Righe restituite",
+    "approvalId": "ID approvazione",
+    "searchQuery": "Cerca nella query…",
+    "allTools": "Tutti gli strumenti",
+    "allStatuses": "Tutti gli stati",
+    "clearAll": "Svuota",
+    "clearConfirm": "Vuoi eliminare l'intera storia delle attività AI? L'operazione è irreversibile.",
+    "exportNotebook": "Esporta come Notebook",
+    "exportSuccess": "Esportato in {{path}}",
+    "viewDetails": "Mostra dettagli",
+    "copyQuery": "Copia query",
+    "openVisualExplain": "Apri in Visual Explain",
+    "copied": "Copiato negli appunti",
+    "detailTitle": "Dettagli evento",
+    "col": {
+      "timestamp": "Ora",
+      "tool": "Strumento",
+      "connection": "Connessione",
+      "query": "Query",
+      "kind": "Tipo",
+      "duration": "Durata",
+      "status": "Stato",
+      "actions": "Azioni"
+    },
+    "sort": {
+      "sortBy": "Ordina per {{field}}",
+      "sortByPlaceholder": "Ordina per…",
+      "toggleAscending": "Ordine crescente",
+      "toggleDescending": "Ordine decrescente",
+      "ascending": "Cresc.",
+      "descending": "Decresc.",
+      "started": "Inizio",
+      "eventCount": "Eventi",
+      "runQueries": "Query eseguite"
+    },
+    "searchSessions": "Cerca sessione, client, connessione…",
+    "filteredFrom": "su {{total}}",
+    "noMatches": "Nessuna sessione corrisponde ai filtri.",
+    "status": {
+      "success": "Successo",
+      "blocked_readonly": "Bloccata (sola lettura)",
+      "blocked_pending_approval": "In attesa",
+      "denied": "Negata",
+      "error": "Errore",
+      "timeout": "Timeout"
+    },
+    "queryKind": {
+      "select": "Lettura",
+      "write": "Scrittura",
+      "ddl": "DDL",
+      "unknown": "Sconosciuto"
+    }
+  },
+  "aiApproval": {
+    "title": "L'AI vuole eseguire una scrittura sul database",
+    "subtitle": "Su {{connection}} — controlla e decidi prima dell'esecuzione.",
+    "subtitleWithClient": "{{client}} su {{connection}} — controlla e decidi prima dell'esecuzione.",
+    "query": "Query",
+    "editQuery": "Modifica prima di approvare",
+    "lockQuery": "Blocca query",
+    "preflightPlan": "Piano di esecuzione preliminare",
+    "expandPlan": "Espandi",
+    "collapsePlan": "Riduci",
+    "explainUnavailable": "EXPLAIN non disponibile per questa query.",
+    "explainFailed": "EXPLAIN fallito: {{error}}",
+    "reasonLabel": "Motivo (opzionale)",
+    "reasonPlaceholder": "es. Sembra rischiosa in produzione, conferma…",
+    "approve": "Approva",
+    "deny": "Nega"
   }
 }

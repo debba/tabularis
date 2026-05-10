@@ -1377,7 +1377,7 @@ mod tests {
         async fn test_no_password() {
             let params = create_params("mysql", "localhost", Some(3306), "root", None, "testdb");
             let url = build_connection_url(&params).await.unwrap();
-            assert_eq!(url, "mysql://root:@localhost:3306/testdb");
+            assert_eq!(url, "mysql://root@localhost:3306/testdb");
         }
 
         #[tokio::test]
@@ -1660,7 +1660,7 @@ mod tests {
             params.username = None;
             params.password = None;
             let url = build_connection_url(&params).await.unwrap();
-            assert!(url.contains(":@localhost"));
+            assert_eq!(url, "mysql://@localhost:3306/testdb");
         }
 
         #[tokio::test]
@@ -2401,23 +2401,26 @@ pub async fn open_er_diagram_window(
 /// Builds a connection URL for a database driver.
 pub async fn build_connection_url(params: &ConnectionParams) -> Result<String, String> {
     let user = encode(params.username.as_deref().unwrap_or_default());
-    let pass = encode(params.password.as_deref().unwrap_or_default());
+    let raw_pass = params.password.as_deref().unwrap_or_default();
+    let credentials = if raw_pass.is_empty() {
+        user.into_owned()
+    } else {
+        format!("{}:{}", user, encode(raw_pass))
+    };
     let host = params.host.as_deref().unwrap_or("localhost");
 
     match params.driver.as_str() {
         "sqlite" => Ok(format!("sqlite://{}", params.database)),
         "postgres" => Ok(format!(
-            "postgres://{}:{}@{}:{}/{}",
-            user,
-            pass,
+            "postgres://{}@{}:{}/{}",
+            credentials,
             host,
             params.port.unwrap_or(DEFAULT_POSTGRES_PORT),
             params.database
         )),
         "mysql" => Ok(format!(
-            "mysql://{}:{}@{}:{}/{}",
-            user,
-            pass,
+            "mysql://{}@{}:{}/{}",
+            credentials,
             host,
             params.port.unwrap_or(DEFAULT_MYSQL_PORT),
             params.database
@@ -3061,4 +3064,32 @@ pub async fn reorder_connections_in_group<R: Runtime>(
 
     persistence::save_connections_file(&path, &file)?;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_server_now<R: Runtime>(
+    app: AppHandle<R>,
+    connection_id: String,
+) -> Result<String, String> {
+    let saved_conn = find_connection_by_id(&app, &connection_id)?;
+    let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
+
+    let query = match saved_conn.params.driver.as_str() {
+        "sqlite" => "SELECT datetime('now', 'localtime')",
+        _ => "SELECT NOW()",
+    };
+
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    let result = drv.execute_query(&params, query, Some(1), 1, None).await?;
+
+    result
+        .rows
+        .first()
+        .and_then(|row| row.first())
+        .map(|v| match v {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        })
+        .ok_or_else(|| "No timestamp returned from server".to_string())
 }

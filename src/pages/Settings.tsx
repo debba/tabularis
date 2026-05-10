@@ -10,6 +10,7 @@ import {
   Plug,
   Info,
   FileJson,
+  Shield,
 } from "lucide-react";
 import clsx from "clsx";
 import { ConfigJsonModal } from "../components/modals/ConfigJsonModal";
@@ -20,6 +21,7 @@ import { AiTab } from "../components/settings/AiTab";
 import { LogsTab } from "../components/settings/LogsTab";
 import { ShortcutsTab } from "../components/settings/ShortcutsTab";
 import { PluginsTab } from "../components/settings/PluginsTab";
+import { AiActivityPanel } from "../components/settings/AiActivityPanel";
 import { InfoTab } from "../components/settings/InfoTab";
 import { PluginSettingsPage } from "../components/settings/PluginSettingsPage";
 import { useDrivers } from "../hooks/useDrivers";
@@ -30,6 +32,7 @@ type SettingsTab =
   | "appearance"
   | "localization"
   | "ai"
+  | "ai-activity"
   | "logs"
   | "shortcuts"
   | "plugins"
@@ -52,6 +55,7 @@ const TAB_ITEMS: Array<{
   { id: "appearance", icon: Palette, labelKey: "settings.appearance" },
   { id: "localization", icon: Languages, labelKey: "settings.localization" },
   { id: "ai", icon: Sparkles, labelKey: "settings.ai.tab" },
+  { id: "ai-activity", icon: Shield, labelKey: "settings.aiActivity" },
   { id: "logs", icon: ScrollText, labelKey: "settings.logs" },
   { id: "shortcuts", icon: Keyboard, labelKey: "settings.shortcuts.title" },
   { id: "info", icon: Info, labelKey: "settings.info" },
@@ -62,6 +66,7 @@ const TAB_COMPONENTS: Partial<Record<SettingsTab, React.ComponentType>> = {
   appearance: AppearanceTab,
   localization: LocalizationTab,
   ai: AiTab,
+  "ai-activity": AiActivityPanel,
   logs: LogsTab,
   shortcuts: ShortcutsTab,
   plugins: PluginsTab,

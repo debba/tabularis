@@ -169,7 +169,31 @@
     "errorTitle": "Installation fehlgeschlagen",
     "clients": "KI-CLIENTS",
     "manualCommand": "MANUELLER BEFEHL",
-    "manualCommandText": "Führe diesen Befehl im Terminal aus und starte anschließend Claude Code neu."
+    "manualCommandText": "Führe diesen Befehl im Terminal aus und starte anschließend Claude Code neu.",
+    "tabs": {
+      "setup": "Einrichtung",
+      "activity": "Aktivität",
+      "safety": "Sicherheit"
+    },
+    "safety": {
+      "readOnlyTitle": "Nur-Lese-Modus",
+      "readOnlyDefault": "Alle MCP-Abfragen nur lesen",
+      "readOnlyDefaultDesc": "Blockiere jede Nicht-SELECT-Anweisung über MCP, außer für die unten erlaubten Verbindungen.",
+      "readOnlyList": "Nur-Lese-Verbindungen",
+      "readOnlyListDesc": "Diese Verbindungen lehnen Schreibvorgänge ab. Andere verhalten sich normal.",
+      "allowList": "Schreibvorgänge erlauben",
+      "allowListDesc": "Andere bleiben nur lesbar. Nur markierte dürfen schreiben.",
+      "approvalTitle": "Freigabe",
+      "approvalMode": "Freigabe erforderlich",
+      "approvalModeDesc": "Pausiert Schreibvorgänge (oder jede Abfrage) und fragt den Nutzer vor der Ausführung.",
+      "modeOff": "Aus",
+      "modeWritesOnly": "Nur Schreibvorgänge",
+      "modeAll": "Alle Abfragen",
+      "approvalTimeout": "Zeitlimit",
+      "approvalTimeoutDesc": "Wie lange gewartet wird, bevor abgebrochen wird.",
+      "preflightExplain": "Vorab-EXPLAIN",
+      "preflightExplainDesc": "Führt vor dem Modal ein EXPLAIN aus, damit der Plan sichtbar ist."
+    }
   },
   "connections": {
     "title": "Verbindungen",
@@ -495,7 +519,8 @@
       "notebookRunAll": "Alle Zellen ausführen",
       "categories_notebook": "Notebook",
       "pasteImportClipboard": "Aus Zwischenablage importieren"
-    }
+    },
+    "aiActivity": "KI-Aktivität"
   },
   "update": {
     "newVersionAvailable": "Neue Version verfügbar",
@@ -549,6 +574,7 @@
     "password": "Passwort",
     "passwordMissing": "Passwort fehlt oder ist nicht gesetzt. Bitte erneut eingeben.",
     "passwordPlaceholder": "Passwort eingeben",
+    "usernamePlaceholder": "Benutzername eingeben",
     "filePath": "Dateipfad",
     "folderPath": "Ordnerpfad",
     "dbName": "Datenbankname",
@@ -620,6 +646,7 @@
     "noData": "Keine Daten zum Anzeigen",
     "editRow": "Zeile bearbeiten",
     "deleteRow": "Zeile löschen",
+    "deleteRows": "{{count}} Zeilen löschen",
     "confirmDelete": "Möchtest du diese Zeile wirklich löschen?",
     "deleteTitle": "Zeile löschen",
     "updateFailed": "Aktualisierung fehlgeschlagen: ",
@@ -638,11 +665,13 @@
     "copyRows": "{{count}} Zeile(n) kopieren",
     "copied": "In Zwischenablage kopiert",
     "discardInsertion": "Klicken, um diese Zeile zu verwerfen (Rollback)",
+    "duplicateRow": "Zeile duplizieren",
     "revertSelected": "Auswahl zurücksetzen",
     "setGenerate": "GENERATED setzen",
     "setNull": "NULL setzen",
     "setDefault": "DEFAULT setzen",
-    "setEmpty": "EMPTY setzen"
+    "setEmpty": "EMPTY setzen",
+    "setServerNow": "Aktuellen Zeitstempel einfügen"
   },
   "editRow": {
     "title": "Zeile bearbeiten",
@@ -701,6 +730,14 @@
     "queryFailed": "Abfrage fehlgeschlagen.",
     "showErrorDetails": "Details anzeigen",
     "hideErrorDetails": "Details ausblenden",
+    "errorBoundary": {
+      "title": "Der Editor ist unerwartet abgestürzt",
+      "description": "Etwas im Editor konnte nicht gerendert werden. Der Fehler wird unten angezeigt — versuche es erneut oder kehre zu deinen Verbindungen zurück.",
+      "retry": "Erneut versuchen",
+      "closeCurrentTab": "Aktuellen Tab schließen",
+      "backToConnections": "Zurück zu den Verbindungen",
+      "showDetails": "Technische Details anzeigen"
+    },
     "newVisualQuery": "Neue visuelle Abfrage",
     "activeDatabase": "Aktive Datenbank",
     "tabSwitcher": {
@@ -1243,5 +1280,95 @@
     "targetColumnPlaceholder": "Ziel wählen...",
     "skipColumn": "Überspringen (nicht importieren)",
     "createNewColumn": "Neue Spalte erstellen"
+  },
+  "aiActivity": {
+    "title": "KI-Aktivität",
+    "description": "Protokoll aller MCP-Aufrufe und ausstehender Freigaben. Lokal gespeichert.",
+    "tabs": {
+      "events": "Ereignisse",
+      "sessions": "Sitzungen"
+    },
+    "empty": "Noch keine MCP-Aktivität.",
+    "eventsCount_one": "{{count}} Ereignis",
+    "eventsCount_other": "{{count}} Ereignisse",
+    "blockedCount_one": "{{count}} blockiert",
+    "blockedCount_other": "{{count}} blockiert",
+    "errorsCount_one": "{{count}} Fehler",
+    "errorsCount_other": "{{count}} Fehler",
+    "sessionsCount_one": "{{count}} Sitzung",
+    "sessionsCount_other": "{{count}} Sitzungen",
+    "events": "Ereignisse",
+    "runQueries": "Abfragen",
+    "connections": "Verbindungen",
+    "client": "Client",
+    "rowsReturned": "Zeilen zurück",
+    "approvalId": "Freigabe-ID",
+    "searchQuery": "In Abfrage suchen…",
+    "allTools": "Alle Tools",
+    "allStatuses": "Alle Status",
+    "clearAll": "Leeren",
+    "clearConfirm": "Den gesamten KI-Aktivitätsverlauf löschen? Unwiderruflich.",
+    "exportNotebook": "Als Notebook exportieren",
+    "exportSuccess": "Exportiert nach {{path}}",
+    "viewDetails": "Details anzeigen",
+    "copyQuery": "Abfrage kopieren",
+    "openVisualExplain": "In Visual Explain öffnen",
+    "copied": "In Zwischenablage kopiert",
+    "detailTitle": "Ereignisdetails",
+    "col": {
+      "timestamp": "Zeit",
+      "tool": "Tool",
+      "connection": "Verbindung",
+      "query": "Abfrage",
+      "kind": "Typ",
+      "duration": "Dauer",
+      "status": "Status",
+      "actions": "Aktionen"
+    },
+    "sort": {
+      "sortBy": "Sortieren nach {{field}}",
+      "sortByPlaceholder": "Sortieren nach…",
+      "toggleAscending": "Aufsteigend sortieren",
+      "toggleDescending": "Absteigend sortieren",
+      "ascending": "Aufst.",
+      "descending": "Abst.",
+      "started": "Start",
+      "eventCount": "Ereignisse",
+      "runQueries": "Ausgeführte Abfragen"
+    },
+    "searchSessions": "Suche Sitzung, Client, Verbindung…",
+    "filteredFrom": "von {{total}}",
+    "noMatches": "Keine Sitzung entspricht den Filtern.",
+    "status": {
+      "success": "Erfolg",
+      "blocked_readonly": "Blockiert (nur lesen)",
+      "blocked_pending_approval": "Ausstehend",
+      "denied": "Abgelehnt",
+      "error": "Fehler",
+      "timeout": "Zeitüberschreitung"
+    },
+    "queryKind": {
+      "select": "Lesen",
+      "write": "Schreiben",
+      "ddl": "DDL",
+      "unknown": "Unbekannt"
+    }
+  },
+  "aiApproval": {
+    "title": "KI möchte in die Datenbank schreiben",
+    "subtitle": "Auf {{connection}} — vor Ausführung prüfen.",
+    "subtitleWithClient": "{{client}} auf {{connection}} — vor Ausführung prüfen.",
+    "query": "Abfrage",
+    "editQuery": "Vor Freigabe bearbeiten",
+    "lockQuery": "Sperren",
+    "preflightPlan": "Vorab-Ausführungsplan",
+    "expandPlan": "Vergrößern",
+    "collapsePlan": "Verkleinern",
+    "explainUnavailable": "EXPLAIN nicht verfügbar.",
+    "explainFailed": "EXPLAIN fehlgeschlagen: {{error}}",
+    "reasonLabel": "Grund (optional)",
+    "reasonPlaceholder": "z.B. In Prod riskant, bestätigen…",
+    "approve": "Freigeben",
+    "deny": "Ablehnen"
   }
 }

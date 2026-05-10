@@ -1,3 +1,49 @@
+## [0.10.2](https://github.com/debba/tabularis/compare/v0.10.1...v0.10.2) (2026-05-08)
+
+
+### Bug Fixes
+
+* **db:** omit empty password in connection URLs ([6164f49](https://github.com/debba/tabularis/commit/6164f49e4644d2842bb6706930133bfc0a523ff3))
+* **postgres:** switch deadpool TLS to rustls + honor ssl_ca ([8dd0d3b](https://github.com/debba/tabularis/commit/8dd0d3b47a6d66fe4fcffd858fb68652b8bf9f64)), closes [#166](https://github.com/debba/tabularis/issues/166)
+
+
+### Features
+
+* **data-grid:** add SQL INSERT as a copy format option ([088aa90](https://github.com/debba/tabularis/commit/088aa905d23cc0cca1f7ba7b2f2a28975428b438))
+* **data-grid:** cell-level selection and copy ([2b31e6f](https://github.com/debba/tabularis/commit/2b31e6f8f390a3d58983a6122c236a8903229607))
+* **postgres:** coerce boolean strings to bool for boolean columns ([71aea59](https://github.com/debba/tabularis/commit/71aea59589bf0444a5fa76ad1067e6ec814b00db)), closes [#155](https://github.com/debba/tabularis/issues/155)
+
+## [0.10.1](https://github.com/debba/tabularis/compare/v0.10.0...v0.10.1) (2026-05-04)
+
+
+### Bug Fixes
+
+* resolve LIMIT keyword misidentification in SQL pagination ([c4d2298](https://github.com/debba/tabularis/commit/c4d22986cd2119817b0bb90b0f446854a90fd380))
+
+
+### Features
+
+* **app:** use semantic version compare for whats-new and changelog ([dc474df](https://github.com/debba/tabularis/commit/dc474df5f3f3d6ddd81db01eb30c7da103ae5995))
+* Make database selector dropdowns scrollable after 10 entries ([390a811](https://github.com/debba/tabularis/commit/390a81156f0df382cb47ba8d6454e19ee4c3b8ee))
+* **postgres:** add binding module for parameterized values ([f15a268](https://github.com/debba/tabularis/commit/f15a2687fb27dc3a705c7cdbc2d645a420293562))
+* **query-builder:** add mini result grid, schema hook, and layout util ([8c79525](https://github.com/debba/tabularis/commit/8c79525caaa9138ddc2a43dfba95001f1d7688a7))
+
+# [0.10.0](https://github.com/debba/tabularis/compare/v0.9.21...v0.10.0) (2026-04-27)
+
+
+### Bug Fixes
+
+* **hooks:** preserve session events while loading and stabilize filter ([86b243b](https://github.com/debba/tabularis/commit/86b243b74f5f1768e1850f26a570e26cfbb7a54d))
+* **plugins:** unregister running driver and verify installed manifest ([d045eea](https://github.com/debba/tabularis/commit/d045eea46f66846cc4c5b413b7b76bc245c488db))
+
+
+### Features
+
+* **ai:** add AI audit log, approval gate, notebook export and UI ([2399370](https://github.com/debba/tabularis/commit/2399370deeec493dfda01c01e620d25225fb31c2))
+* **gitnexus:** add GitNexus skills and MCP UI page ([f3e0214](https://github.com/debba/tabularis/commit/f3e021485f969505e36964760236481e192d4015))
+* **heartbeat:** add GUI heartbeat and liveness-aware approval polling ([93f6765](https://github.com/debba/tabularis/commit/93f67655fbc13cdaad2a735a97f83340d8fb755a))
+* **ui:** add session search, sorting and plan expand ([cbd5d91](https://github.com/debba/tabularis/commit/cbd5d91269e938605b1a4c3e20954b0e162fd3fa))
+
 ## [0.9.21](https://github.com/debba/tabularis/compare/v0.9.20...v0.9.21) (2026-04-22)
 
 

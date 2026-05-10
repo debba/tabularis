@@ -1,4 +1,15 @@
 pub mod ai;
+pub mod ai_activity;
+#[cfg(test)]
+pub mod ai_activity_tests;
+pub mod ai_approval;
+#[cfg(test)]
+pub mod ai_approval_tests;
+pub mod ai_approval_watcher;
+pub mod ai_commands;
+pub mod ai_notebook_export;
+#[cfg(test)]
+pub mod ai_notebook_export_tests;
 pub mod cli;
 pub mod clipboard_import;
 pub mod commands;
@@ -13,6 +24,9 @@ pub mod explain_import;
 pub mod explain_import_tests;
 pub mod export;
 pub mod health_check;
+pub mod heartbeat;
+#[cfg(test)]
+pub mod heartbeat_tests;
 pub mod keychain_utils;
 pub mod log_commands;
 pub mod logger;
@@ -25,6 +39,8 @@ pub mod paths; // Added
 pub mod persistence;
 pub mod plugins;
 pub mod pool_manager;
+#[cfg(test)]
+pub mod pool_manager_tests;
 pub mod preferences;
 pub mod query_history;
 #[cfg(test)]
@@ -175,6 +191,14 @@ pub fn run() {
                 });
             }
 
+            // Watch for pending MCP approval requests and run periodic cleanup.
+            ai_approval_watcher::spawn(app.handle().clone());
+
+            // Refresh the GUI heartbeat so the MCP subprocess can detect
+            // when Tabularis is closed and fail fast on approval-gated
+            // queries instead of waiting for the full approval timeout.
+            heartbeat::spawn();
+
             // Open devtools automatically in debug mode
             if args.debug {
                 if let Some(window) = app.get_webview_window("main") {
@@ -255,6 +279,7 @@ pub fn run() {
             commands::get_file_stats,
             commands::read_file_as_data_url,
             commands::execute_query,
+            commands::get_server_now,
             commands::explain_query_plan,
             commands::count_query,
             commands::cancel_query,
@@ -334,6 +359,16 @@ pub fn run() {
             // MCP
             mcp::install::get_mcp_status,
             mcp::install::install_mcp_config,
+            // AI Activity / Approvals
+            ai_commands::get_ai_activity,
+            ai_commands::get_ai_sessions,
+            ai_commands::get_ai_session_events,
+            ai_commands::clear_ai_activity,
+            ai_commands::export_ai_activity_json,
+            ai_commands::export_ai_activity_csv,
+            ai_commands::export_ai_session_as_notebook,
+            ai_commands::list_pending_approvals,
+            ai_commands::decide_pending_approval,
             // Themes
             theme_commands::get_all_themes,
             theme_commands::get_theme,

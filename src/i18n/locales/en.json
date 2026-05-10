@@ -169,7 +169,31 @@
     "errorTitle": "Installation Failed",
     "clients": "AI CLIENTS",
     "manualCommand": "MANUAL COMMAND",
-    "manualCommandText": "Run this command in your terminal, then restart Claude Code."
+    "manualCommandText": "Run this command in your terminal, then restart Claude Code.",
+    "tabs": {
+      "setup": "Setup",
+      "activity": "Activity",
+      "safety": "Safety"
+    },
+    "safety": {
+      "readOnlyTitle": "Read-only mode",
+      "readOnlyDefault": "Make all MCP queries read-only",
+      "readOnlyDefaultDesc": "Block any non-SELECT statement coming through MCP unless the connection is explicitly allowed below.",
+      "readOnlyList": "Read-only connections",
+      "readOnlyListDesc": "These connections will reject writes from MCP. Other connections behave normally.",
+      "allowList": "Allow writes from MCP",
+      "allowListDesc": "All other connections stay read-only. Only the connections checked here may execute writes.",
+      "approvalTitle": "Approval gate",
+      "approvalMode": "Approval required",
+      "approvalModeDesc": "Pause writes (or every query) and ask the user to approve them inside Tabularis before they hit the database.",
+      "modeOff": "Off",
+      "modeWritesOnly": "Writes only",
+      "modeAll": "All queries",
+      "approvalTimeout": "Timeout",
+      "approvalTimeoutDesc": "How long the MCP subprocess will wait for the user's decision before failing the request.",
+      "preflightExplain": "Pre-flight EXPLAIN",
+      "preflightExplainDesc": "Run an EXPLAIN against the query before showing the approval modal so the user sees the execution plan."
+    }
   },
   "connections": {
     "title": "Connections",
@@ -495,7 +519,8 @@
       "notebookRunAll": "Run All Cells",
       "categories_notebook": "Notebook",
       "pasteImportClipboard": "Import from Clipboard"
-    }
+    },
+    "aiActivity": "AI Activity"
   },
   "update": {
     "newVersionAvailable": "New Version Available",
@@ -549,6 +574,7 @@
     "password": "Password",
     "passwordMissing": "Password missing or not set. Please re-enter.",
     "passwordPlaceholder": "Enter password",
+    "usernamePlaceholder": "Enter username",
     "filePath": "File Path",
     "folderPath": "Folder Path",
     "dbName": "Database Name",
@@ -620,6 +646,7 @@
     "noData": "No data to display",
     "editRow": "Edit Row",
     "deleteRow": "Delete Row",
+    "deleteRows": "Delete {{count}} rows",
     "confirmDelete": "Are you sure you want to delete this row?",
     "deleteTitle": "Delete Row",
     "updateFailed": "Update failed: ",
@@ -638,11 +665,13 @@
     "copyRows": "Copy {{count}} Rows",
     "copied": "Copied to clipboard",
     "discardInsertion": "Click to discard this row (rollback)",
+    "duplicateRow": "Duplicate Row",
     "revertSelected": "Revert Selected",
     "setGenerate": "Set GENERATED",
     "setNull": "Set NULL",
     "setDefault": "Set DEFAULT",
-    "setEmpty": "Set EMPTY"
+    "setEmpty": "Set EMPTY",
+    "setServerNow": "Insert Current Timestamp"
   },
   "editRow": {
     "title": "Edit Row",
@@ -701,6 +730,14 @@
     "queryFailed": "Query failed.",
     "showErrorDetails": "Show details",
     "hideErrorDetails": "Hide details",
+    "errorBoundary": {
+      "title": "The editor crashed unexpectedly",
+      "description": "Something in the editor failed to render. The error is shown below — try again, or go back to your connections.",
+      "retry": "Try again",
+      "closeCurrentTab": "Close current tab",
+      "backToConnections": "Back to connections",
+      "showDetails": "Show technical details"
+    },
     "newVisualQuery": "New Visual Query",
     "activeDatabase": "Active database",
     "tabSwitcher": {
@@ -1243,5 +1280,95 @@
     "targetColumnPlaceholder": "Choose target...",
     "skipColumn": "Skip (do not import)",
     "createNewColumn": "Create new column"
+  },
+  "aiActivity": {
+    "title": "AI Activity",
+    "description": "Audit log of every MCP tool call, plus the queries waiting for your approval. Stored locally — never sent anywhere.",
+    "tabs": {
+      "events": "Events",
+      "sessions": "Sessions"
+    },
+    "empty": "No MCP activity yet.",
+    "eventsCount_one": "{{count}} event",
+    "eventsCount_other": "{{count}} events",
+    "blockedCount_one": "{{count}} blocked",
+    "blockedCount_other": "{{count}} blocked",
+    "errorsCount_one": "{{count}} error",
+    "errorsCount_other": "{{count}} errors",
+    "sessionsCount_one": "{{count}} session",
+    "sessionsCount_other": "{{count}} sessions",
+    "events": "Events",
+    "runQueries": "Queries",
+    "connections": "Connections",
+    "client": "Client",
+    "rowsReturned": "Rows returned",
+    "approvalId": "Approval ID",
+    "searchQuery": "Search query…",
+    "allTools": "All tools",
+    "allStatuses": "All statuses",
+    "clearAll": "Clear",
+    "clearConfirm": "Delete the entire AI activity history? This cannot be undone.",
+    "exportNotebook": "Export as Notebook",
+    "exportSuccess": "Exported to {{path}}",
+    "viewDetails": "View details",
+    "copyQuery": "Copy query",
+    "openVisualExplain": "Open in Visual Explain",
+    "copied": "Copied to clipboard",
+    "detailTitle": "Event details",
+    "col": {
+      "timestamp": "Time",
+      "tool": "Tool",
+      "connection": "Connection",
+      "query": "Query",
+      "kind": "Kind",
+      "duration": "Duration",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "sort": {
+      "sortBy": "Sort by {{field}}",
+      "sortByPlaceholder": "Sort by…",
+      "toggleAscending": "Sort ascending",
+      "toggleDescending": "Sort descending",
+      "ascending": "Asc",
+      "descending": "Desc",
+      "started": "Started",
+      "eventCount": "Events",
+      "runQueries": "Run queries"
+    },
+    "searchSessions": "Search session, client, connection…",
+    "filteredFrom": "of {{total}}",
+    "noMatches": "No sessions match the current filters.",
+    "status": {
+      "success": "Success",
+      "blocked_readonly": "Blocked (read-only)",
+      "blocked_pending_approval": "Pending approval",
+      "denied": "Denied",
+      "error": "Error",
+      "timeout": "Timeout"
+    },
+    "queryKind": {
+      "select": "Select",
+      "write": "Write",
+      "ddl": "DDL",
+      "unknown": "Unknown"
+    }
+  },
+  "aiApproval": {
+    "title": "AI requested a database write",
+    "subtitle": "On {{connection}} — review and decide before it executes.",
+    "subtitleWithClient": "{{client}} on {{connection}} — review and decide before it executes.",
+    "query": "Query",
+    "editQuery": "Edit before approving",
+    "lockQuery": "Lock query",
+    "preflightPlan": "Pre-flight execution plan",
+    "expandPlan": "Expand",
+    "collapsePlan": "Collapse",
+    "explainUnavailable": "EXPLAIN unavailable for this query.",
+    "explainFailed": "EXPLAIN failed: {{error}}",
+    "reasonLabel": "Reason (optional)",
+    "reasonPlaceholder": "e.g. Looks risky on prod, please confirm…",
+    "approve": "Approve",
+    "deny": "Deny"
   }
 }

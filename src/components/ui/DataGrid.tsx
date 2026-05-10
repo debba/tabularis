@@ -20,6 +20,8 @@ import {
   ArrowDown,
   ArrowUpDown,
   Copy,
+  CopyPlus,
+  Clock,
   Undo,
   Trash2,
   Edit,
@@ -45,7 +47,11 @@ import {
 import { isGeometricType, formatGeometricValue } from "../../utils/geometry";
 import { isBlobColumn, isBlobWireFormat } from "../../utils/blob";
 import { isJsonColumn } from "../../utils/json";
-import { getDateInputMode } from "../../utils/dateInput";
+import {
+  getDateInputMode,
+  parseDateTime,
+  formatDateTime,
+} from "../../utils/dateInput";
 import { GeometryInput } from "./GeometryInput";
 import { DateInput } from "./DateInput";
 import { RowEditorSidebar } from "./RowEditorSidebar";
@@ -53,6 +59,7 @@ import { useDatabase } from "../../hooks/useDatabase";
 import {
   rowsToCSV,
   rowsToJSON,
+  rowsToSqlInsert,
   getSelectedRows,
   copyTextToClipboard,
 } from "../../utils/clipboard";
@@ -84,9 +91,11 @@ interface DataGridProps {
   onDiscardInsertion?: (tempId: string) => void;
   onRevertDeletion?: (pkVal: unknown) => void;
   onMarkForDeletion?: (pkVal: unknown) => void;
+  onMarkMultipleForDeletion?: (pkVals: unknown[]) => void;
+  onDuplicateRow?: (rowData: Record<string, unknown>) => void;
   selectedRows?: Set<number>;
   onSelectionChange?: (indices: Set<number>) => void;
-  copyFormat?: "csv" | "json";
+  copyFormat?: "csv" | "json" | "sql-insert";
   csvDelimiter?: string;
   sortClause?: string;
   onSort?: (colName: string) => void;
@@ -113,6 +122,8 @@ export const DataGrid = React.memo(
     onDiscardInsertion,
     onRevertDeletion,
     onMarkForDeletion,
+    onMarkMultipleForDeletion,
+    onDuplicateRow,
     selectedRows: externalSelectedRows,
     onSelectionChange,
     copyFormat,
@@ -162,6 +173,10 @@ export const DataGrid = React.memo(
     const [lastSelectedRowIndex, setLastSelectedRowIndex] = useState<
       number | null
     >(null);
+    const [focusedCell, setFocusedCell] = useState<{
+      rowIndex: number;
+      colIndex: number;
+    } | null>(null);
     const editInputRef = useRef<HTMLInputElement>(null);
 
     const selectedRowIndices =
@@ -263,6 +278,7 @@ export const DataGrid = React.memo(
     );
 
     const handleSelectAll = useCallback(() => {
+      setFocusedCell(null);
       if (selectedRowIndices.size === mergedRows.length) {
         updateSelection(new Set());
       } else {
@@ -488,7 +504,10 @@ export const DataGrid = React.memo(
       () =>
         columns.map((colName, index) =>
           columnHelper.accessor((row) => row[index], {
-            id: colName,
+            // react-table requires a non-empty `id` when an accessorFn is used.
+            // Some drivers (e.g. SQL Server `SELECT @@VERSION`, Postgres `SELECT 1 AS ""`)
+            // return columns with an empty name, which would otherwise crash the grid.
+            id: colName !== "" ? colName : `__unnamed_${index}__`,
             header: () => {
               const sortState = getColumnSortState(colName, sortClause);
               const displaySortState: "none" | "asc" | "desc" =
@@ -679,29 +698,67 @@ export const DataGrid = React.memo(
     const deleteSelectedRow = useCallback(() => {
       if (!contextMenu) return;
 
-      const isInsertion = contextMenu.mergedRow?.type === "insertion";
-      const tempId = contextMenu.mergedRow?.tempId;
+      // If the right-clicked row is part of a multi-selection, delete all selected rows.
+      // Otherwise fall back to deleting just the right-clicked row.
+      const rightClickedIsSelected = selectedRowIndices.has(contextMenu.rowIndex);
+      const indicesToDelete =
+        rightClickedIsSelected && selectedRowIndices.size > 1
+          ? Array.from(selectedRowIndices)
+          : [contextMenu.rowIndex];
 
-      // Handle insertion row deletion (discard)
-      if (isInsertion && tempId && onDiscardInsertion) {
-        onDiscardInsertion(tempId);
-        setContextMenu(null);
-        return;
+      const pkVals: unknown[] = [];
+      for (const idx of indicesToDelete) {
+        const mergedRow = mergedRows[idx];
+        if (!mergedRow) continue;
+
+        if (mergedRow.type === "insertion" && mergedRow.tempId && onDiscardInsertion) {
+          onDiscardInsertion(mergedRow.tempId);
+        } else if (mergedRow.type === "existing" && pkColumn && pkIndexMap !== null) {
+          pkVals.push(mergedRow.rowData[pkIndexMap]);
+        }
       }
 
-      // For existing rows, mark for deletion
-      if (pkColumn && pkIndexMap !== null && onMarkForDeletion) {
-        const pkVal = contextMenu.row[pkIndexMap];
-        onMarkForDeletion(pkVal);
-        setContextMenu(null);
+      // Use batch handler to avoid stale-closure overwrites when called per-row.
+      if (pkVals.length > 0) {
+        if (onMarkMultipleForDeletion) {
+          onMarkMultipleForDeletion(pkVals);
+        } else if (onMarkForDeletion) {
+          pkVals.forEach((v) => onMarkForDeletion(v));
+        }
       }
+
+      setContextMenu(null);
     }, [
       contextMenu,
+      selectedRowIndices,
+      mergedRows,
       onDiscardInsertion,
       onMarkForDeletion,
+      onMarkMultipleForDeletion,
       pkColumn,
       pkIndexMap,
     ]);
+
+    const duplicateSelectedRow = useCallback(() => {
+      if (!contextMenu || !onDuplicateRow) return;
+
+      const mergedRow = contextMenu.mergedRow;
+      const rowData: Record<string, unknown> = {};
+
+      if (mergedRow?.type === "insertion" && mergedRow.tempId && pendingInsertions) {
+        const insertion = pendingInsertions[mergedRow.tempId];
+        if (insertion) {
+          Object.assign(rowData, insertion.data);
+        }
+      } else {
+        columns.forEach((col, idx) => {
+          rowData[col] = contextMenu.row[idx];
+        });
+      }
+
+      onDuplicateRow(rowData);
+      setContextMenu(null);
+    }, [contextMenu, columns, pendingInsertions, onDuplicateRow]);
 
     const buildRowDataWithPending = useCallback(
       (rowArray: unknown[], isInsertion: boolean): Record<string, unknown> => {
@@ -761,6 +818,38 @@ export const DataGrid = React.memo(
     }, [contextMenu, setCellValue]);
     const setCellEmpty = useCallback(() => setCellValue(" "), [setCellValue]);
 
+    const setCellServerNow = useCallback(() => {
+      if (!contextMenu || !connectionId) return;
+      const { colName, mergedRow, row } = contextMenu;
+      const isInsertion = mergedRow?.type === "insertion";
+      const colDataType = columnTypeMap?.get(colName) ?? "";
+      const dateMode = getDateInputMode(colDataType);
+      if (!dateMode) return;
+
+      setContextMenu(null);
+      invoke<string>("get_server_now", { connectionId })
+        .then((raw) => {
+          const formatted = formatDateTime(parseDateTime(raw), dateMode);
+          if (isInsertion && onPendingInsertionChange && mergedRow?.tempId) {
+            onPendingInsertionChange(mergedRow.tempId, colName, formatted);
+          } else if (onPendingChange && pkIndexMap !== null) {
+            onPendingChange(row[pkIndexMap], colName, formatted);
+          }
+        })
+        .catch((err) => {
+          showAlert(String(err), { title: t("general.error"), kind: "error" });
+        });
+    }, [
+      contextMenu,
+      connectionId,
+      columnTypeMap,
+      onPendingInsertionChange,
+      onPendingChange,
+      pkIndexMap,
+      t,
+      showAlert,
+    ]);
+
     const copyToClipboard = useCallback(
       async (text: string) => {
         try {
@@ -779,11 +868,13 @@ export const DataGrid = React.memo(
     );
 
     const formatRows = useCallback(
-      (rows: unknown[][]) =>
-        copyFormat === "json"
-          ? rowsToJSON(rows, columns)
-          : rowsToCSV(rows, "null", csvDelimiter),
-      [columns, copyFormat, csvDelimiter],
+      (rows: unknown[][]) => {
+        if (copyFormat === "json") return rowsToJSON(rows, columns);
+        if (copyFormat === "sql-insert")
+          return rowsToSqlInsert(rows, columns, tableName ?? "table");
+        return rowsToCSV(rows, "null", csvDelimiter);
+      },
+      [columns, copyFormat, csvDelimiter, tableName],
     );
 
     const copySelectedOrContextRow = useCallback(async () => {
@@ -823,22 +914,47 @@ export const DataGrid = React.memo(
       );
     }, [selectedRowIndices, data, formatRows, copyToClipboard]);
 
+    const copyCellValue = useCallback(
+      async (rowIndex: number, colIndex: number) => {
+        const mergedRow = mergedRows[rowIndex];
+        if (!mergedRow) return;
+        const rawValue = mergedRow.rowData[colIndex];
+        const colName = columns[colIndex];
+        const colType = columnTypeMap?.get(colName);
+        const colLength = columnLengthMap?.get(colName);
+        const text = formatCellValue(rawValue, "null", colType, colLength);
+        await copyToClipboard(text);
+      },
+      [mergedRows, columns, columnTypeMap, columnLengthMap, copyToClipboard],
+    );
+
+    const copyCellFromContext = useCallback(async () => {
+      if (!contextMenu) return;
+      await copyCellValue(contextMenu.rowIndex, contextMenu.colIndex);
+      setContextMenu(null);
+    }, [contextMenu, copyCellValue]);
+
     // Handle keyboard shortcuts
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
         // CMD/CTRL + C
         if ((e.metaKey || e.ctrlKey) && e.key === "c") {
           // Only handle if not editing a cell
-          if (!editingCell && selectedRowIndices.size > 0) {
-            e.preventDefault();
-            copySelectedCells();
+          if (!editingCell) {
+            if (focusedCell) {
+              e.preventDefault();
+              copyCellValue(focusedCell.rowIndex, focusedCell.colIndex);
+            } else if (selectedRowIndices.size > 0) {
+              e.preventDefault();
+              copySelectedCells();
+            }
           }
         }
       };
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [editingCell, selectedRowIndices, copySelectedCells]);
+    }, [editingCell, selectedRowIndices, focusedCell, copyCellValue, copySelectedCells]);
 
     // Show "no data" if there are no columns (even with pending insertions, we can't render without column info)
     // OR if there are columns but no data and no pending insertions
@@ -940,7 +1056,10 @@ export const DataGrid = React.memo(
                       }`}
                     >
                       <td
-                        onClick={(e) => handleRowClick(rowIndex, e)}
+                        onClick={(e) => {
+                          setFocusedCell(null);
+                          handleRowClick(rowIndex, e);
+                        }}
                         className={`px-2 py-1.5 text-xs text-center border-b border-r border-default sticky left-0 z-10 cursor-pointer select-none w-[50px] min-w-[50px] ${
                           isInsertion
                             ? isSelected
@@ -999,6 +1118,10 @@ export const DataGrid = React.memo(
                           isModified,
                         });
 
+                        const isFocused =
+                          focusedCell?.rowIndex === rowIndex &&
+                          focusedCell?.colIndex === colIndex;
+
                         return (
                           <td
                             key={cell.id}
@@ -1008,7 +1131,8 @@ export const DataGrid = React.memo(
                               if (target.closest("button")) {
                                 return;
                               }
-                              handleRowClick(rowIndex, e);
+                              setFocusedCell({ rowIndex, colIndex });
+                              updateSelection(new Set());
                             }}
                             onDoubleClick={() =>
                               !isPendingDelete &&
@@ -1030,7 +1154,7 @@ export const DataGrid = React.memo(
                                 colName,
                               )
                             }
-                            className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 font-mono ${isEditing ? "relative" : "whitespace-nowrap truncate max-w-[300px]"} cursor-text ${stateClass}`}
+                            className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 font-mono ${isEditing ? "relative" : "whitespace-nowrap truncate max-w-[300px]"} cursor-text ${stateClass} ${isFocused ? "ring-2 ring-inset ring-blue-400" : ""}`}
                             title={!isEditing ? String(displayValue) : ""}
                           >
                             {isEditing
@@ -1240,6 +1364,10 @@ export const DataGrid = React.memo(
               const canRevert =
                 isInsertion || hasPendingChanges || hasPendingDeletion;
 
+              const deleteRowCount = selectedRowIndices.has(contextMenu.rowIndex)
+                ? selectedRowIndices.size
+                : 1;
+
               // Determine which cell value options to show based on column properties
               const { colName } = contextMenu;
               const isAutoIncrement = autoIncrementColumns?.includes(colName);
@@ -1282,12 +1410,25 @@ export const DataGrid = React.memo(
                     action: setCellEmpty,
                   });
                 }
+                if (getDateInputMode(colDataType) !== null) {
+                  menuItems.push({
+                    label: t("dataGrid.setServerNow"),
+                    icon: Clock,
+                    action: setCellServerNow,
+                  });
+                }
 
                 // Separator before row actions
                 if (menuItems.length > 0) {
                   menuItems.push({ separator: true });
                 }
               }
+
+              menuItems.push({
+                label: t("dataGrid.copyCell"),
+                icon: Copy,
+                action: copyCellFromContext,
+              });
 
               menuItems.push({
                 label: t("dataGrid.copySelectedRows"),
@@ -1303,7 +1444,14 @@ export const DataGrid = React.memo(
                     action: openSidebarEditor,
                   },
                   {
-                    label: t("dataGrid.deleteRow"),
+                    label: t("dataGrid.duplicateRow"),
+                    icon: CopyPlus,
+                    action: duplicateSelectedRow,
+                  },
+                  {
+                    label: deleteRowCount > 1
+                      ? t("dataGrid.deleteRows", { count: deleteRowCount })
+                      : t("dataGrid.deleteRow"),
                     icon: Trash2,
                     danger: true,
                     action: deleteSelectedRow,

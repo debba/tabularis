@@ -102,7 +102,7 @@ const FieldInput = ({
       autoCapitalize="off"
       autoComplete="off"
       spellCheck={false}
-      className="w-full px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
+      className="w-full px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted placeholder:italic focus:border-blue-500 focus:outline-none transition-colors"
     />
   </div>
 );
@@ -595,7 +595,7 @@ export const NewConnectionModal = ({
               autoCapitalize="off"
               autoComplete="off"
               spellCheck={false}
-              className="flex-1 px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
+              className="flex-1 px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted placeholder:italic focus:border-blue-500 focus:outline-none transition-colors"
               placeholder={
                 activeDriver.capabilities.folder_based
                   ? t("newConnection.folderPathPlaceholder")
@@ -652,7 +652,7 @@ export const NewConnectionModal = ({
                   autoComplete="off"
                   spellCheck={false}
                   className={clsx(
-                    "flex-1 px-3 py-2 bg-base border rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors",
+                    "flex-1 px-3 py-2 bg-base border rounded-md text-sm text-primary placeholder:text-muted placeholder:italic focus:border-blue-500 focus:outline-none transition-colors",
                     connectionStringError ? "border-red-500" : "border-strong",
                   )}
                   placeholder={connectionStringPlaceholder}
@@ -700,7 +700,7 @@ export const NewConnectionModal = ({
               label={t("newConnection.username")}
               value={formData.username}
               onChange={(v) => updateField("username", v)}
-              placeholder="root"
+              placeholder={t("newConnection.usernamePlaceholder")}
             />
             <FieldInput
               label={t("newConnection.password")}
@@ -771,7 +771,7 @@ export const NewConnectionModal = ({
                   autoCapitalize="off"
                   autoComplete="off"
                   spellCheck={false}
-                  className="w-full px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
+                  className="w-full px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted placeholder:italic focus:border-blue-500 focus:outline-none transition-colors"
                   placeholder={t("newConnection.dbNamePlaceholder")}
                 />
               )}
@@ -1002,7 +1002,7 @@ export const NewConnectionModal = ({
                 autoCapitalize="off"
                 autoComplete="off"
                 spellCheck={false}
-                className="flex-1 px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
+                className="flex-1 px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted placeholder:italic focus:border-blue-500 focus:outline-none transition-colors"
               />
               <button
                 type="button"
@@ -1040,7 +1040,7 @@ export const NewConnectionModal = ({
                 autoCapitalize="off"
                 autoComplete="off"
                 spellCheck={false}
-                className="flex-1 px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
+                className="flex-1 px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted placeholder:italic focus:border-blue-500 focus:outline-none transition-colors"
               />
               <button
                 type="button"
@@ -1078,7 +1078,7 @@ export const NewConnectionModal = ({
                 autoCapitalize="off"
                 autoComplete="off"
                 spellCheck={false}
-                className="flex-1 px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
+                className="flex-1 px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted placeholder:italic focus:border-blue-500 focus:outline-none transition-colors"
               />
               <button
                 type="button"
@@ -1252,7 +1252,7 @@ export const NewConnectionModal = ({
                     autoCapitalize="off"
                     autoComplete="off"
                     spellCheck={false}
-                    className="w-full px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted focus:border-blue-500 focus:outline-none transition-colors"
+                    className="w-full px-3 py-2 bg-base border border-strong rounded-md text-sm text-primary placeholder:text-muted placeholder:italic focus:border-blue-500 focus:outline-none transition-colors"
                   />
                   {formData.save_in_keychain &&
                     sshPasswordDirty &&

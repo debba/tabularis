@@ -57,6 +57,33 @@ pub struct AppConfig {
     pub query_history_max_entries: Option<u32>,
     /// Whether to show the welcome screen on startup. Default: true (first launch).
     pub show_welcome: Option<bool>,
+
+    // ----- AI Audit Log -----
+    /// Record every MCP tool call to the audit log. Default: true.
+    pub ai_audit_enabled: Option<bool>,
+    /// Maximum entries per audit-log file before rotation. Default: 5000.
+    pub ai_audit_max_entries: Option<u32>,
+    /// Inactivity gap (in minutes) after which a new MCP session id is minted.
+    /// Default: 10.
+    pub ai_session_gap_minutes: Option<u32>,
+
+    // ----- MCP Read-only Mode -----
+    /// Default behaviour for MCP `run_query`: when true, every connection is
+    /// read-only unless explicitly listed as writable. Default: false.
+    pub mcp_readonly_default: Option<bool>,
+    /// Per-connection override list. Semantics depend on `mcp_readonly_default`:
+    /// when default is `false` this is the *inclusion* list of read-only
+    /// connections; when default is `true` this is the *exclusion* list of
+    /// connections that are allowed to write.
+    pub mcp_readonly_connections: Option<Vec<String>>,
+
+    // ----- MCP Approval Gate -----
+    /// `"off"` | `"writes_only"` | `"all"`. Default: `"writes_only"`.
+    pub mcp_approval_mode: Option<String>,
+    /// Maximum time the MCP subprocess waits for the user to decide. Default: 120.
+    pub mcp_approval_timeout_seconds: Option<u32>,
+    /// Run a pre-flight EXPLAIN before opening the approval modal. Default: true.
+    pub mcp_preflight_explain: Option<bool>,
 }
 
 static CONFIG_CACHE: Lazy<RwLock<AppConfig>> = Lazy::new(|| RwLock::new(AppConfig::default()));
@@ -76,6 +103,51 @@ pub fn get_cached_config() -> AppConfig {
         .read()
         .map(|cached| cached.clone())
         .unwrap_or_default()
+}
+
+// ---------- AI/MCP safety defaults ----------
+pub const DEFAULT_AI_AUDIT_ENABLED: bool = true;
+pub const DEFAULT_AI_AUDIT_MAX_ENTRIES: u32 = 5000;
+pub const DEFAULT_AI_SESSION_GAP_MINUTES: u32 = 10;
+pub const DEFAULT_MCP_READONLY_DEFAULT: bool = false;
+pub const DEFAULT_MCP_APPROVAL_MODE: &str = "writes_only";
+pub const DEFAULT_MCP_APPROVAL_TIMEOUT_SECONDS: u32 = 120;
+pub const DEFAULT_MCP_PREFLIGHT_EXPLAIN: bool = true;
+
+/// Load `config.json` directly from disk without an `AppHandle`.
+///
+/// Used by the standalone MCP subprocess (`tabularis --mcp`) which has no
+/// Tauri runtime. Falls back to `AppConfig::default()` when missing or
+/// unreadable.
+pub fn load_config_from_disk() -> AppConfig {
+    let path = crate::paths::get_app_config_dir().join("config.json");
+    if !path.exists() {
+        return AppConfig::default();
+    }
+    fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| serde_json::from_str::<AppConfig>(&s).ok())
+        .unwrap_or_default()
+}
+
+/// True when `connection_id` should be treated as read-only by MCP, taking
+/// the per-connection override list into account.
+pub fn is_connection_readonly(config: &AppConfig, connection_id: &str) -> bool {
+    let default_ro = config
+        .mcp_readonly_default
+        .unwrap_or(DEFAULT_MCP_READONLY_DEFAULT);
+    let listed = config
+        .mcp_readonly_connections
+        .as_ref()
+        .map(|v| v.iter().any(|s| s == connection_id))
+        .unwrap_or(false);
+    // When default is false the list flips that connection to read-only.
+    // When default is true the list flips that connection to writable.
+    if default_ro {
+        !listed
+    } else {
+        listed
+    }
 }
 
 // Internal load
@@ -222,6 +294,30 @@ pub fn save_config(app: AppHandle, config: AppConfig) -> Result<(), String> {
         }
         if config.show_welcome.is_some() {
             existing_config.show_welcome = config.show_welcome;
+        }
+        if config.ai_audit_enabled.is_some() {
+            existing_config.ai_audit_enabled = config.ai_audit_enabled;
+        }
+        if config.ai_audit_max_entries.is_some() {
+            existing_config.ai_audit_max_entries = config.ai_audit_max_entries;
+        }
+        if config.ai_session_gap_minutes.is_some() {
+            existing_config.ai_session_gap_minutes = config.ai_session_gap_minutes;
+        }
+        if config.mcp_readonly_default.is_some() {
+            existing_config.mcp_readonly_default = config.mcp_readonly_default;
+        }
+        if config.mcp_readonly_connections.is_some() {
+            existing_config.mcp_readonly_connections = config.mcp_readonly_connections;
+        }
+        if config.mcp_approval_mode.is_some() {
+            existing_config.mcp_approval_mode = config.mcp_approval_mode;
+        }
+        if config.mcp_approval_timeout_seconds.is_some() {
+            existing_config.mcp_approval_timeout_seconds = config.mcp_approval_timeout_seconds;
+        }
+        if config.mcp_preflight_explain.is_some() {
+            existing_config.mcp_preflight_explain = config.mcp_preflight_explain;
         }
 
         let content = serde_json::to_string_pretty(&existing_config).map_err(|e| e.to_string())?;
@@ -681,5 +777,99 @@ mod tests {
         let invalid = r#"{"editorFontSize": "not-a-number"}"#;
         let result = serde_json::from_str::<AppConfig>(invalid);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn ai_safety_fields_default_to_none() {
+        let config = AppConfig::default();
+        assert!(config.ai_audit_enabled.is_none());
+        assert!(config.ai_audit_max_entries.is_none());
+        assert!(config.ai_session_gap_minutes.is_none());
+        assert!(config.mcp_readonly_default.is_none());
+        assert!(config.mcp_readonly_connections.is_none());
+        assert!(config.mcp_approval_mode.is_none());
+        assert!(config.mcp_approval_timeout_seconds.is_none());
+        assert!(config.mcp_preflight_explain.is_none());
+    }
+
+    #[test]
+    fn ai_safety_fields_serialize_with_camel_case() {
+        let mut config = AppConfig::default();
+        config.ai_audit_enabled = Some(true);
+        config.ai_audit_max_entries = Some(1000);
+        config.ai_session_gap_minutes = Some(5);
+        config.mcp_readonly_default = Some(true);
+        config.mcp_readonly_connections = Some(vec!["c1".into()]);
+        config.mcp_approval_mode = Some("all".into());
+        config.mcp_approval_timeout_seconds = Some(60);
+        config.mcp_preflight_explain = Some(false);
+
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("aiAuditEnabled"));
+        assert!(json.contains("aiAuditMaxEntries"));
+        assert!(json.contains("aiSessionGapMinutes"));
+        assert!(json.contains("mcpReadonlyDefault"));
+        assert!(json.contains("mcpReadonlyConnections"));
+        assert!(json.contains("mcpApprovalMode"));
+        assert!(json.contains("mcpApprovalTimeoutSeconds"));
+        assert!(json.contains("mcpPreflightExplain"));
+    }
+
+    #[test]
+    fn ai_safety_fields_round_trip() {
+        let json = r#"{
+            "aiAuditEnabled": false,
+            "aiAuditMaxEntries": 2000,
+            "aiSessionGapMinutes": 30,
+            "mcpReadonlyDefault": true,
+            "mcpReadonlyConnections": ["a", "b"],
+            "mcpApprovalMode": "writes_only",
+            "mcpApprovalTimeoutSeconds": 90,
+            "mcpPreflightExplain": true
+        }"#;
+        let config: AppConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(config.ai_audit_enabled, Some(false));
+        assert_eq!(config.ai_audit_max_entries, Some(2000));
+        assert_eq!(config.ai_session_gap_minutes, Some(30));
+        assert_eq!(config.mcp_readonly_default, Some(true));
+        assert_eq!(
+            config.mcp_readonly_connections.as_deref(),
+            Some(&["a".to_string(), "b".to_string()][..])
+        );
+        assert_eq!(config.mcp_approval_mode.as_deref(), Some("writes_only"));
+        assert_eq!(config.mcp_approval_timeout_seconds, Some(90));
+        assert_eq!(config.mcp_preflight_explain, Some(true));
+    }
+
+    #[test]
+    fn is_connection_readonly_default_false_no_override_returns_false() {
+        let config = AppConfig::default();
+        assert!(!is_connection_readonly(&config, "c1"));
+    }
+
+    #[test]
+    fn is_connection_readonly_default_false_with_inclusion_list() {
+        let mut config = AppConfig::default();
+        config.mcp_readonly_default = Some(false);
+        config.mcp_readonly_connections = Some(vec!["c1".into()]);
+        assert!(is_connection_readonly(&config, "c1"));
+        assert!(!is_connection_readonly(&config, "c2"));
+    }
+
+    #[test]
+    fn is_connection_readonly_default_true_with_exclusion_list() {
+        let mut config = AppConfig::default();
+        config.mcp_readonly_default = Some(true);
+        config.mcp_readonly_connections = Some(vec!["c1".into()]);
+        assert!(!is_connection_readonly(&config, "c1"));
+        assert!(is_connection_readonly(&config, "c2"));
+    }
+
+    #[test]
+    fn load_config_from_disk_returns_default_when_missing() {
+        // The default config dir is unlikely to have our test sentinels, so
+        // we just confirm the call returns a valid AppConfig (Default fallback
+        // path is exercised indirectly via parse failures + missing file).
+        let _ = load_config_from_disk();
     }
 }
