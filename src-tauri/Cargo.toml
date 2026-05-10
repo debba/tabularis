@@ -59,7 +59,7 @@ deadpool-postgres = "0.14.1"
 postgres-native-tls = "0.5.1"
 native-tls = "0.2.13"
 # SQL Server driver (mssql-tiberius-bridge) — tiberius-compatible API over mssql-tds
-mssql-tiberius-bridge = "=0.1.0-preview.1"
+mssql-tiberius-bridge = "=0.1.0-preview.3"
 deadpool = "0.12"
 
 # GTK dependencies for Wayland window title workaround (Linux only)

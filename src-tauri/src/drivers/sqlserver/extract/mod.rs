@@ -27,7 +27,7 @@ pub fn extract_value(row: &Row, idx: usize) -> Value {
     let Some(col) = row.columns().get(idx) else {
         return Value::Null;
     };
-    let ct = col.column_type;
+    let ct = col.column_type();
 
     match ct {
         ColumnType::Null => Value::Null,
