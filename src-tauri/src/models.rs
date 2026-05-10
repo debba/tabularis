@@ -59,6 +59,12 @@ impl std::fmt::Display for DatabaseSelection {
     }
 }
 
+impl Default for DatabaseSelection {
+    fn default() -> Self {
+        DatabaseSelection::Single(String::new())
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SshConnection {
     pub id: String,
@@ -107,7 +113,7 @@ pub struct SshTestParams {
     pub connection_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct ConnectionParams {
     pub driver: String,
     pub host: Option<String>,
