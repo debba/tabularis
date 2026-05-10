@@ -145,6 +145,13 @@ pub struct ConnectionParams {
     // Connection ID for stable pooling (not persisted, set at runtime)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub connection_id: Option<String>,
+    // SQL Server-specific TLS/auth fields (Phase 2, issue #144)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trust_server_certificate: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub encrypt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth_mode: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

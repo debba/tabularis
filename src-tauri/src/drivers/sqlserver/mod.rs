@@ -479,6 +479,7 @@ mod tests {
             ssh_key_passphrase: None,
             save_in_keychain: None,
             connection_id: None,
+            ..Default::default()
         }
     }
 
