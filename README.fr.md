@@ -16,7 +16,7 @@
 
 Client desktop open source pour bases de données modernes. Il prend en charge PostgreSQL, MySQL/MariaDB et SQLite, avec notebooks SQL, fonctions IA, intégration MCP et système de plugins externe.
 
-**Discord** - [Rejoindre le serveur](https://discord.gg/K2hmhfHRSt) pour discuter avec les mainteneurs, partager des retours et obtenir de l’aide.
+**Discord** - [Rejoindre le serveur](https://discord.com/invite/K2hmhfHRSt) pour discuter avec les mainteneurs, partager des retours et obtenir de l’aide.
 
 > Document traduit. Pour la version de référence la plus à jour, consultez aussi le [README anglais](./README.md).
 

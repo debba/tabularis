@@ -16,7 +16,7 @@
 
 Open-Source-Desktop-Client für moderne Datenbanken. Unterstützt PostgreSQL, MySQL/MariaDB und SQLite sowie SQL-Notebooks, KI-Funktionen, MCP-Integration und ein externes Plugin-System.
 
-**Discord** - [Server beitreten](https://discord.gg/K2hmhfHRSt), um mit den Maintainers zu sprechen, Feedback zu teilen und Hilfe zu bekommen.
+**Discord** - [Server beitreten](https://discord.com/invite/K2hmhfHRSt), um mit den Maintainers zu sprechen, Feedback zu teilen und Hilfe zu bekommen.
 
 > Übersetztes Dokument. Für die maßgebliche und aktuellste Version siehe auch das [englische README](./README.md).
 

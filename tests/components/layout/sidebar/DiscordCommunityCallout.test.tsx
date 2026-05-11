@@ -57,7 +57,7 @@ describe("DiscordCommunityCallout", () => {
 
     fireEvent.click(screen.getByText("discordCallout.cta"));
 
-    expect(openUrl).toHaveBeenCalledWith("https://discord.gg/K2hmhfHRSt");
+    expect(openUrl).toHaveBeenCalledWith("https://discord.com/invite/K2hmhfHRSt");
     expect(storage.setItem).toHaveBeenCalledWith(DISCORD_CALLOUT_STORAGE_KEY, "true");
     expect(screen.queryByTestId("discord-callout")).not.toBeInTheDocument();
   });

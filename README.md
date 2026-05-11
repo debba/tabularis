@@ -19,7 +19,7 @@
 ![](https://img.shields.io/github/release/TabularisDB/tabularis.svg?style=flat)
 ![](https://img.shields.io/github/downloads/TabularisDB/tabularis/total.svg?style=flat)
 ![Build & Release](https://github.com/TabularisDB/tabularis/workflows/Release/badge.svg)
-[![Discord](https://img.shields.io/discord/1470772941296894128?color=5865F2&logo=discord&logoColor=white)](https://discord.gg/K2hmhfHRSt)
+[![Discord](https://img.shields.io/discord/1470772941296894128?color=5865F2&logo=discord&logoColor=white)](https://discord.com/invite/K2hmhfHRSt)
 [![Gitster](https://gitster.dev/api/repositories/badge/cmlko1jr60005ne4yh7i7oy3e)](https://gitster.dev/repo/TabularisDB/tabularis)
 
 </p>
@@ -34,7 +34,7 @@ An open-source desktop client for modern databases. Supports PostgreSQL, MySQL/M
 
 **Available in:** English, Italian, Spanish, Chinese (Simplified), French, German
 
-**Discord** - [Join our Discord server](https://discord.gg/K2hmhfHRSt) to talk with the maintainers, share feedback, and get help from the community.
+**Discord** - [Join our Discord server](https://discord.com/invite/K2hmhfHRSt) to talk with the maintainers, share feedback, and get help from the community.
 
 <div align="center">
   <img src="https://github.com/TabularisDB/website/blob/main/public/img/overview.gif" alt="Tabularis" />
@@ -182,7 +182,7 @@ You can also manually check for updates or download the latest version directly 
 
 ## Discord
 
-Join our [Discord server](https://discord.gg/K2hmhfHRSt) to talk with the maintainers, share feedback, suggest features, or get help from the community.
+Join our [Discord server](https://discord.com/invite/K2hmhfHRSt) to talk with the maintainers, share feedback, suggest features, or get help from the community.
 
 ## [Changelog](./CHANGELOG.md)
 
