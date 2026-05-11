@@ -19,7 +19,7 @@
 ![](https://img.shields.io/github/release/TabularisDB/tabularis.svg?style=flat)
 ![](https://img.shields.io/github/downloads/TabularisDB/tabularis/total.svg?style=flat)
 ![Build & Release](https://github.com/TabularisDB/tabularis/workflows/Release/badge.svg)
-[![Discord](https://img.shields.io/discord/1470772941296894128?color=5865F2&logo=discord&logoColor=white)](https://discord.com/invite/K2hmhfHRSt)
+[![Discord](https://img.shields.io/discord/1502944695808950282?color=5865F2&logo=discord&logoColor=white)](https://discord.com/invite/K2hmhfHRSt)
 [![Gitster](https://gitster.dev/api/repositories/badge/cmlko1jr60005ne4yh7i7oy3e)](https://gitster.dev/repo/TabularisDB/tabularis)
 
 </p>
