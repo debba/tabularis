@@ -52,8 +52,10 @@ impl Manager for BridgeManager {
 
 /// Build a `mssql_tiberius_bridge::Config` from Tabularis `ConnectionParams`.
 ///
-/// Phase 1 consumes only: host, port, username, password, database.
-/// Phase 2 will extend with `trust_server_certificate`, `encrypt`, `instance_name`.
+/// Consumes: host, port, username, password, database, encrypt,
+/// trust_server_certificate.
+/// `auth_mode` is parsed but actual Windows/Azure AD
+/// authentication wiring is deferred to Phase 3.
 pub fn build_config(params: &ConnectionParams) -> Result<Config, String> {
     let mut cfg = Config::new();
     cfg.host(params.host.as_deref().unwrap_or("localhost"));
@@ -63,11 +65,18 @@ pub fn build_config(params: &ConnectionParams) -> Result<Config, String> {
         params.username.as_deref().unwrap_or(""),
         params.password.as_deref().unwrap_or(""),
     ));
-    // Phase 1 safety defaults: negotiate TLS on login only, and accept the
-    // server's certificate without validation. Real TLS validation arrives
-    // in Phase 2 together with the UI toggle.
-    cfg.encryption(EncryptionLevel::On);
-    cfg.trust_cert();
+    // Encryption level: "strict" → Required, "no" → NotSupported, default → On
+    match params.encrypt.as_deref() {
+        Some("strict") => cfg.encryption(EncryptionLevel::Required),
+        Some("no") => cfg.encryption(EncryptionLevel::NotSupported),
+        _ => cfg.encryption(EncryptionLevel::On),
+    };
+
+    // Trust server certificate (default true for backward compat)
+    if params.trust_server_certificate.unwrap_or(true) {
+        cfg.trust_cert();
+    }
+
     Ok(cfg)
 }
 
@@ -98,6 +107,7 @@ mod tests {
             ssh_key_passphrase: None,
             save_in_keychain: None,
             connection_id: None,
+            ..Default::default()
         }
     }
 
@@ -148,5 +158,67 @@ mod tests {
         let original = format!("{:?}", mgr);
         let cloned_dbg = format!("{:?}", cloned);
         assert_eq!(original, cloned_dbg);
+    }
+
+    // --- Phase 2: TLS/auth field tests (issue #144) ---
+
+    #[test]
+    fn build_config_encrypt_strict() {
+        let mut params = base_params(Some("localhost"), Some(1433), "master");
+        params.encrypt = Some("strict".into());
+        let cfg = build_config(&params).expect("config builds");
+        assert_eq!(cfg.get_addr(), "localhost:1433");
+    }
+
+    #[test]
+    fn build_config_encrypt_no() {
+        let mut params = base_params(Some("localhost"), Some(1433), "master");
+        params.encrypt = Some("no".into());
+        let cfg = build_config(&params).expect("config builds");
+        assert_eq!(cfg.get_addr(), "localhost:1433");
+    }
+
+    #[test]
+    fn build_config_encrypt_default_when_none() {
+        let params = base_params(Some("localhost"), Some(1433), "master");
+        let cfg = build_config(&params).expect("config builds");
+        assert_eq!(cfg.get_addr(), "localhost:1433");
+    }
+
+    #[test]
+    fn build_config_trust_cert_false() {
+        let mut params = base_params(Some("localhost"), Some(1433), "master");
+        params.trust_server_certificate = Some(false);
+        assert!(build_config(&params).is_ok());
+    }
+
+    #[test]
+    fn build_config_trust_cert_true_explicit() {
+        let mut params = base_params(Some("localhost"), Some(1433), "master");
+        params.trust_server_certificate = Some(true);
+        assert!(build_config(&params).is_ok());
+    }
+
+    #[test]
+    fn build_config_trust_cert_default_when_none() {
+        let params = base_params(Some("localhost"), Some(1433), "master");
+        assert!(build_config(&params).is_ok());
+    }
+
+    #[test]
+    fn build_config_auth_mode_parse_only() {
+        let mut params = base_params(Some("localhost"), Some(1433), "master");
+        params.auth_mode = Some("windows".into());
+        assert!(build_config(&params).is_ok());
+    }
+
+    #[test]
+    fn build_config_all_new_fields_together() {
+        let mut params = base_params(Some("prod-sql"), Some(1444), "appdb");
+        params.encrypt = Some("strict".into());
+        params.trust_server_certificate = Some(false);
+        params.auth_mode = Some("azure-ad".into());
+        let cfg = build_config(&params).expect("config builds");
+        assert!(cfg.get_addr().contains("prod-sql"));
     }
 }
