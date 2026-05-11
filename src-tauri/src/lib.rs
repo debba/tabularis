@@ -23,6 +23,8 @@ pub mod explain_import;
 #[cfg(test)]
 pub mod explain_import_tests;
 pub mod export;
+#[cfg(test)]
+pub mod export_import_tests;
 pub mod health_check;
 pub mod heartbeat;
 #[cfg(test)]
@@ -259,6 +261,8 @@ pub fn run() {
             commands::move_connection_to_group,
             commands::reorder_groups,
             commands::reorder_connections_in_group,
+            commands::export_connections_payload,
+            commands::import_connections_payload,
             commands::get_schemas,
             commands::get_available_databases,
             commands::get_tables,

@@ -221,7 +221,11 @@
     "searchPlaceholder": "Search connections...",
     "noSearchResults": "No connections match \"{{query}}\"",
     "gridView": "Grid view",
-    "listView": "List view"
+    "listView": "List view",
+    "export": "Export Connections",
+    "import": "Import Connections",
+    "exportTitle": "Export Connections",
+    "exportWarning": "The exported file will contain your database and SSH passwords in plaintext. Please store it securely."
   },
   "settings": {
     "title": "Settings",
