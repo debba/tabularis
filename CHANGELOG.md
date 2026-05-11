@@ -1,3 +1,19 @@
+## [0.10.3](https://github.com/debba/tabularis/compare/v0.10.2...v0.10.3) (2026-05-11)
+
+
+### Bug Fixes
+
+* **DataGrid:** handle empty column names from drivers ([b015b35](https://github.com/debba/tabularis/commit/b015b3507a92516a365c772f09731c4fedfdcbfa))
+* **notebook:** render db selector dropdown via portal to avoid clipping ([b0f51ed](https://github.com/debba/tabularis/commit/b0f51ed6a48a6a1b3ea3bb69e5c9acfdc85de354))
+
+
+### Features
+
+* Add connection export and import functionality ([aee7df1](https://github.com/debba/tabularis/commit/aee7df1718542a5b3ad6ff9e6e5d5f9bfe41fc6e))
+* **connections:** add import button to empty state ([b1f9844](https://github.com/debba/tabularis/commit/b1f9844f9bf38644de8ddb03bc9447f25a9a294d))
+* **editor:** add editor error boundary and tests ([3001409](https://github.com/debba/tabularis/commit/30014098d03f5b129ad3f9314de4d07d89e161c1))
+* **sidebar:** add Discord community callout and update links ([26643cf](https://github.com/debba/tabularis/commit/26643cfb7df7c4ef941e7d3ba9e28806e7c1b43b))
+
 ## [0.10.2](https://github.com/debba/tabularis/compare/v0.10.1...v0.10.2) (2026-05-08)
 
 
