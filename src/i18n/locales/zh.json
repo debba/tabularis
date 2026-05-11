@@ -220,7 +220,11 @@
     "searchPlaceholder": "搜索连接...",
     "noSearchResults": "无匹配 \"{{query}}\" 的连接",
     "gridView": "网格视图",
-    "listView": "列表视图"
+    "listView": "列表视图",
+    "export": "导出连接",
+    "import": "导入连接",
+    "exportTitle": "导出连接",
+    "exportWarning": "导出的文件将包含您的数据库和 SSH 明文密码。请妥善保管该文件。"
   },
   "settings": {
     "title": "设置",
@@ -1314,5 +1318,11 @@
     "reasonPlaceholder": "例如:在生产环境中风险较大,请确认…",
     "approve": "批准",
     "deny": "拒绝"
+  },
+  "discordCallout": {
+    "title": "全新的 Discord 社区！",
+    "body": "我们为 Tabularis 用户开设了专属社区：获取帮助、分享技巧、共建路线图。",
+    "cta": "立即加入",
+    "dismiss": "关闭"
   }
 }

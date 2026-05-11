@@ -1322,5 +1322,11 @@
     "reasonPlaceholder": "ej. Parece arriesgada en prod, confirma…",
     "approve": "Aprobar",
     "deny": "Denegar"
+  },
+  "discordCallout": {
+    "title": "¡Nueva comunidad Discord!",
+    "body": "Acabamos de abrir una comunidad dedicada a Tabularis: pide ayuda, comparte trucos y da forma al roadmap.",
+    "cta": "Únete ahora",
+    "dismiss": "Cerrar"
   }
 }

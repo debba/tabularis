@@ -1370,5 +1370,11 @@
     "reasonPlaceholder": "z.B. In Prod riskant, bestätigen…",
     "approve": "Freigeben",
     "deny": "Ablehnen"
+  },
+  "discordCallout": {
+    "title": "Neue Discord-Community!",
+    "body": "Wir haben einen eigenen Treffpunkt für Tabularis-Nutzer eröffnet: Hilfe, Tipps und Mitgestaltung der Roadmap.",
+    "cta": "Jetzt beitreten",
+    "dismiss": "Schließen"
   }
 }
