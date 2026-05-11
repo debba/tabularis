@@ -12,7 +12,7 @@ mod tests;
 
 use crate::models::{
     ConnectionParams, ForeignKey, Index, Pagination, QueryResult, RoutineInfo, RoutineParameter,
-    TableColumn, TableInfo, ViewInfo,
+    TableColumn, TableInfo, TriggerInfo, ViewInfo,
 };
 use crate::pool_manager::get_postgres_pool;
 use binding::{PgValueOptions, bind_pg_value, build_pk_predicate};
@@ -1119,6 +1119,102 @@ pub async fn get_routine_definition(
     Ok(definition)
 }
 
+pub async fn get_triggers(
+    params: &ConnectionParams,
+    schema: &str,
+) -> Result<Vec<TriggerInfo>, String> {
+    log::debug!(
+        "PostgreSQL: Fetching triggers for database: {} schema: {}",
+        params.database,
+        schema
+    );
+    let pool = get_postgres_pool(params).await?;
+    let query = r#"
+        SELECT
+            t.trigger_name AS name,
+            t.event_object_table AS table_name,
+            string_agg(t.event_manipulation, ' OR ' ORDER BY t.event_manipulation) AS event,
+            t.action_timing AS timing
+        FROM information_schema.triggers t
+        WHERE t.trigger_schema = $1
+        GROUP BY t.trigger_name, t.event_object_table, t.action_timing
+        ORDER BY t.trigger_name
+    "#;
+    let rows = query_all(&pool, query, &[&schema]).await?;
+    let triggers: Vec<TriggerInfo> = rows
+        .iter()
+        .map(|r| TriggerInfo {
+            name: r.try_get("name").unwrap_or_default(),
+            table_name: r.try_get("table_name").unwrap_or_default(),
+            event: r.try_get("event").unwrap_or_default(),
+            timing: r.try_get("timing").unwrap_or_default(),
+            definition: None,
+        })
+        .collect();
+    log::debug!(
+        "PostgreSQL: Found {} triggers in {}",
+        triggers.len(),
+        schema
+    );
+    Ok(triggers)
+}
+
+pub async fn get_trigger_definition(
+    params: &ConnectionParams,
+    trigger_name: &str,
+    table_name: &str,
+    schema: &str,
+) -> Result<String, String> {
+    let pool = get_postgres_pool(params).await?;
+    let query = r#"
+        SELECT pg_get_triggerdef(t.oid, true) AS definition
+        FROM pg_trigger t
+        JOIN pg_class c ON t.tgrelid = c.oid
+        JOIN pg_namespace n ON c.relnamespace = n.oid
+        WHERE t.tgname = $1
+          AND c.relname = $2
+          AND n.nspname = $3
+          AND NOT t.tgisinternal
+        LIMIT 1
+    "#;
+    let row = query_one(&pool, query, &[&trigger_name, &table_name, &schema]).await?;
+    let definition: String = row
+        .try_get("definition")
+        .map_err(|e| format!("Failed to get trigger definition: {}", e))?;
+    Ok(definition)
+}
+
+pub async fn create_trigger(
+    params: &ConnectionParams,
+    trigger_sql: &str,
+    _schema: &str,
+) -> Result<(), String> {
+    let pool = get_postgres_pool(params).await?;
+    execute(&pool, trigger_sql, &[])
+        .await
+        .map_err(|e| format!("Failed to create trigger: {}", e))?;
+    Ok(())
+}
+
+pub async fn drop_trigger(
+    params: &ConnectionParams,
+    trigger_name: &str,
+    table_name: &str,
+    schema: &str,
+) -> Result<(), String> {
+    let pool = get_postgres_pool(params).await?;
+    let sql = format!(
+        "DROP TRIGGER IF EXISTS {} ON {}.{}",
+        escape_identifier(trigger_name),
+        escape_identifier(schema),
+        escape_identifier(table_name),
+    );
+    execute(&pool, &sql, &[])
+        .await
+        .map_err(|e| format!("Failed to drop trigger: {}", e))?;
+    Ok(())
+}
+
 // ============================================================
 // Plugin wrapper
 // ============================================================
@@ -1158,6 +1254,7 @@ impl PostgresDriver {
                     no_connection_required: false,
                     manage_tables: true,
                     readonly: false,
+                    triggers: true,
                 },
                 is_builtin: true,
                 default_username: "postgres".to_string(),
@@ -1363,6 +1460,43 @@ impl DatabaseDriver for PostgresDriver {
             self.resolve_schema(schema),
         )
         .await
+    }
+
+    async fn get_triggers(
+        &self,
+        params: &crate::models::ConnectionParams,
+        schema: Option<&str>,
+    ) -> Result<Vec<crate::models::TriggerInfo>, String> {
+        get_triggers(params, self.resolve_schema(schema)).await
+    }
+
+    async fn get_trigger_definition(
+        &self,
+        params: &crate::models::ConnectionParams,
+        trigger_name: &str,
+        table_name: &str,
+        schema: Option<&str>,
+    ) -> Result<String, String> {
+        get_trigger_definition(params, trigger_name, table_name, self.resolve_schema(schema)).await
+    }
+
+    async fn create_trigger(
+        &self,
+        params: &crate::models::ConnectionParams,
+        trigger_sql: &str,
+        schema: Option<&str>,
+    ) -> Result<(), String> {
+        create_trigger(params, trigger_sql, self.resolve_schema(schema)).await
+    }
+
+    async fn drop_trigger(
+        &self,
+        params: &crate::models::ConnectionParams,
+        trigger_name: &str,
+        table_name: &str,
+        schema: Option<&str>,
+    ) -> Result<(), String> {
+        drop_trigger(params, trigger_name, table_name, self.resolve_schema(schema)).await
     }
 
     async fn execute_query(

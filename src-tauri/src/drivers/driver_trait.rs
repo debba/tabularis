@@ -8,7 +8,7 @@ use std::str::FromStr;
 
 use crate::models::{
     ColumnDefinition, ConnectionParams, DataTypeInfo, ExplainPlan, ForeignKey, Index, QueryResult,
-    RoutineInfo, RoutineParameter, TableColumn, TableInfo, TableSchema, ViewInfo,
+    RoutineInfo, RoutineParameter, TableColumn, TableInfo, TableSchema, TriggerInfo, ViewInfo,
 };
 
 /// Capabilities advertised by a driver.
@@ -68,6 +68,9 @@ pub struct DriverCapabilities {
     /// Defaults to `true`.
     #[serde(default = "default_true")]
     pub manage_tables: bool,
+    /// Supports listing and managing database triggers.
+    #[serde(default)]
+    pub triggers: bool,
     /// When `true`, the driver is read-only: all data modification operations
     /// (INSERT, UPDATE, DELETE) are disabled in the UI.
     /// Table/column management is also hidden regardless of `manage_tables`.
@@ -465,6 +468,45 @@ pub trait DatabaseDriver: Send + Sync {
         _schema: Option<&str>,
     ) -> Result<(), String> {
         Err("Not supported".into())
+    }
+
+    // --- Triggers -----------------------------------------------------------
+
+    async fn get_triggers(
+        &self,
+        _params: &ConnectionParams,
+        _schema: Option<&str>,
+    ) -> Result<Vec<TriggerInfo>, String> {
+        Err("Triggers not supported by this driver".into())
+    }
+
+    async fn get_trigger_definition(
+        &self,
+        _params: &ConnectionParams,
+        _trigger_name: &str,
+        _table_name: &str,
+        _schema: Option<&str>,
+    ) -> Result<String, String> {
+        Err("Triggers not supported by this driver".into())
+    }
+
+    async fn create_trigger(
+        &self,
+        _params: &ConnectionParams,
+        _trigger_sql: &str,
+        _schema: Option<&str>,
+    ) -> Result<(), String> {
+        Err("Triggers not supported by this driver".into())
+    }
+
+    async fn drop_trigger(
+        &self,
+        _params: &ConnectionParams,
+        _trigger_name: &str,
+        _table_name: &str,
+        _schema: Option<&str>,
+    ) -> Result<(), String> {
+        Err("Triggers not supported by this driver".into())
     }
 
     // --- ER diagram (batch) -------------------------------------------------

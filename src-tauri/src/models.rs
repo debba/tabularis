@@ -326,6 +326,15 @@ pub struct ViewInfo {
     pub definition: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TriggerInfo {
+    pub name: String,
+    pub table_name: String,
+    pub event: String,   // e.g. "INSERT", "UPDATE", "DELETE", "INSERT OR UPDATE"
+    pub timing: String,  // "BEFORE", "AFTER", "INSTEAD OF"
+    pub definition: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ColumnDefinition {
     pub name: String,

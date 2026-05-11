@@ -110,6 +110,7 @@ interface EditorState {
   tableName?: string;
   queryName?: string;
   preventAutoRun?: boolean;
+  readOnly?: boolean;
   schema?: string;
   targetConnectionId?: string;
   title?: string;
@@ -2036,7 +2037,18 @@ export const Editor = () => {
 
         const queryKey = `${state.initialQuery}-${state.tableName}-${state.queryName}`;
 
-        if (processingRef.current === queryKey) return;
+        if (processingRef.current === queryKey) {
+          // If re-navigating to the same definition with readOnly, patch any
+          // existing tab that was opened without the flag (e.g. before the fix).
+          if (state.readOnly) {
+            const title = state.queryName || state.tableName || "";
+            const existing = tabsRef.current.find(
+              (t) => t.connectionId === activeConnectionId && t.title === title,
+            );
+            if (existing) updateTab(existing.id, { readOnly: true });
+          }
+          return;
+        }
         processingRef.current = queryKey;
 
         const {
@@ -2044,6 +2056,7 @@ export const Editor = () => {
           tableName: table,
           queryName,
           preventAutoRun,
+          readOnly: navReadOnly,
           schema: navSchema,
           title: navTitle,
         } = state;
@@ -2053,6 +2066,7 @@ export const Editor = () => {
           query: sql,
           activeTable: table,
           schema: navSchema,
+          readOnly: navReadOnly,
         });
 
         if (tabId && !preventAutoRun) {
@@ -2078,6 +2092,7 @@ export const Editor = () => {
     location.pathname,
     activeConnectionId,
     addTab,
+    updateTab,
     navigate,
     runQuery,
     t,
@@ -2374,14 +2389,14 @@ export const Editor = () => {
 
       {/* Toolbar — hidden for notebook tabs */}
       {!isNotebookTab && <div className="flex items-center py-2 pl-2 pr-3 border-b border-default bg-elevated gap-2 h-[50px]">
-        {activeTab.isLoading ? (
+        {!activeTab.readOnly && activeTab.isLoading ? (
           <button
             onClick={stopQuery}
             className="flex items-center gap-2 px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white rounded text-sm font-medium"
           >
             <Square size={16} fill="currentColor" /> {t("editor.stop")}
           </button>
-        ) : (
+        ) : !activeTab.readOnly ? (
           <div className="flex items-center rounded bg-green-700 relative">
             <button
               onClick={handleRunButton}
@@ -2451,7 +2466,7 @@ export const Editor = () => {
               </>
             )}
           </div>
-        )}
+        ) : null}
 
         {/* Params Button */}
         {!isTableTab && (
@@ -2614,7 +2629,8 @@ export const Editor = () => {
             {/* Editor overlay buttons — bottom-right */}
             {tab.type !== "query_builder" && (
               <div className="absolute bottom-2 right-6 z-10 flex items-center gap-1">
-                {/* Visual Explain — always available */}
+                {/* Visual Explain — hidden for read-only definition tabs */}
+                {!tab.readOnly && (
                 <button
                   onClick={handleExplainButton}
                   disabled={!activeConnectionId || !tab.query?.trim()}
@@ -2624,6 +2640,7 @@ export const Editor = () => {
                   <Network size={12} />
                   {t("editor.visualExplain.buttonShort")}
                 </button>
+                )}
                 {/* AI dropdown — only if AI enabled */}
                 {settings.aiEnabled && (
                   <AiDropdownButton

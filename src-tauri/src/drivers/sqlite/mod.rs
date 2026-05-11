@@ -8,7 +8,7 @@ mod tests;
 
 use crate::models::{
     ConnectionParams, ForeignKey, Index, Pagination, QueryResult, RoutineInfo, RoutineParameter,
-    TableColumn, TableInfo, ViewInfo,
+    TableColumn, TableInfo, TriggerInfo, ViewInfo,
 };
 use crate::pool_manager::get_sqlite_pool;
 use extract::extract_value;
@@ -692,6 +692,101 @@ pub async fn get_view_columns(
         .collect())
 }
 
+pub async fn get_triggers(params: &ConnectionParams) -> Result<Vec<TriggerInfo>, String> {
+    log::debug!("SQLite: Fetching triggers for database: {}", params.database);
+    let pool = get_sqlite_pool(params).await?;
+    let rows = sqlx::query(
+        "SELECT name, tbl_name, sql FROM sqlite_master WHERE type='trigger' ORDER BY name ASC",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let triggers: Vec<TriggerInfo> = rows
+        .iter()
+        .map(|r| {
+            let name: String = r.try_get("name").unwrap_or_default();
+            let table_name: String = r.try_get("tbl_name").unwrap_or_default();
+            let sql: String = r.try_get("sql").unwrap_or_default();
+            let (timing, event) = parse_sqlite_trigger_timing_event(&sql);
+            TriggerInfo {
+                name,
+                table_name,
+                event,
+                timing,
+                definition: Some(sql),
+            }
+        })
+        .collect();
+
+    log::debug!("SQLite: Found {} triggers", triggers.len());
+    Ok(triggers)
+}
+
+fn parse_sqlite_trigger_timing_event(sql: &str) -> (String, String) {
+    let upper = sql.to_uppercase();
+    let timing = if upper.contains("INSTEAD OF") {
+        "INSTEAD OF"
+    } else if upper.contains("BEFORE") {
+        "BEFORE"
+    } else if upper.contains("AFTER") {
+        "AFTER"
+    } else {
+        ""
+    };
+    let event = if upper.contains("INSERT") {
+        "INSERT"
+    } else if upper.contains("UPDATE") {
+        "UPDATE"
+    } else if upper.contains("DELETE") {
+        "DELETE"
+    } else {
+        ""
+    };
+    (timing.to_string(), event.to_string())
+}
+
+pub async fn get_trigger_definition(
+    params: &ConnectionParams,
+    trigger_name: &str,
+) -> Result<String, String> {
+    let pool = get_sqlite_pool(params).await?;
+    let row = sqlx::query(
+        "SELECT sql FROM sqlite_master WHERE type='trigger' AND name = ?",
+    )
+    .bind(trigger_name)
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| format!("Failed to get trigger definition: {}", e))?;
+    let sql: String = row.try_get("sql").unwrap_or_default();
+    Ok(sql)
+}
+
+pub async fn create_trigger(params: &ConnectionParams, trigger_sql: &str) -> Result<(), String> {
+    let pool = get_sqlite_pool(params).await?;
+    sqlx::query(trigger_sql)
+        .execute(&pool)
+        .await
+        .map_err(|e| format!("Failed to create trigger: {}", e))?;
+    Ok(())
+}
+
+pub async fn drop_trigger(
+    params: &ConnectionParams,
+    trigger_name: &str,
+) -> Result<(), String> {
+    let pool = get_sqlite_pool(params).await?;
+    let sql = format!(
+        "DROP TRIGGER IF EXISTS \"{}\"",
+        escape_identifier(trigger_name)
+    );
+    sqlx::query(&sql)
+        .execute(&pool)
+        .await
+        .map_err(|e| format!("Failed to drop trigger: {}", e))?;
+    Ok(())
+}
+
 // ============================================================
 // Plugin wrapper
 // ============================================================
@@ -731,6 +826,7 @@ impl SqliteDriver {
                     no_connection_required: false,
                     manage_tables: true,
                     readonly: false,
+                    triggers: true,
                 },
                 is_builtin: true,
                 default_username: String::new(),
@@ -925,6 +1021,43 @@ impl DatabaseDriver for SqliteDriver {
         _schema: Option<&str>,
     ) -> Result<String, String> {
         get_routine_definition(params, routine_name, routine_type).await
+    }
+
+    async fn get_triggers(
+        &self,
+        params: &crate::models::ConnectionParams,
+        _schema: Option<&str>,
+    ) -> Result<Vec<crate::models::TriggerInfo>, String> {
+        get_triggers(params).await
+    }
+
+    async fn get_trigger_definition(
+        &self,
+        params: &crate::models::ConnectionParams,
+        trigger_name: &str,
+        _table_name: &str,
+        _schema: Option<&str>,
+    ) -> Result<String, String> {
+        get_trigger_definition(params, trigger_name).await
+    }
+
+    async fn create_trigger(
+        &self,
+        params: &crate::models::ConnectionParams,
+        trigger_sql: &str,
+        _schema: Option<&str>,
+    ) -> Result<(), String> {
+        create_trigger(params, trigger_sql).await
+    }
+
+    async fn drop_trigger(
+        &self,
+        params: &crate::models::ConnectionParams,
+        trigger_name: &str,
+        _table_name: &str,
+        _schema: Option<&str>,
+    ) -> Result<(), String> {
+        drop_trigger(params, trigger_name).await
     }
 
     async fn execute_query(
