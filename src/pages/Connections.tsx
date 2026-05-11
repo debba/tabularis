@@ -552,16 +552,25 @@ export const Connections = () => {
             <p className="text-sm text-muted mb-6 max-w-xs leading-relaxed">
               {t("connections.noConnectionsHint")}
             </p>
-            <button
-              onClick={() => {
-                setEditingConnection(null);
-                setIsModalOpen(true);
-              }}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-blue-500/20 hover:-translate-y-px"
-            >
-              <Plus size={14} />
-              {t("connections.createFirst")}
-            </button>
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => {
+                  setEditingConnection(null);
+                  setIsModalOpen(true);
+                }}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-blue-500/20 hover:-translate-y-px"
+              >
+                <Plus size={14} />
+                {t("connections.createFirst")}
+              </button>
+              <button
+                onClick={handleImport}
+                className="flex items-center gap-2 bg-elevated border border-strong hover:border-blue-500/50 text-secondary hover:text-blue-400 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all hover:-translate-y-px"
+              >
+                <Upload size={14} />
+                {t("connections.import")}
+              </button>
+            </div>
           </div>
         ) : (
           <>
