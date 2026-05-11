@@ -7,7 +7,7 @@
  */
 
 export const LINKS = {
-  DISCORD: "https://discord.gg/YrZPHAwMSG",
+  DISCORD: "https://discord.gg/K2hmhfHRSt",
   GITHUB: "https://github.com/TabularisDB/tabularis",
 } as const;
 

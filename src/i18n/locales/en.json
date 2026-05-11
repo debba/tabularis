@@ -1370,5 +1370,11 @@
     "reasonPlaceholder": "e.g. Looks risky on prod, please confirm…",
     "approve": "Approve",
     "deny": "Deny"
+  },
+  "discordCallout": {
+    "title": "Brand-new Discord community!",
+    "body": "We just launched a dedicated home for Tabularis users. Get help, share tips, shape the roadmap.",
+    "cta": "Join now",
+    "dismiss": "Dismiss"
   }
 }

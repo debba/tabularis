@@ -1314,5 +1314,11 @@
     "reasonPlaceholder": "例如:在生产环境中风险较大,请确认…",
     "approve": "批准",
     "deny": "拒绝"
+  },
+  "discordCallout": {
+    "title": "全新的 Discord 社区！",
+    "body": "我们为 Tabularis 用户开设了专属社区：获取帮助、分享技巧、共建路线图。",
+    "cta": "立即加入",
+    "dismiss": "关闭"
   }
 }

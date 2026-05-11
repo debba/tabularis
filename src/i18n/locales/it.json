@@ -1349,5 +1349,11 @@
     "reasonPlaceholder": "es. Sembra rischiosa in produzione, conferma…",
     "approve": "Approva",
     "deny": "Nega"
+  },
+  "discordCallout": {
+    "title": "Nuova community Discord!",
+    "body": "Abbiamo una community Discord dedicata a Tabularis: ricevi aiuto, scambia consigli e influenza la roadmap.",
+    "cta": "Entra subito",
+    "dismiss": "Chiudi"
   }
 }

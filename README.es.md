@@ -16,7 +16,7 @@
 
 Cliente de escritorio open source para bases de datos modernas. Soporta PostgreSQL, MySQL/MariaDB y SQLite, con notebooks SQL, funciones de IA, integración MCP y sistema de plugins externo.
 
-**Discord** - [Únete al servidor](https://discord.gg/YrZPHAwMSG) para hablar con los mantenedores, compartir feedback y pedir ayuda.
+**Discord** - [Únete al servidor](https://discord.gg/K2hmhfHRSt) para hablar con los mantenedores, compartir feedback y pedir ayuda.
 
 > Documento traducido. Para la versión de referencia más actualizada, consulta también el [README en inglés](./README.md).
 
