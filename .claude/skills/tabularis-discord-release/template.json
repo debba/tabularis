@@ -1,7 +1,7 @@
 {
   "username": "Tabularis",
   "avatar_url": "https://raw.githubusercontent.com/debba/tabularis/main/src-tauri/icons/128x128.png",
-  "content": "**v{{VERSION}}** is out.",
+  "content": "@everyone **v{{VERSION}}** is out.",
   "embeds": [
     {
       "title": "Tabularis v{{VERSION}}",
@@ -28,11 +28,6 @@
           "value": "{{FIXES_BULLETS}}",
           "inline": false,
           "_omit_if_value_empty": true
-        },
-        {
-          "name": "Links",
-          "value": "[Release post]({{BLOG_URL}}?utm_src=discord) · [GitHub release](https://github.com/debba/tabularis/releases/tag/v{{VERSION}}) · [Changelog](https://github.com/debba/tabularis/blob/main/CHANGELOG.md)",
-          "inline": false
         }
       ],
       "footer": {
@@ -40,6 +35,37 @@
         "icon_url": "https://raw.githubusercontent.com/debba/tabularis/main/src-tauri/icons/128x128.png"
       },
       "timestamp": "{{DATE_ISO}}"
+    }
+  ],
+  "components": [
+    {
+      "type": 1,
+      "components": [
+        {
+          "type": 2,
+          "style": 5,
+          "label": "Release post",
+          "url": "{{BLOG_URL}}?utm_src=discord"
+        },
+        {
+          "type": 2,
+          "style": 5,
+          "label": "GitHub Release",
+          "url": "https://github.com/debba/tabularis/releases/tag/v{{VERSION}}"
+        },
+        {
+          "type": 2,
+          "style": 5,
+          "label": "Changelog",
+          "url": "https://github.com/debba/tabularis/blob/main/CHANGELOG.md"
+        },
+        {
+          "type": 2,
+          "style": 5,
+          "label": "Website",
+          "url": "https://tabularis.dev/?utm_src=discord"
+        }
+      ]
     }
   ]
 }
