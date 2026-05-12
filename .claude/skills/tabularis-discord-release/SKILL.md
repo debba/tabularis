@@ -75,7 +75,7 @@ The raw CHANGELOG lines are commit-message-shaped. Rewrite each one for a human 
 ## What NOT to do
 - Don't bypass `template.json` by writing inline JSON. If the template doesn't exist, stop and tell the user.
 - Don't add an `image` field unless the user provides a screenshot URL — edit `template.json` to add it permanently if they want it on every release.
-- Don't add reactions, components, or polls.
+- Don't add reactions or polls. (Link-button components in the template are fine and must be preserved through substitution — they only need `{{VERSION}}` and `{{BLOG_URL}}` substituted like the rest.)
 - Don't include `:::contributors:::` or other blog-specific markdown — that syntax breaks Discord rendering.
 - Don't translate to Italian unless the user explicitly asks; default is English (Tabularis Discord is international).
 
