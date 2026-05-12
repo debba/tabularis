@@ -72,6 +72,7 @@ import { groupByDate, formatHistoryTime } from "../../utils/dateGroups";
 import { SqlHighlight } from "../ui/SqlHighlight";
 import { isMultiDatabaseCapable } from "../../utils/database";
 import { supportsManageTables } from "../../utils/driverCapabilities";
+import { newConsoleForDatabase, newConsoleForTable } from "../../utils/newConsole";
 
 export type SidebarTab = "structure" | "favorites" | "history";
 
@@ -1437,6 +1438,14 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                       },
                     },
                     {
+                      label: t("sidebar.newConsole"),
+                      icon: FileCode,
+                      action: () => {
+                        const spec = newConsoleForTable(contextMenu.id, activeDriver, ctxSchema);
+                        runQuery(spec.sql, spec.title, undefined, true, spec.schema);
+                      },
+                    },
+                    {
                       label: t("sidebar.countRows"),
                       icon: Hash,
                       action: () => {
@@ -1714,6 +1723,14 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                             ]
                           : contextMenu.type === "database"
                             ? [
+                                {
+                                  label: t("sidebar.newConsole"),
+                                  icon: FileCode,
+                                  action: () => {
+                                    const spec = newConsoleForDatabase(contextMenu.id);
+                                    runQuery(spec.sql, spec.title, undefined, true, spec.schema);
+                                  },
+                                },
                                 {
                                   label: t("dump.importDatabase"),
                                   icon: Upload,
