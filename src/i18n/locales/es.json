@@ -268,6 +268,8 @@
     "appearance_editorWordWrapDesc": "Ajusta las líneas largas en el editor en vez de desplazarse horizontalmente.",
     "appearance_editorShowLineNumbers": "Mostrar Números de Línea",
     "appearance_editorShowLineNumbersDesc": "Muestra los números de línea en el margen del editor.",
+    "appearance_editorAcceptSuggestionOnEnter": "Aceptar Sugerencia con Intro",
+    "appearance_editorAcceptSuggestionOnEnterDesc": "Permite que Intro (además de Tab) acepte la sugerencia de autocompletado activa. Cuando está desactivado, Intro siempre inserta una nueva línea.",
     "editConfigJson": "Editar config.json",
     "editConfigJsonDesc": "Edita directamente el archivo de configuración en bruto. Se requiere reinicio para aplicar los cambios.",
     "configJsonModal": {
