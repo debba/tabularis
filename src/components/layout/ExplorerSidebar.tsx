@@ -54,6 +54,7 @@ import { DumpDatabaseModal } from "../modals/DumpDatabaseModal";
 import { ImportDatabaseModal } from "../modals/ImportDatabaseModal";
 import { ClipboardImportModal } from "../modals/ClipboardImportModal";
 import { ViewEditorModal } from "../modals/ViewEditorModal";
+import { TriggerEditorModal } from "../modals/TriggerEditorModal";
 import { ConfirmModal } from "../modals/ConfirmModal";
 import { Accordion } from "./sidebar/Accordion";
 import { SidebarTableItem } from "./sidebar/SidebarTableItem";
@@ -61,11 +62,12 @@ import { SidebarViewItem } from "./sidebar/SidebarViewItem";
 import { SidebarRoutineItem } from "./sidebar/SidebarRoutineItem";
 import { SidebarSchemaItem } from "./sidebar/SidebarSchemaItem";
 import { SidebarDatabaseItem } from "./sidebar/SidebarDatabaseItem";
+import { SidebarTriggerItem } from "./sidebar/SidebarTriggerItem";
 import { QueryHistorySection } from "./sidebar/QueryHistorySection";
 import { useConnectionLayoutContext } from "../../hooks/useConnectionLayoutContext";
 import type { TableColumn } from "../../types/schema";
 import type { ContextMenuData } from "../../types/sidebar";
-import type { RoutineInfo } from "../../contexts/DatabaseContext";
+import type { RoutineInfo, TriggerInfo } from "../../contexts/DatabaseContext";
 import { groupRoutinesByType } from "../../utils/routines";
 import { formatObjectCount } from "../../utils/schema";
 import { groupByDate, formatHistoryTime } from "../../utils/dateGroups";
@@ -94,10 +96,12 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
     tables,
     views,
     routines,
+    triggers,
     isLoadingTables,
     refreshTables,
     refreshViews,
     refreshRoutines,
+    refreshTriggers,
     activeConnectionName,
     activeDatabaseName,
     schemas,
@@ -161,6 +165,8 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
   const [tablesOpen, setTablesOpen] = useState(true);
   const [viewsOpen, setViewsOpen] = useState(true);
   const [routinesOpen, setRoutinesOpen] = useState(false);
+  const [triggersOpenFlat, setTriggersOpenFlat] = useState(false);
+  const [triggerFilterFlat, setTriggerFilterFlat] = useState("");
   const [functionsOpen, setFunctionsOpen] = useState(true);
   const [proceduresOpen, setProceduresOpen] = useState(true);
   const [activeView, setActiveView] = useState<string | null>(null);
@@ -187,11 +193,19 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
     isNewView?: boolean;
   }>({ isOpen: false });
 
+  const [triggerEditorModal, setTriggerEditorModal] = useState<{
+    isOpen: boolean;
+    triggerName?: string;
+    tableName?: string;
+    schema?: string;
+    isNewTrigger?: boolean;
+  }>({ isOpen: false });
+
   const groupedRoutines = routines ? groupRoutinesByType(routines) : { procedures: [], functions: [] };
 
-  const runQuery = (sql: string, queryName?: string, tableName?: string, preventAutoRun: boolean = false, schema?: string) => {
+  const runQuery = (sql: string, queryName?: string, tableName?: string, preventAutoRun: boolean = false, schema?: string, readOnly?: boolean) => {
     navigate("/editor", {
-      state: { initialQuery: sql, queryName, tableName, preventAutoRun, schema, targetConnectionId: activeConnectionId },
+      state: { initialQuery: sql, queryName, tableName, preventAutoRun, schema, readOnly, targetConnectionId: activeConnectionId },
     });
   };
 
@@ -281,6 +295,24 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
       console.error(e);
       showAlert(
         t("sidebar.failGetRoutineDefinition") + String(e),
+        { kind: "error" }
+      );
+    }
+  };
+
+  const handleTriggerDoubleClick = async (trigger: TriggerInfo, schema?: string) => {
+    try {
+      const definition = await invoke<string>("get_trigger_definition", {
+        connectionId: activeConnectionId,
+        triggerName: trigger.name,
+        tableName: trigger.table_name,
+        ...(schema ? { schema } : {}),
+      });
+      runQuery(definition, `${trigger.name} Definition`, undefined, true, schema, true);
+    } catch (e) {
+      console.error(e);
+      showAlert(
+        t("sidebar.failGetTriggerDefinition") + String(e),
         { kind: "error" }
       );
     }
@@ -825,6 +857,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                           onViewClick={handleViewClick}
                           onViewDoubleClick={(name, schema) => handleOpenView(name, schema)}
                           onRoutineDoubleClick={(routine, schema) => handleRoutineDoubleClick(routine, schema)}
+                          onTriggerDoubleClick={(trigger, schema) => handleTriggerDoubleClick(trigger, schema)}
                           onContextMenu={handleContextMenu}
                           onAddColumn={(t_name) =>
                             setModifyColumnModal({ isOpen: true, tableName: t_name, column: null })
@@ -882,6 +915,10 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                           onCreateView={() =>
                             setViewEditorModal({ isOpen: true, isNewView: true })
                           }
+                          onCreateTrigger={(schema) =>
+                            setTriggerEditorModal({ isOpen: true, isNewTrigger: true, schema })
+                          }
+                          showTriggers={activeCapabilities?.triggers === true}
                         />
                       ))}
                     </>
@@ -1046,6 +1083,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                       onViewClick={handleViewClick}
                       onViewDoubleClick={(name, db) => handleOpenDatabaseView(name, db)}
                       onRoutineDoubleClick={(routine, db) => handleRoutineDoubleClick(routine, db)}
+                      onTriggerDoubleClick={(trigger, db) => handleTriggerDoubleClick(trigger, db)}
                       onContextMenu={handleContextMenu}
                       onAddColumn={(t_name) =>
                         setModifyColumnModal({ isOpen: true, tableName: t_name, column: null })
@@ -1104,6 +1142,9 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                       onCreateView={() =>
                         setViewEditorModal({ isOpen: true, isNewView: true })
                       }
+                      onCreateTrigger={(schema) =>
+                        setTriggerEditorModal({ isOpen: true, isNewTrigger: true, schema })
+                      }
                       onDump={activeCapabilities?.no_connection_required !== true ? (db) => setDumpModal({ database: db }) : undefined}
                       onImport={activeCapabilities?.no_connection_required !== true ? (db) => handleImportDatabase(db) : undefined}
                       onViewDiagram={activeCapabilities?.no_connection_required !== true ? async (db) => {
@@ -1141,7 +1182,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                       {t("sidebar.objectSummary")}
                     </span>
                     <span className="text-[10px] text-muted opacity-60">
-                      {formatObjectCount(tables.length, views.length, routines.length)}
+                      {formatObjectCount(tables.length, views.length, routines.length, triggers.length)}
                     </span>
                   </div>
 
@@ -1330,6 +1371,85 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                       </div>
                     )}
                   </Accordion>
+                  )}
+
+                  {/* Triggers (flat layout) */}
+                  {activeCapabilities?.triggers === true && (
+                    <Accordion
+                      title={`${t("sidebar.triggers")} (${triggers.length})`}
+                      isOpen={triggersOpenFlat}
+                      onToggle={() => setTriggersOpenFlat(!triggersOpenFlat)}
+                      actions={
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (refreshTriggers) refreshTriggers();
+                            }}
+                            className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
+                            title={t("sidebar.refreshTriggers") || "Refresh Triggers"}
+                          >
+                            <RefreshCw size={14} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTriggerEditorModal({ isOpen: true, isNewTrigger: true });
+                            }}
+                            className="p-1 rounded hover:bg-surface-secondary text-muted hover:text-primary transition-colors"
+                            title={t("sidebar.createTrigger") || "Create New Trigger"}
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      }
+                    >
+                      {triggers.length > 0 && (
+                        <div className="px-2 py-1">
+                          <div className="relative flex items-center">
+                            <Search size={11} className="absolute left-2 text-muted pointer-events-none" />
+                            <input
+                              type="text"
+                              value={triggerFilterFlat}
+                              onChange={(e) => setTriggerFilterFlat(e.target.value)}
+                              placeholder={t("sidebar.filterTriggers")}
+                              className="w-full bg-surface-secondary text-xs text-secondary placeholder:text-muted rounded pl-6 pr-6 py-1 border border-default focus:outline-none focus:border-blue-500/50"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            {triggerFilterFlat && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setTriggerFilterFlat(""); }}
+                                className="absolute right-1.5 text-muted hover:text-primary"
+                              >
+                                <X size={11} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {(() => {
+                        const filtered = triggerFilterFlat
+                          ? triggers.filter((tr) => tr.name.toLowerCase().includes(triggerFilterFlat.toLowerCase()))
+                          : triggers;
+                        return filtered.length === 0 ? (
+                          <div className="text-center p-2 text-xs text-muted italic">
+                            {triggerFilterFlat ? t("sidebar.noTriggersMatch") : t("sidebar.noTriggers")}
+                          </div>
+                        ) : (
+                          <div>
+                            {filtered.map((trigger) => (
+                              <SidebarTriggerItem
+                                key={trigger.name}
+                                trigger={trigger}
+                                connectionId={activeConnectionId!}
+                                onContextMenu={handleContextMenu}
+                                onDoubleClick={handleTriggerDoubleClick}
+                              />
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </Accordion>
                   )}
 
                   {/* Routines */}
@@ -1712,6 +1832,80 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                 action: () => navigator.clipboard.writeText(contextMenu.id),
                               },
                             ]
+                          : contextMenu.type === "trigger"
+                            ? (() => {
+                                const triggerData = contextMenu.data && 'table_name' in contextMenu.data
+                                  ? contextMenu.data as unknown as TriggerInfo & { schema?: string }
+                                  : null;
+                                const triggerSchema = triggerData?.schema ?? activeSchema ?? undefined;
+                                return [
+                                  {
+                                    label: t("sidebar.viewTriggerDefinition"),
+                                    icon: FileText,
+                                    action: async () => {
+                                      try {
+                                        const definition = await invoke<string>("get_trigger_definition", {
+                                          connectionId: activeConnectionId,
+                                          triggerName: contextMenu.id,
+                                          tableName: triggerData?.table_name ?? "",
+                                          ...(triggerSchema ? { schema: triggerSchema } : {}),
+                                        });
+                                        runQuery(definition, `${contextMenu.id} Definition`, undefined, true, triggerSchema, true);
+                                      } catch (e) {
+                                        console.error(e);
+                                        showAlert(
+                                          t("sidebar.failGetTriggerDefinition") + String(e),
+                                          { kind: "error" }
+                                        );
+                                      }
+                                    },
+                                  },
+                                  {
+                                    label: t("sidebar.editTrigger"),
+                                    icon: Edit,
+                                    action: () => {
+                                      setTriggerEditorModal({
+                                        isOpen: true,
+                                        triggerName: contextMenu.id,
+                                        tableName: triggerData?.table_name,
+                                        schema: triggerSchema,
+                                        isNewTrigger: false,
+                                      });
+                                    },
+                                  },
+                                  {
+                                    label: t("sidebar.copyName"),
+                                    icon: Copy,
+                                    action: () => navigator.clipboard.writeText(contextMenu.id),
+                                  },
+                                  {
+                                    label: t("sidebar.dropTrigger"),
+                                    icon: Trash2,
+                                    danger: true,
+                                    action: async () => {
+                                      if (
+                                        await ask(
+                                          t("sidebar.dropTriggerConfirm", { trigger: contextMenu.id }),
+                                          { title: t("sidebar.dropTrigger"), kind: "warning" },
+                                        )
+                                      ) {
+                                        try {
+                                          await invoke("drop_trigger", {
+                                            connectionId: activeConnectionId,
+                                            triggerName: contextMenu.id,
+                                            tableName: triggerData?.table_name ?? "",
+                                            ...(triggerSchema ? { schema: triggerSchema } : {}),
+                                          });
+                                          if (refreshTriggers) refreshTriggers();
+                                        } catch (e) {
+                                          console.error(e);
+                                          showAlert(t("sidebar.failDropTrigger") + String(e), { kind: "error" });
+                                        }
+                                      }
+                                    },
+                                  },
+                                ];
+                              })()
                           : contextMenu.type === "database"
                             ? [
                                 {
@@ -1964,6 +2158,22 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
           isNewView={viewEditorModal.isNewView}
           onSuccess={() => {
             if (refreshViews) refreshViews();
+          }}
+        />
+      )}
+
+      {triggerEditorModal.isOpen && activeConnectionId && (
+        <TriggerEditorModal
+          isOpen={triggerEditorModal.isOpen}
+          onClose={() => setTriggerEditorModal({ isOpen: false })}
+          connectionId={activeConnectionId}
+          triggerName={triggerEditorModal.triggerName}
+          tableName={triggerEditorModal.tableName}
+          schema={triggerEditorModal.schema}
+          driver={activeDriver ?? undefined}
+          isNewTrigger={triggerEditorModal.isNewTrigger}
+          onSuccess={() => {
+            if (refreshTriggers) refreshTriggers();
           }}
         />
       )}

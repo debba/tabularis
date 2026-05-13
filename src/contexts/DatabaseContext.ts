@@ -16,6 +16,14 @@ export interface RoutineInfo {
   definition?: string;
 }
 
+export interface TriggerInfo {
+  name: string;
+  table_name: string;
+  event: string;
+  timing: string;
+  definition?: string;
+}
+
 export interface SavedConnection {
   id: string;
   name: string;
@@ -49,6 +57,7 @@ export interface SchemaData {
   tables: TableInfo[];
   views: ViewInfo[];
   routines: RoutineInfo[];
+  triggers: TriggerInfo[];
   isLoading: boolean;
   isLoaded: boolean;
 }
@@ -61,9 +70,11 @@ export interface ConnectionData {
   tables: TableInfo[];
   views: ViewInfo[];
   routines: RoutineInfo[];
+  triggers: TriggerInfo[];
   isLoadingTables: boolean;
   isLoadingViews: boolean;
   isLoadingRoutines: boolean;
+  isLoadingTriggers: boolean;
   schemas: string[];
   isLoadingSchemas: boolean;
   schemaDataMap: Record<string, SchemaData>;
@@ -89,9 +100,11 @@ export interface DatabaseContextType {
   tables: TableInfo[];
   views: ViewInfo[];
   routines: RoutineInfo[];
+  triggers: TriggerInfo[];
   isLoadingTables: boolean;
   isLoadingViews: boolean;
   isLoadingRoutines: boolean;
+  isLoadingTriggers: boolean;
   schemas: string[];
   isLoadingSchemas: boolean;
   schemaDataMap: Record<string, SchemaData>;
@@ -111,6 +124,7 @@ export interface DatabaseContextType {
   refreshTables: (connectionId?: string) => Promise<void>;
   refreshViews: (connectionId?: string) => Promise<void>;
   refreshRoutines: (connectionId?: string) => Promise<void>;
+  refreshTriggers: (connectionId?: string) => Promise<void>;
   loadSchemaData: (schema: string, connectionId?: string) => Promise<void>;
   refreshSchemaData: (schema: string, connectionId?: string) => Promise<void>;
   setSelectedSchemas: (schemas: string[], connectionId?: string) => Promise<void>;

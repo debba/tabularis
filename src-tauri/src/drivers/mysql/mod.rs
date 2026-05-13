@@ -10,7 +10,7 @@ mod tests;
 
 use crate::models::{
     ConnectionParams, ForeignKey, Index, Pagination, QueryResult, RoutineInfo, RoutineParameter,
-    TableColumn, TableInfo, ViewInfo,
+    TableColumn, TableInfo, TriggerInfo, ViewInfo,
 };
 use crate::pool_manager::get_mysql_pool;
 pub use explain::explain_query;
@@ -947,6 +947,98 @@ pub async fn execute_query(
     })
 }
 
+pub async fn get_triggers(
+    params: &ConnectionParams,
+    schema: Option<&str>,
+) -> Result<Vec<TriggerInfo>, String> {
+    let db_name = schema.unwrap_or_else(|| params.database.primary());
+    log::debug!("MySQL: Fetching triggers for database: {}", db_name);
+    let pool = get_mysql_pool(params).await?;
+    let query = r#"
+        SELECT trigger_name, event_object_table, event_manipulation, action_timing
+        FROM information_schema.triggers
+        WHERE trigger_schema = ?
+        ORDER BY trigger_name ASC
+    "#;
+    let rows = sqlx::query(query)
+        .bind(db_name)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    let triggers: Vec<TriggerInfo> = rows
+        .iter()
+        .map(|r| TriggerInfo {
+            name: mysql_row_str(r, 0),
+            table_name: mysql_row_str(r, 1),
+            event: mysql_row_str(r, 2),
+            timing: mysql_row_str(r, 3),
+            definition: None,
+        })
+        .collect();
+    log::debug!("MySQL: Found {} triggers in {}", triggers.len(), db_name);
+    Ok(triggers)
+}
+
+pub async fn get_trigger_definition(
+    params: &ConnectionParams,
+    trigger_name: &str,
+    schema: Option<&str>,
+) -> Result<String, String> {
+    let pool = get_mysql_pool(params).await?;
+    let qualified = match schema {
+        Some(s) => format!("`{}`.`{}`", escape_identifier(s), escape_identifier(trigger_name)),
+        None => format!("`{}`", escape_identifier(trigger_name)),
+    };
+    let query = format!("SHOW CREATE TRIGGER {}", qualified);
+    let row = sqlx::query(&query)
+        .fetch_one(&pool)
+        .await
+        .map_err(|e| format!("Failed to get trigger definition: {}", e))?;
+    // SHOW CREATE TRIGGER returns: Trigger, sql_mode, SQL Original Statement, ...
+    Ok(mysql_row_str(&row, 2))
+}
+
+pub async fn create_trigger(
+    params: &ConnectionParams,
+    trigger_sql: &str,
+    schema: Option<&str>,
+) -> Result<(), String> {
+    let effective_params;
+    let use_params = if let Some(s) = schema {
+        effective_params = ConnectionParams {
+            database: crate::models::DatabaseSelection::Single(s.to_string()),
+            ..params.clone()
+        };
+        &effective_params
+    } else {
+        params
+    };
+    let pool = get_mysql_pool(use_params).await?;
+    sqlx::raw_sql(trigger_sql)
+        .execute(&pool)
+        .await
+        .map_err(|e| format!("Failed to create trigger: {}", e))?;
+    Ok(())
+}
+
+pub async fn drop_trigger(
+    params: &ConnectionParams,
+    trigger_name: &str,
+    schema: Option<&str>,
+) -> Result<(), String> {
+    let pool = get_mysql_pool(params).await?;
+    let qualified = match schema {
+        Some(s) => format!("`{}`.`{}`", escape_identifier(s), escape_identifier(trigger_name)),
+        None => format!("`{}`", escape_identifier(trigger_name)),
+    };
+    let query = format!("DROP TRIGGER IF EXISTS {}", qualified);
+    sqlx::raw_sql(&query)
+        .execute(&pool)
+        .await
+        .map_err(|e| format!("Failed to drop trigger: {}", e))?;
+    Ok(())
+}
+
 // ============================================================
 // Plugin wrapper
 // ============================================================
@@ -1018,6 +1110,7 @@ impl MysqlDriver {
                     no_connection_required: false,
                     manage_tables: true,
                     readonly: false,
+                    triggers: true,
                 },
                 is_builtin: true,
                 default_username: "root".to_string(),
@@ -1267,6 +1360,43 @@ impl DatabaseDriver for MysqlDriver {
         _schema: Option<&str>,
     ) -> Result<String, String> {
         get_routine_definition(params, routine_name, routine_type).await
+    }
+
+    async fn get_triggers(
+        &self,
+        params: &crate::models::ConnectionParams,
+        schema: Option<&str>,
+    ) -> Result<Vec<crate::models::TriggerInfo>, String> {
+        get_triggers(params, schema).await
+    }
+
+    async fn get_trigger_definition(
+        &self,
+        params: &crate::models::ConnectionParams,
+        trigger_name: &str,
+        _table_name: &str,
+        schema: Option<&str>,
+    ) -> Result<String, String> {
+        get_trigger_definition(params, trigger_name, schema).await
+    }
+
+    async fn create_trigger(
+        &self,
+        params: &crate::models::ConnectionParams,
+        trigger_sql: &str,
+        schema: Option<&str>,
+    ) -> Result<(), String> {
+        create_trigger(params, trigger_sql, schema).await
+    }
+
+    async fn drop_trigger(
+        &self,
+        params: &crate::models::ConnectionParams,
+        trigger_name: &str,
+        _table_name: &str,
+        schema: Option<&str>,
+    ) -> Result<(), String> {
+        drop_trigger(params, trigger_name, schema).await
     }
 
     async fn execute_query(

@@ -357,6 +357,11 @@ pub fn run() {
             commands::get_routines,
             commands::get_routine_parameters,
             commands::get_routine_definition,
+            // Triggers
+            commands::get_triggers,
+            commands::get_trigger_definition,
+            commands::create_trigger,
+            commands::drop_trigger,
             // MCP
             mcp::install::get_mcp_status,
             mcp::install::install_mcp_config,
