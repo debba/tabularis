@@ -2030,14 +2030,14 @@ export const Editor = () => {
   useEffect(() => {
     const state = location.state as EditorState;
     if (activeConnectionId) {
-      if (state?.initialQuery) {
+      if (state?.initialQuery !== undefined) {
         if (
           state.targetConnectionId &&
           state.targetConnectionId !== activeConnectionId
         )
           return;
 
-        const queryKey = `${state.initialQuery}-${state.tableName}-${state.queryName}`;
+        const queryKey = `${state.initialQuery}-${state.tableName}-${state.queryName}-${state.schema}-${state.title}`;
 
         if (processingRef.current === queryKey) {
           // If re-navigating to the same definition with readOnly, patch any
