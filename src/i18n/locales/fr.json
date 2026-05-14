@@ -268,6 +268,8 @@
     "appearance_editorWordWrapDesc": "Retourne les longues lignes dans l’éditeur au lieu d’un défilement horizontal.",
     "appearance_editorShowLineNumbers": "Afficher les numéros de ligne",
     "appearance_editorShowLineNumbersDesc": "Affiche les numéros de ligne dans la marge de l’éditeur.",
+    "appearance_editorAcceptSuggestionOnEnter": "Accepter la suggestion avec Entrée",
+    "appearance_editorAcceptSuggestionOnEnterDesc": "Autorise la touche Entrée (en plus de Tab) à accepter la suggestion d’autocomplétion active. Lorsqu’elle est désactivée, Entrée insère toujours un saut de ligne.",
     "editConfigJson": "Modifier config.json",
     "editConfigJsonDesc": "Modifiez directement le fichier de configuration brut. Un redémarrage est nécessaire pour appliquer les changements.",
     "configJsonModal": {
