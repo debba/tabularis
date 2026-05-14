@@ -5,6 +5,7 @@
 
 import { formatGeometricValue, isGeometricType } from "./geometry";
 import { formatBlobValue, isBlobColumn, isBlobWireFormat } from "./blob";
+import { isJsonColumn } from "./json";
 
 /** Sentinel value indicating that the database DEFAULT value should be used */
 export const USE_DEFAULT_SENTINEL = "__USE_DEFAULT__";
@@ -53,6 +54,10 @@ export function formatCellValue(
 
   if (value === null || value === undefined) {
     return nullLabel;
+  }
+
+  if (columnType && isJsonColumn(columnType)) {
+    return JSON.stringify(value);
   }
 
   if (typeof value === "boolean") {
