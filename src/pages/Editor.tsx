@@ -94,6 +94,7 @@ import { useEditor } from "../hooks/useEditor";
 import { useConnectionLayoutContext } from "../hooks/useConnectionLayoutContext";
 import { useKeybindings } from "../hooks/useKeybindings";
 import type {
+  BatchStatementResult,
   QueryResult,
   Tab,
   PendingInsertion,
@@ -802,14 +803,10 @@ export const Editor = () => {
         || undefined;
 
       const entries = createResultEntries(targetTabId, queries);
-      // Local mutable array shared across concurrent promises.
-      // JS is single-threaded: between each `await` resume and the next
-      // yield point, mutations are atomic — no interleaving can occur.
-      const liveResults = [...entries];
 
       setIsResultsCollapsed(false);
       updateTab(targetTabId, {
-        results: liveResults,
+        results: entries,
         activeResultId: entries[0].id,
         result: null,
         error: "",
@@ -820,66 +817,92 @@ export const Editor = () => {
       const shouldRecordHistory =
         targetTab?.type === "console" || targetTab?.type === "query_builder";
 
-      // Execute all queries concurrently
-      await Promise.allSettled(
-        entries.map(async (entry, idx) => {
-          const start = performance.now();
-          try {
-            const res = await invoke<QueryResult>("execute_query", {
-              connectionId: activeConnectionId,
-              query: entry.query,
-              limit: pageSize,
-              page: 1,
-              ...(schema ? { schema } : {}),
-            });
-            const end = performance.now();
-            const tableName = extractTableName(entry.query) ?? null;
-
-            liveResults[idx] = {
-              ...liveResults[idx],
-              result: res,
-              executionTime: end - start,
-              isLoading: false,
-              activeTable: tableName,
-            };
-            updateTab(targetTabId, { results: [...liveResults] });
-
-            if (shouldRecordHistory) {
-              addHistoryEntry(
-                entry.query,
-                end - start,
-                "success",
-                res.pagination?.total_rows ?? null,
-                null,
-                historyDb,
-              );
-            }
-          } catch (err) {
-            const end = performance.now();
-            liveResults[idx] = {
-              ...liveResults[idx],
-              error:
-                typeof err === "string" ? err : t("editor.queryFailed"),
-              executionTime: end - start,
-              isLoading: false,
-            };
-            updateTab(targetTabId, { results: [...liveResults] });
-
-            if (shouldRecordHistory) {
-              addHistoryEntry(
-                entry.query,
-                end - start,
-                "error",
-                null,
-                typeof err === "string" ? err : t("editor.queryFailed"),
-                historyDb,
-              );
-            }
+      // Run the whole script on a single pooled connection so statements
+      // can share session state (SET @var, LAST_INSERT_ID(), transactions,
+      // TEMP TABLE).
+      const batchStart = performance.now();
+      let batchResults: BatchStatementResult[];
+      try {
+        batchResults = await invoke<BatchStatementResult[]>(
+          "execute_query_batch",
+          {
+            connectionId: activeConnectionId,
+            queries: entries.map((e) => e.query),
+            limit: pageSize,
+            page: 1,
+            ...(schema ? { schema } : {}),
+          },
+        );
+      } catch (err) {
+        // Batch-level failure (e.g. connection acquisition, cancellation):
+        // mark every entry as failed so the UI doesn't sit in "loading".
+        const fallbackElapsed = performance.now() - batchStart;
+        const message = typeof err === "string" ? err : t("editor.queryFailed");
+        const failed = entries.map((entry) => ({
+          ...entry,
+          error: message,
+          executionTime: fallbackElapsed,
+          isLoading: false,
+        }));
+        updateTab(targetTabId, { results: failed, isLoading: false });
+        if (shouldRecordHistory) {
+          for (const entry of entries) {
+            addHistoryEntry(
+              entry.query,
+              fallbackElapsed,
+              "error",
+              null,
+              message,
+              historyDb,
+            );
           }
-        }),
-      );
+        }
+        return;
+      }
 
-      updateTab(targetTabId, { isLoading: false });
+      const liveResults = entries.map((entry, idx) => {
+        const item = batchResults[idx];
+        const execTime = item?.execution_time_ms ?? null;
+        if (item?.error) {
+          if (shouldRecordHistory) {
+            addHistoryEntry(
+              entry.query,
+              execTime,
+              "error",
+              null,
+              item.error,
+              historyDb,
+            );
+          }
+          return {
+            ...entry,
+            error: item.error,
+            executionTime: execTime,
+            isLoading: false,
+          };
+        }
+        const res = item?.result ?? null;
+        const tableName = extractTableName(entry.query) ?? null;
+        if (shouldRecordHistory) {
+          addHistoryEntry(
+            entry.query,
+            execTime,
+            "success",
+            res?.pagination?.total_rows ?? null,
+            null,
+            historyDb,
+          );
+        }
+        return {
+          ...entry,
+          result: res,
+          executionTime: execTime,
+          isLoading: false,
+          activeTable: tableName,
+        };
+      });
+
+      updateTab(targetTabId, { results: liveResults, isLoading: false });
     },
     [activeConnectionId, updateTab, settings.resultPageSize, activeSchema, t, isMultiDb, activeDatabaseName, addHistoryEntry],
   );
