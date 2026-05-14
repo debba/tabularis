@@ -239,6 +239,8 @@
     "delimiterSemicolon": "Semikolon (;)",
     "delimiterTab": "Tabulator",
     "delimiterPipe": "Pipe (|)",
+    "detectJsonInTextColumns": "JSON in Text-Spalten erkennen",
+    "detectJsonInTextColumnsDesc": "Zeigt JSON-Viewer-Bedienelemente, wenn eine nicht typisierte Text-Zelle ein JSON-Objekt oder -Array enthält. Verursacht kleine Parse-Kosten pro Zelle.",
     "appearance": "Darstellung",
     "localization": "Lokalisierung",
     "themeSelection": "Themaauswahl",
@@ -643,6 +645,7 @@
     "savedInKeychain": "Passwort im System-Keychain gespeichert"
   },
   "dataGrid": {
+    "newRow": "NEU",
     "noData": "Keine Daten zum Anzeigen",
     "editRow": "Zeile bearbeiten",
     "deleteRow": "Zeile löschen",
@@ -1109,7 +1112,27 @@
     "placeholder": "JSON eingeben...",
     "format": "Formatieren",
     "valid": "Gültiges JSON",
-    "invalid": "Ungültiges JSON"
+    "invalid": "Ungültiges JSON",
+    "mode": {
+      "code": "Code",
+      "tree": "Baum",
+      "raw": "Rohtext"
+    },
+    "expand": "Aufklappen",
+    "collapse": "Zuklappen",
+    "search": "Suchen",
+    "copyPath": "Pfad kopieren",
+    "copyValue": "Wert kopieren",
+    "addItem": "Element hinzufügen",
+    "removeItem": "Element entfernen"
+  },
+  "jsonViewer": {
+    "close": "Schließen",
+    "save": "Speichern"
+  },
+  "jsonCell": {
+    "expand": "JSON-Baum ein-/ausklappen",
+    "openViewer": "JSON-Viewer öffnen"
   },
   "rowEditor": {
     "title": "Zeile bearbeiten",
@@ -1119,7 +1142,8 @@
     "enterValue": "Wert eingeben..."
   },
   "contextMenu": {
-    "openSidebar": "Seitenleisten-Editor öffnen"
+    "openSidebar": "Seitenleisten-Editor öffnen",
+    "openJsonEditor": "Im JSON-Editor öffnen"
   },
   "blobInput": {
     "noData": "Keine BLOB-Daten",

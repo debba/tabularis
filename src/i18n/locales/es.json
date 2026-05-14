@@ -239,6 +239,8 @@
     "delimiterSemicolon": "Punto y coma (;)",
     "delimiterTab": "Tab",
     "delimiterPipe": "Pipe (|)",
+    "detectJsonInTextColumns": "Detectar JSON en columnas de texto",
+    "detectJsonInTextColumnsDesc": "Muestra el visor de JSON cuando una celda de texto sin tipar contiene un objeto o array JSON. Añade un pequeño coste de análisis por celda.",
     "appearance": "Apariencia",
     "localization": "Localización",
     "themeSelection": "Selección de Tema",
@@ -643,6 +645,7 @@
     "savedInKeychain": "Contraseña guardada en el llavero del sistema"
   },
   "dataGrid": {
+    "newRow": "NUEVA",
     "noData": "No hay datos para mostrar",
     "editRow": "Editar Fila",
     "deleteRow": "Eliminar Fila",
@@ -1080,7 +1083,27 @@
     "placeholder": "Ingrese JSON...",
     "format": "Formatear",
     "valid": "JSON válido",
-    "invalid": "JSON no válido"
+    "invalid": "JSON no válido",
+    "mode": {
+      "code": "Código",
+      "tree": "Árbol",
+      "raw": "Sin formato"
+    },
+    "expand": "Expandir",
+    "collapse": "Contraer",
+    "search": "Buscar",
+    "copyPath": "Copiar ruta",
+    "copyValue": "Copiar valor",
+    "addItem": "Agregar elemento",
+    "removeItem": "Eliminar elemento"
+  },
+  "jsonViewer": {
+    "close": "Cerrar",
+    "save": "Guardar"
+  },
+  "jsonCell": {
+    "expand": "Expandir/contraer árbol JSON",
+    "openViewer": "Abrir visor JSON"
   },
   "rowEditor": {
     "title": "Editar Fila",
@@ -1090,7 +1113,8 @@
     "enterValue": "Ingresar valor..."
   },
   "contextMenu": {
-    "openSidebar": "Abrir Barra Lateral"
+    "openSidebar": "Abrir Barra Lateral",
+    "openJsonEditor": "Abrir en el editor JSON"
   },
   "blobInput": {
     "noData": "Sin datos BLOB",

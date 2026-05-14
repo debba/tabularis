@@ -422,6 +422,7 @@ pub async fn save_connection<R: Runtime>(
     app: AppHandle<R>,
     name: String,
     params: ConnectionParams,
+    detect_json_in_text_columns: Option<bool>,
 ) -> Result<SavedConnection, String> {
     log::info!("Saving new connection: {}", name);
 
@@ -461,6 +462,7 @@ pub async fn save_connection<R: Runtime>(
         params: params_to_save,
         group_id: None,
         sort_order: None,
+        detect_json_in_text_columns,
     };
     conn_file.connections.push(new_conn.clone());
     persistence::save_connections_file(&path, &conn_file)?;
@@ -517,6 +519,7 @@ pub async fn update_connection<R: Runtime>(
     id: String,
     name: String,
     params: ConnectionParams,
+    detect_json_in_text_columns: Option<bool>,
 ) -> Result<SavedConnection, String> {
     let path = get_config_path(&app)?;
     let mut conn_file = persistence::load_connections_file(&path)?;
@@ -573,6 +576,7 @@ pub async fn update_connection<R: Runtime>(
         params: params_to_save,
         group_id: original_group_id,
         sort_order: original_sort_order,
+        detect_json_in_text_columns,
     };
 
     conn_file.connections[conn_idx] = updated.clone();
@@ -688,6 +692,7 @@ pub async fn duplicate_connection<R: Runtime>(
         params: new_params,
         group_id: original.group_id.clone(), // Copy to same group as original
         sort_order: None,                    // Will be placed at end of group
+        detect_json_in_text_columns: original.detect_json_in_text_columns,
     };
 
     conn_file.connections.push(new_conn.clone());
@@ -1237,6 +1242,7 @@ mod tests {
             },
             group_id: None,
             sort_order: None,
+            detect_json_in_text_columns: None,
         }
     }
 
