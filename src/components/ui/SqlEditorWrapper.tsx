@@ -174,7 +174,7 @@ const SqlEditorInternal = ({
             verticalScrollbarSize: 8,
             horizontalScrollbarSize: 8,
           },
-          acceptSuggestionOnEnter: settings.editorAcceptSuggestionOnEnter ? 'smart' : 'off',
+          acceptSuggestionOnEnter: (settings.editorAcceptSuggestionOnEnter ?? true) ? 'smart' : 'off',
           multiCursorModifier: 'ctrlCmd',
           automaticLayout: true,
           ...options

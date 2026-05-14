@@ -262,11 +262,11 @@ describe('SqlEditorWrapper', () => {
       );
     });
 
-    it('defaults to "off" when the setting is undefined', () => {
+    it('defaults to "smart" when the setting is undefined', () => {
       renderWith(undefined, 'accept-undefined');
       expect(screen.getByTestId('monaco-editor')).toHaveAttribute(
         'data-accept-suggestion-on-enter',
-        'off'
+        'smart'
       );
     });
   });

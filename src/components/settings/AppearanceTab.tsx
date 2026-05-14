@@ -205,7 +205,7 @@ export function AppearanceTab() {
               )}
             >
               <SettingToggle
-                checked={settings.editorAcceptSuggestionOnEnter ?? false}
+                checked={settings.editorAcceptSuggestionOnEnter ?? true}
                 onChange={(v) =>
                   updateSetting("editorAcceptSuggestionOnEnter", v)
                 }

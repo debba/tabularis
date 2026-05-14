@@ -54,7 +54,7 @@ pub struct AppConfig {
     /// Whether the Enter key accepts the active autocomplete suggestion in the
     /// SQL editor. Maps to Monaco's `acceptSuggestionOnEnter` setting: `true`
     /// becomes `"smart"` (the safer variant), `false` becomes `"off"`.
-    /// Default: `false` (preserves the historical opt-out behaviour).
+    /// Default: `true` — matches the behaviour users expect from most editors.
     pub editor_accept_suggestion_on_enter: Option<bool>,
     /// Connection health check interval in seconds. 0 = disabled. Default: 30.
     pub ping_interval: Option<u32>,

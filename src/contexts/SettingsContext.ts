@@ -95,7 +95,7 @@ export const DEFAULT_SETTINGS: Settings = {
   editorTabSize: 2,
   editorWordWrap: true,
   editorShowLineNumbers: true,
-  editorAcceptSuggestionOnEnter: false,
+  editorAcceptSuggestionOnEnter: true,
   pingInterval: 30,
   queryHistoryMaxEntries: 500,
   aiAuditEnabled: true,
