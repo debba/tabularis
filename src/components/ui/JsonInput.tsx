@@ -1,21 +1,44 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, X, WrapText } from "lucide-react";
+import {
+  Check,
+  Code,
+  FileText,
+  Maximize2,
+  Network,
+  WrapText,
+  X,
+} from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   formatJsonForEditor,
-  validateJson,
   parseJsonEditorValue,
+  validateJson,
 } from "../../utils/json";
+import { JsonCodeEditor } from "./JsonCodeEditor";
+import { JsonTreeView } from "./JsonTreeView";
+
+type JsonInputMode = "code" | "tree" | "raw";
 
 interface JsonInputProps {
   value: unknown;
   onChange: (value: unknown) => void;
   placeholder?: string;
   className?: string;
+  readOnly?: boolean;
+  /** Hide the Expand-to-modal button. Used by JsonViewerPage to avoid recursion. */
+  disableExpand?: boolean;
+  /**
+   * When true, the editor area flexes to fill the parent's height (used by
+   * JsonViewerPage). When false (default), the editor uses its natural
+   * fixed height — required for use inside auto-height containers like the
+   * row-editor sidebar where flex-fill would collapse to 0.
+   */
+  fillHeight?: boolean;
 }
 
 /**
- * JSON editor with validation, formatting, and error feedback.
+ * Multi-mode JSON editor: Code (Monaco), Tree (json-edit-react), or Raw textarea.
  * Used in the sidebar FieldEditor for JSON/JSONB columns.
  */
 export const JsonInput: React.FC<JsonInputProps> = ({
@@ -23,8 +46,12 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   onChange,
   placeholder,
   className = "",
+  readOnly = false,
+  disableExpand = false,
+  fillHeight = false,
 }) => {
   const { t } = useTranslation();
+  const [mode, setMode] = useState<JsonInputMode>("code");
   const valueKey = JSON.stringify(value);
   const [text, setText] = useState(() => formatJsonForEditor(value));
   const [error, setError] = useState<string | null>(null);
@@ -36,17 +63,37 @@ export const JsonInput: React.FC<JsonInputProps> = ({
     setError(null);
   }
 
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const newText = e.target.value;
+  const applyTextChange = useCallback(
+    (newText: string) => {
       setText(newText);
-
       const err = validateJson(newText);
       setError(err);
-
       if (!err) {
         onChange(parseJsonEditorValue(newText));
       }
+    },
+    [onChange],
+  );
+
+  const handleRawChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      applyTextChange(e.target.value);
+    },
+    [applyTextChange],
+  );
+
+  const handleCodeChange = useCallback(
+    (next: string) => {
+      applyTextChange(next);
+    },
+    [applyTextChange],
+  );
+
+  const handleTreeChange = useCallback(
+    (next: unknown) => {
+      setText(formatJsonForEditor(next));
+      setError(null);
+      onChange(next);
     },
     [onChange],
   );
@@ -64,56 +111,198 @@ export const JsonInput: React.FC<JsonInputProps> = ({
     }
   }, [text, onChange]);
 
+  const treeValue = useMemo<unknown>(() => {
+    if (error || text.trim() === "") return null;
+    try {
+      return JSON.parse(text);
+    } catch {
+      return null;
+    }
+  }, [error, text]);
+
+  const modes: Array<{ key: JsonInputMode; label: string; Icon: typeof Code }> =
+    [
+      { key: "code", label: t("jsonInput.mode.code"), Icon: Code },
+      { key: "tree", label: t("jsonInput.mode.tree"), Icon: Network },
+      { key: "raw", label: t("jsonInput.mode.raw"), Icon: FileText },
+    ];
+
+  const isTextMode = mode === "code" || mode === "raw";
+
+  const expandValue = useMemo<unknown>(() => {
+    if (!error && text.trim() !== "") {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  }, [error, text, value]);
+
+  const handleExpandToWindow = useCallback(async () => {
+    try {
+      await invoke<string>("open_json_viewer_window", {
+        value: expandValue,
+        colName: "",
+        rowLabel: null,
+        readOnly,
+        cellKey: null,
+      });
+    } catch (e) {
+      console.error("Failed to open JSON viewer window:", e);
+    }
+  }, [expandValue, readOnly]);
+
+  const showToolbar = isTextMode || !disableExpand;
+
+  const rootClass = fillHeight
+    ? `flex flex-col gap-1 ${className}`
+    : `space-y-1 ${className}`;
+  const editorAreaClass = fillHeight
+    ? "relative flex-1 min-h-[220px] flex flex-col"
+    : "relative";
+
   return (
-    <div className={`space-y-1 ${className}`}>
-      <div className="relative">
-        <textarea
-          value={text}
-          onChange={handleChange}
-          placeholder={placeholder || t("jsonInput.placeholder")}
-          spellCheck={false}
-          className={`w-full px-3 py-2 bg-base border rounded-lg text-primary font-mono text-sm resize-y min-h-[120px] focus:outline-none transition-colors ${
-            error
-              ? "border-red-500 focus:border-red-500"
-              : "border-strong focus:border-blue-500"
-          }`}
-        />
+    <div className={rootClass}>
+      {/* Mode selector */}
+      <div
+        role="tablist"
+        aria-label={t("jsonInput.mode.code")}
+        className={`inline-flex items-center gap-0.5 bg-surface-secondary border border-default rounded p-0.5 ${
+          fillHeight ? "flex-shrink-0" : ""
+        }`}
+      >
+        {modes.map(({ key, label, Icon }) => {
+          const active = mode === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              data-mode={key}
+              onClick={() => setMode(key)}
+              className={`px-2 py-1 text-xs rounded flex items-center gap-1 transition-colors ${
+                active
+                  ? "bg-base text-primary border border-strong"
+                  : "text-secondary hover:bg-surface-tertiary border border-transparent"
+              }`}
+            >
+              <Icon size={12} />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Editor area */}
+      <div className={editorAreaClass}>
+        {mode === "code" && (
+          <div
+            data-testid="json-input-code"
+            className={`w-full border rounded-lg overflow-hidden transition-colors ${
+              fillHeight ? "flex-1 min-h-[220px]" : ""
+            } ${error ? "border-red-500" : "border-strong"}`}
+            style={fillHeight ? undefined : { height: 220 }}
+          >
+            <JsonCodeEditor
+              value={text}
+              onChange={handleCodeChange}
+              height="100%"
+              readOnly={readOnly}
+            />
+          </div>
+        )}
+
+        {mode === "tree" && (
+          <div
+            data-testid="json-input-tree"
+            className={fillHeight ? "flex-1 min-h-0 flex flex-col" : ""}
+          >
+            <JsonTreeView
+              value={treeValue}
+              onChange={handleTreeChange}
+              readOnly={readOnly}
+              fillHeight={fillHeight}
+            />
+          </div>
+        )}
+
+        {mode === "raw" && (
+          <textarea
+            data-testid="json-input-raw"
+            value={text}
+            onChange={handleRawChange}
+            placeholder={placeholder || t("jsonInput.placeholder")}
+            spellCheck={false}
+            readOnly={readOnly}
+            className={`w-full px-3 py-2 bg-base border rounded-lg text-primary font-mono text-sm resize-y focus:outline-none transition-colors ${
+              fillHeight ? "flex-1 min-h-[120px]" : "min-h-[120px]"
+            } ${
+              error
+                ? "border-red-500 focus:border-red-500"
+                : "border-strong focus:border-blue-500"
+            }`}
+          />
+        )}
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleFormat}
-            disabled={!!error || text.trim() === ""}
-            className="px-2 py-1 text-xs bg-surface-secondary text-secondary rounded border border-default hover:bg-surface-tertiary transition-colors flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-            title={t("jsonInput.format")}
-          >
-            <WrapText size={12} />
-            {t("jsonInput.format")}
-          </button>
-        </div>
+      {showToolbar && (
+        <div
+          className={`flex items-center justify-between ${
+            fillHeight ? "flex-shrink-0" : ""
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {isTextMode && !readOnly && (
+              <button
+                type="button"
+                onClick={handleFormat}
+                disabled={!!error || text.trim() === ""}
+                className="px-2 py-1 text-xs bg-surface-secondary text-secondary rounded border border-default hover:bg-surface-tertiary transition-colors flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                title={t("jsonInput.format")}
+              >
+                <WrapText size={12} />
+                {t("jsonInput.format")}
+              </button>
+            )}
+            {!disableExpand && (
+              <button
+                type="button"
+                onClick={handleExpandToWindow}
+                className="px-2 py-1 text-xs bg-surface-secondary text-secondary rounded border border-default hover:bg-surface-tertiary transition-colors flex items-center gap-1"
+                title={t("jsonInput.expand")}
+              >
+                <Maximize2 size={12} />
+                {t("jsonInput.expand")}
+              </button>
+            )}
+          </div>
 
-        {/* Validation indicator */}
-        <div className="flex items-center gap-1 text-xs">
-          {text.trim() !== "" &&
-            (error ? (
-              <span className="text-red-400 flex items-center gap-1">
-                <X size={12} />
-                {t("jsonInput.invalid")}
-              </span>
-            ) : (
-              <span className="text-green-400 flex items-center gap-1">
-                <Check size={12} />
-                {t("jsonInput.valid")}
-              </span>
-            ))}
+          {/* Validation indicator */}
+          {isTextMode && (
+            <div className="flex items-center gap-1 text-xs">
+              {text.trim() !== "" &&
+                (error ? (
+                  <span className="text-red-400 flex items-center gap-1">
+                    <X size={12} />
+                    {t("jsonInput.invalid")}
+                  </span>
+                ) : (
+                  <span className="text-green-400 flex items-center gap-1">
+                    <Check size={12} />
+                    {t("jsonInput.valid")}
+                  </span>
+                ))}
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* Error detail */}
-      {error && (
+      {error && isTextMode && (
         <p className="text-xs text-red-400 break-words">{error}</p>
       )}
     </div>
