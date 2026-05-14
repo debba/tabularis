@@ -98,7 +98,9 @@ import type {
   Tab,
   PendingInsertion,
   TableColumn,
+  ForeignKey,
 } from "../types/editor";
+import { buildForeignKeyFilterClause } from "../utils/foreignKeys";
 import {
   getTabScrollState,
   getAdjacentTabIndex,
@@ -500,11 +502,21 @@ export const Editor = () => {
       if (!activeConnectionId) return;
       const effectiveSchema = tabSchema ?? activeSchema;
       try {
-        const cols = await invoke<TableColumn[]>("get_columns", {
-          connectionId: activeConnectionId,
-          tableName: table,
-          ...(effectiveSchema ? { schema: effectiveSchema } : {}),
-        });
+        const [cols, fks] = await Promise.all([
+          invoke<TableColumn[]>("get_columns", {
+            connectionId: activeConnectionId,
+            tableName: table,
+            ...(effectiveSchema ? { schema: effectiveSchema } : {}),
+          }),
+          invoke<ForeignKey[]>("get_foreign_keys", {
+            connectionId: activeConnectionId,
+            tableName: table,
+            ...(effectiveSchema ? { schema: effectiveSchema } : {}),
+          }).catch((e) => {
+            console.warn("Failed to fetch foreign keys:", e);
+            return [] as ForeignKey[];
+          }),
+        ]);
         const pk = cols.find((c) => c.is_pk);
         const autoInc = cols
           .filter((c) => c.is_auto_increment)
@@ -523,6 +535,7 @@ export const Editor = () => {
             defaultValueColumns: defaultVal,
             nullableColumns: nullable,
             columnMetadata: cols,
+            foreignKeys: fks,
           });
       } catch (e) {
         console.error("Failed to fetch PK:", e);
@@ -535,6 +548,7 @@ export const Editor = () => {
             defaultValueColumns: [],
             nullableColumns: [],
             columnMetadata: [],
+            foreignKeys: [],
           });
       }
     },
@@ -1188,6 +1202,64 @@ export const Editor = () => {
       runQuery(undefined, 1, undefined, undefined, filter, sort, limit);
     },
     [updateTab, runQuery],
+  );
+
+  const handleForeignKeyNavigate = useCallback(
+    (fk: ForeignKey, value: unknown) => {
+      const currentTab = tabsRef.current.find(
+        (tb) => tb.id === activeTabIdRef.current,
+      );
+      if (!currentTab || !activeConnectionId) return;
+
+      const sourceType = currentTab.columnMetadata?.find(
+        (c) => c.name === fk.column_name,
+      )?.data_type;
+      const filterClause = buildForeignKeyFilterClause(
+        fk,
+        value,
+        activeDriver ?? null,
+        sourceType,
+      );
+
+      const targetSchema = activeCapabilities?.schemas
+        ? currentTab.schema
+        : undefined;
+
+      const newTabId = addTab({
+        type: "table",
+        activeTable: fk.ref_table,
+        schema: targetSchema,
+        filterClause,
+        // Reset clauses that may linger on an existing dedup'd tab
+        sortClause: "",
+        limitClause: undefined,
+        // Drop any stale results so the new query renders fresh
+        result: null,
+      });
+      if (!newTabId) return;
+
+      updateTab(newTabId, {
+        filterClause,
+        sortClause: "",
+        limitClause: undefined,
+      });
+
+      // Defer to next tick: addTab uses setTabs (async), and runQuery resolves
+      // the target tab via tabsRef which is only refreshed by the
+      // tabs-tracking effect after React commits. Running synchronously here
+      // misses the freshly created tab and bails out early.
+      setTimeout(() => {
+        runQuery(undefined, 1, newTabId, undefined, filterClause, "", undefined);
+      }, 0);
+    },
+    [
+      activeConnectionId,
+      activeDriver,
+      activeCapabilities?.schemas,
+      addTab,
+      updateTab,
+      runQuery,
+    ],
   );
 
   const handleSort = useCallback(
@@ -3133,6 +3205,8 @@ export const Editor = () => {
                     defaultValueColumns={activeTab.defaultValueColumns}
                     nullableColumns={activeTab.nullableColumns}
                     columnMetadata={activeTab.columnMetadata}
+                    foreignKeys={activeTab.foreignKeys}
+                    onForeignKeyNavigate={handleForeignKeyNavigate}
                     connectionId={activeConnectionId}
                     onRefresh={handleRefresh}
                     pendingChanges={activeTab.pendingChanges}

@@ -82,6 +82,7 @@ export interface Tab {
   defaultValueColumns?: string[]; // Names of columns with default values
   nullableColumns?: string[]; // Names of nullable columns
   columnMetadata?: TableColumn[]; // Full column metadata (includes data_type for geometric types, etc.)
+  foreignKeys?: ForeignKey[]; // FK definitions for the active table (used for click-to-navigate)
   isLoading?: boolean;
   connectionId: string;
   flowState?: FlowState;

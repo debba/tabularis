@@ -669,7 +669,8 @@
     "setGenerate": "Imposta GENERATED",
     "setNull": "Imposta NULL",
     "setDefault": "Imposta DEFAULT",
-    "setEmpty": "Imposta VUOTO"
+    "setEmpty": "Imposta VUOTO",
+    "openReferenced": "Apri la riga referenziata in {{table}}"
   },
   "editRow": {
     "title": "Modifica riga",

@@ -671,7 +671,8 @@
     "setNull": "NULL setzen",
     "setDefault": "DEFAULT setzen",
     "setEmpty": "EMPTY setzen",
-    "setServerNow": "Aktuellen Zeitstempel einfügen"
+    "setServerNow": "Aktuellen Zeitstempel einfügen",
+    "openReferenced": "Referenzierte Zeile in {{table}} öffnen"
   },
   "editRow": {
     "title": "Zeile bearbeiten",
