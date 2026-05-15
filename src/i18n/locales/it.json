@@ -221,7 +221,11 @@
     "searchPlaceholder": "Cerca connessioni...",
     "noSearchResults": "Nessuna connessione corrisponde a \"{{query}}\"",
     "gridView": "Vista griglia",
-    "listView": "Vista lista"
+    "listView": "Vista lista",
+    "export": "Esporta connessioni",
+    "import": "Importa connessioni",
+    "exportTitle": "Esporta connessioni",
+    "exportWarning": "Il file esportato conterrà le password del database e SSH in chiaro. Conservalo in modo sicuro."
   },
   "settings": {
     "title": "Impostazioni",

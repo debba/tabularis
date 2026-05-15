@@ -221,7 +221,11 @@
     "searchPlaceholder": "Verbindungen suchen...",
     "noSearchResults": "Keine Verbindung entspricht \"{{query}}\"",
     "gridView": "Rasteransicht",
-    "listView": "Listenansicht"
+    "listView": "Listenansicht",
+    "export": "Verbindungen exportieren",
+    "import": "Verbindungen importieren",
+    "exportTitle": "Verbindungen exportieren",
+    "exportWarning": "Die exportierte Datei enthält deine Datenbank- und SSH-Passwörter im Klartext. Bewahre sie sicher auf."
   },
   "settings": {
     "title": "Einstellungen",
