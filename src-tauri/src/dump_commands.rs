@@ -1,5 +1,6 @@
 use crate::commands::{
-    expand_ssh_connection_params, find_connection_by_id, resolve_connection_params_with_id,
+    expand_ssh_connection_params, find_connection_by_id, register_abort_handle,
+    resolve_connection_params_with_id, unregister_abort_handle,
 };
 use crate::drivers::{mysql, postgres, sqlite};
 use crate::dump_utils::{drop_table_if_exists, format_table_ref, insert_into_statement};
@@ -25,7 +26,7 @@ pub struct DumpOptions {
 
 #[derive(Default)]
 pub struct DumpCancellationState {
-    pub handles: Arc<Mutex<HashMap<String, AbortHandle>>>,
+    pub handles: Arc<Mutex<HashMap<String, Vec<Arc<AbortHandle>>>>>,
 }
 
 #[tauri::command]
@@ -33,13 +34,17 @@ pub async fn cancel_dump(
     state: State<'_, DumpCancellationState>,
     connection_id: String,
 ) -> Result<(), String> {
-    let mut handles = state.handles.lock().unwrap();
-    if let Some(handle) = handles.remove(&connection_id) {
-        handle.abort();
-        Ok(())
-    } else {
-        Err("No active dump process found".into())
+    let entries = {
+        let mut handles = state.handles.lock().unwrap();
+        handles.remove(&connection_id).unwrap_or_default()
+    };
+    if entries.is_empty() {
+        return Err("No active dump process found".into());
     }
+    for handle in entries {
+        handle.abort();
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -119,21 +124,12 @@ pub async fn dump_database<R: Runtime>(
         Ok::<(), String>(())
     });
 
-    // Register abort handle
-    let abort_handle = task.abort_handle();
-    {
-        let mut handles = state.handles.lock().unwrap();
-        handles.insert(connection_id.clone(), abort_handle);
-    }
+    let abort_handle = Arc::new(task.abort_handle());
+    register_abort_handle(&state.handles, connection_id.clone(), abort_handle.clone());
 
-    // Await task
     let result = task.await;
 
-    // Cleanup
-    {
-        let mut handles = state.handles.lock().unwrap();
-        handles.remove(&connection_id);
-    }
+    unregister_abort_handle(&state.handles, &connection_id, &abort_handle);
 
     match result {
         Ok(res) => res,
@@ -411,14 +407,18 @@ pub async fn cancel_import(
     state: State<'_, DumpCancellationState>,
     connection_id: String,
 ) -> Result<(), String> {
-    let mut handles = state.handles.lock().unwrap();
     let key = format!("{}_import", connection_id);
-    if let Some(handle) = handles.remove(&key) {
-        handle.abort();
-        Ok(())
-    } else {
-        Err("No active import process found".into())
+    let entries = {
+        let mut handles = state.handles.lock().unwrap();
+        handles.remove(&key).unwrap_or_default()
+    };
+    if entries.is_empty() {
+        return Err("No active import process found".into());
     }
+    for handle in entries {
+        handle.abort();
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -572,21 +572,13 @@ pub async fn import_database<R: Runtime>(
         Ok::<(), String>(())
     });
 
-    // Register abort handle
-    let abort_handle = task.abort_handle();
-    {
-        let mut handles = state.handles.lock().unwrap();
-        handles.insert(format!("{}_import", conn_id), abort_handle);
-    }
+    let abort_handle = Arc::new(task.abort_handle());
+    let import_key = format!("{}_import", conn_id);
+    register_abort_handle(&state.handles, import_key.clone(), abort_handle.clone());
 
-    // Await task
     let result = task.await;
 
-    // Cleanup
-    {
-        let mut handles = state.handles.lock().unwrap();
-        handles.remove(&format!("{}_import", conn_id));
-    }
+    unregister_abort_handle(&state.handles, &import_key, &abort_handle);
 
     match result {
         Ok(res) => res,
