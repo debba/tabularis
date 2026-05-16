@@ -21,10 +21,7 @@ export const JsonViewerPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!sessionId) {
-      setError("No session ID provided");
-      return;
-    }
+    if (!sessionId) return;
     invoke<SessionDto>("get_json_viewer_session", { sessionId })
       .then((data) => {
         setSession(data);
@@ -59,12 +56,13 @@ export const JsonViewerPage = () => {
   }, [handleClose]);
 
   const showSave = session && !session.read_only;
+  const displayError = error ?? (!sessionId ? "No session ID provided" : null);
 
   return (
     <div className="w-screen h-screen flex flex-col bg-base text-primary">
       <div className="flex-1 min-h-0 p-4">
-        {error ? (
-          <p className="text-red-400 text-sm">{error}</p>
+        {displayError ? (
+          <p className="text-red-400 text-sm">{displayError}</p>
         ) : session ? (
           <JsonInput
             value={currentValue}
