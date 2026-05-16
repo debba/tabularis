@@ -221,7 +221,11 @@
     "searchPlaceholder": "Rechercher des connexions...",
     "noSearchResults": "Aucune connexion ne correspond à \"{{query}}\"",
     "gridView": "Vue grille",
-    "listView": "Vue liste"
+    "listView": "Vue liste",
+    "export": "Exporter les connexions",
+    "import": "Importer les connexions",
+    "exportTitle": "Exporter les connexions",
+    "exportWarning": "Le fichier exporté contiendra vos mots de passe de base de données et SSH en clair. Conservez-le en lieu sûr."
   },
   "settings": {
     "title": "Paramètres",
@@ -270,6 +274,8 @@
     "appearance_editorWordWrapDesc": "Retourne les longues lignes dans l’éditeur au lieu d’un défilement horizontal.",
     "appearance_editorShowLineNumbers": "Afficher les numéros de ligne",
     "appearance_editorShowLineNumbersDesc": "Affiche les numéros de ligne dans la marge de l’éditeur.",
+    "appearance_editorAcceptSuggestionOnEnter": "Accepter la suggestion avec Entrée",
+    "appearance_editorAcceptSuggestionOnEnterDesc": "Autorise la touche Entrée (en plus de Tab) à accepter la suggestion d’autocomplétion active. Lorsqu’elle est désactivée, Entrée insère toujours un saut de ligne.",
     "editConfigJson": "Modifier config.json",
     "editConfigJsonDesc": "Modifiez directement le fichier de configuration brut. Un redémarrage est nécessaire pour appliquer les changements.",
     "configJsonModal": {
@@ -1394,5 +1400,11 @@
     "reasonPlaceholder": "ex. Risqué en prod, confirmez…",
     "approve": "Approuver",
     "deny": "Refuser"
+  },
+  "discordCallout": {
+    "title": "Nouvelle communauté Discord !",
+    "body": "Nous venons d’ouvrir une communauté dédiée à Tabularis : entraide, astuces et influence sur la roadmap.",
+    "cta": "Rejoindre maintenant",
+    "dismiss": "Fermer"
   }
 }

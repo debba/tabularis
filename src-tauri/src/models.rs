@@ -179,6 +179,14 @@ pub struct ConnectionsFile {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ExportPayload {
+    pub version: i32,
+    pub groups: Vec<ConnectionGroup>,
+    pub connections: Vec<SavedConnection>,
+    pub ssh_connections: Vec<SshConnection>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TestConnectionRequest {
     pub params: ConnectionParams,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -317,6 +325,15 @@ pub struct RoutineParameter {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ViewInfo {
     pub name: String,
+    pub definition: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TriggerInfo {
+    pub name: String,
+    pub table_name: String,
+    pub event: String,   // e.g. "INSERT", "UPDATE", "DELETE", "INSERT OR UPDATE"
+    pub timing: String,  // "BEFORE", "AFTER", "INSTEAD OF"
     pub definition: Option<String>,
 }
 

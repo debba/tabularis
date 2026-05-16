@@ -23,6 +23,8 @@ pub mod explain_import;
 #[cfg(test)]
 pub mod explain_import_tests;
 pub mod export;
+#[cfg(test)]
+pub mod export_import_tests;
 pub mod health_check;
 pub mod heartbeat;
 #[cfg(test)]
@@ -261,6 +263,8 @@ pub fn run() {
             commands::move_connection_to_group,
             commands::reorder_groups,
             commands::reorder_connections_in_group,
+            commands::export_connections_payload,
+            commands::import_connections_payload,
             commands::get_schemas,
             commands::get_available_databases,
             commands::get_tables,
@@ -355,6 +359,11 @@ pub fn run() {
             commands::get_routines,
             commands::get_routine_parameters,
             commands::get_routine_definition,
+            // Triggers
+            commands::get_triggers,
+            commands::get_trigger_definition,
+            commands::create_trigger,
+            commands::drop_trigger,
             // MCP
             mcp::install::get_mcp_status,
             mcp::install::install_mcp_config,

@@ -42,6 +42,8 @@ import {
   Hash,
   Loader2,
   Copy,
+  FileText,
+  FileJson,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -110,6 +112,7 @@ interface EditorState {
   tableName?: string;
   queryName?: string;
   preventAutoRun?: boolean;
+  readOnly?: boolean;
   schema?: string;
   targetConnectionId?: string;
   title?: string;
@@ -2027,16 +2030,27 @@ export const Editor = () => {
   useEffect(() => {
     const state = location.state as EditorState;
     if (activeConnectionId) {
-      if (state?.initialQuery) {
+      if (state?.initialQuery !== undefined) {
         if (
           state.targetConnectionId &&
           state.targetConnectionId !== activeConnectionId
         )
           return;
 
-        const queryKey = `${state.initialQuery}-${state.tableName}-${state.queryName}`;
+        const queryKey = `${state.initialQuery}-${state.tableName}-${state.queryName}-${state.schema}-${state.title}`;
 
-        if (processingRef.current === queryKey) return;
+        if (processingRef.current === queryKey) {
+          // If re-navigating to the same definition with readOnly, patch any
+          // existing tab that was opened without the flag (e.g. before the fix).
+          if (state.readOnly) {
+            const title = state.queryName || state.tableName || "";
+            const existing = tabsRef.current.find(
+              (t) => t.connectionId === activeConnectionId && t.title === title,
+            );
+            if (existing) updateTab(existing.id, { readOnly: true });
+          }
+          return;
+        }
         processingRef.current = queryKey;
 
         const {
@@ -2044,6 +2058,7 @@ export const Editor = () => {
           tableName: table,
           queryName,
           preventAutoRun,
+          readOnly: navReadOnly,
           schema: navSchema,
           title: navTitle,
         } = state;
@@ -2053,6 +2068,7 @@ export const Editor = () => {
           query: sql,
           activeTable: table,
           schema: navSchema,
+          readOnly: navReadOnly,
         });
 
         if (tabId && !preventAutoRun) {
@@ -2078,6 +2094,7 @@ export const Editor = () => {
     location.pathname,
     activeConnectionId,
     addTab,
+    updateTab,
     navigate,
     runQuery,
     t,
@@ -2374,14 +2391,14 @@ export const Editor = () => {
 
       {/* Toolbar — hidden for notebook tabs */}
       {!isNotebookTab && <div className="flex items-center py-2 pl-2 pr-3 border-b border-default bg-elevated gap-2 h-[50px]">
-        {activeTab.isLoading ? (
+        {!activeTab.readOnly && activeTab.isLoading ? (
           <button
             onClick={stopQuery}
             className="flex items-center gap-2 px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white rounded text-sm font-medium"
           >
             <Square size={16} fill="currentColor" /> {t("editor.stop")}
           </button>
-        ) : (
+        ) : !activeTab.readOnly ? (
           <div className="flex items-center rounded bg-green-700 relative">
             <button
               onClick={handleRunButton}
@@ -2451,7 +2468,7 @@ export const Editor = () => {
               </>
             )}
           </div>
-        )}
+        ) : null}
 
         {/* Params Button */}
         {!isTableTab && (
@@ -2475,9 +2492,24 @@ export const Editor = () => {
           <button
             onClick={() => setExportMenuOpen(!exportMenuOpen)}
             disabled={!activeTab.result || activeTab.result.rows.length === 0}
-            className="flex items-center gap-2 px-3 py-1.5 bg-surface-secondary hover:bg-surface text-primary rounded text-sm font-medium disabled:opacity-50 border border-strong"
+            aria-haspopup="menu"
+            aria-expanded={exportMenuOpen}
+            className={clsx(
+              "flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium border transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+              exportMenuOpen
+                ? "bg-blue-500/15 border-blue-500/40 text-blue-400"
+                : "bg-surface-secondary enabled:hover:bg-blue-500/15 enabled:hover:border-blue-500/40 enabled:hover:text-blue-400 text-primary border-strong",
+            )}
           >
-            <Download size={16} /> {t("editor.export")}
+            <Download size={16} />
+            {t("editor.export")}
+            <ChevronDown
+              size={14}
+              className={clsx(
+                "transition-transform opacity-70",
+                exportMenuOpen && "rotate-180",
+              )}
+            />
           </button>
           {exportMenuOpen && (
             <>
@@ -2485,18 +2517,27 @@ export const Editor = () => {
                 className="fixed inset-0 z-40"
                 onClick={() => setExportMenuOpen(false)}
               />
-              <div className="absolute top-full left-0 mt-1 w-40 bg-surface-secondary border border-strong rounded shadow-xl z-50 flex flex-col py-1">
+              <div
+                role="menu"
+                className="absolute top-full right-0 mt-1 w-44 bg-elevated border border-strong rounded-md shadow-xl z-50 flex flex-col py-1 overflow-hidden"
+              >
                 <button
+                  role="menuitem"
                   onClick={handleExportCSV}
-                  className="text-left px-4 py-2 text-sm text-secondary hover:bg-surface"
+                  className="flex items-center gap-2.5 text-left px-3 py-2 text-sm text-secondary hover:bg-blue-500/15 hover:text-blue-400 transition-colors"
                 >
-                  CSV (.csv)
+                  <FileText size={14} className="shrink-0 opacity-80" />
+                  <span className="flex-1">CSV</span>
+                  <span className="text-xs text-muted">.csv</span>
                 </button>
                 <button
+                  role="menuitem"
                   onClick={handleExportJSON}
-                  className="text-left px-4 py-2 text-sm text-secondary hover:bg-surface"
+                  className="flex items-center gap-2.5 text-left px-3 py-2 text-sm text-secondary hover:bg-blue-500/15 hover:text-blue-400 transition-colors"
                 >
-                  JSON (.json)
+                  <FileJson size={14} className="shrink-0 opacity-80" />
+                  <span className="flex-1">JSON</span>
+                  <span className="text-xs text-muted">.json</span>
                 </button>
               </div>
             </>
@@ -2614,7 +2655,8 @@ export const Editor = () => {
             {/* Editor overlay buttons — bottom-right */}
             {tab.type !== "query_builder" && (
               <div className="absolute bottom-2 right-6 z-10 flex items-center gap-1">
-                {/* Visual Explain — always available */}
+                {/* Visual Explain — hidden for read-only definition tabs */}
+                {!tab.readOnly && (
                 <button
                   onClick={handleExplainButton}
                   disabled={!activeConnectionId || !tab.query?.trim()}
@@ -2624,6 +2666,7 @@ export const Editor = () => {
                   <Network size={12} />
                   {t("editor.visualExplain.buttonShort")}
                 </button>
+                )}
                 {/* AI dropdown — only if AI enabled */}
                 {settings.aiEnabled && (
                   <AiDropdownButton

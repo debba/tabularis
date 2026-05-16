@@ -1,10 +1,10 @@
 {
   "name": "tabularis",
   "private": true,
-  "version": "0.10.2",
+  "version": "0.10.3",
   "type": "module",
   "links": {
-    "discord": "https://discord.gg/YrZPHAwMSG",
+    "discord": "https://discord.com/invite/K2hmhfHRSt",
     "github": "https://github.com/TabularisDB/tabularis"
   },
   "scripts": {
