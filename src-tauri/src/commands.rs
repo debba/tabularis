@@ -31,11 +31,10 @@ async fn driver_for(
 const DEFAULT_MYSQL_PORT: u16 = 3306;
 const DEFAULT_POSTGRES_PORT: u16 = 5432;
 
-/// Tracks abort handles for in-flight queries keyed by a logical "slot"
-/// (typically the connection id, or `explain_<id>` for plan requests). A
-/// slot can hold multiple handles when the UI fires several queries
-/// against the same connection concurrently — `cancel_query` must abort
-/// all of them, not just the most recent.
+/// Tracks abort handles for in-flight queries keyed by connection id. A
+/// slot can hold multiple handles when the UI fires several queries (or
+/// an EXPLAIN alongside a query) against the same connection concurrently
+/// — `cancel_query` must abort all of them, not just the most recent.
 pub struct QueryCancellationState {
     pub handles: Arc<Mutex<HashMap<String, Vec<Arc<AbortHandle>>>>>,
 }
@@ -1724,7 +1723,10 @@ mod tests {
     }
 
     mod cancellation_state {
-        use super::super::{register_abort_handle, unregister_abort_handle, QueryCancellationState};
+        use super::super::{
+            cancel_query_impl, register_abort_handle, unregister_abort_handle,
+            QueryCancellationState,
+        };
         use std::sync::Arc;
         use std::time::Duration;
 
@@ -1849,6 +1851,59 @@ mod tests {
 
             live_task.abort();
             let _ = live_task.await;
+        }
+
+        #[tokio::test]
+        async fn cancel_query_returns_err_when_no_slot() {
+            let state = QueryCancellationState::default();
+            let err = cancel_query_impl(&state, "conn-1").unwrap_err();
+            assert_eq!(err, "No running query found");
+        }
+
+        #[tokio::test]
+        async fn cancel_query_aborts_every_handle_in_slot() {
+            let state = QueryCancellationState::default();
+            let task_a = spawn_sleeper().await;
+            let task_b = spawn_sleeper().await;
+            register_abort_handle(
+                &state.handles,
+                "conn-1".into(),
+                Arc::new(task_a.abort_handle()),
+            );
+            register_abort_handle(
+                &state.handles,
+                "conn-1".into(),
+                Arc::new(task_b.abort_handle()),
+            );
+
+            cancel_query_impl(&state, "conn-1").unwrap();
+
+            assert!(task_a.await.unwrap_err().is_cancelled());
+            assert!(task_b.await.unwrap_err().is_cancelled());
+            assert!(state.handles.lock().unwrap().get("conn-1").is_none());
+        }
+
+        #[tokio::test]
+        async fn cancel_query_aborts_query_and_explain_sharing_the_slot() {
+            let state = QueryCancellationState::default();
+            let query_task = spawn_sleeper().await;
+            let explain_task = spawn_sleeper().await;
+            register_abort_handle(
+                &state.handles,
+                "conn-1".into(),
+                Arc::new(query_task.abort_handle()),
+            );
+            register_abort_handle(
+                &state.handles,
+                "conn-1".into(),
+                Arc::new(explain_task.abort_handle()),
+            );
+
+            cancel_query_impl(&state, "conn-1").unwrap();
+
+            assert!(query_task.await.unwrap_err().is_cancelled());
+            assert!(explain_task.await.unwrap_err().is_cancelled());
+            assert!(state.handles.lock().unwrap().get("conn-1").is_none());
         }
     }
 }
@@ -2279,14 +2334,13 @@ pub async fn insert_record<R: Runtime>(
         .await
 }
 
-#[tauri::command]
-pub async fn cancel_query(
-    state: State<'_, QueryCancellationState>,
-    connection_id: String,
+pub(crate) fn cancel_query_impl(
+    state: &QueryCancellationState,
+    connection_id: &str,
 ) -> Result<(), String> {
     let entries = {
         let mut handles = state.handles.lock().unwrap();
-        handles.remove(&connection_id).unwrap_or_default()
+        handles.remove(connection_id).unwrap_or_default()
     };
     if entries.is_empty() {
         return Err("No running query found".into());
@@ -2295,6 +2349,14 @@ pub async fn cancel_query(
         handle.abort();
     }
     Ok(())
+}
+
+#[tauri::command]
+pub async fn cancel_query(
+    state: State<'_, QueryCancellationState>,
+    connection_id: String,
+) -> Result<(), String> {
+    cancel_query_impl(&state, &connection_id)
 }
 
 #[tauri::command]
@@ -2466,12 +2528,11 @@ pub async fn explain_query_plan<R: Runtime>(
     });
 
     let abort_handle = Arc::new(task.abort_handle());
-    let explain_key = format!("explain_{}", connection_id);
-    register_abort_handle(&state.handles, explain_key.clone(), abort_handle.clone());
+    register_abort_handle(&state.handles, connection_id.clone(), abort_handle.clone());
 
     let result = task.await;
 
-    unregister_abort_handle(&state.handles, &explain_key, &abort_handle);
+    unregister_abort_handle(&state.handles, &connection_id, &abort_handle);
 
     match result {
         Ok(Ok(plan)) => {
