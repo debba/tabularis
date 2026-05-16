@@ -129,6 +129,7 @@ Die vollständige Galerie findest du auf [tabularis.dev](https://tabularis.dev).
 - Erstellen, Auswählen und Löschen von Zeilen.
 - Export als CSV oder JSON.
 - Erste Unterstützung für Geodaten.
+- JSON/JSONB-Zellen mit Highlighting und eigenem Editor-Fenster (Tree / Monaco / Raw). Optional pro Verbindung: JSON in Text-Spalten erkennen.
 
 ### Logging
 
