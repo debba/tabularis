@@ -690,7 +690,8 @@
     "setNull": "Set NULL",
     "setDefault": "Set DEFAULT",
     "setEmpty": "Set EMPTY",
-    "setServerNow": "Insert Current Timestamp"
+    "setServerNow": "Insert Current Timestamp",
+    "openReferenced": "Open referenced row in {{table}}"
   },
   "editRow": {
     "title": "Edit Row",
