@@ -10,9 +10,9 @@ use uuid::Uuid;
 use crate::credential_cache;
 use crate::keychain_utils;
 use crate::models::{
-    ColumnDefinition, ConnectionGroup, ConnectionParams, ConnectionsFile, ExplainPlan,
-    ExportPayload, ForeignKey, Index, QueryResult, RoutineInfo, RoutineParameter, SavedConnection,
-    SshConnection, SshConnectionInput, SshTestParams, TableColumn, TableInfo,
+    BatchStatementResult, ColumnDefinition, ConnectionGroup, ConnectionParams, ConnectionsFile,
+    ExplainPlan, ExportPayload, ForeignKey, Index, QueryResult, RoutineInfo, RoutineParameter,
+    SavedConnection, SshConnection, SshConnectionInput, SshTestParams, TableColumn, TableInfo,
     TestConnectionRequest, TriggerInfo,
 };
 use crate::persistence;
@@ -41,6 +41,19 @@ impl Default for QueryCancellationState {
             handles: Arc::new(Mutex::new(HashMap::new())),
         }
     }
+}
+
+/// Trims trailing semicolons and normalises Unicode smart quotes that some
+/// editors insert when the user pastes a query. Called on every query the
+/// UI hands off to a driver.
+fn sanitize_user_query(query: &str) -> String {
+    query
+        .trim()
+        .trim_end_matches(';')
+        .replace('\u{2018}', "'")
+        .replace('\u{2019}', "'")
+        .replace('\u{201C}', "\"")
+        .replace('\u{201D}', "\"")
 }
 
 // --- Persistence Helpers ---
@@ -2131,21 +2144,12 @@ pub async fn execute_query<R: Runtime>(
         query
     );
 
-    // 1. Sanitize Query (Ignore trailing semicolon + normalize smart quotes)
-    let sanitized_query = query
-        .trim()
-        .trim_end_matches(';')
-        .replace('\u{2018}', "'") // Left single quotation mark
-        .replace('\u{2019}', "'") // Right single quotation mark
-        .replace('\u{201C}', "\"") // Left double quotation mark
-        .replace('\u{201D}', "\"") // Right double quotation mark
-        .to_string();
+    let sanitized_query = sanitize_user_query(&query);
 
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
 
-    // 2. Spawn Cancellable Task
     let drv = driver_for(&saved_conn.params.driver).await?;
     let task = tokio::spawn(async move {
         drv.execute_query(
@@ -2158,22 +2162,19 @@ pub async fn execute_query<R: Runtime>(
         .await
     });
 
-    // 3. Register Abort Handle
     let abort_handle = task.abort_handle();
     {
         let mut handles = state.handles.lock().unwrap();
-        // If a query is already running for this connection, we overwrite the handle.
-        // Ideally we should cancel the previous one, but the UI should prevent double run.
+        // Overwrite any in-flight handle for this connection. The UI is
+        // responsible for preventing double-run; a leaked previous query
+        // is preferable to a missing abort handle for the new one.
         handles.insert(connection_id.clone(), abort_handle);
     }
 
-    // 4. Await & Handle Cancellation
     let result = task.await;
 
-    // 5. Cleanup
     {
         let mut handles = state.handles.lock().unwrap();
-        // Only remove if it matches (edge case: multiple queries, but connection_id is unique per tab usually)
         handles.remove(&connection_id);
     }
 
@@ -2191,6 +2192,83 @@ pub async fn execute_query<R: Runtime>(
         }
         Err(_) => {
             log::warn!("Query was cancelled");
+            Err("Query cancelled".into())
+        }
+    }
+}
+
+/// Runs a sequence of statements that share a single physical database
+/// connection. Use this — not multiple parallel `execute_query` calls —
+/// whenever statements depend on connection-local session state
+/// (`SET @var`, `LAST_INSERT_ID()` / `LASTVAL()`, `BEGIN`/`COMMIT`,
+/// `TEMPORARY TABLE`, `PREPARE`/`EXECUTE`, `SET FOREIGN_KEY_CHECKS = 0`).
+///
+/// The whole batch shares one cancellation handle so `cancel_query`
+/// aborts the entire batch atomically.
+#[tauri::command]
+pub async fn execute_query_batch<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, QueryCancellationState>,
+    connection_id: String,
+    queries: Vec<String>,
+    limit: Option<u32>,
+    page: Option<u32>,
+    schema: Option<String>,
+) -> Result<Vec<BatchStatementResult>, String> {
+    log::info!(
+        "Executing query batch on connection: {} | {} statement(s)",
+        connection_id,
+        queries.len()
+    );
+
+    let sanitized_queries: Vec<String> = queries.iter().map(|q| sanitize_user_query(q)).collect();
+
+    let saved_conn = find_connection_by_id(&app, &connection_id)?;
+    let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
+
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    let task = tokio::spawn(async move {
+        drv.execute_batch(
+            &params,
+            &sanitized_queries,
+            limit,
+            page.unwrap_or(1),
+            schema.as_deref(),
+        )
+        .await
+    });
+
+    let abort_handle = task.abort_handle();
+    {
+        let mut handles = state.handles.lock().unwrap();
+        handles.insert(connection_id.clone(), abort_handle);
+    }
+
+    let result = task.await;
+
+    {
+        let mut handles = state.handles.lock().unwrap();
+        handles.remove(&connection_id);
+    }
+
+    match result {
+        Ok(Ok(batch_results)) => {
+            let success_count = batch_results.iter().filter(|r| r.result.is_some()).count();
+            log::info!(
+                "Batch executed: {} succeeded, {} failed (of {} total)",
+                success_count,
+                batch_results.len() - success_count,
+                batch_results.len()
+            );
+            Ok(batch_results)
+        }
+        Ok(Err(e)) => {
+            log::error!("Batch execution failed at setup: {}", e);
+            Err(e)
+        }
+        Err(_) => {
+            log::warn!("Batch was cancelled");
             Err("Query cancelled".into())
         }
     }
@@ -2214,14 +2292,7 @@ pub async fn explain_query_plan<R: Runtime>(
         query
     );
 
-    let sanitized_query = query
-        .trim()
-        .trim_end_matches(';')
-        .replace('\u{2018}', "'")
-        .replace('\u{2019}', "'")
-        .replace('\u{201C}', "\"")
-        .replace('\u{201D}', "\"")
-        .to_string();
+    let sanitized_query = sanitize_user_query(&query);
 
     if !crate::drivers::common::is_explainable_query(&sanitized_query) {
         return Err(

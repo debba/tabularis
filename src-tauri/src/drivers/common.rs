@@ -10,5 +10,5 @@ pub use blob::{
 };
 pub use query::{
     build_paginated_query, calculate_offset, extract_user_limit, is_explainable_query,
-    is_select_query, strip_leading_sql_comments, strip_limit_offset,
+    is_select_query, returns_result_set, strip_leading_sql_comments, strip_limit_offset,
 };

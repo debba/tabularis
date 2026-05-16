@@ -494,16 +494,34 @@ pub async fn get_table_ddl(params: &ConnectionParams, table_name: &str) -> Resul
     Ok(format!("{};", row.0))
 }
 
-pub async fn execute_query(
-    params: &ConnectionParams,
+/// Executes one statement against an already-acquired SQLite connection.
+/// Shared between `execute_query` and `execute_batch` so the latter can
+/// keep a single connection open for transaction (`BEGIN`/`COMMIT`) and
+/// temporary table continuity across statements.
+async fn exec_on_sqlite_conn(
+    conn: &mut sqlx::SqliteConnection,
     query: &str,
     limit: Option<u32>,
     page: u32,
 ) -> Result<QueryResult, String> {
-    let pool = get_sqlite_pool(params).await?;
-    let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
+    // INSERT/UPDATE/DELETE/DDL go through `execute()` so we report the
+    // real `rows_affected`.
+    if !crate::drivers::common::returns_result_set(query) {
+        use sqlx::Executor;
+        let exec_result = conn
+            .execute(sqlx::query(query))
+            .await
+            .map_err(|e| e.to_string())?;
+        return Ok(QueryResult {
+            columns: vec![],
+            rows: vec![],
+            affected_rows: exec_result.rows_affected(),
+            truncated: false,
+            pagination: None,
+        });
+    }
 
-    let is_select = query.trim_start().to_uppercase().starts_with("SELECT");
+    let is_select = crate::drivers::common::is_select_query(query);
     let mut pagination: Option<Pagination> = None;
     let final_query: String;
     let mut manual_limit = limit;
@@ -576,6 +594,40 @@ pub async fn execute_query(
         truncated,
         pagination,
     })
+}
+
+pub async fn execute_query(
+    params: &ConnectionParams,
+    query: &str,
+    limit: Option<u32>,
+    page: u32,
+) -> Result<QueryResult, String> {
+    let pool = get_sqlite_pool(params).await?;
+    let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
+    exec_on_sqlite_conn(&mut *conn, query, limit, page).await
+}
+
+/// Runs a sequence of statements on a single pooled connection so
+/// `BEGIN`/`COMMIT` and temporary-table visibility survive across
+/// statements. SQLite has no user variables, but transactions and temp
+/// tables still require a stable connection.
+pub async fn execute_batch(
+    params: &ConnectionParams,
+    queries: &[String],
+    limit: Option<u32>,
+    page: u32,
+) -> Result<Vec<crate::models::BatchStatementResult>, String> {
+    let pool = get_sqlite_pool(params).await?;
+    let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
+    let mut results = Vec::with_capacity(queries.len());
+    for q in queries {
+        let start = std::time::Instant::now();
+        let outcome = exec_on_sqlite_conn(&mut *conn, q, limit, page).await;
+        results.push(crate::models::BatchStatementResult::from_outcome(
+            start, outcome,
+        ));
+    }
+    Ok(results)
 }
 
 pub async fn get_views(params: &ConnectionParams) -> Result<Vec<ViewInfo>, String> {
@@ -1070,6 +1122,17 @@ impl DatabaseDriver for SqliteDriver {
         _schema: Option<&str>,
     ) -> Result<crate::models::QueryResult, String> {
         execute_query(params, query, limit, page).await
+    }
+
+    async fn execute_batch(
+        &self,
+        params: &crate::models::ConnectionParams,
+        queries: &[String],
+        limit: Option<u32>,
+        page: u32,
+        _schema: Option<&str>,
+    ) -> Result<Vec<crate::models::BatchStatementResult>, String> {
+        execute_batch(params, queries, limit, page).await
     }
 
     async fn explain_query(
