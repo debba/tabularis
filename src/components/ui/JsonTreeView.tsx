@@ -147,7 +147,7 @@ export const JsonTreeView = ({
               styles: {
                 ...editorTheme.styles,
                 container: {
-                  ...(editorTheme.styles?.container ?? {}),
+                  ...((editorTheme.styles?.container ?? {}) as Record<string, unknown>),
                   border: "none",
                   borderRadius: 0,
                   backgroundColor: "transparent",
