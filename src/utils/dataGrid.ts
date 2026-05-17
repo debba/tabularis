@@ -10,6 +10,18 @@ import { isJsonColumn } from "./json";
 /** Sentinel value indicating that the database DEFAULT value should be used */
 export const USE_DEFAULT_SENTINEL = "__USE_DEFAULT__";
 
+function cellValuesEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a === "object" || typeof b === "object") {
+    try {
+      return JSON.stringify(a) === JSON.stringify(b);
+    } catch {
+      return false;
+    }
+  }
+  return String(a) === String(b);
+}
+
 export type SortDirection = "asc" | "desc" | null;
 
 /** Represents a merged row combining existing data and pending insertions */
@@ -220,7 +232,7 @@ export function resolveExistingCellDisplay(
   const hasPendingChange = pkColumn && pkVal ? pendingVal !== undefined : false;
   let displayValue = hasPendingChange ? pendingVal : cellValue;
   const isModified =
-    hasPendingChange && String(pendingVal) !== String(cellValue);
+    hasPendingChange && !cellValuesEqual(pendingVal, cellValue);
   let isAutoIncrementPlaceholder = false;
   let isDefaultValuePlaceholder = false;
 
@@ -259,6 +271,8 @@ export interface CellClassParams {
   isAutoIncrementPlaceholder: boolean;
   isDefaultValuePlaceholder: boolean;
   isModified: boolean;
+  /** JSON cells render their own colored tokens — skip overlay text/italic. */
+  isJsonCell?: boolean;
 }
 
 /**
@@ -273,6 +287,7 @@ export function getCellStateClass(params: CellClassParams): string {
     isAutoIncrementPlaceholder,
     isDefaultValuePlaceholder,
     isModified,
+    isJsonCell = false,
   } = params;
 
   const isPlaceholder = isAutoIncrementPlaceholder || isDefaultValuePlaceholder;
@@ -283,21 +298,29 @@ export function getCellStateClass(params: CellClassParams): string {
 
   if (isSelected && isInsertion) {
     if (isPlaceholder) return "text-muted italic select-none";
-    if (isModified) return "bg-blue-600/20 text-blue-200 italic font-medium";
-    return "bg-blue-900/20 text-secondary italic";
+    if (isModified)
+      return isJsonCell
+        ? "bg-blue-500/40 border-l-2 border-l-blue-400"
+        : "bg-blue-600/20 text-blue-200 italic font-medium";
+    return isJsonCell ? "bg-blue-900/20" : "bg-blue-900/20 text-secondary italic";
   }
 
   if (isInsertion) {
     if (isPlaceholder) return "text-muted italic select-none";
-    if (isModified) return "bg-green-500/15 text-green-200 italic";
-    return "bg-green-500/5 text-secondary italic";
+    if (isModified)
+      return isJsonCell
+        ? "bg-green-500/40 border-l-2 border-l-green-400"
+        : "bg-green-500/15 text-green-200 italic";
+    return isJsonCell ? "bg-green-500/5" : "bg-green-500/5 text-secondary italic";
   }
 
   if (isModified) {
-    return "bg-blue-600/30 text-blue-100 italic font-medium";
+    return isJsonCell
+      ? "bg-blue-500/40 border-l-2 border-l-blue-400"
+      : "bg-blue-600/30 text-blue-100 italic font-medium";
   }
 
-  return "text-secondary";
+  return isJsonCell ? "" : "text-secondary";
 }
 
 /**

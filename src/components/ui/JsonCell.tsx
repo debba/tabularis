@@ -59,6 +59,7 @@ export const JsonCell = ({
       className={`flex items-center gap-1 group/jsoncell w-full ${
         isTruncated ? "json-cell-truncated" : ""
       }`}
+      title={displayText}
     >
       <span ref={textRef} className="truncate flex-1">
         {tokens.map((tok, idx) => (

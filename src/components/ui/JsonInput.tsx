@@ -4,6 +4,7 @@ import {
   Check,
   Code,
   FileText,
+  GitCompare,
   Maximize2,
   Network,
   WrapText,
@@ -16,6 +17,7 @@ import {
   validateJson,
 } from "../../utils/json";
 import { JsonCodeEditor } from "./JsonCodeEditor";
+import { JsonDiffEditor } from "./JsonDiffEditor";
 import { JsonTreeView } from "./JsonTreeView";
 
 type JsonInputMode = "code" | "tree" | "raw";
@@ -35,6 +37,8 @@ interface JsonInputProps {
    * row-editor sidebar where flex-fill would collapse to 0.
    */
   fillHeight?: boolean;
+  /** Baseline value to enable Diff mode. When omitted, Diff tab is hidden. */
+  originalValue?: unknown;
 }
 
 /**
@@ -49,6 +53,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   readOnly = false,
   disableExpand = false,
   fillHeight = false,
+  originalValue,
 }) => {
   const { t } = useTranslation();
   const [mode, setMode] = useState<JsonInputMode>("code");
@@ -56,6 +61,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   const [text, setText] = useState(() => formatJsonForEditor(value));
   const [error, setError] = useState<string | null>(null);
   const [prevValueKey, setPrevValueKey] = useState(valueKey);
+  const [diffEnabled, setDiffEnabled] = useState(false);
 
   if (valueKey !== prevValueKey) {
     setPrevValueKey(valueKey);
@@ -120,6 +126,13 @@ export const JsonInput: React.FC<JsonInputProps> = ({
     }
   }, [error, text]);
 
+  const originalText = useMemo(
+    () =>
+      originalValue !== undefined ? formatJsonForEditor(originalValue) : null,
+    [originalValue],
+  );
+  const hasDiff = originalText !== null && originalText !== text;
+
   const modes: Array<{ key: JsonInputMode; label: string; Icon: typeof Code }> =
     [
       { key: "code", label: t("jsonInput.mode.code"), Icon: Code },
@@ -144,6 +157,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
     try {
       await invoke<string>("open_json_viewer_window", {
         value: expandValue,
+        originalValue: originalValue ?? expandValue,
         colName: "",
         rowLabel: null,
         readOnly,
@@ -152,7 +166,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
     } catch (e) {
       console.error("Failed to open JSON viewer window:", e);
     }
-  }, [expandValue, readOnly]);
+  }, [expandValue, originalValue, readOnly]);
 
   const showToolbar = isTextMode || !disableExpand;
 
@@ -206,12 +220,22 @@ export const JsonInput: React.FC<JsonInputProps> = ({
             } ${error ? "border-red-500" : "border-strong"}`}
             style={fillHeight ? undefined : { height: 220 }}
           >
-            <JsonCodeEditor
-              value={text}
-              onChange={handleCodeChange}
-              height="100%"
-              readOnly={readOnly}
-            />
+            {diffEnabled && hasDiff && originalText !== null ? (
+              <JsonDiffEditor
+                original={originalText}
+                modified={text}
+                onChange={handleCodeChange}
+                readOnly={readOnly}
+                height="100%"
+              />
+            ) : (
+              <JsonCodeEditor
+                value={text}
+                onChange={handleCodeChange}
+                height="100%"
+                readOnly={readOnly}
+              />
+            )}
           </div>
         )}
 
@@ -266,6 +290,29 @@ export const JsonInput: React.FC<JsonInputProps> = ({
               >
                 <WrapText size={12} />
                 {t("jsonInput.format")}
+              </button>
+            )}
+            {mode === "code" && originalText !== null && (
+              <button
+                type="button"
+                onClick={() => setDiffEnabled((v) => !v)}
+                aria-pressed={diffEnabled}
+                disabled={!hasDiff}
+                className={`px-2 py-1 text-xs rounded border transition-colors flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed ${
+                  diffEnabled && hasDiff
+                    ? "bg-blue-600/30 text-blue-100 border-blue-500/50"
+                    : "bg-surface-secondary text-secondary border-default hover:bg-surface-tertiary"
+                }`}
+                title={t("jsonInput.diff", { defaultValue: "Diff" })}
+              >
+                <GitCompare size={12} />
+                {t("jsonInput.diff", { defaultValue: "Diff" })}
+                {hasDiff && (
+                  <span
+                    aria-hidden
+                    className="ml-0.5 inline-block w-1.5 h-1.5 rounded-full bg-amber-400"
+                  />
+                )}
               </button>
             )}
             {!disableExpand && (

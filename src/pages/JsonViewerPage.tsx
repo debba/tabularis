@@ -7,6 +7,7 @@ import { JsonInput } from "../components/ui/JsonInput";
 
 interface SessionDto {
   value: unknown;
+  original_value: unknown;
   col_name: string;
   read_only: boolean;
 }
@@ -66,6 +67,7 @@ export const JsonViewerPage = () => {
         ) : session ? (
           <JsonInput
             value={currentValue}
+            originalValue={session.original_value}
             onChange={setCurrentValue}
             readOnly={session.read_only}
             className="h-full"

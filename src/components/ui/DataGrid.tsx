@@ -277,6 +277,7 @@ export const DataGrid = React.memo(
     const openJsonViewerWindow = useCallback(
       async (
         value: unknown,
+        originalValue: unknown,
         colName: string,
         rowData: unknown[],
         rowIndex: number,
@@ -300,6 +301,7 @@ export const DataGrid = React.memo(
           }
           const sessionId = await invoke<string>("open_json_viewer_window", {
             value,
+            originalValue,
             colName,
             rowLabel,
             readOnly: readOnly || !canSaveBack,
@@ -460,6 +462,7 @@ export const DataGrid = React.memo(
         const isInsertion = mergedRow.type === "insertion";
         openJsonViewerWindow(
           value,
+          mergedRow.rowData[colIndex],
           colName,
           mergedRow.rowData,
           rowIndex,
@@ -937,6 +940,7 @@ export const DataGrid = React.memo(
 
       openJsonViewerWindow(
         contextMenu.row[contextMenu.colIndex],
+        contextMenu.row[contextMenu.colIndex],
         contextMenu.colName,
         contextMenu.row,
         contextMenu.rowIndex,
@@ -1271,6 +1275,12 @@ export const DataGrid = React.memo(
                           isDefaultValuePlaceholder,
                         } = resolved;
 
+                        const colTypeForCell = columnTypeMap?.get(colName);
+                        const rawCellValue = cell.getValue();
+                        const isJsonCell =
+                          isJsonCellTarget(colTypeForCell, rawCellValue) &&
+                          !isPendingDelete;
+
                         const stateClass = getCellStateClass({
                           isPendingDelete,
                           isSelected,
@@ -1278,6 +1288,7 @@ export const DataGrid = React.memo(
                           isAutoIncrementPlaceholder,
                           isDefaultValuePlaceholder,
                           isModified,
+                          isJsonCell,
                         });
 
                         const isFocused =
@@ -1317,7 +1328,16 @@ export const DataGrid = React.memo(
                               )
                             }
                             className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 font-mono ${isEditing ? "relative" : "whitespace-nowrap truncate max-w-[300px]"} cursor-text ${stateClass} ${isFocused ? "ring-2 ring-inset ring-blue-400" : ""}`}
-                            title={!isEditing ? String(displayValue) : ""}
+                            title={
+                              !isEditing
+                                ? formatCellValue(
+                                    displayValue,
+                                    t("dataGrid.null"),
+                                    colTypeForCell,
+                                    columnLengthMap?.get(colName),
+                                  )
+                                : ""
+                            }
                           >
                             {isEditing
                               ? (() => {
@@ -1445,27 +1465,15 @@ export const DataGrid = React.memo(
                                     </>
                                   );
                                 })()
-                              : hasPendingChange
-                                ? formatCellValue(
-                                    displayValue,
-                                    t("dataGrid.null"),
-                                    columnTypeMap?.get(colName),
-                                    columnLengthMap?.get(colName),
-                                  )
-                                : (() => {
-                                    const colType = columnTypeMap?.get(colName);
-                                    const rawValue = cell.getValue();
+                              : (() => {
                                     const formattedDisplay = formatCellValue(
                                       displayValue,
                                       t("dataGrid.null"),
-                                      colType,
+                                      colTypeForCell,
                                       columnLengthMap?.get(colName),
                                     );
 
-                                    if (
-                                      isJsonCellTarget(colType, rawValue) &&
-                                      !isPendingDelete
-                                    ) {
+                                    if (isJsonCell) {
                                       const isExpanded =
                                         expandedJsonCell?.rowIndex ===
                                           rowIndex &&
@@ -1491,6 +1499,7 @@ export const DataGrid = React.memo(
                                               mergedRow.type === "insertion";
                                             openJsonViewerWindow(
                                               displayValue,
+                                              rawCellValue,
                                               colName,
                                               mergedRow.rowData,
                                               rowIndex,
@@ -1503,10 +1512,14 @@ export const DataGrid = React.memo(
                                       );
                                     }
 
+                                    if (hasPendingChange) {
+                                      return formattedDisplay;
+                                    }
+
                                     if (
-                                      colType &&
+                                      colTypeForCell &&
                                       (isBlobColumn(
-                                        colType,
+                                        colTypeForCell,
                                         columnLengthMap?.get(colName),
                                       ) ||
                                         isBlobWireFormat(displayValue)) &&
@@ -1548,7 +1561,6 @@ export const DataGrid = React.memo(
                                     }
 
                                     const fkForCol = fksByColumn.get(colName);
-                                    const rawCellValue = cell.getValue();
                                     if (
                                       fkForCol &&
                                       onForeignKeyNavigate &&
@@ -1612,10 +1624,35 @@ export const DataGrid = React.memo(
                             }}
                           >
                             <JsonExpansionEditor
-                              value={
-                                mergedRows[rowIndex]?.rowData?.[
+                              value={(() => {
+                                const mergedRow = mergedRows[rowIndex];
+                                if (!mergedRow) return undefined;
+                                const expColName =
+                                  columns[expandedJsonCell.colIndex];
+                                if (
+                                  mergedRow.type === "existing" &&
+                                  pkIndexMap !== null
+                                ) {
+                                  const pkVal = mergedRow.rowData[pkIndexMap];
+                                  const pendingVal =
+                                    pkVal !== null &&
+                                    pkVal !== undefined &&
+                                    pkVal !== ""
+                                      ? pendingChanges?.[String(pkVal)]
+                                          ?.changes?.[expColName]
+                                      : undefined;
+                                  if (pendingVal !== undefined) return pendingVal;
+                                }
+                                return mergedRow.rowData?.[
                                   expandedJsonCell.colIndex
-                                ]
+                                ];
+                              })()}
+                              originalValue={
+                                mergedRows[rowIndex]?.type === "existing"
+                                  ? mergedRows[rowIndex]?.rowData?.[
+                                      expandedJsonCell.colIndex
+                                    ]
+                                  : undefined
                               }
                               readOnly={readonlyProp ?? false}
                               onCancel={() => setExpandedJsonCell(null)}

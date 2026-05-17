@@ -9,6 +9,7 @@ use urlencoding::encode;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JsonViewerSession {
     pub value: serde_json::Value,
+    pub original_value: serde_json::Value,
     pub col_name: String,
     pub read_only: bool,
     pub cell_key: Option<String>,
@@ -40,11 +41,13 @@ pub async fn open_json_viewer_window(
     app: AppHandle,
     store: State<'_, JsonViewerStore>,
     value: serde_json::Value,
+    original_value: Option<serde_json::Value>,
     col_name: String,
     row_label: Option<String>,
     read_only: bool,
     cell_key: Option<String>,
 ) -> Result<String, String> {
+    let original_value = original_value.unwrap_or_else(|| value.clone());
     if let Some(key) = cell_key.as_deref() {
         let existing_id = {
             let cell_index = store
@@ -92,6 +95,7 @@ pub async fn open_json_viewer_window(
             session_id.clone(),
             JsonViewerSession {
                 value,
+                original_value,
                 col_name: col_name.clone(),
                 read_only,
                 cell_key: cell_key.clone(),
@@ -237,6 +241,7 @@ mod tests {
                 "sess-1".into(),
                 JsonViewerSession {
                     value: json!({"key": "value"}),
+                    original_value: json!({"key": "value"}),
                     col_name: "metadata".into(),
                     read_only: false,
                     cell_key: None,
@@ -259,6 +264,7 @@ mod tests {
                 "sess-2".into(),
                 JsonViewerSession {
                     value: json!([1, 2, 3]),
+                    original_value: json!([1, 2, 3]),
                     col_name: "tags".into(),
                     read_only: false,
                     cell_key: Some("pk:42:tags".into()),
