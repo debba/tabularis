@@ -31,12 +31,17 @@ async fn driver_for(
 const DEFAULT_MYSQL_PORT: u16 = 3306;
 const DEFAULT_POSTGRES_PORT: u16 = 5432;
 
+/// Per-slot collection of abort handles for in-flight cancellable tasks.
+/// Used by `QueryCancellationState`, `ExportCancellationState`, and
+/// `DumpCancellationState`.
+pub(crate) type AbortHandleMap = HashMap<String, Vec<Arc<AbortHandle>>>;
+
 /// Tracks abort handles for in-flight queries keyed by connection id. A
 /// slot can hold multiple handles when the UI fires several queries (or
 /// an EXPLAIN alongside a query) against the same connection concurrently
 /// — `cancel_query` must abort all of them, not just the most recent.
 pub struct QueryCancellationState {
-    pub handles: Arc<Mutex<HashMap<String, Vec<Arc<AbortHandle>>>>>,
+    pub handles: Arc<Mutex<AbortHandleMap>>,
 }
 
 impl Default for QueryCancellationState {
@@ -51,7 +56,7 @@ impl Default for QueryCancellationState {
 /// have already finished so the Vec does not grow unboundedly across many
 /// sequential queries on the same connection.
 pub(crate) fn register_abort_handle(
-    handles: &Mutex<HashMap<String, Vec<Arc<AbortHandle>>>>,
+    handles: &Mutex<AbortHandleMap>,
     key: String,
     handle: Arc<AbortHandle>,
 ) {
@@ -65,7 +70,7 @@ pub(crate) fn register_abort_handle(
 /// task registered, so it cannot fire on a future query that happens to
 /// reuse the same slot.
 pub(crate) fn unregister_abort_handle(
-    handles: &Mutex<HashMap<String, Vec<Arc<AbortHandle>>>>,
+    handles: &Mutex<AbortHandleMap>,
     key: &str,
     handle: &Arc<AbortHandle>,
 ) {

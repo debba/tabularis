@@ -1,6 +1,6 @@
 use crate::commands::{
     expand_ssh_connection_params, find_connection_by_id, register_abort_handle,
-    resolve_connection_params_with_id, unregister_abort_handle,
+    resolve_connection_params_with_id, unregister_abort_handle, AbortHandleMap,
 };
 use crate::drivers::{mysql, postgres, sqlite};
 use crate::dump_utils::{drop_table_if_exists, format_table_ref, insert_into_statement};
@@ -9,12 +9,10 @@ use crate::pool_manager::{get_mysql_pool, get_postgres_pool, get_sqlite_pool};
 use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Read, Write};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Runtime, State};
-use tokio::task::AbortHandle;
 use zip::ZipArchive;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -26,7 +24,14 @@ pub struct DumpOptions {
 
 #[derive(Default)]
 pub struct DumpCancellationState {
-    pub handles: Arc<Mutex<HashMap<String, Vec<Arc<AbortHandle>>>>>,
+    pub handles: Arc<Mutex<AbortHandleMap>>,
+}
+
+/// Slot key for the cancellation registry. Imports share the dump state
+/// but need a distinct slot so `cancel_dump` and `cancel_import` don't
+/// alias each other.
+fn import_slot_key(connection_id: &str) -> String {
+    format!("{}_import", connection_id)
 }
 
 #[tauri::command]
@@ -407,7 +412,7 @@ pub async fn cancel_import(
     state: State<'_, DumpCancellationState>,
     connection_id: String,
 ) -> Result<(), String> {
-    let key = format!("{}_import", connection_id);
+    let key = import_slot_key(&connection_id);
     let entries = {
         let mut handles = state.handles.lock().unwrap();
         handles.remove(&key).unwrap_or_default()
@@ -573,7 +578,7 @@ pub async fn import_database<R: Runtime>(
     });
 
     let abort_handle = Arc::new(task.abort_handle());
-    let import_key = format!("{}_import", conn_id);
+    let import_key = import_slot_key(&conn_id);
     register_abort_handle(&state.handles, import_key.clone(), abort_handle.clone());
 
     let result = task.await;

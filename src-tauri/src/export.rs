@@ -17,17 +17,16 @@ use std::sync::{Arc, Mutex};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Runtime, State};
-use tokio::task::AbortHandle;
 
 use crate::commands::{
     expand_ssh_connection_params, find_connection_by_id, register_abort_handle,
-    resolve_connection_params_with_id, unregister_abort_handle,
+    resolve_connection_params_with_id, unregister_abort_handle, AbortHandleMap,
 };
 use crate::drivers::{mysql, postgres, sqlite};
 use crate::models::ConnectionParams;
 
 pub struct ExportCancellationState {
-    pub handles: Arc<Mutex<HashMap<String, Vec<Arc<AbortHandle>>>>>,
+    pub handles: Arc<Mutex<AbortHandleMap>>,
 }
 
 impl Default for ExportCancellationState {
