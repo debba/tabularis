@@ -7,8 +7,9 @@ use sqlx::{AnyConnection, Connection};
 use std::str::FromStr;
 
 use crate::models::{
-    ColumnDefinition, ConnectionParams, DataTypeInfo, ExplainPlan, ForeignKey, Index, QueryResult,
-    RoutineInfo, RoutineParameter, TableColumn, TableInfo, TableSchema, TriggerInfo, ViewInfo,
+    BatchStatementResult, ColumnDefinition, ConnectionParams, DataTypeInfo, ExplainPlan,
+    ForeignKey, Index, QueryResult, RoutineInfo, RoutineParameter, TableColumn, TableInfo,
+    TableSchema, TriggerInfo, ViewInfo,
 };
 
 /// Capabilities advertised by a driver.
@@ -322,6 +323,38 @@ pub trait DatabaseDriver: Send + Sync {
         page: u32,
         schema: Option<&str>,
     ) -> Result<QueryResult, String>;
+
+    /// Runs a sequence of statements that may depend on connection-local
+    /// session state (`SET @var`, `LAST_INSERT_ID()`, `BEGIN`/`COMMIT`,
+    /// `TEMPORARY TABLE`, `PREPARE`/`EXECUTE`). Built-in drivers override
+    /// this to acquire a single physical connection from the pool and run
+    /// every statement on it, in order, so session-local state survives.
+    ///
+    /// The default implementation falls back to calling `execute_query`
+    /// sequentially: statements run in order but each acquires its own
+    /// pooled connection, so session state is NOT preserved. Plugin drivers
+    /// that need that continuity must override this method.
+    ///
+    /// The outer `Result` represents a batch-level setup failure (e.g.
+    /// acquiring a connection). Per-statement failures are reported inside
+    /// `BatchStatementResult` so earlier successful statements still reach
+    /// the UI.
+    async fn execute_batch(
+        &self,
+        params: &ConnectionParams,
+        queries: &[String],
+        limit: Option<u32>,
+        page: u32,
+        schema: Option<&str>,
+    ) -> Result<Vec<BatchStatementResult>, String> {
+        let mut results = Vec::with_capacity(queries.len());
+        for q in queries {
+            let start = std::time::Instant::now();
+            let outcome = self.execute_query(params, q, limit, page, schema).await;
+            results.push(BatchStatementResult::from_outcome(start, outcome));
+        }
+        Ok(results)
+    }
 
     /// Runs EXPLAIN (or EXPLAIN ANALYZE) on the given query and returns a
     /// parsed execution plan tree. Drivers that do not support EXPLAIN can

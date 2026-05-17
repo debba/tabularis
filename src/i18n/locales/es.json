@@ -674,7 +674,8 @@
     "copyRows": "Copiar {{count}} Filas",
     "copied": "Copiado al portapapeles",
     "duplicateRow": "Duplicar Fila",
-    "setServerNow": "Insertar marca de tiempo actual"
+    "setServerNow": "Insertar marca de tiempo actual",
+    "openReferenced": "Abrir fila referenciada en {{table}}"
   },
   "editRow": {
     "title": "Editar Fila",

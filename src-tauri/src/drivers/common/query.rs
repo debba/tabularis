@@ -26,6 +26,38 @@ pub fn strip_leading_sql_comments(query: &str) -> &str {
     s
 }
 
+/// Returns true if a statement's leading keyword produces a row stream.
+/// Used by drivers to pick between the fetch-rows path and the
+/// execute-and-collect-affected-rows path so INSERT/UPDATE/DELETE no
+/// longer hardcode `affected_rows: 0`.
+///
+/// `CALL` is intentionally treated as result-set-bearing: a MySQL stored
+/// procedure may or may not return one, and the fetch path degrades to
+/// `(rows: [], affected_rows: 0)` for the no-result case without
+/// erroring — losing accurate affected_rows for procs that mutate is the
+/// lesser evil compared to misclassifying procedures that do return
+/// rows.
+pub fn returns_result_set(query: &str) -> bool {
+    let head = strip_leading_sql_comments(query)
+        .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+        .next()
+        .unwrap_or("")
+        .to_uppercase();
+    matches!(
+        head.as_str(),
+        "SELECT"
+            | "WITH"
+            | "SHOW"
+            | "EXPLAIN"
+            | "DESCRIBE"
+            | "DESC"
+            | "VALUES"
+            | "TABLE"
+            | "PRAGMA"
+            | "CALL"
+    )
+}
+
 /// Check if a query type supports EXPLAIN.
 ///
 /// MySQL/MariaDB support EXPLAIN for DML statements only:

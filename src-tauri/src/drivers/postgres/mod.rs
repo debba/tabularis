@@ -17,7 +17,7 @@ use crate::models::{
 };
 use crate::pool_manager::get_postgres_pool;
 use binding::{PgValueOptions, bind_pg_value, build_pk_predicate};
-use client::{execute, format_pg_error, query_all, query_one};
+use client::{execute, format_pg_error, get_client, query_all, query_one};
 pub use explain::explain_query;
 use extract::extract_value;
 use helpers::{escape_identifier, extract_base_type, is_implicit_cast_compatible};
@@ -720,51 +720,71 @@ pub async fn get_table_ddl(
     ))
 }
 
-pub async fn execute_query(
+/// Acquires a single PostgreSQL client from the pool and applies the
+/// optional `search_path` once. Used by both `execute_query` and
+/// `execute_batch`; the latter relies on the schema being set on the
+/// shared connection so all statements in the batch see the same
+/// search_path.
+async fn acquire_pg_client(
     params: &ConnectionParams,
+    schema: Option<&str>,
+) -> Result<deadpool_postgres::Client, String> {
+    let pool = get_postgres_pool(params).await?;
+    let client = get_client(&pool).await?;
+    if let Some(s) = schema {
+        let search_path = format!("SET search_path TO \"{}\"", escape_identifier(s));
+        client
+            .execute(&search_path, &[])
+            .await
+            .map_err(|e| format_pg_error(&e))?;
+    }
+    Ok(client)
+}
+
+/// Runs one statement against an already-acquired client. Pulled out of
+/// `execute_query` so `execute_batch` can reuse it while keeping a single
+/// physical connection open for session-state continuity (`BEGIN`/`COMMIT`,
+/// `SET LOCAL`, `CREATE TEMP TABLE`, `LASTVAL()`, `PREPARE`/`EXECUTE`).
+async fn exec_on_pg_client(
+    client: &tokio_postgres::Client,
     query: &str,
     limit: Option<u32>,
     page: u32,
-    schema: Option<&str>,
 ) -> Result<QueryResult, String> {
-    let pool = get_postgres_pool(params).await?;
+    // Non-result-set statements (INSERT/UPDATE/DELETE/DDL) go through
+    // `client.execute()` so we can return the real affected-row count.
+    // The fetch path below is reserved for SELECT-like statements.
+    if !crate::drivers::common::returns_result_set(query) {
+        let affected = client
+            .execute(query, &[])
+            .await
+            .map_err(|e| format_pg_error(&e))?;
+        return Ok(QueryResult {
+            columns: vec![],
+            rows: vec![],
+            affected_rows: affected,
+            truncated: false,
+            pagination: None,
+        });
+    }
 
-    let is_select = query.trim_start().to_uppercase().starts_with("SELECT");
+    let is_select = crate::drivers::common::is_select_query(query);
     let mut manual_limit = limit;
     let mut truncated = false;
 
-    // Build the paginated data query using LIMIT +1 trick to detect has_more.
-    // No COUNT query is issued; total_rows stays None until explicitly requested.
     let (final_query, pagination_meta) = if is_select && limit.is_some() {
         let l = limit.unwrap();
-
         let data_query = crate::drivers::common::build_paginated_query(query, l, page);
-
         manual_limit = None;
         (data_query, Some((l, page)))
     } else {
         (query.to_string(), None)
     };
 
-    // this comment was for sqlx and i didn't understand it
-    // Acquire main connection for the data fetch (COUNT runs concurrently above)
-    // let mut conn = pool.acquire().await.map_err(map_pg_err)?;
-
-    let client = pool.get().await.map_err(|e| e.to_string())?;
-
-    if let Some(schema) = schema {
-        let search_path = format!("SET search_path TO \"{}\"", escape_identifier(schema));
-        client
-            .execute(&search_path, &[])
-            .await
-            .map_err(|e| format_pg_error(&e))?;
-    }
-
-    let params: Vec<i32> = vec![];
-    // Stream data rows while COUNT runs in the background
+    let pg_params: Vec<i32> = vec![];
     let mut rows_stream = std::pin::pin!(
         client
-            .query_raw(&final_query, &params)
+            .query_raw(&final_query, &pg_params)
             .await
             .map_err(|e| format_pg_error(&e))?
     );
@@ -799,7 +819,6 @@ pub async fn execute_query(
         }
     }
 
-    // Build pagination using LIMIT +1 result: if we got l+1 rows, has_more=true.
     let pagination = if let Some((page_size, p)) = pagination_meta {
         let has_more = json_rows.len() > page_size as usize;
         if has_more {
@@ -823,6 +842,42 @@ pub async fn execute_query(
         truncated,
         pagination,
     })
+}
+
+pub async fn execute_query(
+    params: &ConnectionParams,
+    query: &str,
+    limit: Option<u32>,
+    page: u32,
+    schema: Option<&str>,
+) -> Result<QueryResult, String> {
+    let client = acquire_pg_client(params, schema).await?;
+    exec_on_pg_client(&client, query, limit, page).await
+}
+
+/// Runs a sequence of statements on a single pooled client so
+/// session-local state survives across them. Per-statement errors are
+/// reported in the slot but do not abort the batch — when the script
+/// uses an explicit transaction, PostgreSQL rejects subsequent
+/// statements with "current transaction is aborted" until `ROLLBACK`,
+/// which surfaces the failure naturally in the per-statement result.
+pub async fn execute_batch(
+    params: &ConnectionParams,
+    queries: &[String],
+    limit: Option<u32>,
+    page: u32,
+    schema: Option<&str>,
+) -> Result<Vec<crate::models::BatchStatementResult>, String> {
+    let client = acquire_pg_client(params, schema).await?;
+    let mut results = Vec::with_capacity(queries.len());
+    for q in queries {
+        let start = std::time::Instant::now();
+        let outcome = exec_on_pg_client(&client, q, limit, page).await;
+        results.push(crate::models::BatchStatementResult::from_outcome(
+            start, outcome,
+        ));
+    }
+    Ok(results)
 }
 
 pub async fn get_views(params: &ConnectionParams, schema: &str) -> Result<Vec<ViewInfo>, String> {
@@ -1528,6 +1583,17 @@ impl DatabaseDriver for PostgresDriver {
         schema: Option<&str>,
     ) -> Result<crate::models::QueryResult, String> {
         execute_query(params, query, limit, page, schema).await
+    }
+
+    async fn execute_batch(
+        &self,
+        params: &crate::models::ConnectionParams,
+        queries: &[String],
+        limit: Option<u32>,
+        page: u32,
+        schema: Option<&str>,
+    ) -> Result<Vec<crate::models::BatchStatementResult>, String> {
+        execute_batch(params, queries, limit, page, schema).await
     }
 
     async fn explain_query(

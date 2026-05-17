@@ -94,11 +94,14 @@ import { useEditor } from "../hooks/useEditor";
 import { useConnectionLayoutContext } from "../hooks/useConnectionLayoutContext";
 import { useKeybindings } from "../hooks/useKeybindings";
 import type {
+  BatchStatementResult,
   QueryResult,
   Tab,
   PendingInsertion,
   TableColumn,
+  ForeignKey,
 } from "../types/editor";
+import { buildForeignKeyFilterClause } from "../utils/foreignKeys";
 import {
   getTabScrollState,
   getAdjacentTabIndex,
@@ -500,11 +503,21 @@ export const Editor = () => {
       if (!activeConnectionId) return;
       const effectiveSchema = tabSchema ?? activeSchema;
       try {
-        const cols = await invoke<TableColumn[]>("get_columns", {
-          connectionId: activeConnectionId,
-          tableName: table,
-          ...(effectiveSchema ? { schema: effectiveSchema } : {}),
-        });
+        const [cols, fks] = await Promise.all([
+          invoke<TableColumn[]>("get_columns", {
+            connectionId: activeConnectionId,
+            tableName: table,
+            ...(effectiveSchema ? { schema: effectiveSchema } : {}),
+          }),
+          invoke<ForeignKey[]>("get_foreign_keys", {
+            connectionId: activeConnectionId,
+            tableName: table,
+            ...(effectiveSchema ? { schema: effectiveSchema } : {}),
+          }).catch((e) => {
+            console.warn("Failed to fetch foreign keys:", e);
+            return [] as ForeignKey[];
+          }),
+        ]);
         const pk = cols.find((c) => c.is_pk);
         const autoInc = cols
           .filter((c) => c.is_auto_increment)
@@ -523,6 +536,7 @@ export const Editor = () => {
             defaultValueColumns: defaultVal,
             nullableColumns: nullable,
             columnMetadata: cols,
+            foreignKeys: fks,
           });
       } catch (e) {
         console.error("Failed to fetch PK:", e);
@@ -535,6 +549,7 @@ export const Editor = () => {
             defaultValueColumns: [],
             nullableColumns: [],
             columnMetadata: [],
+            foreignKeys: [],
           });
       }
     },
@@ -802,14 +817,10 @@ export const Editor = () => {
         || undefined;
 
       const entries = createResultEntries(targetTabId, queries);
-      // Local mutable array shared across concurrent promises.
-      // JS is single-threaded: between each `await` resume and the next
-      // yield point, mutations are atomic — no interleaving can occur.
-      const liveResults = [...entries];
 
       setIsResultsCollapsed(false);
       updateTab(targetTabId, {
-        results: liveResults,
+        results: entries,
         activeResultId: entries[0].id,
         result: null,
         error: "",
@@ -820,66 +831,92 @@ export const Editor = () => {
       const shouldRecordHistory =
         targetTab?.type === "console" || targetTab?.type === "query_builder";
 
-      // Execute all queries concurrently
-      await Promise.allSettled(
-        entries.map(async (entry, idx) => {
-          const start = performance.now();
-          try {
-            const res = await invoke<QueryResult>("execute_query", {
-              connectionId: activeConnectionId,
-              query: entry.query,
-              limit: pageSize,
-              page: 1,
-              ...(schema ? { schema } : {}),
-            });
-            const end = performance.now();
-            const tableName = extractTableName(entry.query) ?? null;
-
-            liveResults[idx] = {
-              ...liveResults[idx],
-              result: res,
-              executionTime: end - start,
-              isLoading: false,
-              activeTable: tableName,
-            };
-            updateTab(targetTabId, { results: [...liveResults] });
-
-            if (shouldRecordHistory) {
-              addHistoryEntry(
-                entry.query,
-                end - start,
-                "success",
-                res.pagination?.total_rows ?? null,
-                null,
-                historyDb,
-              );
-            }
-          } catch (err) {
-            const end = performance.now();
-            liveResults[idx] = {
-              ...liveResults[idx],
-              error:
-                typeof err === "string" ? err : t("editor.queryFailed"),
-              executionTime: end - start,
-              isLoading: false,
-            };
-            updateTab(targetTabId, { results: [...liveResults] });
-
-            if (shouldRecordHistory) {
-              addHistoryEntry(
-                entry.query,
-                end - start,
-                "error",
-                null,
-                typeof err === "string" ? err : t("editor.queryFailed"),
-                historyDb,
-              );
-            }
+      // Run the whole script on a single pooled connection so statements
+      // can share session state (SET @var, LAST_INSERT_ID(), transactions,
+      // TEMP TABLE).
+      const batchStart = performance.now();
+      let batchResults: BatchStatementResult[];
+      try {
+        batchResults = await invoke<BatchStatementResult[]>(
+          "execute_query_batch",
+          {
+            connectionId: activeConnectionId,
+            queries: entries.map((e) => e.query),
+            limit: pageSize,
+            page: 1,
+            ...(schema ? { schema } : {}),
+          },
+        );
+      } catch (err) {
+        // Batch-level failure (e.g. connection acquisition, cancellation):
+        // mark every entry as failed so the UI doesn't sit in "loading".
+        const fallbackElapsed = performance.now() - batchStart;
+        const message = typeof err === "string" ? err : t("editor.queryFailed");
+        const failed = entries.map((entry) => ({
+          ...entry,
+          error: message,
+          executionTime: fallbackElapsed,
+          isLoading: false,
+        }));
+        updateTab(targetTabId, { results: failed, isLoading: false });
+        if (shouldRecordHistory) {
+          for (const entry of entries) {
+            addHistoryEntry(
+              entry.query,
+              fallbackElapsed,
+              "error",
+              null,
+              message,
+              historyDb,
+            );
           }
-        }),
-      );
+        }
+        return;
+      }
 
-      updateTab(targetTabId, { isLoading: false });
+      const liveResults = entries.map((entry, idx) => {
+        const item = batchResults[idx];
+        const execTime = item?.execution_time_ms ?? null;
+        if (item?.error) {
+          if (shouldRecordHistory) {
+            addHistoryEntry(
+              entry.query,
+              execTime,
+              "error",
+              null,
+              item.error,
+              historyDb,
+            );
+          }
+          return {
+            ...entry,
+            error: item.error,
+            executionTime: execTime,
+            isLoading: false,
+          };
+        }
+        const res = item?.result ?? null;
+        const tableName = extractTableName(entry.query) ?? null;
+        if (shouldRecordHistory) {
+          addHistoryEntry(
+            entry.query,
+            execTime,
+            "success",
+            res?.pagination?.total_rows ?? null,
+            null,
+            historyDb,
+          );
+        }
+        return {
+          ...entry,
+          result: res,
+          executionTime: execTime,
+          isLoading: false,
+          activeTable: tableName,
+        };
+      });
+
+      updateTab(targetTabId, { results: liveResults, isLoading: false });
     },
     [activeConnectionId, updateTab, settings.resultPageSize, activeSchema, t, isMultiDb, activeDatabaseName, addHistoryEntry],
   );
@@ -1188,6 +1225,64 @@ export const Editor = () => {
       runQuery(undefined, 1, undefined, undefined, filter, sort, limit);
     },
     [updateTab, runQuery],
+  );
+
+  const handleForeignKeyNavigate = useCallback(
+    (fk: ForeignKey, value: unknown) => {
+      const currentTab = tabsRef.current.find(
+        (tb) => tb.id === activeTabIdRef.current,
+      );
+      if (!currentTab || !activeConnectionId) return;
+
+      const sourceType = currentTab.columnMetadata?.find(
+        (c) => c.name === fk.column_name,
+      )?.data_type;
+      const filterClause = buildForeignKeyFilterClause(
+        fk,
+        value,
+        activeDriver ?? null,
+        sourceType,
+      );
+
+      const targetSchema = activeCapabilities?.schemas
+        ? currentTab.schema
+        : undefined;
+
+      const newTabId = addTab({
+        type: "table",
+        activeTable: fk.ref_table,
+        schema: targetSchema,
+        filterClause,
+        // Reset clauses that may linger on an existing dedup'd tab
+        sortClause: "",
+        limitClause: undefined,
+        // Drop any stale results so the new query renders fresh
+        result: null,
+      });
+      if (!newTabId) return;
+
+      updateTab(newTabId, {
+        filterClause,
+        sortClause: "",
+        limitClause: undefined,
+      });
+
+      // Defer to next tick: addTab uses setTabs (async), and runQuery resolves
+      // the target tab via tabsRef which is only refreshed by the
+      // tabs-tracking effect after React commits. Running synchronously here
+      // misses the freshly created tab and bails out early.
+      setTimeout(() => {
+        runQuery(undefined, 1, newTabId, undefined, filterClause, "", undefined);
+      }, 0);
+    },
+    [
+      activeConnectionId,
+      activeDriver,
+      activeCapabilities?.schemas,
+      addTab,
+      updateTab,
+      runQuery,
+    ],
   );
 
   const handleSort = useCallback(
@@ -3133,6 +3228,8 @@ export const Editor = () => {
                     defaultValueColumns={activeTab.defaultValueColumns}
                     nullableColumns={activeTab.nullableColumns}
                     columnMetadata={activeTab.columnMetadata}
+                    foreignKeys={activeTab.foreignKeys}
+                    onForeignKeyNavigate={handleForeignKeyNavigate}
                     connectionId={activeConnectionId}
                     onRefresh={handleRefresh}
                     pendingChanges={activeTab.pendingChanges}

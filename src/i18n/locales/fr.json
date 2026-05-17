@@ -680,7 +680,8 @@
     "setNull": "Définir NULL",
     "setDefault": "Définir DEFAULT",
     "setEmpty": "Définir EMPTY",
-    "setServerNow": "Insérer l'horodatage actuel"
+    "setServerNow": "Insérer l'horodatage actuel",
+    "openReferenced": "Ouvrir la ligne référencée dans {{table}}"
   },
   "editRow": {
     "title": "Modifier la ligne",
