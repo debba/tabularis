@@ -14,7 +14,6 @@ interface JsonExpansionEditorProps {
   readOnly: boolean;
   onSave: (next: unknown) => void;
   onCancel: () => void;
-  /** Baseline value; when provided and different from `value`, shows inline diff. */
   originalValue?: unknown;
 }
 

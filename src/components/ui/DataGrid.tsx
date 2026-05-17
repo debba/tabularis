@@ -1899,6 +1899,13 @@ export const DataGrid = React.memo(
             (() => {
               const mergedRow = mergedRows[sidebarRowData.rowIndex];
               const isInsertion = mergedRow?.type === "insertion";
+              const originalRowData =
+                mergedRow && mergedRow.type === "existing"
+                  ? columns.reduce<Record<string, unknown>>((acc, col, idx) => {
+                      acc[col] = mergedRow.rowData[idx];
+                      return acc;
+                    }, {})
+                  : undefined;
 
               return (
                 <RowEditorSidebar
@@ -1908,6 +1915,8 @@ export const DataGrid = React.memo(
                     setSidebarRowData(null);
                   }}
                   rowData={sidebarRowData.data}
+                  originalRowData={originalRowData}
+                  detectJsonInTextColumns={detectJsonInTextColumns}
                   rowIndex={sidebarRowData.rowIndex}
                   isInsertion={isInsertion}
                   columns={columns.map((colName, index) => ({

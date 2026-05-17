@@ -28,23 +28,15 @@ interface JsonInputProps {
   placeholder?: string;
   className?: string;
   readOnly?: boolean;
-  /** Hide the Expand-to-modal button. Used by JsonViewerPage to avoid recursion. */
+  // Hide the expand-to-window button. Used by JsonViewerPage to avoid recursion.
   disableExpand?: boolean;
-  /**
-   * When true, the editor area flexes to fill the parent's height (used by
-   * JsonViewerPage). When false (default), the editor uses its natural
-   * fixed height — required for use inside auto-height containers like the
-   * row-editor sidebar where flex-fill would collapse to 0.
-   */
+  // Flex-fill the parent's height (needed inside JsonViewerPage where the
+  // surrounding container has explicit height). Off by default because in
+  // auto-height containers (sidebar) flex-fill collapses to 0.
   fillHeight?: boolean;
-  /** Baseline value to enable Diff mode. When omitted, Diff tab is hidden. */
   originalValue?: unknown;
 }
 
-/**
- * Multi-mode JSON editor: Code (Monaco), Tree (json-edit-react), or Raw textarea.
- * Used in the sidebar FieldEditor for JSON/JSONB columns.
- */
 export const JsonInput: React.FC<JsonInputProps> = ({
   value,
   onChange,
