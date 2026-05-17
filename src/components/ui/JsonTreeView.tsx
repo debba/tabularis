@@ -177,18 +177,31 @@ export const JsonTreeView = ({
           />
         </div>
       )}
-      <JsonEditor
-        data={value as JsonData}
-        setData={handleSetData}
-        restrictEdit={isViewOnly}
-        restrictAdd={true}
-        restrictDelete={true}
-        restrictTypeSelection={true}
-        searchText={effectiveSearch}
-        searchFilter="all"
-        theme={editorTheme}
-        enableClipboard={enableClipboard}
-      />
+      <div className="max-h-[280px] overflow-auto bg-base border border-strong rounded [overflow-wrap:anywhere] [&_*]:!max-w-full">
+        <JsonEditor
+          data={value as JsonData}
+          setData={handleSetData}
+          restrictEdit={isViewOnly}
+          restrictAdd={true}
+          restrictDelete={true}
+          restrictTypeSelection={true}
+          searchText={effectiveSearch}
+          searchFilter="all"
+          theme={{
+            ...editorTheme,
+            styles: {
+              ...editorTheme.styles,
+              container: {
+                ...((editorTheme.styles?.container ?? {}) as Record<string, unknown>),
+                border: "none",
+                borderRadius: 0,
+                backgroundColor: "transparent",
+              },
+            },
+          }}
+          enableClipboard={enableClipboard}
+        />
+      </div>
     </div>
   );
 };
