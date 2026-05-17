@@ -29,6 +29,7 @@ pub mod health_check;
 pub mod heartbeat;
 #[cfg(test)]
 pub mod heartbeat_tests;
+pub mod json_viewer;
 pub mod keychain_utils;
 pub mod log_commands;
 pub mod logger;
@@ -161,6 +162,7 @@ pub fn run() {
             credential_cache::CredentialCache::default(),
         ))
         .manage(explain_import::PendingExplainFile::default())
+        .manage(json_viewer::JsonViewerStore::default())
         .setup(move |app| {
             // Read persisted config to know which external plugins are enabled.
             // `None` means no preference has been saved yet → load all installed plugins.
@@ -422,6 +424,10 @@ pub fn run() {
             plugins::commands::get_plugin_dir,
             plugins::commands::read_plugin_file,
             plugins::manager::get_plugin_startup_errors,
+            // JSON Viewer
+            json_viewer::open_json_viewer_window,
+            json_viewer::get_json_viewer_session,
+            json_viewer::complete_json_viewer_session,
             // Task Manager
             task_manager::get_process_list,
             task_manager::get_system_stats,

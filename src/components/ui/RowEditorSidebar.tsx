@@ -9,6 +9,7 @@ interface RowEditorSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   rowData: Record<string, unknown>;
+  originalRowData?: Record<string, unknown>;
   rowIndex: number;
   isInsertion: boolean;
   columns: Array<{ name: string; type?: string; characterMaximumLength?: number }>;
@@ -16,8 +17,8 @@ interface RowEditorSidebarProps {
   defaultValueColumns?: string[];
   nullableColumns?: string[];
   onChange: (colName: string, value: unknown) => void;
-  focusField?: string; // Field to focus when opening
-  // Connection context for BLOB download support
+  focusField?: string;
+  detectJsonInTextColumns?: boolean;
   connectionId?: string | null;
   tableName?: string | null;
   pkColumn?: string | null;
@@ -28,6 +29,7 @@ export const RowEditorSidebar = ({
   isOpen,
   onClose,
   rowData,
+  originalRowData,
   rowIndex,
   isInsertion,
   columns,
@@ -36,6 +38,7 @@ export const RowEditorSidebar = ({
   nullableColumns,
   onChange,
   focusField,
+  detectJsonInTextColumns = false,
   connectionId,
   tableName,
   pkColumn,
@@ -135,6 +138,8 @@ export const RowEditorSidebar = ({
                   type={column.type}
                   characterMaximumLength={column.characterMaximumLength}
                   value={value}
+                  originalValue={originalRowData?.[column.name]}
+                  detectJsonInTextColumns={detectJsonInTextColumns}
                   onChange={(newValue) => updateField(column.name, newValue)}
                   placeholder={t("rowEditor.enterValue")}
                   isInsertion={isInsertion}

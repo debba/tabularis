@@ -129,6 +129,7 @@ La galerie complète est disponible sur [tabularis.dev](https://tabularis.dev).
 - Création, sélection et suppression de lignes.
 - Export CSV ou JSON.
 - Support initial des données spatiales.
+- Cellules JSON/JSONB avec coloration et fenêtre d'édition dédiée (Arbre / Monaco / Raw). Option par connexion : détecter le JSON dans les colonnes texte.
 
 ### Logs
 

@@ -129,6 +129,7 @@ La galería completa está en [tabularis.dev](https://tabularis.dev).
 - Creación, selección y borrado de filas.
 - Exportación a CSV o JSON.
 - Soporte inicial para datos espaciales.
+- Celdas JSON/JSONB con resaltado y ventana de edición dedicada (Árbol / Monaco / Raw). Opcional por conexión: detectar JSON en columnas de texto.
 
 ### Logging
 

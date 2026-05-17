@@ -279,6 +279,7 @@ Join our [Discord server](https://discord.com/invite/K2hmhfHRSt) to talk with th
 - **Export:** Save results as CSV or JSON.
 - **Smart Context:** Read-only mode for aggregates, edit mode for tables.
 - **Spatial Data Support:** Initial GEOMETRY support for MySQL with raw SQL function inputs for spatial data.
+- **JSON & JSONB Cells:** Syntax-highlighted in the grid with a Braces affordance that opens a standalone Tauri editor window (Tree / Monaco / Raw modes; window position remembered). Text columns can opt in to the same affordance per connection via **Detect JSON in text columns**.
 
 ### Plugin System
 

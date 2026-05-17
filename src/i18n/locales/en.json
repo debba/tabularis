@@ -256,6 +256,8 @@
     "delimiterSemicolon": "Semicolon (;)",
     "delimiterTab": "Tab",
     "delimiterPipe": "Pipe (|)",
+    "detectJsonInTextColumns": "Detect JSON in text columns",
+    "detectJsonInTextColumnsDesc": "Show the JSON viewer affordance when a non-typed text cell contains a JSON object or array. Adds a small per-cell parse cost.",
     "appearance": "Appearance",
     "localization": "Localization",
     "themeSelection": "Theme Selection",
@@ -662,6 +664,7 @@
     "savedInKeychain": "Password saved in system keychain"
   },
   "dataGrid": {
+    "newRow": "NEW",
     "noData": "No data to display",
     "editRow": "Edit Row",
     "deleteRow": "Delete Row",
@@ -1157,7 +1160,27 @@
     "placeholder": "Enter JSON...",
     "format": "Format",
     "valid": "Valid JSON",
-    "invalid": "Invalid JSON"
+    "invalid": "Invalid JSON",
+    "mode": {
+      "code": "Code",
+      "tree": "Tree",
+      "raw": "Raw"
+    },
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "search": "Search",
+    "copyPath": "Copy Path",
+    "copyValue": "Copy Value",
+    "addItem": "Add Item",
+    "removeItem": "Remove Item"
+  },
+  "jsonViewer": {
+    "close": "Close",
+    "save": "Save"
+  },
+  "jsonCell": {
+    "expand": "Toggle inline JSON tree",
+    "openViewer": "Open JSON viewer"
   },
   "rowEditor": {
     "title": "Edit Row",
@@ -1167,7 +1190,8 @@
     "enterValue": "Enter value..."
   },
   "contextMenu": {
-    "openSidebar": "Open Sidebar Editor"
+    "openSidebar": "Open Sidebar Editor",
+    "openJsonEditor": "Open in JSON Editor"
   },
   "blobInput": {
     "noData": "No BLOB data",
