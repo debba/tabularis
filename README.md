@@ -477,6 +477,7 @@ pnpm tauri build
 ## Roadmap
 
 - [x] [[Feat]: Allow loading of multiple Databases per connection](https://github.com/TabularisDB/tabularis/issues/47)
+- [x] [JSON/JSONB Editor & Viewer](https://github.com/TabularisDB/tabularis/issues/24)
 - [x] [Visual Explain Analyze](https://github.com/TabularisDB/tabularis/issues/22)
 - [x] [Plugin System](https://github.com/TabularisDB/tabularis/issues/19)
 - [x] [Query History](https://github.com/TabularisDB/tabularis/issues/18)
@@ -485,7 +486,6 @@ pnpm tauri build
 - [ ] [SQL Server driver — implementation roadmap & call for contributors](https://github.com/TabularisDB/tabularis/issues/150)
 - [ ] [Feature: Remote Control](https://github.com/TabularisDB/tabularis/issues/46)
 - [ ] [Command Palette](https://github.com/TabularisDB/tabularis/issues/25)
-- [ ] [JSON/JSONB Editor & Viewer](https://github.com/TabularisDB/tabularis/issues/24)
 - [ ] [SQL Formatting / Prettier](https://github.com/TabularisDB/tabularis/issues/23)
 - [ ] [Data Compare / Diff Tool](https://github.com/TabularisDB/tabularis/issues/21)
 - [ ] [Team Collaboration](https://github.com/TabularisDB/tabularis/issues/20)
